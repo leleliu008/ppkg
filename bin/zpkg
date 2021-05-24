@@ -2307,7 +2307,7 @@ __rename_a_formula() {
 __repoof_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    for repo in $(____list_formula_repositories | cut -d ' ' -f1)
+    for repo in $(____list_formula_repositories | cut -d= -f1)
     do
         if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
             echo "$repo"
@@ -2337,7 +2337,7 @@ ____list_formula_repositories() {
         cat "$MY_HOME_DIR/repos"
     else
         install -d "$MY_HOME_DIR"
-        echo "offical https://github.com/leleliu008/zpkg-formula-repository" | tee "$MY_HOME_DIR/repos"
+        echo "offical=https://github.com/leleliu008/zpkg-formula-repository.git" | tee "$MY_HOME_DIR/repos"
     fi
 }
 
@@ -2347,8 +2347,8 @@ __update_formula_repositories() {
         unset MY_FORMULA_REPO_NAME
         unset MY_FORMULA_REPO_URL_
 
-        MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d ' ' -f1)
-        MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d ' ' -f2)
+        MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d= -f1)
+        MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
 
         info "=== Updating repository ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
         fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME" || return 1
@@ -2497,7 +2497,7 @@ __list_available_packages() {
         *)  die "list available action only accept -q argument."
     esac
 
-    for repo in $(____list_formula_repositories | cut -d ' ' -f1)
+    for repo in $(____list_formula_repositories | cut -d= -f1)
     do
         if [ "$SILENT" = 'true' ] ; then
             cd "$MY_FORMULA_REPO_DIR/$repo/formula" 2>/dev/null || return 1
@@ -2608,7 +2608,7 @@ __cleanup() {
 __search_packages() {
     [ -z "$1" ] && die "please specify a keyword."
 
-    for repo in $(____list_formula_repositories | cut -d ' ' -f1)
+    for repo in $(____list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh//g' | grep "$*"
     done
@@ -3729,7 +3729,7 @@ init() {
 
     if [ ! -e "$MY_HOME_DIR/repos" ] ; then
         install -d "$MY_HOME_DIR"
-        echo "offical https://github.com/leleliu008/zpkg-formula-repository" | tee "$MY_HOME_DIR/repos"
+        echo "offical=https://github.com/leleliu008/zpkg-formula-repository.git" | tee "$MY_HOME_DIR/repos"
     fi
 
     if command -v date > /dev/null ; then
