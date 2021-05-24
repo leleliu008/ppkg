@@ -36,7 +36,7 @@ I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then
         zpkg -V
         zpkg --version
         
-*   update the [zpkg-formula repository](https://github.com/leleliu008/zpkg-formula)
+*   update the [zpkg-formula-repository](https://github.com/leleliu008/zpkg-formula-repository)
         
         zpkg update
         
