@@ -2321,7 +2321,7 @@ __repoof_a_formula() {
 __pathof_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    for repo in $(cut -d ' ' -f1 "$MY_HOME_DIR/repos")
+    for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
         if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
             echo "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
