@@ -3727,6 +3727,11 @@ init() {
     MY_CACHED_BUILD__DIR="$MY_CACHED_DIR/build.d"
     MY_CACHED_BACKUP_DIR="$MY_CACHED_DIR/backup.d"
 
+    if [ ! -e "$MY_HOME_DIR/repos" ] ; then
+        install -d "$MY_HOME_DIR"
+        echo "offical https://github.com/leleliu008/zpkg-formula-repository" | tee "$MY_HOME_DIR/repos"
+    fi
+
     if command -v date > /dev/null ; then
         TIMESTAMP_UNIX="$(date +%s)"
     else
