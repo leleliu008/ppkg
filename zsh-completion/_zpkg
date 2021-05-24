@@ -1,0 +1,125 @@
+#compdef zpkg
+
+_commands=(
+    '-h:print the help infomation of zpkg command.'
+    '--help:print the help infomation of zpkg command.'
+    '-V:print the version of zpkg.'
+    '--version:print the version of zpkg.'
+    'search:search packages can be installed.'
+    'list:list the available, installed and outdated packages.'
+    'tree:list contents of a installed package directory in a tree-like format.'
+    'info:print the basic infomation of packages.'
+    'formula:view,edit the formula of a package.'
+    'install:install packages.'
+    'reinstall:reinstall packages.'
+    'uninstall:uninstall packages.'
+    'cleanup:cleanup the unused cache.'
+    'update:update the formula repository.'
+    'upgrade:upgrade the outdated packages.'
+    'fetch:download formula resources of a package to the cache.'
+    'homepage:visit the homepage of a formula or the zpkg project.'
+    'depends:show the depends of a package.'
+    'prefix:show the installation direcotory of a formula or the zpkg home.'
+    'pack:pack a installed package.'
+    'logs:print the logs of a installed package.'
+    'is:check something. easy to write script.'
+)
+
+_list=(
+    'available:list the available packages.'
+    'installed:list the installed packages.'
+    'outdated:list the installed packages which can be upgraded.'
+)
+
+function _zpkg_available_packages() {
+    local -a _available_packages
+    _available_packages=($(zpkg list available -q))
+    _describe 'available-packages' _available_packages
+}
+
+function _zpkg_installed_packages() {
+    local -a _installed_packages
+    _installed_packages=($(zpkg list installed))
+    _describe 'installed-packages' _installed_packages
+}
+
+function _zpkg_outdated_packages() {
+    local -a _outdated_packages
+    _outdated_packages=($(zpkg list outdated))
+    _describe 'outdated-packages' _outdated_packages
+}
+
+function _zpkg() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    _arguments \
+        '1: :{_describe 'command' _commands}' \
+        '*:: :->option'
+
+    case $state in
+        option)
+            case $words[1] in
+                list)
+                    _arguments \
+                        ':list:{_describe 'list' _list}' \
+                        '-q[quiet mode. do not report error log]'
+                    ;;
+                formula)
+                    _arguments \
+                        ':action:(create delete rename view edit list)' \
+                        '*:: :->action'
+                    case $state in
+                        action)
+                            case $words[1] in
+                                delete|rename|view|edit)
+                                    _arguments ':package-name:_zpkg_available_packages'
+                            esac
+                    esac
+                    ;;
+                info)
+                    _arguments '*:package-name:_zpkg_available_packages' ;;
+                fetch|homepage|depends)
+                    _arguments ':package-name:_zpkg_available_packages' ;;
+                prefix|pack|tree)
+                    _arguments ':package-name:_zpkg_installed_packages' ;;
+                logs)
+                    _arguments \
+                        '1:package-name:_zpkg_installed_packages' \
+                        '2:abi:($(zpkg list abis))'
+                    ;;
+                install)
+                    _arguments \
+                        ':package-name:_zpkg_available_packages' \
+                        '--dry-run[dry-run]' \
+                        '--keep-working-dir[do not delete working-dir even if installed success]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                    ;;
+                reinstall)
+                    _arguments \
+                        ':package-name:_zpkg_installed_packages' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                    ;;
+                upgrade)
+                    _arguments \
+                        ':package-name:_zpkg_outdated_packages' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                    ;;
+                uninstall)
+                    _arguments '*:package-name:_zpkg_installed_packages' ;;
+                is)
+                    _arguments \
+                        '1: :(available installed outdated)' \
+                        '2:package-name:_zpkg_available_packages'
+                    ;;
+                *);;
+            esac
+            ;;
+        *);;
+    esac
+}
+
+_zpkg "$@"
