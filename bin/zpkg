@@ -2342,6 +2342,8 @@ ____list_formula_repositories() {
 }
 
 __update_formula_repositories() {
+    handle_dependency required command git || return 1
+
     for repo in $(____list_formula_repositories)
     do
         unset MY_FORMULA_REPO_NAME
