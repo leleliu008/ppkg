@@ -2134,7 +2134,7 @@ ___load_a_formula() {
                 die "src.sum is not configed in $PACKAGE_FORMULA_PATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|.orig.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     die "version is not configed in $PACKAGE_FORMULA_PATH"
                 else

@@ -129,10 +129,7 @@ I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then
         
 *   print the logs of a installed package
         
-        zpkg logs curl armeabi-v7a
-        zpkg logs curl arm64-v8a
-        zpkg logs curl x86
-        zpkg logs curl x86_64
+        zpkg logs curl
         
 *   pack a installed package
         
