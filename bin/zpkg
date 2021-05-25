@@ -408,15 +408,21 @@ __get_available_fetch_tool() {
 
 __fetch_via_git() {
     if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-        if      git -C "$FETCH_OUTPUT_PATH" rev-parse 2> /dev/null ; then
-            run git -C "$FETCH_OUTPUT_PATH" pull &&
-            run git -C "$FETCH_OUTPUT_PATH" submodule update --recursive
+        run cd  "$FETCH_OUTPUT_PATH" || return 1
+        if      git rev-parse 2> /dev/null ; then
+            run git pull &&
+            run git submodule update --recursive
         else
-            run rm -rf "$FETCH_OUTPUT_PATH" &&
-            run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+            run cd .. &&
+            run rm -rf "$FETCH_OUTPUT_NAME" &&
+            run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
         fi
     else
-        run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+        if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+        run cd "$FETCH_OUTPUT_DIR" || return 1
+        run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
     fi
 }
 
@@ -2961,7 +2967,7 @@ __install_a_package() {
     step "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
-            PACKAGE_VERSION=$(git -C "$PACKAGE_SRC_PATH" log -1 --pretty=format:%h)
+            PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
