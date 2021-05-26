@@ -1949,7 +1949,7 @@ regist_dependency() {
 # package set|add bsystem "cmake"
 # package set|add binsrcd 1
 #
-# package get     binsrcd
+# package get PACKAGE KEY
 package() {
     unset __PACKAGE_KEY__
 
@@ -1969,9 +1969,9 @@ package() {
             ;;
         get)
             shift
-            __PACKAGE_KEY__="$1"
+            ___load_a_formula "$1"
             shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
+            __PACKAGE_KEY__="$(echo "$1" | tr - _  | tr . _ | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_KEY__ || exit 1
             ;;
         add)
@@ -2433,15 +2433,15 @@ is_package_available() {
 is_package_installed() {
     die_if_package_is_not_specified "$1"
     
-    [ -d "$MY_INSTALL_DIR/$1" ]                       || return 1
-    [ -f "$MY_INSTALL_DIR/$1/log/installed.log.txt" ] || return 1
+    [ -d "$MY_INSTALL_DIR/$1" ]                      || return 1
+    [ -f "$MY_CACHED_LOG_DIR/$1/installed.log.txt" ] || return 1
 }
 
 is_package__outdated() {
     ___load_a_formula "$1"
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                       || die_from_package_is_not_installed "$1"
-    [ -f "$MY_INSTALL_DIR/$1/log/installed.log.txt" ] || die_from_package_is_not_installed "$1"
+    [ -d "$MY_INSTALL_DIR/$1" ]                      || die_from_package_is_not_installed "$1"
+    [ -f "$MY_CACHED_LOG_DIR/$1/installed.log.txt" ] || die_from_package_is_not_installed "$1"
 }
 
 __list_packages_which_is_not_depended_by_others() {
@@ -2639,8 +2639,7 @@ __show_webpage_of_a_package() {
 __show_depends_of_a_package() {
     die_if_package_is_not_specified "$1"
 
-    BUILD_DIR=$(mktemp -d) || return 1
-    __gen_dependency_tree 'true' "$1"
+    __gen_dependency_tree "$1"
 
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
@@ -2677,7 +2676,7 @@ __show_logs_of_a_package() {
         VIEWER=less
     fi
 
-    for item in $(ls "$MY_INSTALL_DIR/$1/log"/*)
+    for item in $(ls "$MY_CACHED_LOG_DIR/$1"/*)
     do
         if [ "$VIEWER" = 'bat' ] ; then
             case $item in
@@ -2738,19 +2737,19 @@ get_direct_dependency_package_list_of_a_package() {
     grep '^\s*package set dep\.pkg\s*".*"' $(__pathof_a_formula $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
 }
 
-# $1 is first call
-# $2 packageName
+# $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
+# $2 is invoked by myself
 __gen_dependency_list() {
-    if [ "$1" = 'true' ] ; then
+    if [ "$2" != 'true' ] ; then
         unset I
         unset DEPENDENCY_PACKAGE_LIST
     fi
 
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    if [ -z "$2" ] ; then
+    if [ -z "$1" ] ; then
         DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
     else
-        DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$2")
+        DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$1")
     fi
     
     for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
@@ -2770,34 +2769,44 @@ __gen_dependency_list() {
         
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list 'false' "$dependencyPkgName"
+        __gen_dependency_list "$dependencyPkgName" true
     done
 }
 
-# $1 is first call
-# $2 packageName
+# $1 packageName
+# $2 is invoked by myself | [output-dir]
 __gen_dependency_tree() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$2")
+    DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$1")
 
-    if [ "$1" = 'true' ] ; then
-        unset I
+    case $2 in
+        true) ;;
+        *)
+            unset I
 
-        unset DEPENDENCIES__GV
-        unset DEPENDENCIES_PNG
-        unset DEPENDENCIES_TXT
+            unset DEPENDENCIES__GV
+            unset DEPENDENCIES_PNG
+            unset DEPENDENCIES_TXT
 
-        DEPENDENCIES__GV="$BUILD_DIR/$2.dependencies.gv"
-        DEPENDENCIES_PNG="$BUILD_DIR/$2.dependencies.png"
-        DEPENDENCIES_TXT="$BUILD_DIR/$2.dependencies.txt"
-        
-        if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
-            echo "digraph \"$2\" {" > "$DEPENDENCIES__GV"
-        fi
-    fi
+            unset DEPENDENCIES_OUTPUT_DIR
+
+            if [ -z "$2" ] ; then
+                DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
+            else
+                DEPENDENCIES_OUTPUT_DIR="$2"
+            fi
+
+            DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.gv"
+            DEPENDENCIES_PNG="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.png"
+            DEPENDENCIES_TXT="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.txt"
+            
+            if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+                echo "digraph \"$1\" {" > "$DEPENDENCIES__GV"
+            fi
+    esac
 
     if [ -f "$DEPENDENCIES__GV" ] ; then
-        print "  \"$2\" -> {" >> "$DEPENDENCIES__GV"
+        print "  \"$1\" -> {" >> "$DEPENDENCIES__GV"
         for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
         do
             print " \"$dependencyPkgName\"" >> "$DEPENDENCIES__GV"
@@ -2809,7 +2818,7 @@ __gen_dependency_tree() {
 
     for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
-        __gen_dependency_tree 'false' "$dependencyPkgName"
+        __gen_dependency_tree "$dependencyPkgName" true
     done
 
     I=$(expr $I - 1)
@@ -2841,7 +2850,7 @@ ____install_packages() {
 
     die_if_package_list_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
-    __gen_dependency_list 'true' '' || return 1
+    __gen_dependency_list || return 1
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
@@ -2852,8 +2861,10 @@ ____install_packages() {
         if is_package_installed "$INSTALLING_PACKAGE" ; then
             printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
         else
-            install -d "$MY_CACHED_BUILD__DIR/$INSTALLING_PACKAGE" || return 1
-            __install_a_package "$INSTALLING_PACKAGE" | tee "$MY_CACHED_BUILD__DIR/$INSTALLING_PACKAGE/install.log.txt" || die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
+            PACKAGE_LOG_DIR="$MY_CACHED_LOG_DIR/$INSTALLING_PACKAGE"
+            rm -rf     "$PACKAGE_LOG_DIR" || return 1
+            install -d "$PACKAGE_LOG_DIR" || return 1
+            __install_a_package "$INSTALLING_PACKAGE" | tee "$PACKAGE_LOG_DIR/install.log.txt" || die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
         fi
     done
 }
@@ -2895,11 +2906,7 @@ __install_a_package() {
     id | tr ' ' '\n' | head -n 2
 
     step "show formula"
-    if command -v bat > /dev/null ; then
-        run bat --style=plain --paging=never $(__pathof_a_formula $1)
-    else
-        run cat $(__pathof_a_formula $1)
-    fi
+    run cat $(__pathof_a_formula $1)
 
     step "load formula"
     ___load_a_formula "$1"
@@ -2933,6 +2940,18 @@ __install_a_package() {
     MAKE=$(command -v make)
     NINJA=$(command -v ninja)
 
+    step "calculate dependencies"
+    unset DEPENDENCY_PACKAGE_LIST
+    if [ -z "$PACKAGE_DEP_PKG" ] ; then
+        warn "no dependencies."
+    else
+        __gen_dependency_list "$1"                            || return 1
+        __gen_dependency_tree "$1" "$MY_CACHED_LOG_DIR/$1" || return 1
+        if [ -f "$DEPENDENCIES_TXT" ] ; then
+            cat "$DEPENDENCIES_TXT"
+        fi
+    fi
+
     step "fetch resources if needed"
     __fetch_resources_of_a_package "$1"
 
@@ -2948,21 +2967,6 @@ __install_a_package() {
 
     BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     mkdir "$BUILD_DIR" || return 1
-
-    step "calculate dependencies"
-    unset DEPENDENCY_PACKAGE_LIST
-    if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        warn "no dependencies."
-    else
-        __gen_dependency_list 'true' "$1" || return 1
-        __gen_dependency_tree 'true' "$1" || return 1
-        if [ -f "$DEPENDENCIES_TXT" ] ; then
-            cat "$DEPENDENCIES_TXT"
-        fi
-    fi
-
-    __config_build_variables "$1"
-    __printf_build_variables "$1"
 
     step "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
@@ -2987,6 +2991,9 @@ __install_a_package() {
 
     step "list content of source directory"
     run ls -l
+
+    __config_build_variables "$1"
+    __printf_build_variables "$1"
 
     step "do some preparation works"
     if command -v prepare > /dev/null ; then
@@ -3048,7 +3055,8 @@ __install_a_package() {
         return 1
     }
 
-    run __install_logs "$1" || return 1
+    step "install logs"
+    __install_logs "$1" || return 1
 
     step "clean working directory."
     if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
@@ -3067,6 +3075,48 @@ __install_a_package() {
 __config_build_variables() {
     step "config build variables"
 
+    unset CC
+    unset CPP
+    unset CXX
+    unset AS
+    unset LD
+    unset AR
+    unset NM
+    unset RANLIB
+    unset STRIP
+    unset SIZE
+    unset READELF
+    unset STRINGS
+    unset OBJCOPY
+    unset OBJDUMP
+
+    unset CFLAGS
+    unset CPPFLAGS
+    unset LDFLAGS
+
+    # https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
+    unset PKG_CONFIG_LIBDIR
+    unset PKG_CONFIG_PATH
+
+    unset TOOLCHAIN_ROOT_DIR
+    unset TOOLCHAIN_BIN__DIR
+
+    unset SYSROOT
+    unset MACOSX_DEPLOYMENT_TARGET
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        TOOLCHAIN_ROOT_DIR="$(xcode-select -p)"
+        TOOLCHAIN_BIN__DIR="$TOOLCHAIN_ROOT_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+        export PATH="$TOOLCHAIN_BIN__DIR:$PATH"
+
+        SYSROOT="$TOOLCHAIN_ROOT_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        MACOSX_DEPLOYMENT_TARGET="$(echo "$NATIVE_OS_VERS" | cut -d. -f1).$(echo "$NATIVE_OS_VERS" | cut -d. -f2)"
+
+        CFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Qunused-arguments"
+        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+        LDFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+    fi
+
     for tool in $(list_tools_in_the_toolchain)
     do
         if [ "$tool" = 'cpp' ] ; then
@@ -3075,10 +3125,6 @@ __config_build_variables() {
             eval $(echo "$tool" | tr a-z A-Z)=$(echo_path_of_tool_in_the_toolchain "$tool")
         fi
     done
-
-    unset CFLAGS
-    unset CPPFLAGS
-    unset LDFLAGS
 
     for item in $PACKAGE_CDEFINE
     do
@@ -3096,9 +3142,6 @@ __config_build_variables() {
     if [ "$VERBOSE" = 'true' ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
-    # https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
-    unset PKG_CONFIG_LIBDIR
-    unset PKG_CONFIG_PATH
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -3271,25 +3314,15 @@ __printf_build_variables() {
 }
 
 __install_logs() {
-    PACKAGE_LOG_DIR="$PACKAGE_INSTALL_DIR/log"
-
-    install -v -d "$PACKAGE_LOG_DIR" || return 1
-
     install_installed_log
-
-    for item in "$PACKAGE_FORMULA_PATH" "$MY_CACHED_BUILD__DIR/$PACKAGE_NAME/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
-    do
-        if [ -f "$item" ] ; then
-            install -v -m 644 "$item" "$PACKAGE_LOG_DIR" || return 1
-        fi
-    done
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json'
         do
             if [ -f "$item/$item2" ] ; then
-                install -v -m 644 "$item/$item2" "$PACKAGE_LOG_DIR" || return 1
+                echo "-- Installing: $PACKAGE_LOG_DIR/$item2"
+                install -m 644 "$item/$item2" "$PACKAGE_LOG_DIR" || return 1
             fi
         done
     done
@@ -3468,6 +3501,7 @@ __json_available_packages() {
 }
 
 install_installed_log() {
+    echo "-- Installing: $PACKAGE_LOG_DIR/installed.log.txt"
     cat > "$PACKAGE_LOG_DIR/installed.log.txt" <<EOF
 installed_datetime=$TIMESTAMP_UNIX
 installed_pkg_name=$PACKAGE_NAME
@@ -3478,7 +3512,7 @@ EOF
 die_if_load_installed_log_failed() {
     die_if_package_is_not_installed "$1"
 
-    INSTALLED_LOG_FILE_PATH="$MY_INSTALL_DIR/$1/log/installed.log.txt"
+    INSTALLED_LOG_FILE_PATH="$MY_CACHED_LOG_DIR/$1/installed.log.txt"
 
     unset installed_datetime
 
@@ -3732,8 +3766,8 @@ init() {
     MY_CACHED_SOURCE_DIR="$MY_CACHED_DIR/source.d"
     MY_CACHED_BINARY_DIR="$MY_CACHED_DIR/binary.d"
     MY_CACHED_PATCH__DIR="$MY_CACHED_DIR/patch.d"
-    MY_CACHED_BUILD__DIR="$MY_CACHED_DIR/build.d"
     MY_CACHED_BACKUP_DIR="$MY_CACHED_DIR/backup.d"
+    MY_CACHED_LOG_DIR="$MY_CACHED_DIR/log.d"
 
     if [ ! -e "$MY_HOME_DIR/repos" ] ; then
         install -d "$MY_HOME_DIR"
@@ -3825,8 +3859,8 @@ main() {
                 *) help 1
             esac
             ;;
-        list)
-            shift
+        get)  shift; package get "$1" "$2" ;;
+        list) shift
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
