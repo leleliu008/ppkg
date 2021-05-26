@@ -3532,7 +3532,7 @@ configure() {
     if run "$SOURCE_DIR"/configure \
         --prefix="$PACKAGE_INSTALL_DIR" \
         --disable-option-checking \
-        --disable-rpath \
+        --enable-rpath \
         --disable-debug \
         --disable-nls\
         --enable-largefile \
