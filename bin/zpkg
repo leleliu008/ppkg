@@ -646,7 +646,7 @@ os() {
         printf "current-machine-os-kind : %s\n" "$(os kind)"
         printf "current-machine-os-type : %s\n" "$(os type)"
         printf "current-machine-os-name : %s\n" "$(os name)"
-        printf "current-machine-os-vers : %s\n" "$(os version)"
+        printf "current-machine-os-vers : %s\n" "$(os vers)"
         printf "current-machine-os-arch : %s\n" "$(os arch)"
         printf "current-machine-os-libc : %s\n" "$(os libc)"
     elif [ $# -eq 1 ] ; then
@@ -660,7 +660,7 @@ os type
 os arch
 os libc
 os name
-os version
+os vers
 EOF
                 ;;
             -V|--version) echo '2021.03.28.23' ;;
@@ -727,7 +727,7 @@ EOF
                         return 1
                 esac
                 ;;
-            version)
+            vers)
                 case $(os kind) in
                     freebsd) freebsd-version ;;
                     openbsd) uname -r ;;
@@ -2064,7 +2064,7 @@ ___load_a_formula() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_FORMULA_PATH
+    unset PACKAGE_FORMULA_FILEPATH
 
     unset -f build0
     unset -f prepare
@@ -2073,21 +2073,21 @@ ___load_a_formula() {
 
     PACKAGE_NAME="$1"
 
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    . "$PACKAGE_FORMULA_PATH" || die "$PACKAGE_FORMULA_PATH is broken."
+    . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
 
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
@@ -2123,12 +2123,12 @@ ___load_a_formula() {
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
-                die "src.sum is not configed in $PACKAGE_FORMULA_PATH"
+                die "src.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|.orig.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    die "version is not configed in $PACKAGE_FORMULA_PATH"
+                    die "version is not configed in $PACKAGE_FORMULA_FILEPATH"
                 else
                     case $PACKAGE_VERSION in
                         v*) if command -v cut > /dev/null ; then
@@ -2178,17 +2178,17 @@ ___load_a_formula() {
 ____view_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "view action accept only one argument."
     
     if command -v bat > /dev/null ; then
-        bat "$PACKAGE_FORMULA_PATH"
+        bat "$PACKAGE_FORMULA_FILEPATH"
     else
-        cat "$PACKAGE_FORMULA_PATH"
+        cat "$PACKAGE_FORMULA_FILEPATH"
         echo
         prompt_user_to_install_bat
     fi    
@@ -2197,17 +2197,17 @@ ____view_a_formula() {
 ____edit_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
     [ -z "$EDITOR" ] && EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open)
     [ -z "$EDITOR" ] && die "please set EDITOR environment variable."
 
-    "$EDITOR" "$PACKAGE_FORMULA_PATH"
+    "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
 }
 
 __create_a_formula() {
@@ -2256,12 +2256,12 @@ EOF
 __delete_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
-    if rm "$PACKAGE_FORMULA_PATH" ; then
+    if rm "$PACKAGE_FORMULA_FILEPATH" ; then
         success "delete $1 formula success."
     else
         die "delete $1 formula failed."
@@ -2279,17 +2279,17 @@ __rename_a_formula() {
         die "$1 package is not available."
     fi
 
-    unset PACKAGE_FORMULA_PATH_OLD
-    unset PACKAGE_FORMULA_PATH_NEW
+    unset PACKAGE_FORMULA_FILEPATH_OLD
+    unset PACKAGE_FORMULA_FILEPATH_NEW
 
-    PACKAGE_FORMULA_PATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
-    PACKAGE_FORMULA_PATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
+    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
+    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
 
-    if [ -f "$PACKAGE_FORMULA_PATH_NEW" ] ; then
+    if [ -f "$PACKAGE_FORMULA_FILEPATH_NEW" ] ; then
         die "$2 package is already exist."
     fi
 
-    if mv "$PACKAGE_FORMULA_PATH_OLD" "$PACKAGE_FORMULA_PATH_NEW" ; then
+    if mv "$PACKAGE_FORMULA_FILEPATH_OLD" "$PACKAGE_FORMULA_FILEPATH_NEW" ; then
         success "rename formula $1 -> $2 success."
     else
         die "rename formula $1 -> $2 failed."
@@ -3770,7 +3770,7 @@ init() {
         NATIVE_OS_KIND=$(os kind)
         NATIVE_OS_TYPE=$(os type)
         NATIVE_OS_NAME=$(os name)
-        NATIVE_OS_VERS=$(os version)
+        NATIVE_OS_VERS=$(os vers)
         NATIVE_OS_ARCH=$(os arch)
         NATIVE_OS_LIBC=$(os libc)
     else
