@@ -96,21 +96,34 @@ shiftn() {
 
 sed_in_place() {
     if command -v gsed > /dev/null ; then
-        unset SED_ACTION
-        SED_ACTION="$1"
+        unset SED_IN_PLACE_ACTION
+        SED_IN_PLACE_ACTION="$1"
         shift
-        run gsed -i "\"$SED_ACTION\"" $@
+        # contains ' but not contains \'
+        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+            run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
+        else
+            run gsed -i "'$SED_IN_PLACE_ACTION'" $@
+        fi
     elif command -v sed  > /dev/null ; then
         if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
-            unset SED_ACTION
-            SED_ACTION="$1"
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
             shift
-            run sed -i "\"$SED_ACTION\"" $@
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i "'$SED_IN_PLACE_ACTION'" $@
+            fi
         else
-            unset SED_ACTION
-            SED_ACTION="$1"
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
             shift
-            run sed -i '""' "\"$SED_ACTION\"" $@
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
+            fi
         fi
     else
         die "please install sed utility."
@@ -752,15 +765,6 @@ EOF
 # }}}
 ##############################################################################
 # {{{ version
-
-version_of_python_module() {
-    PIP_COMMAND=$(command -v pip3 || command -v pip)
-    if [ -z "$PIP_COMMAND" ] ; then
-        die "can't found pip command."
-    else
-        "$PIP_COMMAND" show $1 | grep 'Version:' | cut -d ' ' -f2
-    fi
-}
 
 # retrive the version of a command from it's name or path
 version_of_command() {
@@ -1427,20 +1431,32 @@ __install_package_via_package_manager() {
     package_exists_in_repo_and_version_matched $@ || return 1
 
     case $1 in
-        pip3) case $NATIVE_OS_KIND in
+        pip3)
+            case $NATIVE_OS_KIND in
                 *bsd|linux) run pip3 install --user -U "$2" ;;
                 *)          run pip3 install        -U "$2"
-              esac
-              ;;
-        pip)  case $NATIVE_OS_KIND in
+            esac
+            ;;
+        pip)
+            case $NATIVE_OS_KIND in
                 *bsd|linux) run pip  install --user -U "$2" ;;
                 *)          run pip  install        -U "$2"
-              esac
-              ;;
+            esac
+            ;;
+        brew)
+            if run brew install "$2" ; then
+                if [ "$(brew info --json=v2 "$2" | grep keg_only | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
+                    if [ -d "$(brew --prefix "$2")/bin" ] ; then
+                        export PATH="$(brew --prefix "$2")/bin:$PATH"
+                    fi
+                fi
+            else
+                return 1
+            fi
+            ;;
         pkg)     run $sudo pkg install -y "$2" ;;
         pkgin)   run $sudo pkgin -y install "$2" ;;
         pkg_add) run $sudo pkg_add "$2" ;;
-        brew)    run brew install "$2" ;;
         apt)     run $sudo apt     -y install "$2" ;;
         apt-get) run $sudo apt-get -y install "$2" ;;
         dnf)     run $sudo dnf -y install "$2" ;;
@@ -1677,13 +1693,13 @@ __install_command() {
 }
 
 # examples:
-# handle_dependency required command pkg-config ge 0.18
-# handle_dependency required command python     ge 3.5
-# handle_dependency required python  libxml2    ge 2.19
+# handle_dependency required command   pkg-config ge 0.18
+# handle_dependency required command   python     ge 3.5
+# handle_dependency required module.py libxml2    ge 2.19
 #
-# handle_dependency optional command pkg-config ge 0.18
-# handle_dependency optional command python     ge 3.5
-# handle_dependency optional python  libxml2    ge 2.19
+# handle_dependency optional command   pkg-config ge 0.18
+# handle_dependency optional command   python     ge 3.5
+# handle_dependency optional module.py libxml2    ge 2.19
 handle_dependency() {
     [ "$1" = 'required' ] || return 0
 
@@ -1712,42 +1728,16 @@ handle_dependency() {
                 *)  __install_command $@
             esac
             ;;
-        python|python3)
+        module.py)
             shift
-            if command_exists_in_filesystem python3 ; then
-                if ! python3 -c "import $1" 2> /dev/null ; then
-                    if command_exists_in_filesystem pip3 ; then
-                        pip3 install -U "$1" || return 1
-                    fi
-                fi
-            elif command_exists_in_filesystem python ; then
-                if ! python -c "import $1" 2> /dev/null ; then
-                    if command_exists_in_filesystem pip ; then
-                        pip install -U "$1" || return 1
-                    fi
-                fi
-            fi
+            python_module install "$1"
             ;;
-        perl)
+        module.pl)
             shift
-            if ! command_exists_in_filesystem perl ; then
-                 handle_dependency required command perl
-            fi
-            if ! perl_module_installed "$1" ; then
-                if  command_exists_in_filesystem cpan ; then
-                    cpan -i "$1" || return 1
-                fi
-            fi
+            perl_module install "$1"
             ;;
         *) die "$1 not support."
     esac
-}
-
-# check if the given perl module is installed
-# examples:
-# perl_module_installed lixml2
-perl_module_installed() {
-    perl -M"$1" -le 'print "installed"' > /dev/null 2>&1
 }
 
 __handle_required_dependencies() {
@@ -1764,25 +1754,25 @@ __handle_required_dependencies() {
 # {{{ __printf_dependencies
 
 # examples:
-# __printf_dependency required command pkg-config ge 0.18
-# __printf_dependency required command python     ge 3.5
-# __printf_dependency required python  libxml2    ge 2.19
+# __printf_dependency required command   pkg-config ge 0.18
+# __printf_dependency required command   python     ge 3.5
+# __printf_dependency required module.py libxml2    ge 2.19
 #
-# __printf_dependency optional command pkg-config ge 0.18
-# __printf_dependency optional command python     ge 3.5
-# __printf_dependency optional python  libxml2    ge 2.19
+# __printf_dependency optional command   pkg-config ge 0.18
+# __printf_dependency optional command   python     ge 3.5
+# __printf_dependency optional module.py libxml2    ge 2.19
 __printf_dependency() {
-    printf "%-7s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
+    printf "%-10s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 # examples:
-# printf_dependency required command pkg-config ge 0.18
-# printf_dependency required command python     ge 3.5
-# printf_dependency required python  libxml2    ge 2.19
+# printf_dependency required command   pkg-config ge 0.18
+# printf_dependency required command   python     ge 3.5
+# printf_dependency required module.py libxml2    ge 2.19
 #
-# printf_dependency optional command pkg-config ge 0.18
-# printf_dependency optional command python     ge 3.5
-# printf_dependency optional python  libxml2    ge 2.19
+# printf_dependency optional command   pkg-config ge 0.18
+# printf_dependency optional command   python     ge 3.5
+# printf_dependency optional module.py libxml2    ge 2.19
 printf_dependency() {
     case $2 in
         command)
@@ -1801,11 +1791,11 @@ printf_dependency() {
                 *)  __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_command $3)" "$(command -v $3)"
             esac
             ;;
-        python)
-            __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_python_module $3)" "$(location_of_python_module $3)"
+        module.py)
+            __printf_dependency "$2" "$3" "$4" "$5" "$(python_module get version "$item")" "$(python_module get location "$item")"
             ;;
-        perl)
-            __printf_dependency "$2" "$3" "$4" "$5" "" ""
+        module.pl)
+            __printf_dependency "$2" "$3" "$4" "$5" "$(perl_module get version "$item")" "$(perl_module get location "$item")"
             ;;
         *)  die "$2: type not support."
     esac
@@ -1839,15 +1829,89 @@ __printf_optional_dependencies() {
 
 # }}}
 ##############################################################################
-# {{{ location_of_python_module
+# {{{ python_module
 
-location_of_python_module() {
-    PIP_COMMAND=$(command -v pip3 || command -v pip)
-    if [ -z "$PIP_COMMAND" ] ; then
-        die "can't found pip command."
-    else
-        "$PIP_COMMAND" show $1 | grep 'Location:' | cut -d ' ' -f2
-    fi
+# examples:
+# python_module is  installed libxml2
+# python_module get version   libxml2
+# python_module get location  libxml2
+# python_module install       libxml2
+python_module() {
+    case $1 in
+        is)
+            [ $# -eq 3 ] || die "[python_module is] command accept 2 arguments."
+
+            handle_dependency required command python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
+            handle_dependency required command pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
+
+            case $2 in
+                installed)  "$__PYTHON_COMMAND__" -c "import $3" 2> /dev/null ;;
+                *) die "python_module is $2: not support."
+            esac
+            ;;
+        get)
+            [ $# -eq 3 ] || die "[python_module get] command accept 2 arguments."
+
+            handle_dependency required command python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
+            handle_dependency required command pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
+
+            case $2 in
+                version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Version:'  | cut -d ' ' -f2 ;;
+                location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Location:' | cut -d ' ' -f2 ;;
+                *) die "python_module get $2: not support."
+            esac
+            ;;
+        install)
+            [ -z "$2" ] && die "please specify a python module name."
+            if ! python_module is installed "$2" ; then
+                run "$__PIP_COMMAND__" install -U "$2" || return 1
+            fi
+            ;;
+        *)  die "python_module $1: not support."
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ perl_module
+
+# examples:
+# perl_module is  installed libxml2
+# perl_module get version   libxml2
+# perl_module get location  libxml2
+# perl_module install       libxml2
+perl_module() {
+    case $1 in
+        is)
+            [ $# -eq 4 ] || die "perl_module command accept 4 arguments."
+            handle_dependency required command perl
+            case $2 in
+                installed)  perl -M"$3" -le 'print "installed"' > /dev/null 2>&1 ;;
+                *) die "perl_module is $2: not support."
+            esac
+            ;;
+        get)
+            ;;
+        install)
+            if ! perl_module is installed "$3" ; then
+                handle_dependency required command cpan:cpanm
+                if   command_exists_in_filesystem cpan  ; then
+                    cpan -i "$3"
+                elif command_exists_in_filesystem cpanm ; then
+                    cpanm "$3"
+                else
+                    die "no perl module installer found."
+                fi
+            fi
+            ;;
+        *)  die "perl_module $1: not support."
+    esac
 }
 
 # }}}
@@ -1973,27 +2037,36 @@ package() {
     esac
 }
 
-__parse_require_item() {
+__parse_require_command_item() {
     case $1 in
-        *::*)
-            case $1 in
-                *\<=*) echo "required $1" | sed 's/::/ /g' | sed 's/<=/ le /g' ;;
-                *\>=*) echo "required $1" | sed 's/::/ /g' | sed 's/>=/ ge /g' ;;
-                *=*)   echo "required $1" | sed 's/::/ /g' | sed 's/<=/ eq /g' ;;
-                *\<*)  echo "required $1" | sed 's/::/ /g' | sed 's/<=/ lt /g' ;;
-                *\>*)  echo "required $1" | sed 's/::/ /g' | sed 's/<=/ gt /g' ;;
-                *)     echo "required $1"
-            esac
-            ;;
-        *)
-            case $1 in
-                *\<=*) echo "required command $1" | sed 's/<=/ le /g' ;;
-                *\>=*) echo "required command $1" | sed 's/>=/ ge /g' ;;
-                *=*)   echo "required command $1" | sed 's/<=/ eq /g' ;;
-                *\<*)  echo "required command $1" | sed 's/<=/ lt /g' ;;
-                *\>*)  echo "required command $1" | sed 's/<=/ gt /g' ;;
-                *)     echo "required command $1"
-            esac
+        *\<=*) echo "required command $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required command $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required command $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required command $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required command $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required command $1"
+    esac
+}
+
+__parse_require_python_module_item() {
+    case $1 in
+        *\<=*) echo "required module.py $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required module.py $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required module.py $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required module.py $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required module.py $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required module.py $1"
+    esac
+}
+
+__parse_require_perl_module_item() {
+    case $1 in
+        *\<=*) echo "required module.pl $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required module.pl $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required module.pl $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required module.pl $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required module.pl $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required module.pl $1"
     esac
 }
 
@@ -2055,6 +2128,9 @@ ___load_a_formula() {
 
     # dependency commands
     unset PACKAGE_DEP_CMD
+
+    # dependency python modules
+    unset PACKAGE_DEP_PIP
 
     # dependency packages
     unset PACKAGE_DEP_PKG
@@ -2344,7 +2420,7 @@ __update_formula_repositories() {
         MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d= -f1)
         MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
 
-        info "=== Updating repository ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
+        echo "${COLOR_PURPLE}=== Updating repository${COLOR_OFF} ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
         fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME" || return 1
     done
 }
@@ -2876,6 +2952,9 @@ __install_a_package() {
     unset PACKAGE_PKGCONF_DIR
     unset PACKAGE_BINARY__DIR
 
+    unset MAP_REQUIRED_DEPENDENCIES
+    MAP_REQUIRED_DEPENDENCIES='MAP_REQUIRED_DEPENDENCIES'
+
     step "show current machine os info"
     echo "NATIVE_OS_KIND  = $NATIVE_OS_KIND"
     echo "NATIVE_OS_TYPE  = $NATIVE_OS_TYPE"
@@ -2900,18 +2979,18 @@ __install_a_package() {
     step "handle required commands"
     for item in $PACKAGE_DEP_CMD
     do
-        handle_dependency $(__parse_require_item "$item")
+        handle_dependency $(__parse_require_command_item "$item")
     done
 
     step "printf required commands"
     __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
     for item in $PACKAGE_DEP_CMD
     do
-        printf_dependency $(__parse_require_item "$item")
+        printf_dependency $(__parse_require_command_item "$item")
     done
     for item in $PACKAGE_DEP_PIP
     do
-        printf "%-11s %-10s %s\n" "$item" "$(pip show libxml2 | grep 'Version:' | cut -d ' ' -f2)" "$(pip show libxml2 | grep 'Location:' | cut -d ' ' -f2)"
+        printf_dependency $(__parse_require_python_module_item "$item")
     done
 
     unset PKG_CONFIG
@@ -3134,16 +3213,19 @@ __config_build_variables() {
         PKG=$(printf "$PACKAGE" | tr '-' '_')
 
         unset PKG_INSTALL_DIR
+        unset PKG_BINARY__DIR
         unset PKG_INCLUDE_DIR
         unset PKG_LIBRARY_DIR
         unset PKG_PKGCONF_DIR
 
         PKG_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE"
+        PKG_BINARY__DIR="$PKG_INSTALL_DIR/bin"
         PKG_INCLUDE_DIR="$PKG_INSTALL_DIR/include"
         PKG_LIBRARY_DIR="$PKG_INSTALL_DIR/lib"
         PKG_PKGCONF_DIR="$PKG_INSTALL_DIR/lib/pkgconfig"
 
         eval "${PKG}_INSTALL_DIR='$PKG_INSTALL_DIR'"
+        eval "${PKG}_BINARY__DIR='$PKG_BINARY__DIR'"
         eval "${PKG}_INCLUDE_DIR='$PKG_INCLUDE_DIR'"
         eval "${PKG}_LIBRARY_DIR='$PKG_LIBRARY_DIR'"
 
