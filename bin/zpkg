@@ -1870,6 +1870,8 @@ python_module() {
         install)
             [ -z "$2" ] && die "please specify a python module name."
             if ! python_module is installed "$2" ; then
+                warn "required python module ${COLOR_GREEN}$2${COLOR_OFF}, but ${COLOR_GREEN}$2${COLOR_OFF} python module not found, try to install it via ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
+                run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
             ;;
