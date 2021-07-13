@@ -15,15 +15,12 @@ a lightweight, portable package manager for UNIX.
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/zpkg/master/install.sh)"
 ```
 
-## zsh-completion for zpkg
-I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then type `TAB` key, it will auto complete the rest for you.
-
-**Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
-
-
-## Give a Star!
-𝙄𝙛 𝙮𝙤𝙪 ❤𝙩𝙝𝙞𝙨 𝙥𝙧𝙤𝙟𝙚𝙘𝙩, 𝙥𝙡𝙚𝙖𝙨𝙚 𝙜𝙞𝙫𝙚 𝙞𝙩 𝙖 𝙨𝙩𝙖𝙧 <span style='color:red;font-size:1.2em'>★</span> . 𝙏𝙝𝙖𝙣𝙠𝙨!
-
+## Install zpkg via cURL
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/zpkg/master/bin/zpkg
+chmod a+x zpkg
+mv zpkg /usr/local/bin/
+```
 
 ## zpkg command usage
 *   print the help infomation of `zpkg` command
@@ -36,6 +33,14 @@ I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then
         zpkg -V
         zpkg --version
         
+*   integrate `zsh-completion` script
+
+        zpkg integrate zsh
+
+    I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then type `TAB` key, it will auto complete the rest for you.
+
+    **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
+
 *   update the [zpkg-formula-repository](https://github.com/leleliu008/zpkg-formula-repository)
         
         zpkg update
@@ -53,15 +58,17 @@ I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then
 *   install packages
         
         zpkg install curl
-        zpkg install curl bzip2  -v
-        zpkg install curl bzip2  -v -x
-        zpkg install curl bzip2  -v -x --dry-run
-        zpkg install curl bzip2  -v -x --keep-working-dir
+        zpkg install curl bzip2 --jobs=4
+        zpkg install curl bzip2 --jobs=4 -v
+        zpkg install curl bzip2 --jobs=4 -v -d
+        zpkg install curl bzip2 --jobs=4 -v -d -x
+        zpkg install curl bzip2 --jobs=4 -v -d -x --dry-run
+        zpkg install curl bzip2 --jobs=4 -v -d -x --keep-working-dir
         
 *   reinstall packages
         
         zpkg reinstall curl
-        zpkg reinstall curl bzip2  -v
+        zpkg reinstall curl bzip2 -v
         
 *   uninstall packages
         
@@ -72,6 +79,18 @@ I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then
         
         zpkg upgrade curl
         zpkg upgrade curl bzip2  -v
+        
+*   list the avaliable formula repos
+
+        zpkg formula repo list
+        
+*   add a new formula repo
+
+        zpkg formula repo add my_repo https://github.com/leleliu008/zpkg-formula-repository.git
+        
+*   delete a existing formula repo
+
+        zpkg formula repo del my_repo
         
 *   view the formula of a package
         
