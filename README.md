@@ -80,6 +80,15 @@ mv zpkg /usr/local/bin/
         zpkg upgrade curl
         zpkg upgrade curl bzip2  -v
         
+*   get the value of key of a package.
+
+        zpkg get curl version
+        zpkg get curl summary
+        zpkg get curl webpage
+        zpkg get curl src.git
+        
+    more keys please read [README.md](https://github.com/leleliu008/zpkg-formula-repository/blob/master/README.md)
+
 *   list the avaliable formula repos
 
         zpkg formula repo list
