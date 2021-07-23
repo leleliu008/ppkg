@@ -464,11 +464,7 @@ __fetch_archive_via_tools() {
         axel)  run axel -o "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\"" ;;
     esac
 
-    if [ $? -eq 0 ] ; then
-        success "Fetched to $FETCH_OUTPUT_PATH success."
-    else
-        die "Fetched to $FETCH_OUTPUT_PATH failed."
-    fi
+    [ $? -eq 0 ] || return 1
 
     if [ -n "$FETCH_SHA256" ] ; then
         die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
@@ -2598,22 +2594,31 @@ is_package__outdated() {
     [ -f "$MY_CACHED_LOG_DIR/$1/installed.log.txt" ] || die_from_package_is_not_installed "$1"
 }
 
-__list_packages_which_is_not_depended_by_others() {
+__gen_github_workflows() {
     unset BREAK
     unset NDEPENDED_PACKAGES
     unset AVAILABLE_PACKAGES
     unset GROUP_SIZE
+    unset OUTPUT_DIR
+    unset I
 
     while [ -n "$1" ]
     do
         case $1 in
             --group-size=*)
                 GROUP_SIZE=$(getvalue "$1")
-                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER" ;;
+                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER"
+                ;;
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                [ -z "$OUTPUT_DIR" ] && die "--output-dir=DIR DIR must be not empty."
+                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
         esac
+        shift
     done
 
     [ -z "$GROUP_SIZE" ] && die "please sepecify --group-size=INTEGER argument."
+    [ -z "$OUTPUT_DIR" ] && die "please sepecify --output-dir=DIR argument."
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
@@ -2627,8 +2632,7 @@ __list_packages_which_is_not_depended_by_others() {
             if [ "$x" = "$y" ] || [ 'test' = "$y" ] ; then
                 continue
             else
-                ___load_a_formula "$y"
-                for z in $PACKAGE_DEP_PKG
+                for z in $(get_direct_dependency_package_list_of_a_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
                         BREAK=true
@@ -2646,14 +2650,30 @@ __list_packages_which_is_not_depended_by_others() {
                 NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
             fi
             if [ "$(list_length $NDEPENDED_PACKAGES)" -eq "$GROUP_SIZE" ] ; then
-                echo "$NDEPENDED_PACKAGES" | tr ' ' ,
-                echo
+                unset OUTPUT_FILEPATH
+
+                I=$(expr ${I-0} + 1)
+                OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+                NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+                run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+                sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+                sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
+
                 unset NDEPENDED_PACKAGES
             fi
         fi
     done
     if [ -n "$NDEPENDED_PACKAGES" ] ; then
-        echo "$NDEPENDED_PACKAGES" | tr ' ' ,
+        unset OUTPUT_FILEPATH
+
+        I=$(expr ${I-0} + 1)
+        OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+        NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+        run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+        sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+        sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
     fi
 }
 
@@ -2736,15 +2756,6 @@ __uninstall_a_package() {
     run rm -rf "$MY_INSTALL_DIR/$1"
 }
 
-____upgrade_packages() {
-    parse_arguments $@
-
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
-
-    __reinstall_packages
-}
-
 __reinstall_packages() {
     parse_arguments $@
 
@@ -2767,7 +2778,52 @@ __reinstall_packages() {
     done
 }
 
+__upgrade_packages() {
+    parse_arguments $@
+
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
+
+    __reinstall_packages
+}
+
+__upgrade_self() {
+    set -e
+
+    unset FETCH_SELF_OUTPUT_PATH
+    FETCH_SELF_OUTPUT_PATH="$MY_HOME_DIR/self"
+
+    fetch "$MY_UPGRAGE_URL" --output-path="$FETCH_SELF_OUTPUT_PATH"
+
+    run chmod a+x "$FETCH_SELF_OUTPUT_PATH"
+
+    __upgrade_self_exit() {
+        if [ -w "$CURRENT_SCRIPT_FILEPATH" ] ; then
+            run      cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        else
+            run sudo cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        fi
+    }
+
+    trap __upgrade_self_exit EXIT
+}
+
 __cleanup() {
+    [ -d "$MY_CACHED_DIR" ] || return 0
+    [ -d "$MY_CACHED_SOURCE_DIR" ] || return 0
+    for repo in $(____list_formula_repositories | cut -d= -f1)
+    do
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        for item in $(ls)
+        do
+            if [ -f "$item" ] ; then
+                case $item in
+                    *.sh)
+                        ___load_a_formula $(echo "$item" | sed 's/\.sh//g')
+                esac
+            fi
+        done
+    done
     success "Done."
 }
 
@@ -3000,7 +3056,7 @@ __gen_dependency_tree() {
     fi
 }
 
-____install_packages() {
+__install_packages() {
     parse_arguments $@
 
     die_if_package_list_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
@@ -3089,13 +3145,13 @@ __install_a_package() {
     unset PKG_CONFIG
     unset MESON
     unset CMAKE
-    unset  MAKE
+    unset GMAKE
     unset NINJA
 
     PKG_CONFIG=$(command -v pkg-config)
     MESON=$(command -v meson)
     CMAKE=$(command -v cmake)
-    MAKE=$(command -v make)
+    GMAKE=$(command -v gmake || command -v make)
     NINJA=$(command -v ninja)
 
     step "calculate dependencies"
@@ -3103,7 +3159,7 @@ __install_a_package() {
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn "no dependencies."
     else
-        __gen_dependency_list "$1"                            || return 1
+        __gen_dependency_list "$1"                         || return 1
         __gen_dependency_tree "$1" "$MY_CACHED_LOG_DIR/$1" || return 1
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
@@ -3550,28 +3606,55 @@ install_pc_file() {
 }
 
 __show_infomation_of_packages() {
+    unset OUTPUT_FORMAT
     unset PACKAGE_LIST
 
-    if [ -z "$1" ] ; then
-        [ -d "$MY_FORMULA_REPO_DIR" ] || __update_formula_repositories
-        cd "$MY_FORMULA_REPO_DIR" || exit 1
-        PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
-    else
-        PACKAGE_LIST=$@
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --json) OUTPUT_FORMAT=json ;;
+            *)      die_if_package_is_not_available $1; PACKAGE_LIST="$PACKAGE_LIST $1"
+        esac
+        shift
+    done
+
+    if [ -z "$PACKAGE_LIST" ] ; then
+        PACKAGE_LIST=$(__list_available_packages) || return 1
     fi
 
-    unset FIRST
-    unset PACKAGE
+    unset I
+    unset PACKAGE_LIST_LENGTH
+    PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
 
-    for PACKAGE in $PACKAGE_LIST
-    do
-        if [ "${FIRST-true}" = 'true' ] ; then
-            FIRST=false
-        else
-            echo "============================================================"
-        fi
-        __show_infomation_of_a_package "$PACKAGE"
-    done
+    if [ "$OUTPUT_FORMAT" = 'json' ] ; then
+        for PACKAGE in $PACKAGE_LIST
+        do
+            ___load_a_formula "$PACKAGE"
+
+            I=$(expr ${I-0} + 1)
+
+            if [ "$I" -eq 1 ] ; then
+                echo "["
+            fi
+
+            if [ "$I" -eq "$PACKAGE_LIST_LENGTH" ] ; then
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+            else
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+            fi
+        done
+    else
+        for PACKAGE in $PACKAGE_LIST
+        do
+            I=$(expr ${I-0} + 1)
+
+            if [ "$I" -gt 1 ] ; then
+                echo "============================================================"
+            fi
+
+            __show_infomation_of_a_package "$PACKAGE"
+        done
+    fi
 }
 
 __show_infomation_of_a_package() {
@@ -3742,9 +3825,9 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$MAKE -w -j$NJOBS --debug $*"
+        run "$GMAKE -w -j$NJOBS --debug $*"
     else
-        run "$MAKE -w -j$NJOBS $*"
+        run "$GMAKE -w -j$NJOBS $*"
     fi
 }
 
@@ -3928,8 +4011,9 @@ init() {
     # MY represents this software's
     MY_NAME=zpkg
     MY_VERSION=0.1.0
-    MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
+    MY_HOME_PAGE="https://github.com/leleliu008/zpkg"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/zpkg-formula-repository.git"
+    MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/zpkg/master/bin/zpkg'
 
     if [ -z "$ZPKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
@@ -3976,41 +4060,47 @@ $MY_NAME is a lightweight, portable package manager for UNIX.
 Usage: $MY_NAME <ACTION> [ARGUMENT...]
 
 ACTION:
-    --help    | -h         --show help information.
-    --version | -V         --print version of $MY_NAME.
+    --help    | -h                --show help information.
+    --version | -V                --print version of $MY_NAME.
 
-    list available         --list the available packages.
-    list installed         --list the installed packages.
-    list outdated          --list the outdated packages.
+    integrate zsh                 --integrate zsh-completion script.
 
-    is available PACKAGE   --is PACKAGE available?
-    is installed PACKAGE   --is PACKAGE installed?
-    is outdated  PACKAGE   --is PACKAGE outdated?
+    ls available                  --list the available packages.
+    ls installed                  --list the installed packages.
+    ls outdated                   --list the outdated packages.
+
+    is available PACKAGE          --is PACKAGE available?
+    is installed PACKAGE          --is PACKAGE installed?
+    is outdated  PACKAGE          --is PACKAGE outdated?
     
-    search KEYWORD         --search packages.
+    search KEYWORD                --search packages.
     
-    formula create PACKAGE   --create a new formula.
-    formula delete PACKAGE   --delete a exist formula.
-    formula rename P1 P2     --rename a exist formula to new name.
-    formula view PACKAGE     --view the formula of a package.
-    formula edit PACKAGE     --edit the formula of a package.
-    formula list             --equipment to list available
+    formula create PACKAGE        --create a new formula.
+    formula delete PACKAGE        --delete a exist formula.
+    formula rename P1 P2          --rename a exist formula to new name.
+    formula view PACKAGE          --view the formula of a package.
+    formula edit PACKAGE          --edit the formula of a package.
+    formula list                  --list all formulas.
+    formula repo [list]           --list formula repos.
+    formula repo add  NAME URL    --add a new formula repo.
+    formula repo del  NAME        --delete a exist formula repo.
 
-    tree PACKAGE          --list contents of a installed package directory in a tree-like format.
-    pack PACKAGE          --pack a installed package.
-    logs PACKAGE ABI      --print the logs of a installed package.
-    info PACKAGE...       --print the information of packages.
-    fetch PACKAGE         --download formula resources of a package to the cache.
-    prefix PACKAGE        --show the installation direcotory of a formula or the $MY_NAME home.
-    homepage PACKAGE      --visit the homepage of a formula or the $MY_NAME project.
+    tree PACKAGE                  --list contents of a installed package directory in a tree-like format.
+    pack PACKAGE                  --pack a installed package.
+    logs PACKAGE ABI              --print the logs of a installed package.
+    info PACKAGE...               --print the information of packages.
+    fetch PACKAGE                 --download formula resources of a package to the cache.
+    prefix PACKAGE                --show the installation direcotory of a formula or the $MY_NAME home.
+    homepage PACKAGE              --visit the homepage of a formula or the $MY_NAME project.
 
     install   PACKAGE... [--jobs=N -v -x --dry-run]     --install packages.
     reinstall PACKAGE... [--jobs=N -v -x --dry-run]     --reinstall packages.
     upgrade   PACKAGE... [--jobs=N -v -x --dry-run]     --upgrade packages.
-    uninstall PACKAGE...   --uninstall packages.
+    uninstall PACKAGE...          --uninstall packages.
     
-    cleanup          --cleanup the unused cache.
-    update           --update the formula repository.
+    cleanup                       --cleanup the unused cache.
+    update                        --update the formula repositories.
+    upgrade-self                  --upgrade this software.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -4029,20 +4119,25 @@ main() {
         --version|-V)
             echo "$MY_VERSION"
             ;;
-        repo)
+        get)
             shift
-            case $1 in
-                list) shift; ____list_formula_repositories ;;
-                *) help 1
-            esac
+            package get "$1" "$2"
             ;;
-        get)  shift; package get "$1" "$2" ;;
-        list) shift
+        ls|list)
+            shift
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
                 outdated)  shift; __list__outdated_packages ;;
-                notdepended) shift; __list_packages_which_is_not_depended_by_others ;;
+                *) help 1
+            esac
+            ;;
+        is)
+            shift
+            case $1 in
+                available) shift; is_package_available "$@" ;;
+                installed) shift; is_package_installed "$@" ;;
+                outdated)  shift; is_package__outdated "$@" ;;
                 *) help 1
             esac
             ;;
@@ -4054,20 +4149,35 @@ main() {
                 rename) shift; __rename_a_formula "$@" ;;
                 view)   shift; ____view_a_formula "$@" ;;
                 edit)   shift; ____edit_a_formula "$@" ;;
-                list)   shift; __list_available_packages ;;
+                list)   shift; __list_formulas ;;
+                repo)   shift;
+                        case $1 in
+                            list) shift; ____list_formula_repositories ;;
+                            add)  shift; __add_a_formula_repo $@ ;;
+                            del)  shift; __del_a_formula_repo $@ ;;
+                            *) help 1
+                        esac
+                        ;;
                    *)   help 1
             esac
             ;;
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
 
-        install)   ____install_packages "$@" ;;
+        install)     __install_packages "$@" ;;
         reinstall) __reinstall_packages "$@" ;;
         uninstall) __uninstall_packages "$@" ;;
-        upgrade)   ____upgrade_packages "$@" ;;
+        upgrade)     __upgrade_packages "$@" ;;
 
-        json_available_packages) __json_available_packages ;;
+        upgrade-self)__upgrade_self ;;
 
+        integrate)
+            shift;
+            case $1 in
+                zsh) __integrate_zsh_completions ;;
+                *)   die "zpkg integrate $1: not support."
+            esac
+            ;;
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix_of_a_package     "$@" ;;
@@ -4077,18 +4187,15 @@ main() {
         pack)     shift; __pack_bottle_of_a_package     "$@" ;;
         tree)     shift; __tree_installed_of_a_package  "$@" ;;
         info)     shift; __show_infomation_of_packages  "$@" ;;
-        is)
-            shift
-            case $1 in
-                available) shift; is_package_available "$@" ;;
-                installed) shift; is_package_installed "$@" ;;
-                outdated)  shift; is_package__outdated "$@" ;;
-                *) help 1
-            esac
-            ;;
+
         ldd) shift; ldd "$@" ;;
+        gen-github-workflows)
+            shift; __gen_github_workflows $@ ;;
         *) help 1
     esac
 }
+
+unset CURRENT_SCRIPT_FILEPATH
+CURRENT_SCRIPT_FILEPATH="$(realpath "$0")"
 
 main "$@"
