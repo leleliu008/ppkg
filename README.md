@@ -41,10 +41,12 @@ mv zpkg /usr/local/bin/
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
-*   update the [zpkg-formula-repository](https://github.com/leleliu008/zpkg-formula-repository)
+*   update the formula repositories
         
         zpkg update
         
+    **Note:** this software supports multi formula repositories. Offical formula repository is [zpkg-formula-repository](https://github.com/leleliu008/zpkg-formula-repository)
+
 *   search packages can be installed
         
         zpkg search curl
@@ -54,6 +56,8 @@ mv zpkg /usr/local/bin/
         
         zpkg info curl
         zpkg info curl openssl
+        zpkg info curl openssl --json
+        zpkg info curl openssl --json | jq .
         
 *   install packages
         
@@ -180,4 +184,8 @@ mv zpkg /usr/local/bin/
 *   cleanup the unused cache
         
         zpkg cleanup
+        
+*   upgrade this software
+        
+        zpkg upgrade-self
         

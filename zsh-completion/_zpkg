@@ -6,7 +6,7 @@ _commands=(
     '-V:print the version of zpkg.'
     '--version:print the version of zpkg.'
     'search:search packages can be installed.'
-    'list:list the available, installed and outdated packages.'
+    'ls:list the available, installed and outdated packages.'
     'tree:list contents of a installed package directory in a tree-like format.'
     'info:print the basic infomation of packages.'
     'formula:view,edit the formula of a package.'
@@ -16,15 +16,17 @@ _commands=(
     'cleanup:cleanup the unused cache.'
     'update:update the formula repository.'
     'upgrade:upgrade the outdated packages.'
+    'upgrade-self:upgrade self.'
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the zpkg project.'
+    'integrate:integrate zsh completions.'
     'depends:show the depends of a package.'
     'prefix:show the installation direcotory of a formula or the zpkg home.'
     'pack:pack a installed package.'
     'logs:print the logs of a installed package.'
-    'repo:fomula repo mapulation.'
     'get:get value of the given key of the given package.'
     'is:check something. easy to write script.'
+    'gen-github-workflows:generate github workflows.'
 )
 
 _list=(
@@ -62,20 +64,30 @@ function _zpkg() {
     case $state in
         option)
             case $words[1] in
-                list)
+                ls)
                     _arguments \
                         ':list:{_describe 'list' _list}' \
                         '-q[quiet mode. do not report error log]'
                     ;;
                 formula)
                     _arguments \
-                        ':action:(create delete rename view edit list)' \
+                        ':action:(create delete rename view edit list repo)' \
                         '*:: :->action'
                     case $state in
                         action)
                             case $words[1] in
                                 delete|rename|view|edit)
                                     _arguments ':package-name:_zpkg_available_packages'
+                                    ;;
+                                repo)
+                                    _arguments '1:action:(list add del)' '*:: :->repo-subcommand'
+                                    case $state in
+                                        repo-subcommand)
+                                            case $words[1] in
+                                                del) _arguments '1:repo-name:($(ipkg formula repo list | cut -d= -f1))' ;;
+                                            esac
+                                    esac
+                                    ;;
                             esac
                     esac
                     ;;
@@ -88,10 +100,6 @@ function _zpkg() {
                 logs)
                     _arguments \
                         '1:package-name:_zpkg_installed_packages'
-                    ;;
-                repo)
-                    _arguments \
-                        '1:action:(list)'
                     ;;
                 get)
                     _arguments \
@@ -130,6 +138,14 @@ function _zpkg() {
                     _arguments \
                         '1: :(available installed outdated)' \
                         '2:package-name:_zpkg_available_packages'
+                    ;;
+                integrate)
+                    _arguments ':what:(zsh)'
+                    ;;
+                gen-github-workflows)
+                    _arguments \
+                        '--group-size=-[set the group size]:group-size:(50 40 30 20)' \
+                        '--output-dir=-[set the output dir]:output-dir:{_files -/}'
                     ;;
                 *);;
             esac
