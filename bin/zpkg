@@ -1257,6 +1257,7 @@ get_xbps_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1281,6 +1282,7 @@ get_apk_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1307,6 +1309,7 @@ get_zypper_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1333,6 +1336,7 @@ get_dnf_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1357,6 +1361,7 @@ get_yum_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     sphinx-build) echo "python-sphinx" ;;
@@ -1383,6 +1388,7 @@ get_apt_package_name_by_command_name() {
         diff) echo 'diffutils';;
         xz)   echo 'xz-utils' ;;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
