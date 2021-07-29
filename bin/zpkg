@@ -3023,7 +3023,9 @@ __pack_bottle_of_a_package() {
         PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
     fi
 
-    [ -f "$PACKED_FILE_PATH" ] && rm  "$PACKED_FILE_PATH" || return 1
+    if [ -f "$PACKED_FILE_PATH" ] ; then
+        rm  "$PACKED_FILE_PATH" || return 1
+    fi
 
     case $PACKED_FILE_SUFFIX in
         7z)  run 7za a -t7z -r "$PACKED_FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
