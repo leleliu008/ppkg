@@ -3018,9 +3018,9 @@ __pack_bottle_of_a_package() {
 
     unset PACKED_FILE_PATH
     if [ -z "$NATIVE_OS_LIBC" ] ; then
-        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
+        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$PACKED_FILE_SUFFIX"
     else
-        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
+        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$PACKED_FILE_SUFFIX"
     fi
 
     if [ -f "$PACKED_FILE_PATH" ] ; then
