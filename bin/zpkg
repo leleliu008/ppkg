@@ -2992,38 +2992,45 @@ __show_logs_of_a_package() {
 __pack_bottle_of_a_package() {
     die_if_load_installed_log_failed "$1"
 
-    install -d "$MY_CACHED_BINARY_DIR" || return 1
+    unset PACKED_FILE_SUFFIX
 
     if command -v 7za > /dev/null ; then
-        SUFFIX=7z
+        PACKED_FILE_SUFFIX=7z
     elif command -v zip > /dev/null ; then
-        SUFFIX=zip
+        PACKED_FILE_SUFFIX=zip
     elif command -v tar > /dev/null ; then
         if command -v gzip > /dev/null ; then
-            SUFFIX=tar.gz
+            PACKED_FILE_SUFFIX=tar.gz
         elif command -v xz > /dev/null ; then
-            SUFFIX=tar.xz
+            PACKED_FILE_SUFFIX=tar.xz
         elif command -v bzip2 > /dev/null ; then
-            SUFFIX=tar.bz2
+            PACKED_FILE_SUFFIX=tar.bz2
         else
-            die "please install gzip or xz or bzip2 utility."
+            handle_dependency required command xz || return 1
+            PACKED_FILE_SUFFIX=tar.xz
         fi
     else
-        die "please install zip or tar utility."
+        handle_dependency required command zip || return 1
+        PACKED_FILE_SUFFIX=tar.xz
     fi
 
-    FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
+    install -d "$MY_CACHED_BINARY_DIR" || return 1
 
-    if [ -f "$FILE_PATH" ] ; then
-        rm  "$FILE_PATH" || return 1
+    unset PACKED_FILE_PATH
+    if [ -z "$NATIVE_OS_LIBC" ] ; then
+        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
+    else
+        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$SUFFIX"
     fi
 
-    case $SUFFIX in
-        7z)  run 7za a -t7z -r "$FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
-        zip) run cd "$MY_INSTALL_DIR" && run zip -9 -r "$FILE_PATH" "$1" ;;
-        tar.gz)  run tar zvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.xz)  run tar Jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.bz2) run tar jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+    [ -f "$PACKED_FILE_PATH" ] && rm  "$PACKED_FILE_PATH" || return 1
+
+    case $PACKED_FILE_SUFFIX in
+        7z)  run 7za a -t7z -r "$PACKED_FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
+        zip) run cd "$MY_INSTALL_DIR" && run zip -9 -r "$PACKED_FILE_PATH" "$1" ;;
+        tar.gz)  run tar zvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+        tar.xz)  run tar Jvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+        tar.bz2) run tar jvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
     esac
 }
 
