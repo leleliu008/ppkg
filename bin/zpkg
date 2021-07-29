@@ -1703,34 +1703,59 @@ __install_command_via_fetch_prebuild_binary() {
 }
 
 # examples:
-# pkg-config ge 0.18
-# python3    ge 3.5
-# make
+# __get_prebuild_binary_fetch_url_by_command_name python3 ge 3.5
+# __get_prebuild_binary_fetch_url_by_command_name cmake
 __get_prebuild_binary_fetch_url_by_command_name() {
-    case $1 in
-        python3|python)
-            case $NATIVE_OS_KIND in
-                linux)
-                    if [ "$NATIVE_OS_LIBC" = 'glibc' ] && [ "$NATIVE_OS_ARCH" = 'x86_64' ] ; then
-                        # https://github.com/leleliu008/python-prebuild
-                        echo "https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz"
-                    fi
-            esac
-            ;;
-        cmake)
-            case $NATIVE_OS_KIND in
-                linux)
-                    if [ "$NATIVE_OS_LIBC" = 'glibc' ] ; then
-                        # https://cmake.org/download
-                        echo "https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz"
-                    fi
-                    ;;
-                darwin)
-                    if ! command_exists_in_filesystem brew ; then
-                        echo "https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz"
-                    fi
-            esac
-    esac
+    # https://github.com/leleliu008/python-prebuild
+    # https://cmake.org/download
+{
+    cat <<EOF
+python    |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+python3   |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+git       |glibc|linux |x86_64|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
+autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.zip
+autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.zip
+cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
+cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+EOF
+} | while read LINE
+    do
+        LINE=$(echo "$LINE" | sed 's/[[:space:]]//g')
+
+        unset __PB_COMMAND__
+        unset __PB_OS_LIBC__
+        unset __PB_OS_KIND__
+        unset __PB_OS_ARCH__
+        unset __PB_URL__
+
+        __PB_COMMAND__=$(echo "$LINE" | cut -d '|' -f1)
+
+        if [ "$__PB_COMMAND__" != "$1" ] ; then
+            continue
+        fi
+
+        __PB_OS_LIBC__=$(echo "$LINE" | cut -d '|' -f2)
+
+        if [ -n "$__PB_OS_LIBC__" ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
+            continue
+        fi
+
+        __PB_OS_KIND__=$(echo "$LINE" | cut -d '|' -f3)
+
+        if [ "$__PB_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+            continue
+        fi
+
+        __PB_OS_ARCH__=$(echo "$LINE" | cut -d '|' -f4)
+
+        if [ -n "$__PB_OS_ARCH__" ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+            continue
+        fi
+
+        __PB_URL__=$(echo "$LINE" | cut -d '|' -f5)
+
+        echo "$__PB_URL__"
+    done
 }
 
 __install_command_via_run_install_script() {
@@ -3014,25 +3039,44 @@ __pack_bottle_of_a_package() {
         PACKED_FILE_SUFFIX=tar.xz
     fi
 
-    install -d "$MY_CACHED_BINARY_DIR" || return 1
-
-    unset PACKED_FILE_PATH
+    unset PACKED_DIR_NAME
     if [ -z "$NATIVE_OS_LIBC" ] ; then
-        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$PACKED_FILE_SUFFIX"
+        PACKED_DIR_NAME="$1-$installed_pkg_vers-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     else
-        PACKED_FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.$PACKED_FILE_SUFFIX"
+        PACKED_DIR_NAME="$1-$installed_pkg_vers-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     fi
 
-    if [ -f "$PACKED_FILE_PATH" ] ; then
-        rm  "$PACKED_FILE_PATH" || return 1
+    unset PACKED_FILE_NAME
+    PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
+
+    if [ ! -d "$MY_CACHED_BINARY_DIR" ] ; then
+        step "create cached binary dir"
+        run install -d "$MY_CACHED_BINARY_DIR" || return 1
     fi
+
+    if [ -f "$PACKED_FILE_NAME" ] ; then
+        step "delete alreary exists destination file"
+        run rm  "$PACKED_FILE_NAME" || return 1
+    fi
+
+    step "create working directory"
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d) || die "create working directory failed."
+
+    step "change to working directory"
+    run cd $WORKING_DIR || return 1
+
+    step "make link refer to installed package root dir"
+    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME" || return 1
+
+    step "packing"
 
     case $PACKED_FILE_SUFFIX in
-        7z)  run 7za a -t7z -r "$PACKED_FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
-        zip) run cd "$MY_INSTALL_DIR" && run zip -9 -r "$PACKED_FILE_PATH" "$1" ;;
-        tar.gz)  run tar zvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.xz)  run tar Jvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.bz2) run tar jvcf "$PACKED_FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
     esac
 }
 
