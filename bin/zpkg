@@ -3054,9 +3054,9 @@ __pack_bottle_of_a_package() {
         run install -d "$MY_CACHED_BINARY_DIR" || return 1
     fi
 
-    if [ -f "$PACKED_FILE_NAME" ] ; then
-        step "delete alreary exists destination file"
-        run rm  "$PACKED_FILE_NAME" || return 1
+    if [ -f "$MY_CACHED_BINARY_DIR/$PACKED_FILE_NAME" ] ; then
+        step "delete alreary exists packed file"
+        run rm "$MY_CACHED_BINARY_DIR/$PACKED_FILE_NAME" || return 1
     fi
 
     step "create working directory"
