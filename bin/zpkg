@@ -2862,7 +2862,7 @@ __list__outdated_packages() {
     done
 }
 
-__tree_installed_of_a_package() {
+__tree_a_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required command tree
     run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
@@ -3014,31 +3014,55 @@ __show_logs_of_a_package() {
     fi
 }
 
-__pack_bottle_of_a_package() {
+# examples:
+# __pack_a_installed_package autoconf
+# __pack_a_installed_package autoconf --type=tar.xz
+__pack_a_installed_package() {
     set -e
 
     die_if_load_installed_log_failed "$1"
 
     unset PACKED_FILE_SUFFIX
 
-    if command -v 7za > /dev/null ; then
-        PACKED_FILE_SUFFIX=7z
-    elif command -v zip > /dev/null ; then
-        PACKED_FILE_SUFFIX=zip
-    elif command -v tar > /dev/null ; then
-        if command -v gzip > /dev/null ; then
-            PACKED_FILE_SUFFIX=tar.gz
-        elif command -v xz > /dev/null ; then
-            PACKED_FILE_SUFFIX=tar.xz
-        elif command -v bzip2 > /dev/null ; then
-            PACKED_FILE_SUFFIX=tar.bz2
+    for arg in $@
+    do
+        case $arg in
+            --type=*)
+                PACKED_FILE_SUFFIX=$(getvalue $arg)
+                [ -z "$PACKED_FILE_SUFFIX" ] && die "--type=VALUE : VALUE must not be empty."
+                ;;
+        esac
+    done
+
+    if [ -z "$PACKED_FILE_SUFFIX" ] ; then
+        if command -v 7za > /dev/null ; then
+            PACKED_FILE_SUFFIX=7z
+        elif command -v zip > /dev/null ; then
+            PACKED_FILE_SUFFIX=zip
+        elif command -v tar > /dev/null ; then
+            if command -v xz > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.xz
+            elif command -v bzip2 > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.bz2
+            elif command -v gzip > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.gz
+            else
+                handle_dependency required command xz
+                PACKED_FILE_SUFFIX=tar.xz
+            fi
         else
-            handle_dependency required command xz || return 1
+            handle_dependency required command zip
             PACKED_FILE_SUFFIX=tar.xz
         fi
     else
-        handle_dependency required command zip || return 1
-        PACKED_FILE_SUFFIX=tar.xz
+        case $PACKED_FILE_SUFFIX in
+            7z)      handle_dependency required command 7za ;;
+            zip)     handle_dependency required command zip ;;
+            tar.gz)  handle_dependency required command tar gzip ;;
+            tar.xz)  handle_dependency required command tar xz ;;
+            tar.bz2) handle_dependency required command tar bzip2 ;;
+            *) die "$PACKED_FILE_SUFFIX : not supported packed type (7z zip tar.gz tar.xz tar.bz2)."
+        esac
     fi
 
     unset PACKED_DIR_NAME
@@ -3415,7 +3439,7 @@ __install_a_package() {
     fi
 
     step "list installed content."
-    __tree_installed_of_a_package "$1"
+    __tree_a_installed_package "$1"
 
     echo
     success "$1 have been installed successfully."
@@ -4319,8 +4343,8 @@ main() {
         fetch)    shift; ___load_a_formula   "$@" &&
                          __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;
-        pack)     shift; __pack_bottle_of_a_package     "$@" ;;
-        tree)     shift; __tree_installed_of_a_package  "$@" ;;
+        pack)     shift; __pack_a_installed_package     "$@" ;;
+        tree)     shift; __tree_a_installed_package     "$@" ;;
         info)     shift; __show_infomation_of_packages  "$@" ;;
 
         ldd) shift; ldd "$@" ;;

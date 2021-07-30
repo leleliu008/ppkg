@@ -95,11 +95,16 @@ function _zpkg() {
                     _arguments '*:package-name:_zpkg_available_packages' ;;
                 fetch|homepage|depends)
                     _arguments ':package-name:_zpkg_available_packages' ;;
-                prefix|pack|tree)
+                prefix|tree)
                     _arguments ':package-name:_zpkg_installed_packages' ;;
                 logs)
                     _arguments \
                         '1:package-name:_zpkg_installed_packages'
+                    ;;
+                pack)
+                    _arguments \
+                        ':package-name:_zpkg_installed_packages' \
+                        '--type=-[set the packed file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 get)
                     _arguments \
