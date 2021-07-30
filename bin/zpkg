@@ -555,35 +555,87 @@ __upgrade_self() {
 
     unset CURRENT_SCRIPT_REALPATH
 
-    # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
-    if command -v realpath > /dev/null ; then
-        CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
-    elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
-        CURRENT_SCRIPT_REALPATH=$(readlink -f $CURRENT_SCRIPT_FILEPATH)
+    # if file exists and is a symbolic link
+    if [ -L "$CURRENT_SCRIPT_FILEPATH" ] ; then
+        # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+        if command -v realpath > /dev/null ; then
+            CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+        elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+            CURRENT_SCRIPT_REALPATH=$(readlink -f $CURRENT_SCRIPT_FILEPATH)
+        else
+            handle_dependency required command realpath
+            CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+        fi
     else
-        handle_dependency required command realpath || return 1
-        CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH) || return 1
+        CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    unset FETCH_SELF_OUTPUT_DIR
-    FETCH_SELF_OUTPUT_DIR=$(mktemp -d)
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d)
 
-    unset FETCH_SELF_OUTPUT_PATH
-    FETCH_SELF_OUTPUT_PATH="$FETCH_SELF_OUTPUT_DIR/self"
+    run cd $WORKING_DIR
 
-    fetch "$1" --output-path="$FETCH_SELF_OUTPUT_PATH"
-
-    run chmod a+x "$FETCH_SELF_OUTPUT_PATH"
+    fetch "$1" --output-path="$WORKING_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
-            run      cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_REALPATH"
+            run      install -m 555 self "$CURRENT_SCRIPT_REALPATH"
         else
-            run sudo cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_REALPATH"
+            run sudo install -m 555 self "$CURRENT_SCRIPT_REALPATH"
         fi
+
+        run rm -rf $WORKING_DIR
     }
 
     trap __upgrade_self_exit EXIT
+}
+
+# }}}
+##############################################################################
+# {{{ __integrate_zsh_completions
+
+# __integrate_zsh_completions <ZSH_COMPLETIONS_SCRIPT_URL>
+__integrate_zsh_completions() {
+    set -e
+
+    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
+    ZSH_COMPLETIONS_SCRIPT_OUT_DIR='/usr/local/share/zsh/site-functions'
+    ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$ZSH_COMPLETIONS_SCRIPT_OUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d)
+
+    run cd $WORKING_DIR
+
+    fetch "$1" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
+        run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
+    fi
+
+    # if file exists and is a symbolic link
+    if [ -L "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+        if command -v realpath > /dev/null ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(readlink -f $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        else
+            handle_dependency required command realpath
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        fi
+    fi
+
+    if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+    else
+        run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+    fi
+
+    run rm -rf $WORKING_DIR
+
+    echo
+    warn "you need to run command ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
 # }}}
@@ -4061,6 +4113,7 @@ to_meson_array() {
     echo "$RESULT"
 }
 
+
 ########################################################################
 
 list_all_installed_libs() {
@@ -4349,7 +4402,7 @@ main() {
         integrate)
             shift;
             case $1 in
-                zsh) __integrate_zsh_completions ;;
+                zsh) __integrate_zsh_completions 'https://raw.githubusercontent.com/leleliu008/zpkg/master/zsh-completion/_zpkg' ;;
                 *)   die "zpkg integrate $1: not support."
             esac
             ;;
