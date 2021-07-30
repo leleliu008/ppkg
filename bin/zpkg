@@ -1107,8 +1107,8 @@ get_pkg_add_package_name_by_command_name() {
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
-     objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+     objcopy) echo 'binutils' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py3-pip' ;;
@@ -1639,7 +1639,6 @@ __install_command_via_fetch_prebuild_binary() {
     unset PREBUILD_BINARY_FETCH_URL
     PREBUILD_BINARY_FETCH_URL=$(__get_prebuild_binary_fetch_url_by_command_name "$1")
     if [ -z "$PREBUILD_BINARY_FETCH_URL" ] ; then
-        warn "no fetch url for $@"
         return 1
     fi
 
@@ -1700,6 +1699,15 @@ __install_command_via_fetch_prebuild_binary() {
     if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
         export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
     fi
+
+    case $1 in
+        autoconf)
+            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
+            do
+                sed_in_place "s|/root/.zpkg/install.d/autoconf|$PREBUILD_BINARY_INSTALL_DIR|" "$xx"
+            done
+            ;;
+    esac
 }
 
 # examples:
@@ -1713,8 +1721,8 @@ __get_prebuild_binary_fetch_url_by_command_name() {
 python    |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
 python3   |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
 git       |glibc|linux |x86_64|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
-autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.zip
-autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.zip
+autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
 cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
 EOF
@@ -2977,7 +2985,9 @@ __show_depends_of_a_package() {
     fi
 }
 
-__show_prefix_of_a_package() {
+# if $1 is    specified, show prefix of a package.
+# if $1 isn't specified, show this software's home direcotory.
+__show_prefix() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
     else
@@ -4345,8 +4355,8 @@ main() {
             ;;
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
-        prefix)   shift; __show_prefix_of_a_package     "$@" ;;
-        fetch)    shift; ___load_a_formula   "$@" &&
+        prefix)   shift; __show_prefix     "$@" ;;
+        fetch)    shift; ___load_a_formula "$@" &&
                          __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;
         pack)     shift; __pack_a_installed_package     "$@" ;;
