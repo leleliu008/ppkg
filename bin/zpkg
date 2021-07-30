@@ -3065,9 +3065,9 @@ __pack_bottle_of_a_package() {
     case $PACKED_FILE_SUFFIX in
         7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
         zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
-        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
-        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
-        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
     esac
 
     if [ ! -d "$MY_CACHED_BINARY_DIR" ] ; then
