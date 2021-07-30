@@ -3077,13 +3077,13 @@ __pack_a_installed_package() {
 
     step "create working directory"
     info "mktemp -d"
-    WORKING_DIR=$(mktemp -d) || die "create working directory failed."
+    WORKING_DIR=$(mktemp -d)
 
     step "change to working directory"
-    run cd $WORKING_DIR || return 1
+    run cd $WORKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME" || return 1
+    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILE_SUFFIX in
@@ -3096,11 +3096,17 @@ __pack_a_installed_package() {
 
     if [ ! -d "$MY_CACHED_BINARY_DIR" ] ; then
         step "create cached binary dir"
-        run install -d "$MY_CACHED_BINARY_DIR" || return 1
+        run install -d "$MY_CACHED_BINARY_DIR"
     fi
 
     step "copy packed file to cached binary dir"
     run cp "$PACKED_FILE_NAME" "$MY_CACHED_BINARY_DIR/"
+
+    step "show disk usage statistics"
+    run du -sh "$MY_CACHED_BINARY_DIR/$PACKED_FILE_NAME"
+
+    step "delete working directory"
+    run rm -rf $WORKING_DIR
 }
 
 get_direct_dependency_package_list_of_a_package() {
