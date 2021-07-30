@@ -3103,7 +3103,7 @@ __pack_a_installed_package() {
     run cp "$PACKED_FILE_NAME" "$MY_CACHED_BINARY_DIR/"
 
     step "show disk usage statistics"
-    run du -sh "$MY_CACHED_BINARY_DIR/$PACKED_FILE_NAME"
+    run du -sh "$PACKED_FILE_NAME"
 
     step "delete working directory"
     run rm -rf $WORKING_DIR
