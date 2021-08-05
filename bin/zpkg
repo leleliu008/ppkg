@@ -36,15 +36,15 @@ success() {
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
     exit 1
 }
 
@@ -2297,7 +2297,7 @@ __parse_package_patches() {
             *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
             *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
             *.txz)     PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
-            *)  die "$1 : extension isn't recognized. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+            *)  die "unrecognized extension : $1. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
         [ ${#2} -eq 64 ] || die "$2 is not sha256sum. the length of sha256sum must be 64."
@@ -2394,7 +2394,7 @@ ___load_a_formula() {
         *.cc)      PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
         *.cxx)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
         *.cpp)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
-        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     case $PACKAGE_SRC_TYPE in
@@ -2879,27 +2879,10 @@ __gen_github_workflows() {
 }
 
 __list_available_packages() {
-    unset SILENT
-
-    case $# in
-        0)  ;;
-        1)  if [ "$1" = '-q' ] ; then
-                SILENT=true
-            else
-                die "list available action only accept -q argument."
-            fi
-            ;;
-        *)  die "list available action only accept -q argument."
-    esac
-
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
-        if [ "$SILENT" = 'true' ] ; then
-            cd "$MY_FORMULA_REPO_DIR/$repo/formula" 2>/dev/null || return 1
-        else
-            cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
-        fi
-        ls -1 *.sh | sed 's/\.sh//g'
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        ls -1 *.sh | sed 's/\.sh//g' || return 1
     done
 }
 
@@ -3049,8 +3032,8 @@ __show_depends_of_a_package() {
     fi
 }
 
-# if $1 is    specified, show prefix of a package.
-# if $1 isn't specified, show this software's home direcotory.
+# if $1 is     specified, show prefix of a package.
+# if $1 is not specified, show this software's home direcotory.
 __show_prefix() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
