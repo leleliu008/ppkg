@@ -9,7 +9,7 @@ license=('custom')
 url="https://github.com/leleliu008/zpkg"
 makedepends=()
 source=("https://github.com/leleliu008/zpkg/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('e4f49362fca1ff489b3e003e7a82c80a76702576a91482a322096f5258d8cef8')
+sha256sums=('c629aedfd3c7bd44f2613db98a75df9791f215632ce8103c9b0cb5b6150abe51')
 
 build() {
     true
