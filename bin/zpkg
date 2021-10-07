@@ -4612,7 +4612,7 @@ list_all_installed_libs() {
     done
 }
 
-ldd() {
+__ldd() {
     die_if_package_is_not_installed "$1"
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
@@ -4968,7 +4968,7 @@ main() {
             esac
             ;;
 
-        ldd)shift; ldd $@ ;;
+        ldd)shift; __ldd $@ ;;
 
         gen-github-workflows)
             shift; __gen_github_workflows $@ ;;
