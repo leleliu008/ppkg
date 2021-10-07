@@ -90,17 +90,17 @@ autoload -U compinit && compinit
 *   install packages
         
         zpkg install curl
-        zpkg install curl bzip2 --min-sdk-api-level=21
-        zpkg install curl bzip2 --min-sdk-api-level=21 --jobs=4
-        zpkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v
-        zpkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x
-        zpkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run
-        zpkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-working-dir
+        zpkg install curl bzip2
+        zpkg install curl bzip2 --jobs=4
+        zpkg install curl bzip2 --jobs=4 -v
+        zpkg install curl bzip2 --jobs=4 -v -x
+        zpkg install curl bzip2 --jobs=4 -v -x --dry-run
+        zpkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-working-dir
         
 *   reinstall packages
         
         zpkg reinstall curl
-        zpkg reinstall curl bzip2 --min-sdk-api-level=21 -v
+        zpkg reinstall curl bzip2 -v
         
 *   uninstall packages
 
@@ -111,7 +111,7 @@ autoload -U compinit && compinit
 
         zpkg upgrade
         zpkg upgrade curl
-        zpkg upgrade curl bzip2 --min-sdk-api-level=21 -v
+        zpkg upgrade curl bzip2 -v
         
 *   upgrade this software
 
