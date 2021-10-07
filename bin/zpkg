@@ -3528,7 +3528,7 @@ __logs_the_given_installed_package() {
 __pack_the_given_installed_package() {
     set -e
 
-    load_installed_metadata_of_the_give_package "$1"
+    load_installed_metadata_of_the_given_package "$1"
 
     shift
 
