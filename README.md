@@ -80,7 +80,6 @@ autoload -U compinit && compinit
         zpkg info curl installed-datetime-unix
         zpkg info curl installed-datetime-formatted
         zpkg info curl installed-pkg-version
-        zpkg info curl installed-abis
         zpkg info @all
         zpkg info @all --json
         zpkg info @all --json | jq .
@@ -154,22 +153,6 @@ autoload -U compinit && compinit
         
         zpkg formula rename curl curl7
         
-*   list the supported target abis
-        
-        zpkg target abis
-
-*   list the supported target archs
-        
-        zpkg target archs
-
-*   list the supported target triples
-        
-        zpkg target triples
-
-*   list the supported sdk api-levels
-        
-        zpkg target levels
-        
 *   list the available packages
         
         zpkg ls available
@@ -211,10 +194,7 @@ autoload -U compinit && compinit
         
 *   show logs of the given installed package
         
-        zpkg logs curl armeabi-v7a
-        zpkg logs curl arm64-v8a
-        zpkg logs curl x86
-        zpkg logs curl x86_64
+        zpkg logs curl
         
 *   pack the given installed package
         

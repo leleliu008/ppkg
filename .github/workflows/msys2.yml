@@ -34,7 +34,6 @@ jobs:
       - run: bin/zpkg --help
       - run: bin/zpkg --version
 
-      - run: bin/zpkg install-android-ndk
 
       - run: bin/zpkg env
 
