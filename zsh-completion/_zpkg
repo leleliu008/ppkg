@@ -1,31 +1,31 @@
 #compdef zpkg
 
 _commands=(
-    '-h:print the help infomation of zpkg command.'
-    '--help:print the help infomation of zpkg command.'
-    '-V:print the version of zpkg.'
-    '--version:print the version of zpkg.'
+    '-h:show help of this command.'
+    '--help:show help of this command.'
+    '-V:show version of this.'
+    '--version:show version of this command.'
     'search:search packages can be installed.'
     'ls:list the available, installed and outdated packages.'
-    'tree:list contents of a installed package directory in a tree-like format.'
-    'info:print the basic infomation of packages.'
-    'formula:view,edit the formula of a package.'
+    'tree:list files of the given installed package in a tree-like format.'
+    'info:show infomation of the given package or all available packages.'
+    'formula:view,edit the formula of the given package.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
     'cleanup:cleanup the unused cache.'
     'update:update the formula repository.'
-    'upgrade:upgrade the outdated packages.'
-    'upgrade-self:upgrade self.'
-    'fetch:download formula resources of a package to the cache.'
-    'homepage:visit the homepage of a formula or the zpkg project.'
+    'upgrade:upgrade the outdated packages or this software.'
+    'fetch:download formula resources of the given package to the cache.'
+    'homepage:show or open the homepage of the given package or the this project.'
     'integrate:integrate zsh completions.'
-    'depends:show the depends of a package.'
-    'prefix:show the installation direcotory of a formula or the zpkg home.'
-    'pack:pack a installed package.'
-    'logs:print the logs of a installed package.'
-    'get:get value of the given key of the given package.'
+    'env:show current machine os and environment variables.'
+    'depends:show the depends of the given package.'
+    'prefix:show the installation direcotory of the given package or the home dir of this project.'
+    'pack:pack the given installed package.'
+    'logs:show logs of the given installed package.'
     'is:check something. easy to write script.'
+    'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
 )
 
@@ -35,21 +35,25 @@ _list=(
     'outdated:list the installed packages which can be upgraded.'
 )
 
+function _zpkg_commands() {
+    _describe 'command' _commands
+}
+
 function _zpkg_available_packages() {
     local -a _available_packages
-    _available_packages=($(zpkg list available -q))
+    _available_packages=($(zpkg ls available 2>/dev/null))
     _describe 'available-packages' _available_packages
 }
 
 function _zpkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(zpkg list installed))
+    _installed_packages=($(zpkg ls installed 2>/dev/null))
     _describe 'installed-packages' _installed_packages
 }
 
 function _zpkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(zpkg list outdated))
+    _outdated_packages=($(zpkg ls outdated 2>/dev/null))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -58,17 +62,13 @@ function _zpkg() {
     typeset -A opt_args
 
     _arguments \
-        '1: :{_describe 'command' _commands}' \
+        '1: :_zpkg_commands' \
         '*:: :->option'
 
     case $state in
         option)
             case $words[1] in
-                ls)
-                    _arguments \
-                        ':list:{_describe 'list' _list}' \
-                        '-q[quiet mode. do not report error log]'
-                    ;;
+                ls)     _arguments '1: :{_describe 'list'   _list}'   ;;
                 formula)
                     _arguments \
                         ':action:(create delete rename view edit list repo)' \
@@ -80,36 +80,59 @@ function _zpkg() {
                                     _arguments ':package-name:_zpkg_available_packages'
                                     ;;
                                 repo)
-                                    _arguments '1:action:(list add del)' '*:: :->repo-subcommand'
+                                    _arguments \
+                                        '1:action:(list add del)' \
+                                        '*:: :->repo-subcommand'
                                     case $state in
                                         repo-subcommand)
                                             case $words[1] in
-                                                del) _arguments '1:repo-name:($(ipkg formula repo list | cut -d= -f1))' ;;
+                                                del) _arguments '1:repo-name:($(zpkg formula repo list | cut -d= -f1))' ;;
                                             esac
                                     esac
                                     ;;
                             esac
                     esac
                     ;;
+                integrate)
+                    _arguments \
+                        '1:what:(zsh)' \
+                        '-x[trace execution of commands]' \
+                        '--china[use china mirror url]'
+                    ;;
                 info)
-                    _arguments '*:package-name:_zpkg_available_packages' ;;
-                fetch|homepage|depends)
+                    _arguments \
+                        '1:package-name:(@all $(zpkg ls available))' \
+                        '*:: :->info-subcommand'
+                                                    case $state in
+                                                        info-subcommand)
+                                                            case $words[1] in
+                                                                @all) _arguments '--json[output format is json]' ;;
+                                                                *) _arguments '1:key:(summary webpage version license src.git src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version)'
+                                                            esac
+                                                        esac
+                        ;;
+                fetch|depends)
                     _arguments ':package-name:_zpkg_available_packages' ;;
-                prefix|tree)
+                prefix)
                     _arguments ':package-name:_zpkg_installed_packages' ;;
+                pack)
+                    _arguments \
+                        '1:package-name:_zpkg_installed_packages' \
+                        '--type=-[output file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
+                    ;;
+                homepage)
+                    _arguments \
+                        ':package-name:_zpkg_available_packages' \
+                        '--open[open in the web browser]'
+                                                    ;;
+                tree)
+                    _arguments \
+                        '1:package-name:_zpkg_installed_packages' \
+                        '-L[level]:level:(3)'
+                    ;;
                 logs)
                     _arguments \
                         '1:package-name:_zpkg_installed_packages'
-                    ;;
-                pack)
-                    _arguments \
-                        ':package-name:_zpkg_installed_packages' \
-                        '--type=-[set the packed file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
-                    ;;
-                get)
-                    _arguments \
-                        '1:package-name:_zpkg_available_packages' \
-                        '2:key:(summary webpage version license src.git src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem)'
                     ;;
                 install)
                     _arguments \
@@ -131,21 +154,39 @@ function _zpkg() {
                     ;;
                 upgrade)
                     _arguments \
+                        '1:package-name:(@self $(zpkg ls outdated))' \
+                        '*:: :->upgrade-subcommand'
+                                                    case $state in
+                                                        upgrade-subcommand)
+                                                            case $words[1] in
+                                                                @self)
+                                                                    _arguments \
+                        '-x[trace execution of commands]' \
+                        '--china[use china mirror url]'
+                    ;;
+                                                                *)
+                                                                _arguments \
                         ':package-name:_zpkg_outdated_packages' \
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--debug -d)'{--debug,-d}'[debug]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
-                    ;;
+
+                                                            esac
+                                                        esac
+                                                    ;;
                 uninstall)
                     _arguments '*:package-name:_zpkg_installed_packages' ;;
                 is)
                     _arguments \
                         '1: :(available installed outdated)' \
-                        '2:package-name:_zpkg_available_packages'
+                        '2:package-name:_zpkg_available_packages' \
+                        '3:condition-operator:(eq ne ge gt le lt)'
                     ;;
-                integrate)
-                    _arguments ':what:(zsh)'
+                ldd)
+                    _arguments \
+                        '1:package-name:_zpkg_installed_packages' \
+                        '2:type:(bin lib)'
                     ;;
                 gen-github-workflows)
                     _arguments \

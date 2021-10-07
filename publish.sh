@@ -24,15 +24,15 @@ success() {
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
     exit 1
 }
 
@@ -136,55 +136,103 @@ sha256sum() {
     fi
 }
 
+die_if_command_not_found() {
+    for item in $@
+    do
+        command_exists_in_filesystem $item || die "$item command not found."
+    done
+}
+
 main() {
+    for arg in $@
+    do
+        case $arg in
+            -x) set -x ; break
+        esac
+    done
+
     set -e
 
-    command -v makepkg > /dev/null || die "please install makepkg."
+    die_if_command_not_found tar gzip git gh
+
+    unset RELEASE_VERSION_MAJOR_PLUS_PLUS
+    unset RELEASE_VERSION_MINOR_PLUS_PLUS
+    unset RELEASE_VERSION_PATCH_PLUS_PLUS
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -x) ;;
+            --major++) RELEASE_VERSION_MAJOR_PLUS_PLUS=1 ;;
+            --minor++) RELEASE_VERSION_MINOR_PLUS_PLUS=1 ;;
+            --patch++) RELEASE_VERSION_PATCH_PLUS_PLUS=1 ;;
+            *) die "unrecognized argument: $1"
+        esac
+        shift
+    done
 
     unset RELEASE_VERSION
-    unset RELEASE_FILE_NAME
-    unset RELEASE_FILE_SHA256SUM
+    unset RELEASE_VERSION_MAJOR
+    unset RELEASE_VERSION_MINOR
+    unset RELEASE_VERSION_PATCH
 
     RELEASE_VERSION=$(bin/zpkg --version)
+    RELEASE_VERSION_MAJOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f1)
+    RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
+    RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
+
+    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 0 ] && [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 0 ] && [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 0 ] ; then
+        die "new release version must be bigger than old version($RELEASE_VERSION)"
+    fi
+
+    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 1 ] ; then
+        RELEASE_VERSION_MAJOR=$(expr $RELEASE_VERSION_MAJOR + 1)
+    fi
+
+    if [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 1 ] ; then
+        RELEASE_VERSION_MINOR=$(expr $RELEASE_VERSION_MINOR + 1)
+    fi
+
+    if [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 1 ] ; then
+        RELEASE_VERSION_PATCH=$(expr $RELEASE_VERSION_PATCH + 1)
+    fi
+
+    RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
+
+    sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/zpkg
+    sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
+
+    unset RELEASE_FILE_NAME
     RELEASE_FILE_NAME="zpkg-$RELEASE_VERSION.tar.gz"
 
     run tar zvcf "$RELEASE_FILE_NAME" bin/zpkg zsh-completion/_zpkg
 
+    unset RELEASE_FILE_SHA256SUM
     RELEASE_FILE_SHA256SUM=$(sha256sum "$RELEASE_FILE_NAME")
-    
+
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    sed_in_place "s|sha256sums=(.*)|sha256sums=(\'$RELEASE_FILE_SHA256SUM\')|" PKGBUILD
-    sed_in_place "s|pkgver=.*|pkgver=\'$RELEASE_VERSION\'|" PKGBUILD
-    sed_in_place "s|VERSION='[0-9].[0-9].[0-9]'|VERSION='$RELEASE_VERSION'|" install.sh
-    sed_in_place "s|v[0-9].[0-9].[0-9]|v$RELEASE_VERSION|" README.md
-    sed_in_place "s|zpkg-[0-9].[0-9].[0-9]|zpkg-$RELEASE_VERSION|g" README.md
-
-    run makepkg
-
-    run git add PKGBUILD README.md install.sh
+    run git add bin/zpkg install.sh
     run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
-    run gh release create v"$RELEASE_VERSION" "zpkg-$RELEASE_VERSION.tar.gz" "zpkg-$RELEASE_VERSION-1-any.pkg.tar.gz" --notes "'release $RELEASE_VERSION'"
+    run gh release create v"$RELEASE_VERSION" "$RELEASE_FILE_NAME" --notes "'release $RELEASE_VERSION'"
 
     run git clone git@github.com:leleliu008/homebrew-fpliu.git
+
     run cd homebrew-fpliu
-    sed_in_place '/url      /d' Formula/zpkg.rb
-    sed_in_place '/sha256   /d' Formula/zpkg.rb
-    sed_in_place "/homepage/a \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/zpkg.rb
-    sed_in_place "/homepage/a \  url      \"https://github.com/leleliu008/zpkg/releases/download/v$RELEASE_VERSION/zpkg-$RELEASE_VERSION.tar.gz\"" Formula/zpkg.rb
+
+    sed_in_place "/sha256   /c \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/zpkg.rb
+    sed_in_place "s@[0-9]\.[0-9]\.[0-9]@$RELEASE_VERSION@g" Formula/zpkg.rb
+
     run git add Formula/zpkg.rb
-    run git commit -m "'publish new version zpkg-$RELEASE_VERSION'"
+    run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
     run cd ..
 
     run rm -rf homebrew-fpliu
     run rm "$RELEASE_FILE_NAME"
-    run rm "zpkg-$RELEASE_VERSION-1-any.pkg.tar.gz"
-    run rm -rf pkg
-    run rm -rf src
 }
 
 main $@

@@ -1,0 +1,81 @@
+name: Cygwin
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: cygwin {0}
+
+    steps:
+      - run: choco install -y cygwin
+        shell: pwsh
+
+      - run: C:\tools\cygwin\bin\bash.exe --login -i -c "sed -i 's/--login -i/--login -i %1/' /cygdrive/c/tools/cygwin/Cygwin.bat"
+        shell: pwsh
+   
+      - run: choco install -y --source cygwin git
+    
+      - run: git config --global core.autocrlf input
+        shell: bash
+
+      - uses: actions/checkout@v2
+    
+      - run: printf 'cd %s' "$(cygpath '${{ github.workspace }}')" >> ~/.bashrc
+
+      - run: bin/zpkg --help
+      - run: bin/zpkg --version
+
+      - run: bin/zpkg env
+
+      - run: command -v curl
+
+      - run: bin/zpkg integrate zsh
+
+      - run: bin/zpkg update
+
+      - run: bin/zpkg search lib
+      - run: bin/zpkg search zlib
+
+      - run: bin/zpkg info zlib
+      - run: bin/zpkg info zlib version
+      - run: bin/zpkg info zlib webpage
+      - run: bin/zpkg info zlib
+
+      - run: bin/zpkg depends zlib
+
+      - run: bin/zpkg homepage
+      - run: bin/zpkg homepage zlib
+
+      - run: bin/zpkg install zlib
+
+      - run: bin/zpkg prefix
+      - run: bin/zpkg prefix zlib
+
+      - run: bin/zpkg tree zlib
+      - run: bin/zpkg pack zlib
+
+      - run: bin/zpkg formula repo list
+      - run: bin/zpkg formula view curl
+
+
+      - run: bin/zpkg ls available
+      - run: bin/zpkg ls installed
+      - run: bin/zpkg ls outdated
+
+      - run: bin/zpkg is available zlib
+      - run: bin/zpkg is installed zlib
+      - run: bin/zpkg is outdated zlib || true
+
+      - run: bin/zpkg uninstall zlib
+
+      - run: bin/zpkg fetch curl
+
+      - run: bin/zpkg upgrade @self

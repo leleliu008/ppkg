@@ -1,0 +1,74 @@
+name: AlpineLinux
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [3.9.3, 3.10.9, 3.11.11, 3.12.7, 3.13.5]
+
+    container: alpine:${{ matrix.tag }}
+
+    steps:
+      - run: apk update
+      - run: apk add git
+
+      - uses: actions/checkout@v2
+
+      - run: bin/zpkg --help
+      - run: bin/zpkg --version
+
+      - run: bin/zpkg install-android-ndk
+
+      - run: bin/zpkg env
+
+      - run: bin/zpkg integrate zsh
+
+      - run: bin/zpkg update
+
+      - run: bin/zpkg search lib
+      - run: bin/zpkg search zlib
+
+      - run: bin/zpkg info zlib
+      - run: bin/zpkg info zlib version
+      - run: bin/zpkg info zlib webpage
+      - run: bin/zpkg info zlib
+
+      - run: bin/zpkg depends zlib
+
+      - run: bin/zpkg homepage
+      - run: bin/zpkg homepage zlib
+
+      - run: bin/zpkg install zlib
+
+      - run: bin/zpkg prefix
+      - run: bin/zpkg prefix zlib
+
+      - run: bin/zpkg tree zlib
+      - run: bin/zpkg pack zlib
+
+      - run: bin/zpkg formula repo list
+      - run: bin/zpkg formula view curl
+
+
+      - run: bin/zpkg ls available
+      - run: bin/zpkg ls installed
+      - run: bin/zpkg ls outdated
+
+      - run: bin/zpkg is available zlib
+      - run: bin/zpkg is installed zlib
+      - run: bin/zpkg is outdated zlib || true
+
+      - run: bin/zpkg uninstall zlib
+
+      - run: bin/zpkg fetch curl
+
+      - run: bin/zpkg upgrade @self
