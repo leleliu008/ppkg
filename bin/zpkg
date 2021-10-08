@@ -2689,7 +2689,7 @@ ___load_formula_of_the_given_package() {
 
     PACKAGE_NAME="$1"
 
-    PACKAGE_FORMULA_FILEPATH="$(__pathof_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
 
     if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
         die "$1 package's formula is not found."
@@ -2750,7 +2750,7 @@ ___load_formula_of_the_given_package() {
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
-            PACKAGE_SRC_PATH="$MY_CACHED_SOURCE_DIR/$PACKAGE_SRC_NAME"
+            PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
@@ -2773,7 +2773,7 @@ ___load_formula_of_the_given_package() {
                 fi
             fi
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
-            PACKAGE_SRC_PATH="$MY_CACHED_SOURCE_DIR/$PACKAGE_SRC_NAME"
+            PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
     esac
 
     for item in $PACKAGE_BUILD_SYSTEM
@@ -2820,7 +2820,7 @@ ____view_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__pathof_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
 
     if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
         die "$1 package is not available."
@@ -2841,7 +2841,7 @@ ____edit_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__pathof_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
 
     if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
         die "$1 package is not available."
@@ -2910,7 +2910,7 @@ __delete_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__pathof_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
 
     if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
         die "$1 package is not available."
@@ -2924,7 +2924,7 @@ __rename_formula_of_the_given_package() {
     die_if_package_is_not_specified "$2"
 
     unset PACKAGE_FORMULA_REPO
-    PACKAGE_FORMULA_REPO="$(__repoof_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_REPO="$(__repo_of_formula_of_the_given_package $1)"
 
     if [ -z "$PACKAGE_FORMULA_REPO" ] ; then
         die "$1 package is not available."
@@ -3010,12 +3010,12 @@ __del_a_formula_repo() {
     fi
 }
 
-__repoof_formula_of_the_given_package() {
+__repo_of_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
-        if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+        if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
             echo "$repo"
             return 0
         fi
@@ -3024,7 +3024,7 @@ __repoof_formula_of_the_given_package() {
     return 1
 }
 
-__pathof_formula_of_the_given_package() {
+__path_of_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
@@ -3067,7 +3067,7 @@ __update_formula_repositories() {
 ##############################################################################
 
 prompt_user_to_install_bat() {
-    echo "${COLOR_YELLOW}Note: if you want to have a better experience, I strongly recommend you install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on your os. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
+    echo "${COLOR_YELLOW}Note: if you want to have a better experience, I strongly recommend you to install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on your os. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
 __fetch_sources_of_the_given_package() {
@@ -3083,7 +3083,7 @@ __fetch_patches_of_the_given_package() {
     # fetch patches if posible
     while [ -n "$1" ]
     do
-        fetch "$1" --sha256="$2" --output-dir="$MY_CACHED_PATCH__DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
+        fetch "$1" --sha256="$2" --output-dir="$MY_PATCH__DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
 
         if [ -z "$PACKAGE_PATCHES" ] ; then
             PACKAGE_PATCHES="$FETCH_OUTPUT_PATH"
@@ -3101,25 +3101,15 @@ __fetch_resources_of_the_given_package() {
 }
 
 die_if_package_is_not_specified() {
-    [ -n "$1" ] || die "no package
- is specified."
+    [ -n "$1" ] || die "no package is specified."
 }
 
 die_if_package_is_not_available() {
     is_package_available "$1" || die "$1 is not available."
 }
 
-die_if_package_is_already_exist() {
-    die_if_package_is_not_specified "$1"
-    [ -n "$(__pathof_formula_of_the_given_package $1)" ] && die "$1 package is already exist."
-}
-
-die_from_package_is_not_installed() {
-    die "$1 is not installed."
-}
-
 die_if_package_is_not_installed() {
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+    is_package_installed "$1" || die "$1 is not installed."
 }
 
 # check if the given package is available
@@ -3143,7 +3133,7 @@ die_if_package_is_not_installed() {
 is_package_available() {
     case $# in
         0)  die_if_package_is_not_specified ;;
-        1)  [ -n "$(__pathof_formula_of_the_given_package $1)" ] ;;
+        1)  [ -n "$(__path_of_formula_of_the_given_package $1)" ] ;;
         3)  ___load_formula_of_the_given_package "$1"
             shift
             version_match $PACKAGE_VERSION $@
@@ -3154,16 +3144,19 @@ is_package_available() {
 
 is_package_installed() {
     die_if_package_is_not_specified "$1"
-    
-    [ -d "$MY_INSTALL_DIR/$1" ]                      || return 1
-    [ -f "$MY_CACHED_LOG_DIR/$1/installed-metadata" ] || return 1
+
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
+    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 1
+    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 1
+    [ -f "$MY_INSTALL_DIR/$1/installed-abis" ]     || return 1
 }
 
 is_package__outdated() {
     ___load_formula_of_the_given_package "$1"
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                      || die_from_package_is_not_installed "$1"
-    [ -f "$MY_CACHED_LOG_DIR/$1/installed-metadata" ] || die_from_package_is_not_installed "$1"
+    __load_installed_metadata_of_the_given_package "$1"
+
+    version_match "$PACKAGE_VERSION" gt "$INSTALLED_PKG_VERS"
 }
 
 __gen_github_workflows() {
@@ -3342,7 +3335,7 @@ __reinstall_the_given_packages() {
         die_if_package_is_not_available "$packageName"
         die_if_package_is_not_installed "$packageName"
     done
-    
+
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
         {
@@ -3366,7 +3359,7 @@ __upgrade_packages() {
         die_if_package_is_not_available "$packageName"
         die_if_package_is_not_installed "$packageName"
     done
-    
+
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
         {
@@ -3380,8 +3373,7 @@ __upgrade_packages() {
 }
 
 __cleanup() {
-    [ -d "$MY_CACHED_DIR" ] || return 0
-    [ -d "$MY_CACHED_SOURCE_DIR" ] || return 0
+    [ -d "$MY_SOURCE_DIR" ] || return 0
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
@@ -3467,7 +3459,7 @@ __open_homepage_of_the_given_package() {
 __show_depends_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    __gen_dependency_tree "$1"
+    __gen_dependency_tree_of_the_given_package "$1"
 
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
@@ -3503,19 +3495,28 @@ __logs_the_given_installed_package() {
         VIEWER=less
     fi
 
-    for item in $(ls "$MY_CACHED_LOG_DIR/$1"/*)
-    do
-        if [ "$VIEWER" = 'bat' ] ; then
-            case $item in
-                *.png) ;;
-                *.sh|*/installed-metadata)
-                    bat -l bash "$item" ;;
-                *)  bat "$item"
-            esac
-        else
-            "$VIEWER" "$item"
-        fi
-    done
+    __logs_the_given_dir() {
+        for item in $(ls "$1")
+        do
+            item="$1/$item"
+            if [ -d "$item" ] ; then
+                continue
+            fi
+            if [ "$VIEWER" = 'bat' ] ; then
+                case $item in
+                    *.png) ;;
+                    *.sh|*/installed-metadata)
+                        bat -l bash "$item" ;;
+                    *)  bat "$item"
+                esac
+            else
+                "$VIEWER" "$item"
+            fi
+        done
+    }
+
+    __logs_the_given_dir "$MY_INSTALL_DIR/$1"
+    __logs_the_given_dir "$MY_INSTALL_DIR/$1/$2/share/log"
 
     if [ "$VIEWER" != 'bat' ] ; then
         prompt_user_to_install_bat
@@ -3528,7 +3529,7 @@ __logs_the_given_installed_package() {
 __pack_the_given_installed_package() {
     set -e
 
-    load_installed_metadata_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1"
 
     shift
 
@@ -3605,7 +3606,7 @@ __pack_the_given_installed_package() {
     run cd $WORKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME"
+    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILE_SUFFIX in
@@ -3616,13 +3617,13 @@ __pack_the_given_installed_package() {
         tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
     esac
 
-    if [ ! -d "$MY_CACHED_BINARY_DIR" ] ; then
+    if [ ! -d "$MY_BINARY_DIR" ] ; then
         step "create cached binary dir"
-        run install -d "$MY_CACHED_BINARY_DIR"
+        run install -d "$MY_BINARY_DIR"
     fi
 
     step "copy packed file to cached binary dir"
-    run cp "$PACKED_FILE_NAME" "$MY_CACHED_BINARY_DIR/"
+    run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
 
     step "show disk usage statistics"
     run du -sh "$PACKED_FILE_NAME"
@@ -3632,12 +3633,12 @@ __pack_the_given_installed_package() {
 }
 
 get_direct_dependency_package_list_of_the_given_package() {
-    grep '^\s*package set dep\.pkg\s*".*"' $(__pathof_formula_of_the_given_package $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
+    grep '^\s*package set dep\.pkg\s*".*"' $(__path_of_formula_of_the_given_package $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
 }
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
-# $2 is invoked by myself
-__gen_dependency_list() {
+# $2=true invoked by myself
+__gen_dependency_list_of_the_given_package() {
     if [ "$2" != 'true' ] ; then
         unset I
         unset DEPENDENCY_PACKAGE_LIST
@@ -3649,7 +3650,7 @@ __gen_dependency_list() {
     else
         DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_the_given_package "$1")
     fi
-    
+
     for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
         die_if_package_is_not_available "$dependencyPkgName"
@@ -3664,83 +3665,66 @@ __gen_dependency_list() {
                 DEPENDENCY_PACKAGE_LIST_TEMP="$DEPENDENCY_PACKAGE_LIST_TEMP $item"
             fi
         done
-        
+
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list "$dependencyPkgName" true
+        __gen_dependency_list_of_the_given_package "$dependencyPkgName" true
     done
 }
 
-# $1 packageName
-# $2 is invoked by myself | [output-dir]
-__gen_dependency_tree() {
+# __gen_dependency_tree_of_the_given_package PKG [OUTPUT-DIR]
+__gen_dependency_tree_of_the_given_package() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_the_given_package "$1")
+    DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$1")"
 
-    case $2 in
-        true) ;;
-        *)
-            unset I
-
-            unset DEPENDENCIES__GV
-            unset DEPENDENCIES_PNG
-            unset DEPENDENCIES_TXT
-
-            unset DEPENDENCIES_OUTPUT_DIR
-
-            if [ -z "$2" ] ; then
-                DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
-            else
-                DEPENDENCIES_OUTPUT_DIR="$2"
-            fi
-
-            DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.gv"
-            DEPENDENCIES_PNG="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.png"
-            DEPENDENCIES_TXT="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.txt"
-            
-            if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
-                echo "digraph \"$1\" {" > "$DEPENDENCIES__GV"
-            fi
-    esac
-
-    if [ -f "$DEPENDENCIES__GV" ] ; then
-        print "  \"$1\" -> {" >> "$DEPENDENCIES__GV"
-        for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
-        do
-            print " \"$dependencyPkgName\"" >> "$DEPENDENCIES__GV"
-        done
-        echo " }" >> "$DEPENDENCIES__GV"
+    if [ -z "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+        return 0
     fi
 
-    I=$(expr ${I-0} + 1)
+    unset DEPENDENCIES__GV
+    unset DEPENDENCIES_PNG
+    unset DEPENDENCIES_TXT
 
-    for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
+    unset DEPENDENCIES_OUTPUT_DIR
+
+    if [ -z "$2" ] ; then
+        DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
+    else
+        DEPENDENCIES_OUTPUT_DIR="$2"
+    fi
+
+    DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/dependencies.gv"
+    DEPENDENCIES_PNG="$DEPENDENCIES_OUTPUT_DIR/dependencies.png"
+    DEPENDENCIES_TXT="$DEPENDENCIES_OUTPUT_DIR/dependencies.txt"
+
+    printf 'digraph "%s\n" {' "$1" > "$DEPENDENCIES__GV"
+
+    for dependencyPkgName in $1 $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
-        __gen_dependency_tree "$dependencyPkgName" true
+        unset DIRECT_DEPENDENCY_PACKAGE_LIST
+        DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$dependencyPkgName")"
+        if [ -z "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+            continue
+        fi
+        printf '"%s" -> { "%s" }\n' "$dependencyPkgName" "$(printf '%s\n' "$DIRECT_DEPENDENCY_PACKAGE_LIST" | sed 's/ /" "/g')" >> "$DEPENDENCIES__GV"
     done
 
-    I=$(expr $I - 1)
+    printf "}\n" >> "$DEPENDENCIES__GV"
 
-    if [ "$I" -eq 0 ] ; then
-        if [ -f "$DEPENDENCIES__GV" ] ; then
-            echo "}" >> "$DEPENDENCIES__GV"
-
-            if command -v dot > /dev/null ; then
-                run dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
-            else
-                warn "graphviz is not installed. we do not generate png format dependency image."
-            fi
-
-            # https://github.com/ggerganov/dot-to-ascii
-            curl \
-                -o "$DEPENDENCIES_TXT" \
-                -s \
-                -G \
-                --data-urlencode "boxart=1" \
-                --data-urlencode "src=$(cat $DEPENDENCIES__GV)" \
-                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
-        fi
+    if command -v dot > /dev/null ; then
+        run dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
+    else
+        warn "graphviz is not installed. we do not generate png format dependency image."
     fi
+
+    # https://github.com/ggerganov/dot-to-ascii
+    curl \
+        -o "$DEPENDENCIES_TXT" \
+        -s \
+        -G \
+        --data-urlencode "boxart=1" \
+        --data-urlencode "src=$(cat $DEPENDENCIES__GV)" \
+        "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
 }
 
 __install_the_given_packages() {
@@ -3748,7 +3732,7 @@ __install_the_given_packages() {
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
-    __gen_dependency_list || return 1
+    __gen_dependency_list_of_the_given_package || return 1
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
@@ -3759,7 +3743,7 @@ __install_the_given_packages() {
         if is_package_installed "$INSTALLING_PACKAGE" ; then
             printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
         else
-            PACKAGE_LOG_DIR="$MY_CACHED_LOG_DIR/$INSTALLING_PACKAGE"
+            PACKAGE_LOG_DIR="$MY_LOG_DIR/$INSTALLING_PACKAGE"
             rm -rf     "$PACKAGE_LOG_DIR" || return 1
             install -d "$PACKAGE_LOG_DIR" || return 1
             __install_the_given_package "$INSTALLING_PACKAGE" | tee "$PACKAGE_LOG_DIR/install.log.txt" || die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
@@ -3805,7 +3789,7 @@ __install_the_given_package() {
     id | tr ' ' '\n' | head -n 2
 
     step "show formula"
-    run cat $(__pathof_formula_of_the_given_package $1)
+    run cat $(__path_of_formula_of_the_given_package $1)
 
     step "load formula"
     ___load_formula_of_the_given_package "$1"
@@ -3844,8 +3828,8 @@ __install_the_given_package() {
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn "no dependencies."
     else
-        __gen_dependency_list "$1"                         || return 1
-        __gen_dependency_tree "$1" "$MY_CACHED_LOG_DIR/$1" || return 1
+        __gen_dependency_list_of_the_given_package "$1"                         || return 1
+        __gen_dependency_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
         fi
@@ -4364,18 +4348,18 @@ __show_infomation_of_the_given_package() {
                 ;;
             installed-metadata)
                 die_if_package_is_not_installed "$1"
-                cat "$MY_CACHED_LOG_DIR/$1/installed-metadata"
+                cat "$MY_LOG_DIR/$1/installed-metadata"
                 ;;
             installed-datetime-unix)
-                load_installed_metadata_of_the_given_package "$1"
+                __load_installed_metadata_of_the_given_package "$1"
                 echo "$INSTALLED_DATETIME"
                 ;;
             installed-datetime-formatted)
-                load_installed_metadata_of_the_given_package "$1"
+                __load_installed_metadata_of_the_given_package "$1"
                 format_unix_timestamp "$INSTALLED_DATETIME" '+%Y/%m/%d %H:%M:%S'
                 ;;
             installed-pkg-version)
-                load_installed_metadata_of_the_given_package "$1"
+                __load_installed_metadata_of_the_given_package "$1"
                 echo "$INSTALLED_PKG_VERS"
                 ;;
             *)  package get "$1" "$2"
@@ -4430,7 +4414,7 @@ __show_infomation_of_the_given_package() {
 
     is_package_installed "$1" || return 0
 
-    load_installed_metadata_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1"
 
     echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
     echo "installed pkg version : $INSTALLED_PKG_VERS"
@@ -4449,7 +4433,7 @@ mark_is_package_installed_or_not() {
 install_installed_metadata_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$MY_LOG_DIR/$1/installed-metadata"
 
     echo "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
@@ -4464,11 +4448,8 @@ BUILD_WITH_TOOLCHAIN_VERS='$TOOLCHAIN_VERSION'
 EOF
 }
 
-# load_installed_metadata_of_the_given_package PKG
-load_installed_metadata_of_the_given_package() {
+__load_installed_metadata_of_the_given_package() {
     die_if_package_is_not_installed "$1"
-
-    INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/installed-metadata"
 
     unset INSTALLED_DATETIME
     unset INSTALLED_PKG_NAME
@@ -4476,6 +4457,8 @@ load_installed_metadata_of_the_given_package() {
 
     unset BUILD_WITH_TOOLCHAIN_NAME
     unset BUILD_WITH_TOOLCHAIN_VERS
+
+    INSTALLED_METADATA_FILEPATH="$MY_LOG_DIR/$1/installed-metadata"
 
     . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
 }
@@ -4735,12 +4718,11 @@ init() {
 
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
     MY_INSTALL_DIR="$MY_HOME_DIR/install.d"
-    MY_CACHED_DIR="$MY_HOME_DIR/cache.d"
-    MY_CACHED_SOURCE_DIR="$MY_CACHED_DIR/source.d"
-    MY_CACHED_BINARY_DIR="$MY_CACHED_DIR/binary.d"
-    MY_CACHED_BACKUP_DIR="$MY_CACHED_DIR/backup.d"
-    MY_CACHED_PATCH__DIR="$MY_CACHED_DIR/patch.d"
-    MY_CACHED_LOG_DIR="$MY_CACHED_DIR/log.d"
+    MY_SOURCE_DIR="$MY_HOME_DIR/source.d"
+    MY_BINARY_DIR="$MY_HOME_DIR/binary.d"
+    MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
+    MY_PATCH__DIR="$MY_HOME_DIR/patch.d"
+    MY_LOG_DIR="$MY_HOME_DIR/log.d"
 
     if [ ! -e "$MY_HOME_DIR/repos" ] ; then
         install -d "$MY_HOME_DIR"
