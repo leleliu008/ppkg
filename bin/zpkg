@@ -3148,7 +3148,6 @@ is_package_installed() {
     [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
     [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 1
     [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 1
-    [ -f "$MY_INSTALL_DIR/$1/installed-abis" ]     || return 1
 }
 
 is_package__outdated() {
@@ -3941,8 +3940,12 @@ __install_the_given_package() {
     step "install logs"
     __install_logs "$1" || return 1
 
-    step "install installed-metadata"
-    install_installed_metadata_of_the_given_package "$1" || return 1
+    step "record installed metadata"
+    __record_installed_metadata_of_the_given_package "$1"
+
+    step "record installed files"
+    __record_installed_files_of_the_given_package "$1"
+
 
     step "clean working directory."
     if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
@@ -4429,8 +4432,32 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-# install_installed_metadata_of_the_given_package PKG
-install_installed_metadata_of_the_given_package() {
+__record_installed_files_of_the_given_package() {
+    if [ -z "$2" ] ; then
+        INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
+        echo "-- Installing: $INSTALLED_FILES_FILEPATH"
+
+        exec 7> "$INSTALLED_FILES_FILEPATH"
+
+        __record_installed_files_of_the_given_package "$1" "$MY_INSTALL_DIR/$1"
+
+        exec 7>&-
+
+        sed_in_place "s|$MY_INSTALL_DIR/$1/||" "$INSTALLED_FILES_FILEPATH"
+    else
+        for file in $(ls $2)
+        do
+            file="$2/$file"
+            if [ -d "$file" ] ; then
+                __record_installed_files_of_the_given_package "$1" "$file"
+            else
+                printf '%s %s\n' $(md5sum "$file") "$file" >&7
+            fi
+        done
+    fi
+}
+
+__record_installed_metadata_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     INSTALLED_METADATA_FILEPATH="$MY_LOG_DIR/$1/installed-metadata"
