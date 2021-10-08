@@ -3742,7 +3742,7 @@ __install_the_given_packages() {
         if is_package_installed "$INSTALLING_PACKAGE" ; then
             printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
         else
-            PACKAGE_LOG_DIR="$MY_LOG_DIR/$INSTALLING_PACKAGE"
+            PACKAGE_LOG_DIR="$MY_INSTALL_DIR/$INSTALLING_PACKAGE"
             rm -rf     "$PACKAGE_LOG_DIR" || return 1
             install -d "$PACKAGE_LOG_DIR" || return 1
             __install_the_given_package "$INSTALLING_PACKAGE" | tee "$PACKAGE_LOG_DIR/install.log.txt" || die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
@@ -3854,7 +3854,7 @@ __install_the_given_package() {
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
-            run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
+            run cp -r "$PACKAGE_SRC_PATH/." "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
             run cp    "$PACKAGE_SRC_PATH"   "$WORKING_DIR" || return 1
@@ -4351,7 +4351,7 @@ __show_infomation_of_the_given_package() {
                 ;;
             installed-metadata)
                 die_if_package_is_not_installed "$1"
-                cat "$MY_LOG_DIR/$1/installed-metadata"
+                cat "$MY_INSTALL_DIR/$1/installed-metadata"
                 ;;
             installed-datetime-unix)
                 __load_installed_metadata_of_the_given_package "$1"
@@ -4460,7 +4460,7 @@ __record_installed_files_of_the_given_package() {
 __record_installed_metadata_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    INSTALLED_METADATA_FILEPATH="$MY_LOG_DIR/$1/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
 
     echo "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
@@ -4485,7 +4485,7 @@ __load_installed_metadata_of_the_given_package() {
     unset BUILD_WITH_TOOLCHAIN_NAME
     unset BUILD_WITH_TOOLCHAIN_VERS
 
-    INSTALLED_METADATA_FILEPATH="$MY_LOG_DIR/$1/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
 
     . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
 }
@@ -4749,7 +4749,6 @@ init() {
     MY_BINARY_DIR="$MY_HOME_DIR/binary.d"
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_PATCH__DIR="$MY_HOME_DIR/patch.d"
-    MY_LOG_DIR="$MY_HOME_DIR/log.d"
 
     if [ ! -e "$MY_HOME_DIR/repos" ] ; then
         install -d "$MY_HOME_DIR"
