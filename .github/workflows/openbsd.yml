@@ -53,13 +53,13 @@ jobs:
           run bin/zpkg formula view curl
 
 
-          run bin/zpkg ls available
-          run bin/zpkg ls installed
-          run bin/zpkg ls outdated
+          run bin/zpkg ls-available
+          run bin/zpkg ls-installed
+          run bin/zpkg ls-outdated
 
-          run bin/zpkg is available zlib
-          run bin/zpkg is installed zlib
-          run bin/zpkg is outdated zlib || true
+          run bin/zpkg is-available zlib
+          run bin/zpkg is-installed zlib
+          run bin/zpkg is-outdated zlib || true
 
           run bin/zpkg uninstall zlib
 
