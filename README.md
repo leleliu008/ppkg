@@ -80,6 +80,8 @@ autoload -U compinit && compinit
         zpkg info curl installed-datetime-unix
         zpkg info curl installed-datetime-formatted
         zpkg info curl installed-pkg-version
+        zpkg info curl --json
+        zpkg info curl --json | jq .
         zpkg info @all
         zpkg info @all --json
         zpkg info @all --json | jq .
@@ -123,15 +125,15 @@ autoload -U compinit && compinit
 
 *   list the avaliable formula repos
 
-        zpkg formula repo list
+        zpkg formula-repo list
 
 *   add a new formula repo
 
-        zpkg formula repo add my_repo https://github.com/leleliu008/zpkg-formula-repository.git
+        zpkg formula-repo add my_repo https://github.com/leleliu008/zpkg-formula-repository.git
 
 *   delete a existing formula repo
 
-        zpkg formula repo del my_repo
+        zpkg formula-repo del my_repo
 
 *   view the formula of the given package
         
@@ -155,33 +157,33 @@ autoload -U compinit && compinit
         
 *   list the available packages
         
-        zpkg ls available
+        zpkg ls-available
         
 *   list the installed packages
         
-        zpkg ls installed
+        zpkg ls-installed
         
 *   list the outdated packages
         
-        zpkg ls outdated
+        zpkg ls-outdated
         
 *   is the given package available ?
         
-        zpkg is available curl
-        zpkg is available curl ge 7.50.0
-        zpkg is available curl gt 7.50.0
-        zpkg is available curl le 7.50.0
-        zpkg is available curl lt 7.50.0
-        zpkg is available curl eq 7.50.0
-        zpkg is available curl ne 7.50.0
+        zpkg is-available curl
+        zpkg is-available curl ge 7.50.0
+        zpkg is-available curl gt 7.50.0
+        zpkg is-available curl le 7.50.0
+        zpkg is-available curl lt 7.50.0
+        zpkg is-available curl eq 7.50.0
+        zpkg is-available curl ne 7.50.0
         
 *   is the given package installed ?
         
-        zpkg is installed curl
+        zpkg is-installed curl
         
 *   is the given package outdated ?
         
-        zpkg is outdated curl
+        zpkg is-outdated curl
         
 *   list files of the given installed package in a tree-like format.
         
