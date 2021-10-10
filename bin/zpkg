@@ -4617,7 +4617,8 @@ cmakew() {
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_TESTING=OFF
         -DBUILD_SHARED_LIBS=OFF
-        -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR'"
+        -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR'
+        -DCMAKE_MAKE_PROGRAM='$(command -v gmake || command -v make)'"
 
     # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
     if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
