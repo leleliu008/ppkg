@@ -49,7 +49,7 @@ jobs:
           run bin/zpkg tree zlib
           run bin/zpkg pack zlib
 
-          run bin/zpkg formula repo list
+          run bin/zpkg formula-repo list
           run bin/zpkg formula view curl
 
 

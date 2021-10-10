@@ -49,7 +49,7 @@ jobs:
       - run: bin/zpkg tree zlib
       - run: bin/zpkg pack zlib
 
-      - run: bin/zpkg formula repo list
+      - run: bin/zpkg formula-repo list
       - run: bin/zpkg formula view curl
 
 
@@ -111,7 +111,7 @@ jobs:
       - run: zpkg tree zlib
       - run: zpkg pack zlib
 
-      - run: zpkg formula repo list
+      - run: zpkg formula-repo list
       - run: zpkg formula view curl
 
 
@@ -172,7 +172,7 @@ jobs:
       - run: zpkg tree zlib
       - run: zpkg pack zlib
 
-      - run: zpkg formula repo list
+      - run: zpkg formula-repo list
       - run: zpkg formula view curl
 
 
