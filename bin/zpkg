@@ -4608,20 +4608,27 @@ makew() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmakew() {
-    run "$CMAKE" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_COLOR_MAKEFILE=ON \
-        -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DBUILD_TESTING=OFF \
-        -G "'Unix Makefiles'" \
-        -Wno-dev \
-        -S "$SOURCE_DIR" \
-        -B "$BUILD_DIR" $@ &&
-        makew -C "$BUILD_DIR" &&
-        makew -C "$BUILD_DIR" install
+    CMAKE_FLAGS="
+        -Wno-dev
+        -G 'Unix Makefiles'
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_VERBOSE_MAKEFILE=ON
+        -DCMAKE_COLOR_MAKEFILE=ON
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_TESTING=OFF
+        -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR'"
+
+    # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
+    if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
+        CMAKE_FLAGS="$CMAKE_FLAGS -S $SOURCE_DIR -B $BUILD_DIR"
+    else
+        CMAKE_FLAGS="$CMAKE_FLAGS -H$SOURCE_DIR -B$BUILD_DIR"
+    fi
+
+    run $CMAKE $CMAKE_FLAGS $@ &&
+    makew -C "$BUILD_DIR" &&
+    makew -C "$BUILD_DIR" install
 }
 
 # https://mesonbuild.com/Cross-compilation.html
