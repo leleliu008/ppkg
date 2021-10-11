@@ -1396,6 +1396,7 @@ get_package_name_by_command_name_in_package_manager_choco() {
               echo 'gcc-g++';;
        gmake) echo 'make'   ;;
          gm4) echo 'm4'     ;;
+        gtar) echo 'tar'    ;;
         gsed) echo 'gnu-sed';;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1508,6 +1509,7 @@ get_package_name_by_command_name_in_package_manager_emerge() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1538,6 +1540,7 @@ __get_package_name_by_command_name_in_package_manager_pacman() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1593,6 +1596,7 @@ get_package_name_by_command_name_in_package_manager_xbps() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1620,6 +1624,7 @@ get_package_name_by_command_name_in_package_manager_apk() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1649,6 +1654,7 @@ get_package_name_by_command_name_in_package_manager_zypper() {
          c++) echo 'gcc-g++';;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1679,6 +1685,7 @@ get_package_name_by_command_name_in_package_manager_dnf() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1707,6 +1714,7 @@ get_package_name_by_command_name_in_package_manager_yum() {
          c++) echo 'gcc-g++';;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1736,6 +1744,7 @@ get_package_name_by_command_name_in_package_manager_apt() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'tar'   ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1772,6 +1781,7 @@ get_package_name_by_command_name_in_package_manager_brew() {
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
+        gtar) echo 'gnu-tar' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -2061,7 +2071,7 @@ __install_command_via_fetch_prebuild_binary() {
         .zip)
             run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
         .tar.xz|.tar.gz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz)
-            run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
+            run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
     esac
 
     if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
@@ -3895,15 +3905,6 @@ __install_the_given_package() {
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    if [ -z "$PACKAGE_SOURCED" ] ; then
-        SOURCE_DIR="$WORKING_DIR"
-    else
-        SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCED"
-    fi
-
-    BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
-    mkdir "$BUILD_DIR" || return 1
-
     step "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
@@ -3917,19 +3918,39 @@ __install_the_given_package() {
             run unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
             ;;
         *.tar.gz|*.tgz)
-            run tar zxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            run tar zxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" || return 1
             ;;
         *.tar.xz|*.txz)
-            run tar Jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            run tar Jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" || return 1
             ;;
         *.tar.bz2)
-            run tar jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            run tar jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" || return 1
             ;;
         *.tar.lz|*.tlz)
-            run tar xf "$PACKAGE_SRC_PATH" --lzip -C "$WORKING_DIR" --strip-components 1 || return 1
+            run tar xf "$PACKAGE_SRC_PATH" --lzip -C "$WORKING_DIR" || return 1
             ;;
         *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
+
+    unset I
+    for f in $(ls "$WORKING_DIR")
+    do
+        I=$(expr ${I-0} + 1)
+    done
+
+    if [ ${I-0} -eq 1 ] && [ -d "$WORKING_DIR/$f" ] ; then
+        if [ -z "$PACKAGE_SOURCED" ] ; then
+            SOURCE_DIR="$WORKING_DIR/$f"
+        else
+            SOURCE_DIR="$WORKING_DIR/$f/$PACKAGE_SOURCED"
+        fi
+    else
+        if [ -z "$PACKAGE_SOURCED" ] ; then
+            SOURCE_DIR="$WORKING_DIR"
+        else
+            SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCED"
+        fi
+    fi
 
     step "change to source directory"
     run cd "$SOURCE_DIR" || return 1
@@ -3973,6 +3994,8 @@ __install_the_given_package() {
             run cd "$SOURCE_DIR" || return 1
         fi
     else
+        BUILD_DIR="$SOURCE_DIR/$TIMESTAMP_UNIX"
+        run mkdir "$BUILD_DIR" || return 1
         run cd "$BUILD_DIR" || return 1
     fi
 
