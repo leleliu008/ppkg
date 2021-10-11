@@ -214,7 +214,11 @@ nproc() {
     elif test -f /proc/cpuinfo ; then
         grep -c processor /proc/cpuinfo
     elif command -v sysctl > /dev/null ; then
-        sysctl -n machdep.cpu.thread_count
+        if [ "$(uname)" = FreeBSD ] ; then
+            sysctl -n hw.ncpu
+        else
+            sysctl -n machdep.cpu.thread_count
+        fi
     else
         echo 4
     fi
