@@ -3633,9 +3633,9 @@ __pack_the_given_installed_package() {
 
     unset PACKED_DIR_NAME
     if [ -z "$NATIVE_OS_LIBC" ] ; then
-        PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
+        PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     else
-        PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-$NATIVE_OS_LIBC-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
+        PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-$NATIVE_OS_LIBC-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     fi
 
     unset PACKED_FILE_NAME
@@ -3915,8 +3915,17 @@ __install_the_given_package() {
         *.zip)
             run unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
             ;;
-        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
-            run tar xf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+        *.tar.gz|*.tgz)
+            run tar zxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            ;;
+        *.tar.xz|*.txz)
+            run tar Jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            ;;
+        *.tar.bz2)
+            run tar jxf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            ;;
+        *.tar.lz|*.tlz)
+            run tar xf "$PACKAGE_SRC_PATH" --lzip -C "$WORKING_DIR" --strip-components 1 || return 1
             ;;
         *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
