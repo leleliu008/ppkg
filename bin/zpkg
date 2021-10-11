@@ -4638,9 +4638,9 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$GMAKE -w -j$NJOBS --debug $*"
+        run "$GMAKE -j$NJOBS --debug $*"
     else
-        run "$GMAKE -w -j$NJOBS $*"
+        run "$GMAKE -j$NJOBS $*"
     fi
 }
 
