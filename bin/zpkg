@@ -208,17 +208,17 @@ tolower() {
     fi
 }
 
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
 nproc() {
     if command nproc --version > /dev/null 2>&1 ; then
         command nproc
     elif test -f /proc/cpuinfo ; then
         grep -c processor /proc/cpuinfo
     elif command -v sysctl > /dev/null ; then
-        if [ "$(uname)" = FreeBSD ] ; then
-            sysctl -n hw.ncpu
-        else
-            sysctl -n machdep.cpu.thread_count
-        fi
+        case "$(uname)" in
+            *BSD) sysctl -n hw.ncpu ;;
+            *) sysctl -n machdep.cpu.thread_count
+        esac
     else
         echo 4
     fi
