@@ -564,6 +564,9 @@ fetch() {
 
             case $FETCH_TOOL in
                 curl)
+                    case $FETCH_URL in
+                        https://*) install_ca_certificates_on_netbsd
+                    esac
                     if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
                         run "curl --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     else
@@ -620,14 +623,12 @@ fetch() {
 install_ca_certificates_on_netbsd() {
     # https://www.cambus.net/installing-ca-certificates-on-netbsd/
     if [ "$(uname)" = NetBSD ] ; then
-        if command -v pkgin > /dev/null ; then
-            if [ "$(whoami)" = root ] ; then
-                run      pkgin -y install mozilla-rootcerts || return 1
-            else
-                run sudo pkgin -y install mozilla-rootcerts || return 1
+        command -v mozilla-rootcerts > /dev/null || {
+            if command -v pkgin > /dev/null ; then
+                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts || return 1
             fi
-            run mozilla-rootcerts install
-        fi
+        }
+        run mozilla-rootcerts install || true
     fi
 }
 
