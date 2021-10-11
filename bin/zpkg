@@ -3871,7 +3871,7 @@ __install_the_given_package() {
             GMAKE=$(command -v gmake || command -v make)
             ;;
         *bsd)
-            GMAKE=$(command -v gmake)
+            GMAKE=$(command -v gmake || command -v make)
             ;;
         *)  GMAKE=$(command -v make)
     esac
