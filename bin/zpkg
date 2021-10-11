@@ -4814,7 +4814,7 @@ init() {
     fi
 
     MY_NAME=zpkg
-    MY_VERSION=0.1.1
+    MY_VERSION=0.1.2
     MY_HOME_PAGE="https://github.com/leleliu008/zpkg"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/zpkg-formula-repository.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/zpkg/master/bin/zpkg'
