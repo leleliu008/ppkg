@@ -60,7 +60,7 @@ jobs:
       - run: bin/zpkg prefix base64
 
       - run: bin/zpkg tree base64
-      - run: bin/zpkg pack base64
+      - run: bin/zpkg pack base64 --type=tar.bz2
 
       - run: bin/zpkg formula-repo list
       - run: bin/zpkg formula view curl
