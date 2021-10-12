@@ -3363,15 +3363,7 @@ __list__outdated_packages() {
 __tree_the_given_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required exe tree
-
-    # OpenBSD tree error log:
-    # tree: unknown option -- -
-    # usage: tree [-adfFilsrtx] [-L depth] [path ...]
-    if [ "$(uname)" = OpenBSD ] ; then
-        run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
-    else
-        run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
-    fi
+    run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
 }
 
 __uninstall_the_given_packages() {
@@ -4052,11 +4044,21 @@ __install_the_given_package() {
         run rm -rf "$WORKING_DIR"
     fi
 
-    step "list installed content."
-    __tree_the_given_installed_package "$1"
-
     echo
     success "$1 have been installed successfully."
+    echo
+
+    if [ "$NEED_RUN_TREE" = true ] ; then
+        __tree_the_given_installed_package "$1" $TREE_ARGS
+    fi
+
+    if [ "$NEED_RUN_PACK" = true ] ; then
+        if [ -z "$PACK_TYPE" ] ; then
+            __pack_the_given_installed_package "$1"
+        else
+            __pack_the_given_installed_package "$1" --type=$PACK_TYPE
+        fi
+    fi
 }
 
 __config_build_variables() {
@@ -4795,6 +4797,12 @@ inspect_install_arguments() {
 
     unset KEEP_WORKING_DIR
 
+    unset NEED_RUN_TREE
+    unset NEED_RUN_PACK
+
+    unset TREE_ARGS
+    unset PACK_TYPE
+
     while [ -n "$1" ]
     do
         case "$1" in
@@ -4808,6 +4816,23 @@ inspect_install_arguments() {
                 ;;
             --keep-working-dir)
                 KEEP_WORKING_DIR=true
+                ;;
+            --tree)
+                NEED_RUN_TREE=true
+                ;;
+            --tree-args=*)
+                TREE_ARGS=$(getvalue "$1")
+                ;;
+            --pack)
+                NEED_RUN_PACK=true
+                ;;
+            --pack-type=*)
+                PACK_TYPE=$(getvalue "$1")
+                case $PACK_TYPE in
+                    7z|zip|tar.gz|tar.xz|tar.bz2) ;;
+                    '') die "--pack-type=VALUE VALUE must not be empty." ;;
+                    *) die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
+                esac
                 ;;
             --jobs=*)
                 NJOBS=$(getvalue "$1")
@@ -4832,6 +4857,15 @@ inspect_install_arguments() {
     NPROC=$(nproc)
     if [ -z "$NJOBS" ] ; then
         NJOBS=$NPROC
+    fi
+
+    if [ -z "$TREE_ARGS" ] ; then
+        # OpenBSD tree error log:
+        # tree: unknown option -- -
+        # usage: tree [-adfFilsrtx] [-L depth] [path ...]
+        if [ "$(uname)" != OpenBSD ] ; then
+            TREE_ARGS='--dirsfirst'
+        fi
     fi
 }
 
