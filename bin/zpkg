@@ -3363,7 +3363,15 @@ __list__outdated_packages() {
 __tree_the_given_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required exe tree
-    run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
+
+    # OpenBSD tree error log:
+    # tree: unknown option -- -
+    # usage: tree [-adfFilsrtx] [-L depth] [path ...]
+    if [ "$(uname)" = OpenBSD ] ; then
+        run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
+    else
+        run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
+    fi
 }
 
 __uninstall_the_given_packages() {
