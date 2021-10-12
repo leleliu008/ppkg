@@ -59,7 +59,7 @@ jobs:
 
       - run: bin/zpkg is-available zlib
       - run: bin/zpkg is-installed zlib
-      - run: bin/zpkg is-outdated zlib || true
+      - run: bin/zpkg is-outdated zlib || echo "not outdated"
 
       - run: bin/zpkg uninstall zlib
 
@@ -121,7 +121,7 @@ jobs:
 
       - run: zpkg is-available zlib
       - run: zpkg is-installed zlib
-      - run: zpkg is-outdated zlib || true
+      - run: zpkg is-outdated zlib || echo "not outdated"
 
       - run: zpkg uninstall zlib
 
@@ -182,7 +182,7 @@ jobs:
 
       - run: zpkg is-available zlib
       - run: zpkg is-installed zlib
-      - run: zpkg is-outdated zlib || true
+      - run: zpkg is-outdated zlib || echo "not outdated"
 
       - run: zpkg uninstall zlib
 
