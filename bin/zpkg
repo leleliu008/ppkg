@@ -3838,11 +3838,11 @@ __install_the_given_package() {
     echo "NATIVE_OS_ARCH  = $NATIVE_OS_ARCH"
     echo "NATIVE_OS_LIBC  = $NATIVE_OS_LIBC"
     echo "NATIVE_OS_SUBS  = $NATIVE_OS_SUBS"
-    
+
     if [ -z "$NATIVE_OS_SUBS" ] ; then
         [ "$(whoami)" = root ] || sudo=sudo
     fi
-    
+
     step "show current machine os effective user info"
     id | tr ' ' '\n' | head -n 2
 
@@ -4599,6 +4599,8 @@ __load_installed_metadata_of_the_given_package() {
 
 # run in a subshell
 configure() {
+    export FORCE_UNSAFE_CONFIGURE=1
+
     if run "$SOURCE_DIR"/configure \
         --prefix="$PACKAGE_INSTALL_DIR" \
         --disable-option-checking \
