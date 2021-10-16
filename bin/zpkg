@@ -1131,7 +1131,7 @@ EOF
 
 version_of_python_module() {
     unset PIP_COMMAND
-    PIP_COMMAND=$(command -v pip3 || command -v pip)
+    PIP_COMMAND=$(command -v pip3 || command -v pip || true)
     if [ -z "$PIP_COMMAND" ] ; then
         die "can't found pip command."
     else
@@ -2185,7 +2185,7 @@ __install_command_via_pip() {
 
     (
         unset __PIP_COMMAND__
-        __PIP_COMMAND__="$(command -v pip3.8)"
+        __PIP_COMMAND__="$(command -v pip3.8 || true)"
 
         if [ -n "$__PIP_COMMAND__" ] && [ -d '/usr/local/bin' ] ; then
             $sudo ln -sf "$__PIP_COMMAND__" /usr/local/bin/pip3
@@ -2318,15 +2318,15 @@ printf_dependency() {
                 *:*)
                     if [ "$1" = 'required' ] ; then
                         REQUIRED_ITEM="$(map_get MAP_REQUIRED_DEPENDENCIES "$3")"
-                        __printf_dependency "$2" "$REQUIRED_ITEM" "$4" "$5" "$(version_of_command $REQUIRED_ITEM)" "$(command -v $REQUIRED_ITEM)"
+                        __printf_dependency "$2" "$REQUIRED_ITEM" "$4" "$5" "$(version_of_command $REQUIRED_ITEM)" "$(command -v $REQUIRED_ITEM || true)"
                     else
                         for item in $(echo "$3" | tr ':' ' ')
                         do
-                            __printf_dependency "$2" "$item" "$4" "$5" "$(version_of_command $item)" "$(command -v $item)"
+                            __printf_dependency "$2" "$item" "$4" "$5" "$(version_of_command $item)" "$(command -v $item || true)"
                         done
                     fi
                     ;;
-                *)  __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_command $3)" "$(command -v $3)"
+                *)  __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_command $3)" "$(command -v $3 || true)"
             esac
             ;;
         py)
@@ -3877,19 +3877,19 @@ __install_the_given_package() {
     unset GMAKE
     unset NINJA
 
-    PKG_CONFIG=$(command -v pkg-config)
-    MESON=$(command -v meson)
-    CMAKE=$(command -v cmake)
-    NINJA=$(command -v ninja)
+    PKG_CONFIG=$(command -v pkg-config || true)
+    MESON=$(command -v meson || true)
+    CMAKE=$(command -v cmake || true)
+    NINJA=$(command -v ninja || true)
 
     case $(uname | tr A-Z a-z) in
         darwin|linux)
-            GMAKE=$(command -v gmake || command -v make)
+            GMAKE=$(command -v gmake || command -v make || true)
             ;;
         *bsd)
-            GMAKE=$(command -v gmake || command -v make)
+            GMAKE=$(command -v gmake || command -v make || true)
             ;;
-        *)  GMAKE=$(command -v make)
+        *)  GMAKE=$(command -v make || true)
     esac
 
     step "calculate dependencies"
