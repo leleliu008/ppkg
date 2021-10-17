@@ -4948,8 +4948,9 @@ init() {
 }
 
 help() {
+    echo "${COLOR_GREEN}$_0 $MY_VERSION is a lightweight, portable package manager for UNIX.${COLOR_OFF}"
+
     cat << EOF
-$_0 is a lightweight, portable package manager for UNIX.
 
 Usage: $_0 <ACTION> [ARGUMENT...]
 
@@ -5057,9 +5058,10 @@ main() {
             echo "$MY_VERSION"
             ;;
         env)
-            echo "zpkg ($MY_VERSION)  is a lightweight, portable package manager for UNIX."
+            echo "${COLOR_GREEN}zpkg $MY_VERSION is a lightweight, portable package manager for UNIX.${COLOR_OFF}"
             echo
-            os
+            run os
+            run nproc
             ;;
 
         ls-available) shift; __list_available_packages ;;
