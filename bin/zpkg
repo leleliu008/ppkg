@@ -210,18 +210,22 @@ tolower() {
 
 # https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
 nproc() {
-    if command nproc --version > /dev/null 2>&1 ; then
-        command nproc
-    elif test -f /proc/cpuinfo ; then
-        grep -c processor /proc/cpuinfo
-    elif command -v sysctl > /dev/null ; then
-        case "$(uname)" in
-            *BSD) sysctl -n hw.ncpu ;;
-            *) sysctl -n machdep.cpu.thread_count
-        esac
-    else
-        echo 4
-    fi
+    case "$(uname)" in
+        *BSD)
+            sysctl -n hw.ncpu
+            ;;
+        Darwin)
+            sysctl -n machdep.cpu.thread_count
+            ;;
+        Linux)
+            if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                grep -c processor /proc/cpuinfo
+            else
+                echo 4
+            fi
+    esac
 }
 
 own() {
