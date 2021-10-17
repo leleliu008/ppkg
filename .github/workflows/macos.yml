@@ -23,7 +23,7 @@ jobs:
       - run: bin/zpkg --version
 
       - run: bin/zpkg env
-      - run: bin/zpkg nproc
+      - run: bin/zpkg nproc -x
 
       - run: bin/zpkg integrate zsh
 
