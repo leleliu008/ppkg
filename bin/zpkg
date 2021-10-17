@@ -2540,7 +2540,7 @@ regist_dependency() {
 # package set|add dep.cmd "nasm"
 # package set|add dep.pkg "libxx"
 # package set|add bsystem "cmake"
-# package set     binsrcd 'true'
+# package set     binsrcd 'YES|NO'
 # package set     sourced 'src'
 # package set     sdk.api '23'
 #
@@ -2813,13 +2813,13 @@ __load_formula_of_the_given_package() {
         __parse_package_patches $PACKAGE_PATCHES
     fi
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = 'false' ] ; then
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = NO ] ; then
         NJOBS=1
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
-        PACKAGE_BINSRCD='true'
-        PACKAGE_BUILD_IN_SOURCE_DIR='true'
+        PACKAGE_BINSRCD=YES
+        PACKAGE_BUILD_IN_SOURCE_DIR=YES
     fi
 
     package add dep.cmd 'tree'
@@ -3059,10 +3059,10 @@ __del_a_formula_repo() {
     for repoName in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ "$repoName" = "$1" ] ; then
-            REPO_EXISTS=true
+            REPO_EXISTS=YES
         fi
     done
-    if [ "$REPO_EXISTS" = 'true' ] ; then
+    if [ "$REPO_EXISTS" = YES ] ; then
         sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
     else
         die "$1 formula repo not exists."
@@ -3278,13 +3278,13 @@ __gen_github_workflows() {
                 for z in $(get_direct_dependency_package_list_of_the_given_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
-                        BREAK=true
+                        BREAK=YES
                         break 2
                     fi
                 done
             fi
         done
-        if [ "$BREAK" = 'true' ] ; then
+        if [ "$BREAK" = YES ] ; then
             unset BREAK
         else
             if [ -z "$NDEPENDED_PACKAGES" ] ; then
@@ -3697,9 +3697,9 @@ get_direct_dependency_package_list_of_the_given_package() {
 }
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
-# $2=true invoked by myself
+# $2=YES invoked by myself
 __gen_dependency_list_of_the_given_package() {
-    if [ "$2" != 'true' ] ; then
+    if [ "$2" != YES ] ; then
         unset I
         unset DEPENDENCY_PACKAGE_LIST
     fi
@@ -3728,7 +3728,7 @@ __gen_dependency_list_of_the_given_package() {
 
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list_of_the_given_package "$dependencyPkgName" true
+        __gen_dependency_list_of_the_given_package "$dependencyPkgName" YES
     done
 }
 
@@ -3984,7 +3984,7 @@ __install_the_given_package() {
         esac
     fi
 
-    if [ "$DRYRUN" = 'true' ] ; then
+    if [ "$DRYRUN" = YES ] ; then
         if [ -z "$SHELL" ] ; then
             SHELL=$(command -v zsh || command -v bash || command -v sh)
         fi
@@ -3995,7 +3995,7 @@ __install_the_given_package() {
         run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
     fi
 
-    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
         fi
@@ -4040,7 +4040,7 @@ __install_the_given_package() {
 
 
     step "clean working directory."
-    if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
+    if [ "$KEEP_WORKING_DIR" = YES ] ; then
         warn "keep  working directory."
     else
         run rm -rf "$WORKING_DIR"
@@ -4050,11 +4050,11 @@ __install_the_given_package() {
     success "$1 have been installed successfully."
     echo
 
-    if [ "$NEED_RUN_TREE" = true ] ; then
+    if [ "$NEED_RUN_TREE" = YES ] ; then
         __tree_the_given_installed_package "$1" $TREE_ARGS
     fi
 
-    if [ "$NEED_RUN_PACK" = true ] ; then
+    if [ "$NEED_RUN_PACK" = YES ] ; then
         if [ -z "$PACK_TYPE" ] ; then
             __pack_the_given_installed_package "$1"
         else
@@ -4130,9 +4130,11 @@ __config_build_variables() {
         LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
     fi
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
+
+    LD_LIBRARY_DIR="$LD_LIBRARY_DIR_OLD"
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -4163,9 +4165,20 @@ __config_build_variables() {
         else
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PKG_PKGCONF_DIR"
         fi
+
+        if [ -d "$PKG_LIBRARY_DIR" ] ; then
+            LD_LIBRARY_DIR="$PKG_LIBRARY_DIR:$LD_LIBRARY_DIR"
+        fi
+
+        if [ -d "$PKG_BINARY__DIR" ] ; then
+            PATH="$PKG_BINARY__DIR:$PATH"
+        fi
     done
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    export LD_LIBRARY_DIR
+    export PATH
+
+    if [ "$VERBOSE" = YES ] ; then
         CFLAGS="$CFLAGS -v"
     fi
 
@@ -4232,11 +4245,11 @@ __printf_build_variables() {
     do
         eval export "$FLAG=\"\$$FLAG\""
         printf "\n%17s = " "$FLAG"
-        FIRST=true
+        FIRST=YES
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
-            if [ "$FIRST" = 'true' ] ; then
-                FIRST=false
+            if [ "$FIRST" = YES ] ; then
+                FIRST=NO
                 echo "$item"
             else
                 echo "                    $item"
@@ -4293,6 +4306,7 @@ __printf_build_variables() {
     echo "PACKAGE_INCLUDE_DIR = $PACKAGE_INCLUDE_DIR"
     echo "PACKAGE_LIBRARY_DIR = $PACKAGE_LIBRARY_DIR"
     echo "PACKAGE_PKGCONF_DIR = $PACKAGE_PKGCONF_DIR"
+    echo "LD_LIBRARY_DIR      = $LD_LIBRARY_DIR"
     echo
     echo "              NPROC = $NPROC"
     echo "              NJOBS = $NJOBS"
@@ -4303,7 +4317,7 @@ __printf_build_variables() {
         echo "$item" | tr '|' ' '
     done
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         step "show export variables"
         run export -p
         echo
@@ -4635,7 +4649,7 @@ configure() {
         return 1
     fi
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         for Makefile in $(find "$SOURCE_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -4651,7 +4665,7 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$DEBUG" = 'true' ] ; then
+    if [ "$DEBUG" = YES ] ; then
         run "$GMAKE -j$NJOBS --debug $*"
     else
         run "$GMAKE -j$NJOBS $*"
@@ -4811,24 +4825,24 @@ inspect_install_arguments() {
     do
         case "$1" in
             --verbose|-v)
-                VERBOSE=true
+                VERBOSE=YES
                 ;;
             --xtrace|-x)
                 ;;
             --dry-run)
-                DRYRUN=true
+                DRYRUN=YES
                 ;;
             --keep-working-dir)
-                KEEP_WORKING_DIR=true
+                KEEP_WORKING_DIR=YES
                 ;;
             --tree)
-                NEED_RUN_TREE=true
+                NEED_RUN_TREE=YES
                 ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
                 ;;
             --pack)
-                NEED_RUN_PACK=true
+                NEED_RUN_PACK=YES
                 ;;
             --pack-type=*)
                 PACK_TYPE=$(getvalue "$1")
@@ -4857,6 +4871,8 @@ inspect_install_arguments() {
         esac
         shift
     done
+
+    LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
 
     NPROC=$(nproc)
     if [ -z "$NJOBS" ] ; then
@@ -5025,7 +5041,7 @@ main() {
     do
         case $arg in
             --xtrace|-x)
-                XTRACE=true
+                XTRACE=YES
                 set -x
                 break
                 ;;
