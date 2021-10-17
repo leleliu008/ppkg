@@ -5137,6 +5137,10 @@ main() {
             esac
             ;;
 
+        nproc)
+            shift
+            nproc
+            ;;
         ldd)shift; __ldd $@ ;;
 
         gen-github-workflows)

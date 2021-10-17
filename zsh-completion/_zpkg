@@ -30,6 +30,7 @@ _commands=(
     'prefix:show the installation direcotory of the given package or the home dir of this project.'
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
+    'nproc:print the number of processing units available'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
 )
