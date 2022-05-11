@@ -1,0 +1,5280 @@
+#!/bin/sh
+
+
+# https://github.com/leleliu008/ppkg
+
+
+_0=$0
+
+unset CURRENT_SCRIPT_DIR
+unset CURRENT_SCRIPT_FILENAME
+unset CURRENT_SCRIPT_FILEPATH
+
+CURRENT_SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd) || exit 1
+CURRENT_SCRIPT_FILENAME=$(basename "$0")
+CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
+
+
+COLOR_RED='\033[0;31m'          # Red
+COLOR_GREEN='\033[0;32m'        # Green
+COLOR_YELLOW='\033[0;33m'       # Yellow
+COLOR_BLUE='\033[0;94m'         # Blue
+COLOR_PURPLE='\033[0;35m'       # Purple
+COLOR_OFF='\033[0m'             # Reset
+
+print() {
+    printf '%b' "$*"
+}
+
+echo() {
+    printf '%b\n' "$*"
+}
+
+note() {
+    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
+}
+
+warn() {
+    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+}
+
+success() {
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
+}
+
+error() {
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+}
+
+die() {
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    exit 1
+}
+
+bppend_to_PATH() {
+    case ":${PATH}:" in
+        *:"$1":*) ;;
+        *) export PATH="$1:$PATH" ;;
+    esac
+}
+
+# check if file exists
+# $1 FILEPATH
+file_exists() {
+    [ -n "$1" ] && [ -e "$1" ]
+}
+
+# check if command exists in filesystem
+# $1 command name or path
+command_exists_in_filesystem() {
+    case $1 in
+        '') return 1 ;;
+        */*)
+            case $(uname | tr A-Z a-z) in
+                cygwin*)
+                    case $1 in
+                        /cygdrive/*/choco) executable "$1" ;;
+                        /cygdrive/*) return 1 ;;
+                        *) executable "$1" ;;
+                    esac
+                    ;;
+                *) executable "$1" ;;
+            esac
+            ;;
+        *)  command_exists_in_filesystem $(command -v "$1" || true)
+    esac
+}
+
+executable() {
+    file_exists "$1" && [ -x "$1" ]
+}
+
+step() {
+    STEP_NUM=$(expr ${STEP_NUM-0} + 1)
+    STEP_MESSAGE="$@"
+    printf '%s\n'
+    printf '%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+}
+
+step2() {
+    STEP2_NUM=$(expr ${STEP2_NUM-0} + 1)
+    STEP2_MESSAGE="$@"
+    printf '%s\n'
+    printf '%b\n' "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
+}
+
+run() {
+    if [ "$RUN_SILENT" != yes ] ; then
+        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    fi
+
+    eval "$*"
+}
+
+list() {
+    for item in $@
+    do
+        printf '%s\n' "$item"
+    done
+}
+
+list_length() {
+    printf '%s\n' $#
+}
+
+shiftn() {
+    shift "$1" && shift && printf '%s\n' "$@"
+}
+
+globing() {
+    case $1 in
+        '')   ;;
+        \~/*) printf '%s\n' "$HOME/$(printf '%s\n' "$1" | cut -c3-)" ;;
+        *)    printf '%s\n' "$1"
+    esac
+}
+
+sed_in_place() {
+    if command -v gsed > /dev/null ; then
+        unset SED_IN_PLACE_ACTION
+        SED_IN_PLACE_ACTION="$1"
+        shift
+        # contains ' but not contains \'
+        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+            run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
+        else
+            run gsed -i "'$SED_IN_PLACE_ACTION'" $@
+        fi
+    elif command -v sed  > /dev/null ; then
+        if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
+            shift
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i "'$SED_IN_PLACE_ACTION'" $@
+            fi
+        else
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
+            shift
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
+            fi
+        fi
+    else
+        error "please install sed utility."
+        return 1
+    fi
+}
+
+getvalue() {
+    if [ $# -eq 0 ] ; then
+        cut -d= -f2
+    else
+        printf '%s\n' "$1" | cut -d= -f2
+    fi
+}
+
+trim() {
+    if [ $# -eq 0 ] ; then
+        sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+    else
+        if [ -n "$*" ] ; then
+            printf '%s\n' "$*" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+        fi
+    fi
+}
+
+tolower() {
+    if [ $# -eq 0 ] ; then
+        if command -v tr > /dev/null ; then
+            tr A-Z a-z
+        elif command -v  awk > /dev/null ; then
+            awk '{print(tolower($0))}'
+        elif command -v gawk > /dev/null ; then
+            gawk '{print(tolower($0))}'
+        else
+            error "please install GNU CoreUtils or awk."
+            return 1
+        fi
+    else
+        if [ -z "$*" ] ; then
+            return 0
+        fi
+        if command -v tr > /dev/null ; then
+            printf '%s\n' "$*" | tr A-Z a-z
+        elif command -v  awk > /dev/null ; then
+            printf '%s\n' "$*" | awk '{print(tolower($0))}'
+        elif command -v gawk > /dev/null ; then
+            printf '%s\n' "$*" | gawk '{print(tolower($0))}'
+        elif command -v python > /dev/null ; then
+            python  -c 'import sys; print(sys.argv[1].lower());' "$*"
+        elif command -v python3 > /dev/null ; then
+            python3 -c 'import sys; print(sys.argv[1].lower());' "$*"
+        elif command -v python2 > /dev/null ; then
+            python2 -c 'import sys; print(sys.argv[1].lower());' "$*"
+        elif command -v perl > /dev/null ; then
+            perl -e 'print @ARGV[0],"\n"' "$1"
+        elif command -v node > /dev/null ; then
+            node -e 'console.log(process.argv[2].toLowerCase())' - "$*"
+        else
+            error "please install GNU CoreUtils or awk."
+            return 1
+        fi
+    fi
+}
+
+own() {
+    if command -v awk > /dev/null ; then
+        ls -ld "$1" | awk '{print $3":"$4}'
+    else
+        ls -ld "$1" | cut -d ' ' -f4,6 | tr ' ' ':'
+    fi
+}
+
+is_integer () {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
+is_elf_file() {
+    [ -z "$1" ] && {
+        error "is_elf_file <FILE-PATH>, <FILE-PATH> is not given."
+        return 1
+    }
+
+    if command -v hexdump > /dev/null ; then
+        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    else
+        error "hexdump command is needed, please install it."
+        return 1
+    fi
+}
+
+# format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
+  format_unix_timestamp() {
+   date $3 -jf "%s" "$1" "$2" 2> /dev/null ||
+   date $3 -d      "@$1" "$2"
+}
+
+# https://equa.space/sh/lolcat/
+lolcat_awk() {
+    awk -v angle=45 -v angle_phase=40 -v reverse=0 -v offset=195 -v offset_phase=0 -v width=100 -v width_phase=8 "$@" '
+    function put_rgb(color) {
+        printf "\033[%s38;2;%d;%d;%dm", reverse ? "7;" : "", int(color[1] * 255), int(color[2] * 255), int(color[3] * 255);
+    }
+
+    function hsv_to_rgb(hsv, rgb, c, h2, x) {
+        c = hsv[2] * hsv[3];
+        h2 = hsv[1] * 6;
+        x = c * (1 - ((h2 % 2) - 1 > 0 ? (h2 % 2) - 1 : 1 - (h2 % 2)));
+        if (int(h2) % 6 == 0) {
+            rgb[1] = c; rgb[2] = x; rgb[3] = 0;
+        } else if (int(h2) % 6 == 1) {
+            rgb[1] = x; rgb[2] = c; rgb[3] = 0;
+        } else if (int(h2) % 6 == 2) {
+            rgb[1] = 0; rgb[2] = c; rgb[3] = x;
+        } else if (int(h2) % 6 == 3) {
+            rgb[1] = 0; rgb[2] = x; rgb[3] = c;
+        } else if (int(h2) % 6 == 4) {
+            rgb[1] = x; rgb[2] = 0; rgb[3] = c;
+        } else if (int(h2) % 6 == 5) {
+            rgb[1] = c; rgb[2] = 0; rgb[3] = x;
+        }
+
+        rgb[1] += hsv[2] - c;
+        rgb[2] += hsv[2] - c;
+        rgb[3] += hsv[2] - c;
+    }
+
+    BEGIN {
+        srand();
+        if (offset == "") offset = rand() * 360;
+    }
+
+    {
+        y = NR - 1;
+        for (x = 0; x < length($0); x++) {
+            for (i = 0; i < 3; i++) {
+                mult_x = cos((angle + i * angle_phase) / 57.2976);
+                mult_y = sin((angle + i * angle_phase) / 57.2976);
+                hsv[1] = (((x * mult_x + y * mult_y) / (width + width_phase * i)) % 1 + 1 + (offset + offset_phase * i) / 360) % 1;
+                hsv[2] = 0.8;
+                hsv[3] = 0.9;
+
+                hsv_to_rgb(hsv, trgb);
+                rgb[i + 1] = trgb[i + 1];
+            }
+
+            put_rgb(rgb);
+            printf("%s", substr($0, x + 1, 1));
+        }
+        print "\033[0m";
+    }
+    '
+}
+
+# }}}
+##############################################################################
+# {{{ md5sum
+
+#examples:
+# printf ss | md5sum
+# cat FILE  | md5sum
+# md5sum < FILE
+md5sum() {
+    if [ $# -eq 0 ] ; then
+        if echo | command md5sum > /dev/null 2>&1 ; then
+             command md5sum | cut -d ' ' -f1
+        elif command -v openssl > /dev/null ; then
+             openssl md5 | rev | cut -d ' ' -f1 | rev
+        else
+            error "md5sum, neither openssl nor GNU CoreUtils Found."
+            return 1
+        fi
+    else
+        [ -e "$1" ] || {
+            error "md5sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+            return 1
+        }
+
+        if command -v openssl > /dev/null ; then
+             openssl md5    "$1" | cut -d ' ' -f2
+        elif echo | command md5sum > /dev/null 2>&1 ; then
+             command md5sum "$1" | cut -d ' ' -f1
+        else
+            error "md5sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
+            return 1
+        fi
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ sha256sum
+
+#examples:
+# printf ss | sha256sum
+# cat FILE  | sha256sum
+# sha256sum < FILE
+sha256sum() {
+    if [ $# -eq 0 ] ; then
+        if echo | command sha256sum > /dev/null 2>&1 ; then
+             command sha256sum | cut -d ' ' -f1
+        elif command -v openssl > /dev/null ; then
+             openssl sha256 | rev | cut -d ' ' -f1 | rev
+        else
+            error "sha256sum, neither openssl nor GNU CoreUtils Found."
+            return 1
+        fi
+    else
+        [ -e "$1" ] || {
+            error "sha256sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+            return 1
+        }
+
+        if command -v openssl > /dev/null ; then
+             openssl sha256    "$1" | cut -d ' ' -f2
+        elif echo | command sha256sum > /dev/null 2>&1 ; then
+             command sha256sum "$1" | cut -d ' ' -f1
+        else
+            error "sha256sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
+            return 1
+        fi
+    fi
+}
+
+# file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>
+  file_exists_and_sha256sum_matched() {
+    [ -z "$1" ] && {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <PATH-OF-FILE> is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <EXPECTED-SHA256SUM-OF-FILE> is not given."
+        return 1
+    }
+
+    [ -e "$1" ] || {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+        return 1
+    }
+
+    [ "$(sha256sum $1)" = "$2" ]
+}
+
+# }}}
+##############################################################################
+# {{{ map
+
+# 40   map name is not given.
+# 41   map key  is not given.
+
+# __map_name_ref <MAP-NAME>
+  __map_name_ref() {
+    if [ -z "$1" ] ; then
+        error "__map_name_ref <MAP-NAME>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    printf "map_%s\n" "$(printf '%s\n' "$1" | md5sum)"
+}
+
+# __map_key_ref <MAP-NAME> <MAP-KEY>
+  __map_key_ref() {
+    if [ -z "$1" ] ; then
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
+        return 41
+    fi
+
+    printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s\n' "$2" | md5sum)"
+}
+
+# map_contains <MAP-NAME> <MAP-KEY>
+  map_contains() {
+    if [ -z "$1" ] ; then
+        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
+        return 41
+    fi
+
+    for item in $(eval echo \$$(__map_name_ref "$1"))
+    do
+        if [ "$item" = "$2" ] ; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>
+  map_set() {
+    if [ -z "$1" ] ; then
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-KEY> is not given."
+        return 41
+    fi
+
+    map_contains "$1" "$2" || {
+        unset __MAP_NAME_REF__
+        __MAP_NAME_REF__="$(__map_name_ref "$1")"
+        __MAP_NAME_REF_VALUE__="$(eval echo \$$__MAP_NAME_REF__)"
+        eval "$__MAP_NAME_REF__=\"$__MAP_NAME_REF_VALUE__ $2\""
+    }
+
+    eval "$(__map_key_ref "$1" "$2")=$3"
+}
+
+# map_get <MAP-NAME> <MAP-KEY>
+  map_get() {
+    if [ -z "$1" ] ; then
+        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
+        return 41
+    fi
+
+    eval echo "\$$(__map_key_ref "$1" "$2")"
+}
+
+# map_remove <MAP-NAME> <MAP-KEY>
+  map_remove() {
+    if [ -z "$1" ] ; then
+        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
+        return 41
+    fi
+
+    unset __MAP_NAME_REF__
+    __MAP_NAME_REF__="$(__map_name_ref "$1")"
+
+    unset __MAP_KEYS__
+    __MAP_KEYS__="$(map_keys "$1")"
+
+    unset $__MAP_NAME_REF__
+
+    for item in $__MAP_KEYS__
+    do
+        if [ "$item" = "$2" ] ; then
+            continue
+        else
+            eval "$__MAP_NAME_REF__='$(eval echo \$$__MAP_NAME_REF__) $item'"
+        fi
+    done
+
+    eval "unset $(__map_key_ref "$1" "$2")"
+}
+
+# map_remove <MAP-NAME>
+  map_clear() {
+    if [ -z "$1" ] ; then
+        error "map_clear <MAP-NAME>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    unset __MAP_NAME_REF__
+    __MAP_NAME_REF__="$(__map_name_ref "$1")"
+
+    for item in $(eval echo "\$$__MAP_NAME_REF__")
+    do
+        eval "unset $(__map_key_ref "$1" "$item")"
+    done
+
+    eval "unset $__MAP_NAME_REF__"
+}
+
+# map_keys <MAP-NAME>
+  map_keys() {
+    if [ -z "$1" ] ; then
+        error "map_keys <MAP-NAME>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    eval echo "\$$(__map_name_ref "$1")"
+}
+
+# map_size <MAP-NAME>
+  map_size() {
+    if [ -z "$1" ] ; then
+        error "map_size <MAP-NAME>, <MAP-NAME> is not given."
+        return 40
+    fi
+
+    list_length $(map_keys "$1")
+}
+
+# }}}
+##############################################################################
+# {{{ fetch
+
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+# fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+fetch() {
+    unset FETCH_URL
+    unset FETCH_SHA256
+    unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_NAME
+    unset FETCH_OUTPUT_PATH
+    unset FETCH_SILENT
+
+    if [ -z "$1" ] ; then
+        error "fetch <URL> [OPTION]... , <URL> must not be empty."
+        return 1
+    else
+        if [ "$COUNTRY" = 'china' ] ; then
+            FETCH_URL="$(get_china_mirror_url "$1")"
+        else
+            FETCH_URL="$1"
+        fi
+    fi
+
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --silent)
+                FETCH_SILENT=yes
+                RUN_SILENT=yes
+                ;;
+            --sha256=*)
+                FETCH_SHA256=$(getvalue "$1")
+                ;;
+            --output-dir=*)
+                FETCH_OUTPUT_DIR=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                    error "fetch <URL> --output-dir=<DIR> , <DIR> must not be empty."
+                    return 1
+                fi
+                ;;
+            --output-name=*)
+                FETCH_OUTPUT_NAME=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                    error "fetch <URL> --output-name=<NAME> , <NAME> must not be empty."
+                    return 1
+                fi
+                ;;
+            --output-path=*)
+                FETCH_OUTPUT_PATH=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_PATH" ] ; then
+                    error "fetch <URL> --output-path=<FILEPATH> , <FILEPATH> must not be empty."
+                    return 1
+                fi
+                ;;
+            *)  error "fetch <URL> [OPTION]..., unrecognized option: $1
+
+    fetch command usage:
+
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+    fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+                return 1
+        esac
+        shift
+    done
+
+    if [ -z "$FETCH_OUTPUT_PATH" ] ; then
+        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
+            FETCH_OUTPUT_PATH='-'
+        else
+            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                FETCH_OUTPUT_DIR="$PWD"
+            fi
+
+            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
+            fi
+
+            FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+
+            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR" || return 1
+            fi
+        fi
+    elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
+        unset FETCH_OUTPUT_DIR
+        unset FETCH_OUTPUT_NAME
+    else
+        FETCH_OUTPUT_DIR="$(dirname $FETCH_OUTPUT_PATH)"
+        FETCH_OUTPUT_NAME="$(basename $FETCH_OUTPUT_PATH)"
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+    fi
+
+    case $FETCH_URL in
+        *.git)
+            if [    -d "$FETCH_OUTPUT_PATH" ] ; then
+                run cd "$FETCH_OUTPUT_PATH" || return 1
+                if      git rev-parse 2> /dev/null ; then
+                    run git pull || return 1
+                    run git submodule update --recursive || return 1
+                else
+                    run cd .. || return 1
+                    run rm -rf "$FETCH_OUTPUT_NAME" || return 1
+                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
+                fi
+            else
+                if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                    run install -d "$FETCH_OUTPUT_DIR" || return 1
+                fi
+                run cd "$FETCH_OUTPUT_DIR" || return 1
+                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
+            fi
+            ;;
+        *)
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
+                if [ -n "$FETCH_SHA256" ] ; then
+                    if file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" ; then
+                        success "$FETCH_OUTPUT_PATH already have been fetched."
+                        return 0
+                    fi
+                fi
+                rm -f "$FETCH_OUTPUT_PATH" || return 1
+            fi
+
+            for FETCH_TOOL in curl wget http lynx aria2c axel
+            do
+                if command_exists_in_filesystem "$FETCH_TOOL" ; then
+                    break
+                else
+                    unset FETCH_TOOL
+                fi
+            done
+
+            if [ -z "$FETCH_TOOL" ] ; then
+                if __install_the_given_package_if_needed curl ; then
+                    FETCH_TOOL=curl
+                else
+                    return 1
+                fi
+            fi
+
+            case $FETCH_TOOL in
+                curl)
+                    unset FETCH_TOOL_CURL_EXTRA_OPTIONS
+
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
+                    fi
+
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    ;;
+                wget)
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    fi
+                    ;;
+                http)
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    fi
+                    ;;
+                lynx)
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
+                    else
+                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
+                    fi
+                    ;;
+                aria2c)
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
+                    else
+                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
+                    fi
+                    ;;
+                axel)
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    fi
+                    ;;
+                *)  error "fetch() unimplementation: $FETCH_TOOL"
+                    return 1
+                    ;;
+            esac
+
+            [ $? -eq 0 ] || return 1
+
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
+                file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" || {
+                    error "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum $FETCH_OUTPUT_PATH)"
+                    return 1
+                }
+            fi
+    esac
+}
+
+install_ca_certificates_on_netbsd() {
+    # https://www.cambus.net/installing-ca-certificates-on-netbsd/
+    if [ "$(uname)" = NetBSD ] ; then
+        command -v mozilla-rootcerts > /dev/null || {
+            if command -v pkgin > /dev/null ; then
+                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts
+            fi
+        }
+        run mozilla-rootcerts install || true
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ get_china_mirror_url
+
+# get_china_mirror_url <ORIGIN_URL>
+get_china_mirror_url() {
+    case $1 in
+        *githubusercontent.com/*)
+            printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
+            ;;
+        *github.com/*)
+            printf "%s\n" "$1" | sed 's@github.com/@hub.fastgit.org/@'
+            ;;
+        *)  printf '%s\n' "$1"
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ __upgrade_self
+
+# __upgrade_self <URL> [--china] [-x]
+__upgrade_self() {
+    set -e
+
+    if [ -z "$1" ] ; then
+        error "__upgrade_self <URL> [--china] [-x] , <URL> must not be empty."
+        return 1
+    else
+        UPGRADE_SELF_URL="$1"
+    fi
+
+    shift
+
+    unset XTRACE
+    unset COUNTRY
+
+    for arg in $@
+    do
+        case $arg in
+            --xtrace|-x)
+                XTRACE=yes
+                set -x
+                ;;
+            --china)
+                COUNTRY=china
+                ;;
+            *)  error "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg" ; return 1
+        esac
+    done
+
+    unset CURRENT_SCRIPT_REALPATH
+
+    # if file exists and is a symbolic link
+    if [ -L "$CURRENT_SCRIPT_FILEPATH" ] ; then
+        # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+        if command -v realpath > /dev/null ; then
+            CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+        elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+            CURRENT_SCRIPT_REALPATH=$(readlink -f $CURRENT_SCRIPT_FILEPATH)
+        else
+            __install_the_given_package_if_needed realpath
+            CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+        fi
+    else
+        CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
+    fi
+
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORKING_DIR=$(mktemp -d)
+
+    run cd $WORKING_DIR
+
+    fetch "$UPGRADE_SELF_URL" --output-path="$WORKING_DIR/self"
+
+    __upgrade_self_exit() {
+        if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
+            run      install -m 755 self "$CURRENT_SCRIPT_REALPATH"
+        else
+            run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
+        fi
+
+        run rm -rf $WORKING_DIR
+    }
+
+    trap __upgrade_self_exit EXIT
+}
+
+# }}}
+##############################################################################
+# {{{ __integrate_zsh_completions
+
+# __integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x]
+__integrate_zsh_completions() {
+    set -e
+
+    if [ -z "$1" ] ; then
+        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , <URL> must not be empty."
+        return 1
+    else
+        ZSH_COMPLETIONS_SCRIPT_URL="$1"
+    fi
+
+    shift
+
+    unset XTRACE
+    unset COUNTRY
+    unset OUTPUT_DIR
+
+    for arg in $@
+    do
+        case $arg in
+            --xtrace|-x)
+                XTRACE=yes
+                set -x
+                ;;
+            --china)
+                COUNTRY=china
+                ;;
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                if [ -z "$OUTPUT_DIR" ] ; then
+                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must not be empty."
+                    return 1
+                fi
+                OUTPUT_DIR=$(globing "$OUTPUT_DIR")
+                ;;
+            *)  error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
+                return 1
+        esac
+    done
+
+    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
+
+    if [ -n "$OUTPUT_DIR" ] ; then
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$OUTPUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    elif [ "$(uname)" = Linux ] && command -v termux-info > /dev/null && [ "$HOME" = '/data/data/com.termux/files/home' ] ; then
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/data/data/com.termux/files/usr/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    else
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/usr/local/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fi
+
+    # if file exists and is a symbolic link
+    if [ -L "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+        if command -v realpath > /dev/null ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(readlink -f $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        else
+            __install_the_given_package_if_needed realpath
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        fi
+    fi
+
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORKING_DIR=$(mktemp -d)
+
+    run cd $WORKING_DIR
+
+    fetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+            run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        else
+            run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        fi
+    else
+        ZSH_COMPLETIONS_SCRIPT_OUT_DIR="$(dirname "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH")"
+        if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
+            run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" || run sudo install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
+        fi
+        if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
+            run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        else
+            run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        fi
+    fi
+
+    run rm -rf $WORKING_DIR
+
+    printf '\n'
+    note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
+}
+
+# }}}
+##############################################################################
+# {{{ os
+
+__get_os_kind_from_uname() {
+    case $1 in
+        msys*)    printf '%s\n' 'windows' ;;
+        mingw32*) printf '%s\n' 'windows' ;;
+        mingw64*) printf '%s\n' 'windows' ;;
+        cygwin*)  printf '%s\n' 'windows' ;;
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+__get_os_type_from_uname_a() {
+    if [ $# -eq 0 ] ; then
+        if command -v uname > /dev/null ; then
+            __get_os_type_from_uname_a "$(uname -a | cut -d ' ' -f2)"
+        else
+            return 1
+        fi
+    else
+        case $1 in
+            opensuse*) return 1 ;;
+            *-*) printf '%s\n' "$1" | cut -d- -f1 | tr A-Z a-z ;;
+            *)   return 1
+        esac
+    fi
+}
+
+__get_os_version_from_uname_a() {
+    if [ $# -eq 0 ] ; then
+        if command -v uname > /dev/null ; then
+            __get_os_version_from_uname_a "$(uname -a | cut -d ' ' -f2)"
+        else
+            return 1
+        fi
+    else
+        case $1 in
+            opensuse*) return 1 ;;
+            *-*) printf '%s\n' "$1" | cut -d- -f2 ;;
+            *)   return 1
+        esac
+    fi
+}
+
+# https://www.freedesktop.org/software/systemd/man/os-release.html
+__get_os_type_from_etc_os_release() {
+    if [ -e /etc/os-release ] ; then
+        (
+            . /etc/os-release || return 20
+            if [ -z "$ID" ] ; then
+                return 1
+            else
+                printf '%s\n' "$ID" | tr A-Z a-z
+            fi
+        )
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_etc_os_release() {
+    if [ -f /etc/os-release ] ; then
+        (
+            . /etc/os-release || return 20
+            if [ -z "$VERSION_ID" ] ; then
+                printf '%s\n' 'rolling'
+            else
+                printf '%s\n' "$VERSION_ID"
+            fi
+        )
+    else
+        return 1
+    fi
+}
+
+# https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/lsbrelease.html
+__get_os_type_from_lsb_release() {
+    if command -v lsb_release > /dev/null ; then
+        lsb_release --id | cut -f2 | tr A-Z a-z
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_lsb_release() {
+    if command -v lsb_release > /dev/null ; then
+        lsb_release --release | cut -f2
+    else
+        return 1
+    fi
+}
+
+__get_os_type_from_etc_redhat_release() {
+    if [ $# -eq 0 ] ; then
+        if [ -e /etc/redhat-release ] ; then
+            __get_os_type_from_etc_redhat_release "$(cat /etc/redhat-release)"
+        else
+            return 1
+        fi
+    else
+        case $1 in
+            'Red Hat Enterprise Linux release'*)
+                printf '%s\n' rhel
+                ;;
+            'Fedora release'*)
+                printf '%s\n' fedora
+                ;;
+            'CentOS release'*)
+                printf '%s\n' centos
+                ;;
+            'CentOS Linux release'*)
+                printf '%s\n' centos
+                ;;
+            *)  printf '%s\n' "$1" | cut -d ' ' -f1 | tr A-Z a-z
+        esac
+    fi
+}
+
+__get_os_version_from_etc_redhat_release() {
+    if [ $# -eq 0 ] ; then
+        if [ -e /etc/redhat-release ] ; then
+            __get_os_version_from_etc_redhat_release $(cat /etc/redhat-release)
+        else
+            return 1
+        fi
+    else
+        while [ -n "$1" ]
+        do
+            case $1 in
+                [1-9]*) printf '%s\n' "$1"; return 0
+            esac
+            shift
+        done
+        return 1
+    fi
+}
+
+__get_os_version_from_getprop() {
+    if command -v getprop > /dev/null ; then
+        getprop ro.build.version.release
+    else
+        return 1
+    fi
+}
+
+__get_os_arch_from_uname() {
+    if command -v uname > /dev/null ; then
+        uname -m 2> /dev/null
+    else
+        return 1
+    fi
+}
+
+__get_os_arch_from_arch() {
+    if command -v arch > /dev/null ; then
+        arch
+    else
+        return 1
+    fi
+}
+
+__get_os_type_from_os_kind() {
+    case $1 in
+        darwin)  printf '%s\n' macos ;;
+        linux)
+            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+                printf '%s\n' android
+            else
+                __get_os_type_from_etc_redhat_release ||
+                __get_os_type_from_etc_os_release ||
+                __get_os_type_from_lsb_release ||
+                __get_os_type_from_uname_a
+            fi
+            ;;
+        *) printf '%s\n' "$1"
+    esac
+}
+
+__get_os_name_from_os_type() {
+    case $1 in
+        debian)  printf '%s\n' 'Debian' ;;
+        ubuntu)  printf '%s\n' 'Ubuntu' ;;
+        linuxmint) printf '%s\n' 'LinuxMint' ;;
+        centos)  printf '%s\n' 'CentOS' ;;
+        fedora)  printf '%s\n' 'Fedora' ;;
+        rhel)    printf '%s\n' 'RHEL' ;;
+        opensuse-leap)
+                 printf '%s\n' 'openSUSE-Leap' ;;
+        gentoo)  printf '%s\n' 'Gentoo' ;;
+        manjaro) printf '%s\n' 'Manjaro' ;;
+        alpine)  printf '%s\n' 'AlpineLinux' ;;
+        arch)    printf '%s\n' 'ArchLinux' ;;
+        void)    printf '%s\n' 'VoidLinux' ;;
+        freebsd) printf '%s\n' 'FreeBSD' ;;
+        netbsd)  printf '%s\n' 'NetBSD' ;;
+        openbsd) printf '%s\n' 'OpenBSD' ;;
+        macos)   printf '%s\n' 'macOS' ;;
+        android) printf '%s\n' 'Android' ;;
+        windows)
+            systeminfo | sed -n '/OS Name:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//'
+            ;;
+        *) printf '%s\n' "$1"
+    esac
+}
+
+__get_os_version_from_os_kind() {
+    case $1 in
+        freebsd) freebsd-version ;;
+        openbsd) uname -r ;;
+        netbsd)  uname -r ;;
+        darwin)  sw_vers -productVersion ;;
+        linux)
+            __get_os_version_from_etc_redhat_release ||
+            __get_os_version_from_etc_os_release ||
+            __get_os_version_from_lsb_release ||
+            __get_os_version_from_getprop ||
+            __get_os_version_from_uname_a
+            ;;
+        windows)
+            systeminfo | sed -n '/OS Version:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1
+            ;;
+    esac
+}
+
+__get_os_sub_system() {
+    case $(uname | tr A-Z a-z) in
+        msys*)    printf '%s\n' "msys"    ;;
+        mingw32*) printf '%s\n' "mingw32" ;;
+        mingw64*) printf '%s\n' "mingw64" ;;
+        cygwin*)  printf '%s\n' 'cygwin'  ;;
+        *)
+            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+                if [ -n "$TERMUX_VERSION" ] ; then
+                    printf '%s\n' termux
+                fi
+            fi
+    esac
+}
+
+__get_os_arch() {
+    __get_os_arch_from_uname ||
+    __get_os_arch_from_arch
+}
+
+__get_os_libc_from_os_kind() {
+    if [ "$1" = linux ] ; then
+        if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+            printf '%s\n' bionic
+            return 0
+        fi
+
+        # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
+        if command -v getconf > /dev/null ; then
+            if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
+                printf '%s\n' glibc
+                return 0
+            fi
+        fi
+
+        if command -v ldd > /dev/null ; then
+            if command -v grep > /dev/null ; then
+                if ldd --version 2>&1 | head -n 1 | grep -q GLIBC ; then
+                    printf '%s\n' glibc
+                    return 0
+                fi
+                if ldd --version 2>&1 | head -n 1 | grep -q musl ; then
+                    printf '%s\n' musl
+                    return 0
+                fi
+            elif command -v sed > /dev/null ; then
+                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/GLIBC/p')" ] ; then
+                    printf '%s\n' glibc
+                    return 0
+                fi
+                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/musl/p')"  ] ; then
+                    printf '%s\n' musl
+                    return 0
+                fi
+            fi
+        fi
+
+        return 1
+    fi
+}
+
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
+__get_os_ncpu() {
+    case "$(uname)" in
+        Darwin) sysctl -n machdep.cpu.thread_count ;;
+        *BSD)   sysctl -n hw.ncpu ;;
+        *)  if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                if command -v grep > /dev/null ; then
+                    grep -c processor /proc/cpuinfo
+                elif command -v sed > /dev/null && command -v wc > /dev/null ; then
+                    sed -n '/^processor/p' /proc/cpuinfo | wc -l
+                else
+                    printf '%s\n' 4
+                fi
+            else
+                printf '%s\n' 4
+            fi
+    esac
+}
+
+os() {
+    if [ $# -eq 0 ] ; then
+        printf "current-machine-os-kind : %s\n" "$(os kind)"
+        printf "current-machine-os-type : %s\n" "$(os type)"
+        printf "current-machine-os-name : %s\n" "$(os name)"
+        printf "current-machine-os-vers : %s\n" "$(os vers)"
+        printf "current-machine-os-arch : %s\n" "$(os arch)"
+        printf "current-machine-os-ncpu : %s\n" "$(os ncpu)"
+        printf "current-machine-os-euid : %s\n" "$(os euid)"
+        printf "current-machine-os-libc : %s\n" "$(os libc)"
+        printf "current-machine-os-subs : %s\n" "$(os subs)"
+    elif [ $# -eq 1 ] ; then
+        case $1 in
+            -h|--help)
+                cat <<'EOF'
+os -h | --help
+os -V | --version
+os kind
+os type
+os name
+os vers
+os arch
+os ncpu
+os euid
+os libc
+os subs
+EOF
+                ;;
+            -V|--version)
+                printf "%s\n" '2021.10.01.03'
+                ;;
+            kind)
+                __get_os_kind_from_uname $(uname | tr A-Z a-z)
+                ;;
+            type)
+                __get_os_type_from_os_kind $(os kind)
+                ;;
+            name)
+                __get_os_name_from_os_type $(os type)
+                ;;
+            vers)
+                __get_os_version_from_os_kind $(os kind)
+                ;;
+            subs)
+                __get_os_sub_system
+                ;;
+            arch)
+                __get_os_arch
+                ;;
+            ncpu)
+                __get_os_ncpu
+                ;;
+            euid)
+                id -u
+                ;;
+            libc)
+                __get_os_libc_from_os_kind $(os kind)
+                ;;
+            *)  printf '%s\n' "unrecognized argument: $1" >&2; return 1
+        esac
+    else
+        printf '%s\n' "os command only support one argument." >&2; return 1
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ version
+
+version_of_python_module() {
+    unset PIP_COMMAND
+    PIP_COMMAND=$(command -v pip3 || command -v pip)
+    if [ -z "$PIP_COMMAND" ] ; then
+        error "can't found pip command."
+        return 1
+    else
+        "$PIP_COMMAND" show $1 | sed -n '/Version:/p' | cut -d ' ' -f2
+    fi
+}
+
+# retrive the version of a command from it's name or path
+version_of_command() {
+    case $(basename "$1") in
+      gclient) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       ccache) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         bear) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        xmake) "$1" --version 2> /dev/null | head -n 1 | cut -d '+' -f1 | cut -d 'v' -f2 ;;
+        cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         rake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         make) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        gmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+       rustup) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       rustc)  "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        cargo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           go) "$1"   version | cut -d ' ' -f3 | cut -c3- ;;
+         tree) "$1" --version | cut -d ' ' -f2 | cut -c2- ;;
+   pkg-config) "$1" --version 2> /dev/null | head -n 1 ;;
+     patchelf) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       m4|gm4) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
+    autopoint) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     xgettext) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     automake|aclocal)
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     realpath) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      libtool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+   libtoolize|glibtoolize)
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+  intltoolize) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      objcopy) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
+          adb) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
+         flex) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        bison) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         yacc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         nasm) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         yasm) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        patch) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
+        gperf) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        groff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     makeinfo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+    gtkdocize) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+ sphinx-build) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+ glib-mkenums) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+ glib-compile-resources)
+               "$1" --version ;;
+         file) "$1" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
+      itstool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       protoc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        xmlto) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+      xmllint) ;;
+     xsltproc) ;;
+     rst2man|rst2man.py|rst2man-3|rst2man-3.6|rst2man-3.7|rst2man-3.8|rst2man-3.9)
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         java) "$1"  -version 2>&1 | head -n 1 | cut -d ' ' -f3 | sed 's/"//g' ;;
+         gzip) "$1" --version 2>&1 | head -n 1 | awk '{print($NF)}' ;;
+         lzip) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           xz) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+          zip) "$1" --version 2> /dev/null | sed -n '2p' | cut -d ' ' -f4 ;;
+        unzip) "$1" -v        2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        bzip2) "$1" --help 2>&1 | head -n 1 | cut -d ' ' -f8 | cut -d ',' -f1 ;;
+          tar)
+            VERSION_MSG=$("$1" --version 2> /dev/null | head -n 1)
+            case $VERSION_MSG in
+                  tar*) printf '%s\n' "$VERSION_MSG" | cut -d ' ' -f4 ;;
+               bsdtar*) printf '%s\n' "$VERSION_MSG" | cut -d ' ' -f2 ;;
+            esac
+            ;;
+          git) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         curl) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+     awk|gawk) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
+     sed|gsed) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         cpan) ;;
+         find) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         diff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         grep) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
+         ruby) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         perl) "$1" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
+          lua) "$1" -v 2>/dev/null | head -n 1 | cut -d ' ' -f2 ;;
+    python|python2|python3)
+               "$1" --version 2>&1 | head -n 1 | cut -d ' ' -f2 ;;
+         pip)  "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         pip3) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         node) "$1" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
+          zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
+       base64) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      hexdump) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      sqlite3) "$1"  -version 2> /dev/null | head -n 1 | cut -d ' ' -f1 ;;
+            *) "$1" --version 2> /dev/null | head -n 1
+    esac
+}
+
+# retrive the major part of the version of the given command
+# Note: the version of the given command must have form: major.minor.patch
+version_major_of_command() {
+    version_of_command "$1" | cut -d. -f1
+}
+
+# retrive the minor part of the version of the given command
+# Note: the version of the given command must have form: major.minor.patch
+version_minor_of_command() {
+    version_of_command "$1" | cut -d. -f2
+}
+
+# retrive the major part of the given version
+# Note: the given version must have form: major.minor.patch
+version_major_of_version() {
+    printf '%s\n' "$1" | cut -d. -f1
+}
+
+# retrive the minor part of the given version
+# Note: the given version must have form: major.minor.patch
+version_minor_of_version() {
+    printf '%s\n' "$1" | cut -d. -f2
+}
+
+version_sort() {
+    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/sort.html
+    # https://man.netbsd.org/NetBSD-8.1/i386/sort.1
+    #
+    # sort: unrecognized option: V
+    # BusyBox v1.29.3 (2019-01-24 07:45:07 UTC) multi-call binary.
+    # Usage: sort [-nrugMcszbdfiokt] [-o FILE] [-k start[.offset][opts][,end[.offset][opts]] [-t CHAR] [FILE]...
+    if  printf '%s\n' | (sort -V > /dev/null 2>&1) ; then
+        printf '%s\n' "$@" | tr ' ' '\n' | sort -V
+    else
+        printf '%s\n' "$@" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
+    fi
+}
+
+# check if match the condition
+#
+# condition:
+# eq  equal
+# ne  not equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# examples:
+# version_match 1.15.3 eq 1.16.0
+# version_match 1.15.3 lt 1.16.0
+# version_match 1.15.3 gt 1.16.0
+# version_match 1.15.3 le 1.16.0
+# version_match 1.15.3 ge 1.16.0
+version_match() {
+    case $2 in
+        eq)  [ "$1"  = "$3" ] ;;
+        ne)  [ "$1" != "$3" ] ;;
+        le)
+            if [ "$1" = "$3" ] ; then
+                return 0
+            fi
+            [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
+            ;;
+        ge)
+            if [ "$1" = "$3" ] ; then
+                return 0
+            fi
+            [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
+            ;;
+        lt)
+            if [ "$1" = "$3" ] ; then
+                return 1
+            fi
+            [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
+            ;;
+        gt)
+            if [ "$1" = "$3" ] ; then
+                return 1
+            fi
+            [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
+            ;;
+        *)  error "version_compare: $2: not supported operator." ; return 1
+    esac
+}
+
+# check if the version of give installed command match the condition
+#
+# condition:
+# eq  equal
+# ne  not equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# examples:
+# command_exists_in_filesystem_and_version_matched automake eq 1.16.0
+# command_exists_in_filesystem_and_version_matched automake lt 1.16.0
+# command_exists_in_filesystem_and_version_matched automake gt 1.16.0
+# command_exists_in_filesystem_and_version_matched automake le 1.16.0
+# command_exists_in_filesystem_and_version_matched automake ge 1.16.0
+# command_exists_in_filesystem_and_version_matched automake
+command_exists_in_filesystem_and_version_matched() {
+    if command_exists_in_filesystem "$1" ; then
+        if [ $# -eq 3 ] ; then
+            version_match "$(version_of_command "$1")" "$2" "$3"
+        fi
+    else
+        return 1
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ python_module
+
+# examples:
+# python_module is  installed libxml2
+# python_module get version   libxml2
+# python_module get location  libxml2
+# python_module install       libxml2
+python_module() {
+    case $1 in
+        is)
+            [ $# -eq 3 ] || {
+                error "[python_module is] command accept 2 arguments."
+                return 1
+            }
+
+            __install_the_given_package_if_needed python
+
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || printf '%s\n' python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || printf '%s\n' pip)
+
+            case $2 in
+                installed)  "$__PYTHON_COMMAND__" -c "import $3" 2> /dev/null ;;
+                *) error "python_module is $2: not support." ; return 1
+            esac
+            ;;
+        get)
+            [ $# -eq 3 ] || {
+                error "[python_module get] command accept 2 arguments."
+                return 1
+            }
+
+            __install_the_given_package_if_needed python
+
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || printf '%s\n' python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || printf '%s\n' pip)
+
+            case $2 in
+                version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Version:/p'  | cut -d ' ' -f2 ;;
+                location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Location:/p' | cut -d ' ' -f2 ;;
+                *) error "python_module get $2: not support." ; return 1
+            esac
+            ;;
+        install)
+            [ -z "$2" ] && {
+                error "please specify a python module name."
+                return 1
+            }
+
+            if ! python_module is installed "$2" ; then
+                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
+                run "$__PIP_COMMAND__" install -U pip
+                run "$__PIP_COMMAND__" install -U "$2"
+            fi
+            ;;
+        *)  error "python_module $1: not support." ; return 1
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ perl_module
+
+# examples:
+# perl_module is-installed  XML::Parser
+# perl_module install       XML::Parser
+# perl_module get-version   XML::Parser
+# perl_module get-location  XML::Parser
+perl_module() {
+    case $1 in
+        get-version)
+            shift
+            cpan -l 2>/dev/null | sed -n "/$1/p" | head -n 1 | cut -f2
+            ;;
+        get-location)
+            shift
+            __PERL_MODULE_NAME_TO_PATH=$(printf "%s.pm\n" "$1" | sed 's|::|/|g')
+            for item in $(perl -e 'print "@INC"')
+            do
+                if [ -e           "$item/$__PERL_MODULE_NAME_TO_PATH" ] ; then
+                    printf '%s\n' "$item/$__PERL_MODULE_NAME_TO_PATH"
+                    return 0
+                else
+                    continue
+                fi
+                return 1
+            done
+            ;;
+        is-installed)
+            shift
+            __install_the_given_package_if_needed perl || return 1
+            perl -M"$1" -le 'print "installed"' > /dev/null 2>&1
+            ;;
+        install)
+            shift
+            perl_module is-installed "$1" && return 0
+
+            if command_exists_in_filesystem cpan  ; then
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpan${COLOR_OFF}"
+                run cpan -i "$1"
+            elif command_exists_in_filesystem cpanm ; then
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpanm${COLOR_OFF}"
+                run cpanm "$1"
+            else
+                __install_the_given_package_if_needed perl || return 1
+                perl_module install $@
+            fi
+            ;;
+        *)  error "perl_module $1: not support." ; return 1
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ define formula syntax
+
+# set the given package's information
+#
+# USAGE:
+# pkg_set <KEY> <VALUE>
+#
+# EXAMPLES:
+# pkg_set summary "JPEG image codec that aids compression and decompression"
+# pkg_set webpage "https://www.libjpeg-turbo.org"
+
+# pkg_set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# pkg_set git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+
+# pkg_set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
+# pkg_set src.sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+
+# pkg_set version "1.0.0"
+
+# pkg_set license "IJG"
+
+# pkg_set depends "nasm:build flex:build bison:build openssl zlib"
+
+# pkg_set bsystem "cmake"
+
+# pkg_set bscript "src"
+
+# pkg_set binbstd 'yes'
+# pkg_set binbstd 'no'
+pkg_set() {
+    [ -z "$1" ] && {
+        error "pkg_set <KEY> <VALUE>..., <KEY> must not be empty."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "pkg_set <KEY> <VALUE>..., <VALUE> must not be empty."
+        return 1
+    }
+
+
+    unset __PACKAGE_SET_KEY__
+
+    __PACKAGE_SET_KEY__="$(printf '%s\n' "$1" | tr '+-.' '_' | tr a-z A-Z)"
+
+    shift
+
+    eval "PACKAGE_$__PACKAGE_SET_KEY__='$@'"
+}
+
+# }}}
+##############################################################################
+# {{{ operations of formula
+
+__load_formula_of_the_given_package() {
+    unset PACKAGE_FORMULA_LOADED
+
+    unset PACKAGE_NAME
+    unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
+
+    unset PACKAGE_SUMMARY
+    unset PACKAGE_WEBPAGE
+
+    unset PACKAGE_GIT_URL
+    unset PACKAGE_GIT_SHA
+    unset PACKAGE_GIT_TAG
+
+    unset PACKAGE_SVN_URL
+
+    unset PACKAGE_SRC_URL
+    unset PACKAGE_SRC_SHA
+    unset PACKAGE_SRC_NAME
+    unset PACKAGE_SRC_TYPE
+    unset PACKAGE_SRC_PATH
+
+    unset PACKAGE_FIX_URL
+    unset PACKAGE_FIX_SHA
+    unset PACKAGE_FIX_NAME
+    unset PACKAGE_FIX_TYPE
+    unset PACKAGE_FIX_PATH
+
+    unset PACKAGE_VERSION
+    unset PACKAGE_VERSION_MAJOR
+    unset PACKAGE_VERSION_MINOR
+    unset PACKAGE_VERSION_PATCH
+    unset PACKAGE_VERSION_TWEAK
+
+    unset PACKAGE_DEVELOPER
+
+    unset PACKAGE_LICENSE
+
+    unset PACKAGE_BSYSTEM
+
+    unset PACKAGE_BUILD_SYSTEM
+    unset PACKAGE_BUILD_SYSTEM_GO
+    unset PACKAGE_BUILD_SYSTEM_RAKE
+    unset PACKAGE_BUILD_SYSTEM_NINJA
+    unset PACKAGE_BUILD_SYSTEM_GMAKE
+    unset PACKAGE_BUILD_SYSTEM_CMAKE
+    unset PACKAGE_BUILD_SYSTEM_XMAKE
+    unset PACKAGE_BUILD_SYSTEM_MESON
+    unset PACKAGE_BUILD_SYSTEM_CARGO
+    unset PACKAGE_BUILD_SYSTEM_AUTOGENSH
+    unset PACKAGE_BUILD_SYSTEM_AUTOTOOLS
+    unset PACKAGE_BUILD_SYSTEM_CONFIGURE
+    unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
+
+    # dir relative to $PACKAGE_WORKING_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    unset PACKAGE_BSCRIPT
+
+    # if build in build script dir, otherwise build in build dir
+    unset PACKAGE_BINBSTD
+    unset PACKAGE_BUILD_IN_BSCRIPT_DIR
+
+    # if build in parallel
+    unset PACKAGE_BUILD_IN_PARALLEL
+    unset PACKAGE_PARALLEL
+
+    unset PACKAGE_DEPENDS
+
+    # packages that are depended on only when build
+    unset PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD
+
+    # packages that are depended on at runtime
+    unset PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME
+
+    unset PACKAGE_CDEFINE
+    unset PACKAGE_CCFLAGS
+    unset PACKAGE_XXFLAGS
+    unset PACKAGE_LDFLAGS
+
+    unset PACKAGE_FORMULA_FILEPATH
+
+
+
+    unset -f build0
+    unset -f prepare
+    unset -f build
+    unset -f build_configed
+
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    . "$PACKAGE_FORMULA_FILEPATH" || return 1
+
+    PACKAGE_NAME="$1"
+    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '+-.' '_')
+
+    PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
+
+    PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
+
+    if [ -z "$PACKAGE_PARALLEL" ] ; then
+        PACKAGE_PARALLEL=yes
+        PACKAGE_BUILD_IN_PARALLEL=yes
+    else
+        PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
+    fi
+
+    if [ -z "$PACKAGE_SUMMARY" ] ; then
+        die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -z "$PACKAGE_WEBPAGE" ] ; then
+        PACKAGE_WEBPAGE="$PACKAGE_GIT_URL"
+    fi
+
+    if [ -z "$PACKAGE_WEBPAGE" ] ; then
+        die "webpage or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        PACKAGE_SRC_URL="$PACKAGE_GIT_URL"
+    fi
+
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        die "src.url or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    case $PACKAGE_SRC_URL in
+        dir://*)   PACKAGE_SRC_TYPE=dir ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD git" ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl unzip" ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar xz" ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar gzip" ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar lzip" ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar bzip2" ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar gzip" ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl gtar xz" ;;
+        *.c)       PACKAGE_SRC_TYPE=c      ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl" ;;
+        *.cc)      PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl" ;;
+        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl" ;;
+        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD curl" ;;
+        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+    esac
+
+    case $PACKAGE_SRC_TYPE in
+        dir)
+            PACKAGE_SRC_PATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+            ;;
+        git)
+            PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
+            PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
+            ;;
+        *)
+            if [ -z "$PACKAGE_SRC_SHA" ] ; then
+                die "src.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+            fi
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                case $PACKAGE_VERSION in
+                    '') die "version is not configed in $PACKAGE_FORMULA_FILEPATH" ;;
+                    v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
+                esac
+            fi
+            PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
+            PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
+    esac
+
+    if [ -n "$PACKAGE_FIX_URL" ] ; then
+        case $PACKAGE_FIX_URL in
+            *.fix)     PACKAGE_FIX_TYPE=patch  ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch"            ;;
+            *.diff)    PACKAGE_FIX_TYPE=patch  ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch"            ;;
+            *.patch)   PACKAGE_FIX_TYPE=patch  ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch"            ;;
+            *.zip)     PACKAGE_FIX_TYPE=zip    ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch unzip"      ;;
+            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar xz"    ;;
+            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar gzip"  ;;
+            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar lzip"  ;;
+            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar bzip2" ;;
+            *.tgz)     PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar gzip"  ;;
+            *.txz)     PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD patch gtar xz"    ;;
+            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        esac
+
+        if [ -z "$PACKAGE_FIX_SHA" ] ; then
+            die "fix.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+        fi
+
+        PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL")
+        PACKAGE_FIX_PATH="$MY_PATCH__DIR/$PACKAGE_NAME/$PACKAGE_FIX_NAME"
+    fi
+
+    if [ -n "$PACKAGE_VERSION" ] ; then
+        PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
+        PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
+        PACKAGE_VERSION_PATCH="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f3)"
+        PACKAGE_VERSION_TWEAK="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f4)"
+    fi
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
+            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes     ;;
+            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes     ;;
+            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
+            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes      ;;
+            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes     ;;
+            go)          PACKAGE_BUILD_SYSTEM_GO=yes        ;;
+        esac
+    done
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            autogen)     PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD perl m4 autoconf automake gmake" ;;
+            autotools)   PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD perl m4 autoconf automake gmake" ;;
+            configure)   PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD gmake" ;;
+            ndk-build)   PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD gmake" ;;
+            cmake-make)  PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD cmake gmake" ;;
+            cmake-ninja) PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD cmake ninja" ;;
+            cmake)       PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD cmake ninja" ;;
+            xmake)       PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD xmake" ;;
+            meson)       PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD meson ninja" ;;
+            ninja)       PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD ninja" ;;
+            make)        PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD gmake" ;;
+            rake)        PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD ruby"  ;;
+            cargo)       PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD rustup" ;;
+            go)          PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD golang" ;;
+        esac
+    done
+
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
+        BUILD_NJOBS=1
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    fi
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD gsed"
+    fi
+
+    # I don't known why
+    # If bash is not installed, ccache and make can not work correctly on VoidLinux.
+    if [ "$NATIVE_OS_TYPE" = 'void' ] ; then
+        PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD bash"
+    fi
+
+    PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD find file tree hexdump"
+
+    for item in $PACKAGE_DEPENDS
+    do
+        case $item in
+            *:build) PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD $item" ;;
+            *:*)     error "unrecognized depends: $item" ; return 1 ;;
+            *)       PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME="$PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME $item" ;;
+        esac
+    done
+
+    PACKAGE_FORMULA_LOADED=yes
+}
+
+# examples:
+# __view_formula_of_the_given_package curl
+# __view_formula_of_the_given_package curl --paging=never
+  __view_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    shift
+
+    unset VIEW_FORMULA_PAGING
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --paging=*)
+                VIEW_FORMULA_PAGING=$(getvalue "$1")
+                case $VIEW_FORMULA_PAGING in
+                    auto|always|never) ;;
+                    *) die "--paging=<VALUE>, <VALUE> must be one of auto, always, never"
+                esac
+                ;;
+            *)  die "unrecognized argument: $1"
+        esac
+        shift
+    done
+
+    case $VIEW_FORMULA_PAGING in
+        ''|auto)
+            if command -v bat > /dev/null ; then
+                bat --paging=auto "$PACKAGE_FORMULA_FILEPATH"
+            else
+                cat "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+        always)
+            if command -v bat > /dev/null ; then
+                bat --paging=always "$PACKAGE_FORMULA_FILEPATH"
+            else
+                more "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+        never)
+            if command -v bat > /dev/null ; then
+                bat --paging=never "$PACKAGE_FORMULA_FILEPATH"
+            else
+                cat "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+    esac
+}
+
+# __edit_formula_of_the_given_package <PACKAGE-NAME>
+  __edit_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    [ -z "$2" ] || warn "edit action accept only one argument."
+
+    if [ -z "$EDITOR" ] ; then
+        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || die "please set EDITOR environment variable."
+    fi
+
+    "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
+}
+
+# __create_formula_of_the_given_package <PACKAGE-NAME>
+  __create_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__create_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset REPO_NAME
+    REPO_NAME=offical
+
+    if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" ] ; then
+        die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh formula already exists."
+    fi
+
+    cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" <<EOF
+pkg_set summary "Summary of this package"
+
+pkg_set webpage "https://www.xx.com"
+
+# the source code download url of this package. the value of src.url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
+pkg_set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
+
+# the sha256sum of source code. If the value of src.url end with .git, this function is optional, otherwise, this function must be invoked.
+pkg_set src.sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+
+# the version of this package. If this function is not invoked, it will be calculated from src.url.
+#pkg_set version "x.y.z"
+
+# the license of this package.
+#pkg_set license "MIT"
+
+# the packages are depended by this package. If specify multiple values, separate them with spaces.
+#pkg_set depends "a b c"
+
+prepare() {
+    :
+    #this function is optional, you can delete it, if don't use it.
+}
+
+build() {
+    :
+    #configure
+    #cargow
+    #mesonw
+    #cmakew
+    #makew
+}
+EOF
+    __edit_formula_of_the_given_package "$1"
+}
+
+# __delete_formula_of_the_given_package <PACKAGE-NAME>
+  __delete_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    run rm "$PACKAGE_FORMULA_FILEPATH"
+}
+
+# __rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>
+__rename_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <OLD-PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <NEW-PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset PACKAGE_FORMULA_REPO
+    PACKAGE_FORMULA_REPO="$(__repo_of_formula_of_the_given_package $1)" || return 1
+
+    unset PACKAGE_FORMULA_FILEPATH_OLD
+    unset PACKAGE_FORMULA_FILEPATH_NEW
+
+    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
+    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
+
+    if [ -f "$PACKAGE_FORMULA_FILEPATH_NEW" ] ; then
+        die "$2 package is already exist."
+    fi
+
+    if mv "$PACKAGE_FORMULA_FILEPATH_OLD" "$PACKAGE_FORMULA_FILEPATH_NEW" ; then
+        success "rename formula $1 -> $2 success."
+    else
+        die "rename formula $1 -> $2 failed."
+    fi
+}
+
+__list_formulas() {
+    for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
+    do
+        if [ -d  "$MY_FORMULA_REPO_DIR/$repo/formula" ] ; then
+            ls "$MY_FORMULA_REPO_DIR/$repo/formula"/*.sh
+        fi
+    done
+}
+
+# __add_a_formula_repo <REPO-NAME> <REPO-URL>
+__add_a_formula_repo() {
+    if [ -z "$1" ] ; then
+        die "please specify a repo name."
+    fi
+
+    if [ -z "$2" ] ; then
+        die "please specify a repo url."
+    fi
+
+    case $2 in
+        *.git)
+            case $2 in
+                http://*|https://*|git@*) ;;
+                *)  die "$2: not a valid git url."
+            esac
+            ;;
+        *)  die "$2: repo url must end with .git"
+    esac
+
+    for repoName in $(__list_formula_repositories | cut -d= -f1)
+    do
+        if [ "$repoName" = "$1" ] ; then
+            die "$1 formula repo already exists."
+        fi
+    done
+
+    printf '%s=%s\n' "$1" "$2" >> "$MY_HOME_DIR/repos"
+}
+
+# __del_a_formula_repo <REPO-NAME>
+  __del_a_formula_repo() {
+    if [ -z "$1" ] ; then
+        die "please specify a repo name."
+    fi
+
+    if [ "$1" = 'offical' ] ; then
+        die "offical formula repo can not be deleted."
+    fi
+
+    unset REPO_EXISTS
+    for repoName in $(__list_formula_repositories | cut -d= -f1)
+    do
+        if [ "$repoName" = "$1" ] ; then
+            REPO_EXISTS=yes
+        fi
+    done
+
+    if [ "$REPO_EXISTS" = yes ] ; then
+        sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
+    else
+        die "$1 formula repo not exists."
+    fi
+}
+
+__repo_of_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    for repo in $(__list_formula_repositories | cut -d= -f1)
+    do
+        if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+            printf '%s\n' "$repo"
+            return 0
+        fi
+    done
+
+    error "package [$1] is not available."
+    return 1
+}
+
+# __path_of_formula_of_the_given_package <PACKAGE-NAME>
+  __path_of_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
+    do
+        if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
+            return 0
+        fi
+    done
+
+    error "package [$1] is not available."
+    return 1
+}
+
+__list_formula_repositories() {
+    if [ -e "$MY_HOME_DIR/repos" ] ; then
+        cat "$MY_HOME_DIR/repos"
+    else
+        install -d "$MY_HOME_DIR"
+        printf 'offical=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
+    fi
+}
+
+__update_formula_repositories() {
+    set -e
+
+    __install_the_given_package_if_needed git
+
+    for item in $(__list_formula_repositories)
+    do
+        unset FORMULA_REPO_NAME
+        unset FORMULA_REPO_URL_
+
+        FORMULA_REPO_NAME=$(printf '%s\n' "$item" | cut -d= -f1)
+        FORMULA_REPO_URL_=$(printf '%s\n' "$item" | cut -d= -f2)
+
+        printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+
+        if [ -d     "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" ] ; then
+            run cd  "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
+            run git pull origin master:master
+            if [ "$(git branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then
+                run git checkout master
+            fi
+        else
+            run install -d "$MY_FORMULA_REPO_DIR"
+            run cd         "$MY_FORMULA_REPO_DIR"
+            run git clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
+        fi
+    done
+}
+
+# }}}
+##############################################################################
+
+prompt_user_to_install_bat() {
+    echo
+    note "${COLOR_YELLOW}if you want to have a better experience, I strongly recommend you to install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on this machine. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
+}
+
+# fetch source code if needed
+__fetch_sources_of_the_given_package() {
+    case $PACKAGE_SRC_TYPE in
+        git)
+            if [ -d "$PACKAGE_SRC_PATH" ] ; then
+                run cd  "$PACKAGE_SRC_PATH"
+                if git rev-parse 2> /dev/null ; then
+                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
+                        if [ "$PACKAGE_GIT_SHA" = "$(git rev-parse HEAD)" ] ; then
+                            success "$PACKAGE_SRC_PATH already have been fetched."
+                            return 0
+                        fi
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
+                        run git checkout --progress --force -B master refs/remotes/origin/master
+                    else
+                        run git pull &&
+                        run git submodule update --recursive
+                    fi
+                else
+                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
+                        run rm -rf * &&
+                        run git init &&
+                        run git remote add origin "$PACKAGE_SRC_URL" &&
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
+                        run git checkout --progress --force -B master refs/remotes/origin/master
+                    else
+                        run cd .. &&
+                        run rm -rf "$PACKAGE_SRC_NAME" &&
+                        run git clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
+                    fi
+                fi
+            else
+                if [ -n "$PACKAGE_GIT_SHA" ] ; then
+                    run install -d "$PACKAGE_SRC_PATH" &&
+                    run cd         "$PACKAGE_SRC_PATH" &&
+                    run git init &&
+                    run git remote add origin "$PACKAGE_SRC_URL" &&
+                    run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
+                    run git checkout --progress --force -B master refs/remotes/origin/master
+                else
+                    if [ !          -d "$MY_SOURCE_DIR" ] ; then
+                        run install -d "$MY_SOURCE_DIR"
+                    fi
+                    run cd "$MY_SOURCE_DIR" &&
+                    run git clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
+                fi
+            fi
+            ;;
+        dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
+        *)  fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
+    esac
+}
+
+__fetch_patches_of_the_given_package() {
+    if [ -n "$PACKAGE_FIX_URL" ] ; then
+        fetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --output-path="$PACKAGE_FIX_PATH"
+    fi
+}
+
+__fetch_resources_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    case $1 in
+        @all)
+            shift
+            unset STEP_NUM
+            for PKG in $(__list_available_packages)
+            do
+                step "$PKG"
+                 __load_formula_of_the_given_package "$PKG" $@
+                __fetch_sources_of_the_given_package "$PKG" $@
+                __fetch_patches_of_the_given_package "$PKG" $@
+            done
+            ;;
+        *)
+             __load_formula_of_the_given_package $@
+            __fetch_sources_of_the_given_package $@
+            __fetch_patches_of_the_given_package $@
+    esac
+}
+
+# check if the given package is available
+# if the version condition is given, check if the condition is matched
+#
+# condition operator:
+# eq  equal
+# ne  not equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# examples:
+# is_package_available automake eq 1.16.0
+# is_package_available automake lt 1.16.0
+# is_package_available automake gt 1.16.0
+# is_package_available automake le 1.16.0
+# is_package_available automake ge 1.16.0
+# is_package_available automake
+  is_package_available() {
+    [ -z "$1" ] && {
+        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    case $# in
+        1)  [ -n "$(__path_of_formula_of_the_given_package $1)" ] ;;
+        3)  __load_formula_of_the_given_package "$1" || return 1
+            shift
+            version_match $PACKAGE_VERSION $@
+            ;;
+        *)  error "is available command only accept 1 or 3 argument." ; return 1
+    esac
+}
+
+# is_package_installed <PACKAGE-NAME>
+  is_package_installed() {
+    [ -z "$1" ] && {
+        error "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
+    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 11
+    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 12
+}
+
+# is_package__outdated <PACKAGE-NAME>
+  is_package__outdated() {
+    __load_formula_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1"
+    version_match "$PACKAGE_VERSION" gt "$INSTALLED_PACKAGE_VERSION"
+}
+
+__gen_github_workflows() {
+    set -e
+
+    unset BREAK
+    unset NDEPENDED_PACKAGES
+    unset AVAILABLE_PACKAGES
+    unset GROUP_SIZE
+    unset OUTPUT_DIR
+    unset I
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --group-size=*)
+                GROUP_SIZE=$(getvalue "$1")
+                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER"
+                ;;
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                case "$OUTPUT_DIR" in
+                    '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
+                    /*) ;;
+                    \~|\~/) OUTPUT_DIR="${HOME}" ;;
+                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
+                    .|./)   OUTPUT_DIR="${PWD}" ;;
+                    *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
+                esac
+                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
+        esac
+        shift
+    done
+
+    if [ -z "$GROUP_SIZE" ] ; then
+        die "please sepecify --group-size=INTEGER argument."
+    fi
+
+    if [ -z "$OUTPUT_DIR" ] ; then
+        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical/.github/workflows"
+    fi
+
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical/.github/workflows/template"
+
+    if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
+        __update_formula_repositories
+    fi
+
+    AVAILABLE_PACKAGES=$(__list_available_packages)
+
+    for item in test v8 webrtc
+    do
+        AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
+    done
+
+    for x in $AVAILABLE_PACKAGES
+    do
+        for y in $AVAILABLE_PACKAGES
+        do
+            if [ "$x" = "$y" ] ; then
+                continue
+            else
+                for z in $(__get_packages_that_are_directly_depended_by_the_given_package "$y")
+                do
+                    if [ "$x" = "$z" ] ; then
+                        BREAK=yes
+                        break 2
+                    fi
+                done
+            fi
+        done
+        if [ "$BREAK" = yes ] ; then
+            unset BREAK
+        else
+            if [ -z "$NDEPENDED_PACKAGES" ] ; then
+                NDEPENDED_PACKAGES="$x"
+            else
+                NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
+            fi
+            if [ "$(list_length $NDEPENDED_PACKAGES)" -eq "$GROUP_SIZE" ] ; then
+                unset OUTPUT_FILEPATH
+
+                I=$(expr ${I-0} + 1)
+                OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+                NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+                echo
+                run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+                sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+                sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
+
+                unset NDEPENDED_PACKAGES
+            fi
+        fi
+    done
+    if [ -n "$NDEPENDED_PACKAGES" ] ; then
+        unset OUTPUT_FILEPATH
+
+        I=$(expr ${I-0} + 1)
+        OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+        NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+        run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+        sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+        sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
+    fi
+}
+
+__list_available_packages() {
+    for FORMULA_REPO_NAME in $(__list_formula_repositories | cut -d= -f1)
+    do
+        cd "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" || return 1
+        ls -1 *.sh | sed 's/\.sh$//g' || return 1
+    done
+}
+
+__list_installed_packages() {
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+         cd "$MY_INSTALL_DIR" > /dev/null || return 1
+    else
+        return 0
+    fi
+
+    for packageName in $(ls)
+    do
+        if is_package_installed "$packageName" ; then
+            printf '%s\n' "$packageName"
+        fi
+    done
+}
+
+__list__outdated_packages() {
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+         cd "$MY_INSTALL_DIR" > /dev/null || return 1
+    else
+        return 0
+    fi
+
+    for packageName in $(ls)
+    do
+        is_package_available "$packageName" || continue
+        is_package_installed "$packageName" || continue
+        is_package__outdated "$packageName" || continue
+        printf '%s\n' "$packageName"
+    done
+}
+
+# __tree_the_given_installed_package <PACKAGE-NAME> [TREE-OPTIONS]
+  __tree_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "__tree_the_given_installed_package <PACKAGE-NAME> [TREE-OPTIONS], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    __install_the_given_package_if_needed tree || return 1
+
+    run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
+}
+
+# __uninstall_the_given_packages <PACKAGE-NAME>...
+  __uninstall_the_given_packages() {
+    unset USER_SPECIFIED_PACKAGES
+
+    while [ -n "$1" ]
+    do
+        case "$1" in
+            -x|--xtrace)
+                ;;
+            -*) die "__uninstall_the_given_packages <PACKAGE-NAME>..., unrecognized option: $1"
+                ;;
+            *)  USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
+        esac
+        shift
+    done
+
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
+        error "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    for packageName in $USER_SPECIFIED_PACKAGES
+    do
+        if is_package_installed "$packageName" ; then
+            run rm -rf "$MY_INSTALL_DIR/$packageName"
+        fi
+    done
+}
+
+__reinstall_the_given_packages() {
+    inspect_install_arguments $@
+
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
+        error "__reinstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    for packageName in $USER_SPECIFIED_PACKAGES
+    do
+        is_package_available "$packageName" || {
+            error "package [$packageName] is not available."
+            return 1
+        }
+        is_package_installed "$packageName" || {
+            error "package [$packageName] is not installed."
+            return 1
+        }
+    done
+
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
+    do
+        [ -d "$MY_BACKUP_DIR" ] || {
+            install -d "$MY_BACKUP_DIR" || return 1
+        }
+
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+
+        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+    done
+}
+
+__upgrade_packages() {
+    inspect_install_arguments $@
+
+    if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
+        USER_SPECIFIED_PACKAGES=$(__list__outdated_packages)
+    fi
+
+    for packageName in $USER_SPECIFIED_PACKAGES
+    do
+        is_package_available "$packageName" || {
+            error "package [$packageName] is not available."
+            return 1
+        }
+        is_package_installed "$packageName" || {
+            error "package [$packageName] is not installed."
+            return 1
+        }
+    done
+
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
+    do
+        [ -d "$MY_BACKUP_DIR" ] || {
+            install -d "$MY_BACKUP_DIR" || return 1
+        }
+
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+
+        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+    done
+}
+
+__cleanup() {
+    [ -d "$MY_SOURCE_DIR" ] || return 0
+    for repo in $(__list_formula_repositories | cut -d= -f1)
+    do
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        for item in $(ls)
+        do
+            if [ -f "$item" ] ; then
+                case $item in
+                    *.sh)
+                        __load_formula_of_the_given_package $(echo "$item" | sed 's/\.sh//g')
+                esac
+            fi
+        done
+    done
+    success "Done."
+}
+
+__search_packages() {
+    [ -z "$1" ] && {
+        error "please specify a keyword."
+        return 1
+    }
+
+    __install_the_given_package_if_needed grep 1>&2
+
+    for repo in $(__list_formula_repositories | cut -d= -f1)
+    do
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh$//g' | grep "$*"
+    done
+}
+
+__compare_versions_with_brew() {
+    get_brew_package_name_from_my_package_name() {
+        case $1 in
+            file)     printf '%s\n' 'file-formula' ;;
+            delta)    printf '%s\n' 'git-delta' ;;
+            gmake)    printf '%s\n' 'make'      ;;
+            gtar)     printf '%s\n' 'gnu-tar'   ;;
+            libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+            blake3)   printf '%s\n' 'b3sum'     ;;
+            libwebp)  printf '%s\n' 'webp'      ;;
+            proj7)    printf '%s\n' 'proj@7'    ;;
+            openssl)  printf '%s\n' 'openssl@1.1';;
+            freetype2)printf '%s\n' 'freetype'  ;;
+            freetype2-with-harfbuzz)
+                      printf '%s\n' 'freetype'  ;;
+            gnu-coreutils)
+                      printf '%s\n' 'coreutils' ;;
+            libmediainfo|mediainfo)
+                      printf '%s\n' 'media-info';;
+            tcl-core) printf '%s\n' 'tcl-tk'    ;;
+            *)        printf '%s\n' "$1"
+        esac
+    }
+
+    set -e
+
+    cd "$MY_HOME_DIR/repos.d/offical/formula"
+
+    for item in $(ls -1 *.sh | sed 's/\.sh//')
+    do
+        __load_formula_of_the_given_package "$item"
+        BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
+        if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
+            BREW_PKG_VERS=$(__pmw_get_available_package_version_by_package_name brew "$BREW_PKG_NMAE")
+            if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
+                printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
+            else
+                :
+                #printf "${COLOR_GREEN}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
+            fi
+        else
+            printf "${COLOR_BLUE}%-10s %-10s  |${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
+        fi
+    done
+}
+
+__show_or_open_homepage_of_the_given_package() {
+    unset ACTION
+    unset PACKAGE
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --open)
+                ACTION=open
+                ;;
+            -*|--*)
+                die "unrecognized argument: 41"
+                ;;
+            *)  if [ -z "$PACKAGE" ] ; then
+                    PACKAGE=$1
+                else
+                    die "too many packages given."
+                fi
+        esac
+        shift
+    done
+
+    if [ "$ACTION" = open ] ; then
+        __open_homepage_of_the_given_package $PACKAGE
+    else
+        __show_homepage_of_the_given_package $PACKAGE
+    fi
+}
+
+__show_homepage_of_the_given_package() {
+    if [ -z "$1" ] ; then
+        PACKAGE_WEBPAGE="$MY_HOME_PAGE"
+    else
+        __load_formula_of_the_given_package "$1"
+    fi
+
+    printf '%s\n' "$PACKAGE_WEBPAGE"
+}
+
+__open_homepage_of_the_given_package() {
+    if [ -z "$1" ] ; then
+        PACKAGE_WEBPAGE="$MY_HOME_PAGE"
+    else
+        __load_formula_of_the_given_package "$1"
+    fi
+    
+    if command -v open > /dev/null ; then
+        run "open '$PACKAGE_WEBPAGE'"
+    elif command -v termux-open-url > /dev/null ; then
+        run "termux-open-url '$PACKAGE_WEBPAGE'"
+    else
+        warn "I don't konw how to open"
+    fi
+}
+
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
+__show_packages_depended_by_the_given_package() {
+    [ -z "$1" ] && {
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    PACKAGE_NAME="$1"
+
+    shift
+
+    unset OUTPUT_FILEPATH
+    unset OUTPUT_FORMAT
+    unset OUTPUT_BRIEF
+    unset RECURSIVE
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --format=list)
+                OUTPUT_FORMAT=list
+                ;;
+            --format=json)
+                OUTPUT_FORMAT=json
+                ;;
+            --format=dot)
+                OUTPUT_FORMAT=dot
+                ;;
+            --format=txt)
+                OUTPUT_FORMAT=txt
+                ;;
+            --format=png)
+                OUTPUT_FORMAT=png
+                ;;
+            --format=*)
+                OUTPUT_FORMAT=$(getvalue $1)
+                die "unsupported format: $OUTPUT_FORMAT"
+                ;;
+            --brief)
+                OUTPUT_BRIEF=yes
+                ;;
+            -r) RECURSIVE=yes ;;
+            -x) set -x ;;
+            -o)
+                if [ -z "$2" ] ; then
+                    die "-o <OUTPUT-FILE-PATH>, <OUTPUT-FILE-PATH> must not be empty."
+                else
+                    OUTPUT_FILEPATH="$2"
+                    shift
+                fi
+                ;;
+            *)  die "$_0 depends <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], unrecognized argumet: $1"
+        esac
+        shift
+    done
+
+    if [ -z "$OUTPUT_FORMAT" ] ; then
+        OUTPUT_FORMAT=list
+    fi
+
+    if [ -z "$OUTPUT_FILEPATH" ] ; then
+        if [ "$OUTPUT_FORMAT" = 'png' ] ; then
+            die "you want png file, but -o <OUTPUT-FILE-PATH> option is not given."
+        fi
+
+        OUTPUT_FILEPATH=/dev/tty
+    else
+        if [ "$OUTPUT_FORMAT" = 'png' ] && [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+            die "you want png file, /dev/tty is not allowed."
+        fi
+    fi
+
+    case $OUTPUT_FORMAT in
+        list)
+            unset RECURSIVE_DEPENDENT_PACKAGES
+            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
+
+            if [ -z "$RECURSIVE_DEPENDENT_PACKAGES" ] ; then
+                return 0
+            fi
+
+            unset OUTPUT_CONTENT
+
+            if [ "$OUTPUT_BRIEF" = yes ] ; then
+                OUTPUT_CONTENT="$RECURSIVE_DEPENDENT_PACKAGES"
+            else
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+                do
+                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(printf '%s\n' "$DEPENDENCY_PACKAGE_DIRECT_DEPS" | tr ' ' ',')
+
+                    unset LINE
+                    LINE=$(printf 'name:%-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_DIRECT_DEPS")
+                    if [ -z "$OUTPUT_CONTENT" ] ; then
+                        OUTPUT_CONTENT="$LINE"
+                    else
+                        OUTPUT_CONTENT="$OUTPUT_CONTENT
+$LINE"
+                    fi
+                done
+            fi
+
+            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+                printf '%s\n' "$OUTPUT_CONTENT"
+            else
+                unset OUTPUT_DIR
+
+                case $3 in
+                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
+                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+                esac
+
+                if [ !      -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
+                printf '%s\n' "$OUTPUT_CONTENT" > "$OUTPUT_FILEPATH"
+            fi
+            ;;
+        json)
+            unset RECURSIVE_DEPENDENT_PACKAGES
+            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
+
+            JSON_ARRAY='['
+
+            if [ "$OUTPUT_BRIEF" = yes ] ; then
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+                do
+                    JSON_ARRAY="$JSON_ARRAY\"$DEPENDENCY_PACKAGE_NAME\","
+                done
+            else
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+                do
+                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
+
+                    JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
+                done
+            fi
+
+            JSON_ARRAY=$(printf '%s\n' "$JSON_ARRAY" | sed 's|,$||')
+
+            JSON_ARRAY="$JSON_ARRAY]"
+
+            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+                printf '%s\n' "$JSON_ARRAY"
+            else
+                unset OUTPUT_DIR
+
+                case $3 in
+                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
+                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+                esac
+
+                if [ !      -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
+                printf '%s\n' "$JSON_ARRAY" > "$OUTPUT_FILEPATH"
+            fi
+            ;;
+        dot)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" dot "$OUTPUT_FILEPATH"
+            ;;
+        txt)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" txt "$OUTPUT_FILEPATH"
+            ;;
+        png)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" png "$OUTPUT_FILEPATH"
+
+            if [ "$OUTPUT_FILEPATH" != '/dev/tty' ] ; then
+                for item in open feh eog lsix
+                do
+                    if command -v "$item" > /dev/null ; then
+                        "$item" "$OUTPUT_FILEPATH" &
+                        return 0
+                    fi
+                done
+            fi
+    esac
+}
+
+# __logs_the_given_installed_package <PACKAGE-NAME>
+  __logs_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "$_0 logs <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    if command -v bat > /dev/null ; then
+        VIEWER=bat
+    else
+        VIEWER=less
+    fi
+
+    __logs_the_given_dir() {
+        for item in $(ls "$1")
+        do
+            item="$1/$item"
+            if [ -d "$item" ] ; then
+                continue
+            fi
+            if [ "$VIEWER" = 'bat' ] ; then
+                case $item in
+                    *.png) ;;
+                    *.sh|*/installed-metadata)
+                        bat -l bash "$item" ;;
+                    *)  bat "$item"
+                esac
+            else
+                "$VIEWER" "$item"
+            fi
+        done
+    }
+
+    __logs_the_given_dir "$MY_INSTALL_DIR/$1"
+    __logs_the_given_dir "$MY_INSTALL_DIR/$1/$2/share/log"
+
+    if [ "$VIEWER" != 'bat' ] ; then
+        prompt_user_to_install_bat
+    fi
+}
+
+# examples:
+# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE> [--keep-work-dir]
+# __pack_the_given_installed_package    autoconf    tar.xz
+  __pack_the_given_installed_package() {
+    __load_installed_metadata_of_the_given_package "$1"
+
+    case $2 in
+        7z) __install_the_given_package_if_needed p7zip ;;
+        zip)
+            __install_the_given_package_if_needed zip
+            __install_the_given_package_if_needed unzip
+            ;;
+        tar.gz)
+            __install_the_given_package_if_needed gtar
+            __install_the_given_package_if_needed gzip
+            ;;
+        tar.xz)
+            __install_the_given_package_if_needed gtar
+            __install_the_given_package_if_needed xz
+            ;;
+        tar.bz2)
+            __install_the_given_package_if_needed gtar
+            __install_the_given_package_if_needed bzip2
+            ;;
+        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, <TYPE> must not be empty." ;;
+        *) die "$_0 pack <PACKAGE-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip tar.gz tar.xz tar.bz2."
+    esac
+
+    for option in $(shiftn 2 $@)
+    do
+        case $option in
+            --keep-work-dir)
+                KEEP_WORKING_DIR=yes
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "$_0 pack <PACKAGE-NAME> <TYPE> [--keep-work-dir], unrecognized option: $option"
+        esac
+    done
+
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        INSTALLED_PACKAGE_VERSION="$INSTALLED_TIMESTAMP_UNIX"
+    fi
+
+    unset PACKED_DIR_NAME
+    if [ -z "$NATIVE_OS_LIBC" ] ; then
+        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    else
+        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    fi
+
+    unset PACKED_FILE_NAME
+    PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
+
+    step "create working directory"
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORKING_DIR=$(mktemp -d)
+
+    step "change to work directory"
+    run cd $WORKING_DIR
+
+    step "make link refer to installed package root dir"
+    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
+
+    step "packing"
+    case $2 in
+        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME"   ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+    esac
+
+    step "check integrity of packed file"
+    case $2 in
+        7z)    run 7za t -t7z "$PACKED_FILE_NAME" ;;
+        zip)   run unzip -t   "$PACKED_FILE_NAME" ;;
+        tar.*) run tar   -tf  "$PACKED_FILE_NAME" ;;
+    esac
+
+    step "show size of packed file"
+    run "du -sh $PACKED_FILE_NAME | cut -f1"
+
+    if [ ! -d "$MY_BINARY_DIR" ] ; then
+        step "create cached binary dir"
+        run install -d "$MY_BINARY_DIR"
+    fi
+
+    step "copy packed file to cached dir"
+    run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
+
+    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        echo
+        note "the work dir [$WORKING_DIR] is not deleted as --keep-work-dir option is given."
+    else
+        step "delete working directory"
+        run rm -rf $WORKING_DIR
+    fi
+}
+
+# this fuction should be run in subshell
+# __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
+  __get_packages_that_are_directly_depended_by_the_given_package() {
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    sed -n '/^[[:space:]]*pkg_set[[:space:]]\{1,\}depends[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*pkg_set[[:space:]]\{1,\}depends[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/' | sed 's|:build||g'
+}
+
+# this fuction should be run in subshell
+# __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
+  __get_packages_that_are_directly_depended_by_the_given_package() {
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
+
+    sed -n '/^[[:space:]]*pkg_set[[:space:]]\{1,\}depends[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*pkg_set[[:space:]]\{1,\}depends[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/'
+}
+
+# this fuction should be run in subshell
+#
+# __get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>...
+  __get_packages_that_are_recursively_depended_by_the_given_packages() {
+      [ -z "$1" ] && {
+          error "__get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+          return 1
+      }
+
+      __get_packages_that_are_recursively_depended_by_the_given_package ";$(printf '%s\n' "$*" | tr ' ' ';')"
+}
+
+# this fuction should be run in subshell
+#
+# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME>
+# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> internal
+  __get_packages_that_are_recursively_depended_by_the_given_package() {
+    [ -z "$1" ] && {
+        error "__get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> [internal], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset DIRECT_DEPENDENT_PACKAGES
+
+    case $1 in
+        *\;*) DIRECT_DEPENDENT_PACKAGES=$(printf '%s\n' "$1" | tr ';' ' ') ;;
+        *)    DIRECT_DEPENDENT_PACKAGES=$(__get_packages_that_are_directly_depended_by_the_given_package "$1")
+    esac
+
+    [ "$2" != internal ] && {
+        DEPTH=1
+        RESULT=
+    }
+
+    DEPTH=$(expr "$DEPTH" + 1)
+
+    for DIRECT_DEPENDENT_PACKAGE_NAME in $DIRECT_DEPENDENT_PACKAGES
+    do
+        is_package_available "$DIRECT_DEPENDENT_PACKAGE_NAME" || {
+            error "package [$DIRECT_DEPENDENT_PACKAGE_NAME] is not available."
+            return 1
+        }
+
+        if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENT_PACKAGE_NAME" ] ; then
+            RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/d")
+        fi
+
+        if [ -z "$RESULT" ] ; then
+            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME"
+        else
+            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME
+$RESULT"
+        fi
+
+        __get_packages_that_are_recursively_depended_by_the_given_package "$DIRECT_DEPENDENT_PACKAGE_NAME" internal
+    done
+
+    DEPTH=$(expr "$DEPTH" - 1)
+
+    if [ "$DEPTH" -eq 1 ] ; then
+        printf '%s\n' "$RESULT"
+    fi
+}
+
+__get_dot_file_contents() {
+    for PKG in $@
+    do
+        unset DIRECT_DEPENDENT_PACKAGES
+        DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$PKG")"
+        if [ -n "$DIRECT_DEPENDENT_PACKAGES" ] ; then
+            printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENT_PACKAGES" | sed 's/ /" "/g')"
+            __get_dot_file_contents $DIRECT_DEPENDENT_PACKAGES
+        fi
+    done
+}
+
+# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>
+__gen_dependency_graph_recursively_depended_by_the_given_package() {
+    unset DIRECT_DEPENDENT_PACKAGES
+    DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$1")"
+
+    if [ -z "$DIRECT_DEPENDENT_PACKAGES" ] ; then
+        return 0
+    fi
+
+    case $2 in
+        dot|txt|png) ;;
+        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, format must not be empty." ;;
+        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, unrecognized format: $2"
+    esac
+
+    if [ -z "$3" ] ; then
+        die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, <OUTPUT-FILEPATH> must be not empty."
+    fi
+
+    unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
+    unset GEN_DEPENDENCY_GRAPH_DOT_FILEPATH
+
+    GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d) || return 1
+    GEN_DEPENDENCY_GRAPH_DOT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.dot"
+    GEN_DEPENDENCY_GRAPH_TXT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.txt"
+    GEN_DEPENDENCY_GRAPH_PNG_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.png"
+
+    printf 'digraph G {\n'       >  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+    __get_dot_file_contents "$1" >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+    printf '}\n'                 >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+
+    if [ "$3" != '/dev/tty' ] ; then
+        unset GEN_DEPENDENCY_GRAPH_OUTPUT_DIR
+
+        case $3 in
+            /*) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname      "$3")" ;;
+             *) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+        esac
+
+        if [ !      -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" ] ; then
+            install -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" || return 1
+        fi
+    fi
+
+    case $2 in
+        dot)
+            if [ "$3" = '/dev/tty' ] ; then
+                cat   "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            else
+                cp -f "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH" "$3"
+            fi
+            ;;
+        txt)
+            __install_the_given_package_if_needed curl || return 1
+
+            # https://github.com/ggerganov/dot-to-ascii
+            curl \
+                -o "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" \
+                -s \
+                -G \
+                --data-urlencode "boxart=1" \
+                --data-urlencode "src=$(cat $GEN_DEPENDENCY_GRAPH_DOT_FILEPATH)" \
+                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || return 1
+
+            if [ "$3" = '/dev/tty' ] ; then
+                cat   "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH"
+            else
+                cp -f "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" "$3"
+            fi
+            ;;
+        png)
+            __install_the_given_package_if_needed graphviz || return 1
+
+            if command -v fc-match > /dev/null ; then
+                # Error: fontconfig: Couldn't find font.
+                if [ -z "$(fc-match)" ] ; then
+                    fetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
+                fi
+            fi
+
+            run dot -Tpng -o "$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            ;;
+    esac
+}
+
+__install_the_given_packages() {
+    inspect_install_arguments $@
+
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
+        error "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset RECURSIVE_DEPENDENT_PACKAGES
+    RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $USER_SPECIFIED_PACKAGES)"
+
+    if [ $(list_length $RECURSIVE_DEPENDENT_PACKAGES) -gt 1 ] ; then
+        RECURSIVE_DEPENDENT_PACKAGES="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGES" | tr '\n' ' ')"
+        printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $RECURSIVE_DEPENDENT_PACKAGES $COLOR_OFF\n"
+    fi
+
+    for INSTALLING_PACKAGE in $RECURSIVE_DEPENDENT_PACKAGES
+    do
+        if is_package_installed "$INSTALLING_PACKAGE" ; then
+            if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
+                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
+            fi
+        else
+            (__install_the_given_package "$INSTALLING_PACKAGE")
+        fi
+    done
+}
+
+# Note: this function must run in a subshell
+__install_the_given_package() {
+    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+
+    # brew install meson
+    # Error: The current work directory doesn't exist, cannot proceed.
+    # beacuse previous package's work direcotory is deleted.
+    cd ~
+
+    unset PACKAGE_WORKING_DIR
+    unset PACKAGE_SRC_TOP_DIR
+    unset PACKAGE_BSCRIPT_DIR
+    unset PACKAGE_INSTALL_DIR
+    unset PACKAGE_INCLUDE_DIR
+    unset PACKAGE_LIBRARY_DIR
+    unset PACKAGE_PKGCONF_DIR
+    unset PACKAGE_BINARY__DIR
+
+    step "view formula"
+    __view_formula_of_the_given_package "$1" --paging=never
+
+    step "load formula"
+    __load_formula_of_the_given_package "$1"
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD ccache"
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] ; then
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+            PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD="$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD bear"
+        fi
+    fi
+
+    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/$1"
+    PACKAGE_SRC_TOP_DIR="$PACKAGE_WORKING_DIR/src"
+
+    step "create working directory"
+    if [ -d "$PACKAGE_WORKING_DIR" ] ; then
+        run rm -rf "$PACKAGE_WORKING_DIR"
+    fi
+    run install -d "$PACKAGE_WORKING_DIR"
+
+    step "calculate packages that are depended by $1"
+    unset RECURSIVE_DEPENDENT_PACKAGES
+
+    RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_package "$1")"
+
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_WORKING_DIR/dependencies.txt"
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
+
+    __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+    __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+    # __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+
+    if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
+        cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
+    fi
+
+    unset PKG_CONFIG
+    unset MESON
+    unset CMAKE
+    unset GMAKE
+    unset NINJA
+
+    PKG_CONFIG=$(command -v pkg-config || true)
+    MESON=$(command -v meson || true)
+    CMAKE=$(command -v cmake || true)
+    NINJA=$(command -v ninja || true)
+
+    case $(uname | tr A-Z a-z) in
+        darwin|linux)
+            GMAKE=$(command -v gmake || command -v make || true)
+            ;;
+        *bsd)
+            GMAKE=$(command -v gmake || command -v make || true)
+            ;;
+        *)  GMAKE=$(command -v make || true)
+    esac
+
+    step "fetch sources if needed"
+    __fetch_sources_of_the_given_package "$1"
+
+    step "fetch patches if needed"
+    __fetch_patches_of_the_given_package "$1"
+
+    case $PACKAGE_SRC_URL in
+        dir://*)
+            if [ "$PACKAGE_SRC_PATH" = '/dev/null' ] ; then
+                step "create the directory where source files will be stored in"
+                run install -d "$PACKAGE_SRC_TOP_DIR"
+            elif [ -d "$PACKAGE_SRC_PATH" ] ; then
+                if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
+                    PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
+                fi
+
+                step "create the directory where source files will be copied to"
+                run install -d "$PACKAGE_SRC_TOP_DIR"
+
+                step "copy source files to the directory i just created"
+                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
+            else
+                die "src.url point to dir is not exist."
+            fi
+            ;;
+        *.git)
+            if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD)
+            fi
+
+            step "create the directory where source files will be copied to"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
+
+            step "copy source files to the directory i just created"
+            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
+            ;;
+        *.c|*.cc|*.cxx|*.cpp)
+            step "create the directory where source files will be copied to"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
+
+            step "copy source files to the directory i just created"
+            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_TOP_DIR"
+            ;;
+        *.zip)
+            step "create the directory where source file will be uncompressed to"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
+
+            step "uncompressed source file to the directory i just created"
+            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_TOP_DIR"
+            ;;
+        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
+            step "create the directory where source file will be uncompressed to"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
+
+            step "uncompressed source file to the directory i just created"
+            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_TOP_DIR" --strip-components 1
+            ;;
+        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+    esac
+
+    unset I
+    for f in $(ls "$PACKAGE_SRC_TOP_DIR")
+    do
+        I=$(expr ${I-0} + 1)
+    done
+
+    if [ ${I-0} -eq 1 ] && [ -d "$PACKAGE_SRC_TOP_DIR/$f" ] ; then
+        if [ -z "$PACKAGE_BSCRIPT" ] ; then
+            PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR/$f"
+        else
+            PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR/$f/$PACKAGE_BSCRIPT"
+        fi
+    else
+        if [ -z "$PACKAGE_BSCRIPT" ] ; then
+            PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR"
+        else
+            PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR/$PACKAGE_BSCRIPT"
+        fi
+    fi
+
+    step "list files of source top directory"
+    run ls -l "$PACKAGE_SRC_TOP_DIR"
+
+    if [ -n "$PACKAGE_BSCRIPT" ] ; then
+        step "list files of build script directory"
+        run ls -l "$PACKAGE_BSCRIPT_DIR"
+    fi
+
+    __config_build_variables "$1"
+    __printf_build_variables "$1"
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
+    fi
+
+    [ -n "$RECURSIVE_DEPENDENT_PACKAGES" ] && {
+        step2 "create symbolic links for dependency libs"
+        case $LINK_TYPE in
+            static-only|static-prefered) LINK_LIBRARY_TYPE=a  ;;
+            shared-only|shared-prefered) LINK_LIBRARY_TYPE=so ;;
+        esac
+
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+        do
+            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/$DEPENDENT_PACKAGE_NAME/lib"
+            if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
+                for item in $(find "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
+                do
+                    if [ -e "$PACKAGE_WORKING_DIR/$item" ] ; then
+                        continue
+                    else
+                        run ln -s $DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR/$item $PACKAGE_WORKING_DIR/$item
+                    fi
+                done
+            fi
+        done
+
+        unset LINK_LIBRARY_TYPE
+    }
+
+    step "do some preparation works"
+    if command -v prepare > /dev/null ; then
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR"
+        fi
+        prepare "$1"
+    else
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)
+                warn "no prepare function defined in formula."
+                run NOCONFIGURE=yes ./autogen.sh    || return 1
+                ;;
+            autotools)
+                warn "no prepare function defined in formula."
+                run autoreconf -ivf || return 1
+                ;;
+            *)  warn "no prepare function defined in formula, skipped."
+        esac
+    fi
+
+    if [ "$DRYRUN" = yes ] ; then
+        if [ -z "$SHELL" ] ; then
+            SHELL=$(command -v zsh || command -v bash || command -v sh)
+        fi
+        exec "$SHELL" || return 1
+    fi
+
+    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+        run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
+    fi
+
+    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
+        fi
+    else
+        run mkdir "$PACKAGE_BUILDIN_DIR" || return 1
+        run cd    "$PACKAGE_BUILDIN_DIR" || return 1
+    fi
+
+    step "building"
+    if command -v build > /dev/null ; then
+        build $1
+    else
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)   configure ;;
+            autotools) configure ;;
+            configure) configure ;;
+            cmake*)    cmakew ;;
+            meson)     mesonw ;;
+            ninja)     ninja clean && ninja && ninja install ;;
+            make)      makew clean && makew && makew install ;;
+            cargo)     run cargo install -vv --path "$PACKAGE_BSCRIPT_DIR" --root="$PACKAGE_INSTALL_DIR" ;;
+            go)        run go build -v -trimpath ;;
+        esac
+    fi
+
+    [ -d "$PACKAGE_INSTALL_DIR" ] || {
+        error "installed nothing."
+        return 1
+    }
+
+    step "install logs"
+    __install_logs "$1"
+
+    step "record installed metadata"
+    __record_installed_metadata_of_the_given_package "$1"
+
+    step "record installed files"
+    __record_installed_files_of_the_given_package "$1"
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        step "show ccache statistics summary"
+        note "Before Build:"
+        run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
+        note "After  Build:"
+        run  ccache -s
+    fi
+
+    if [ "$KEEP_WORKING_DIR" != yes ] ; then
+        step "clean working directory."
+        run rm -rf "$PACKAGE_WORKING_DIR"
+    fi
+
+    __tree_the_given_installed_package "$1" $TREE_ARGS
+
+    echo
+    success "$1 have been installed successfully."
+}
+
+__install_the_given_package_if_needed() {
+    return 0
+    [ -z "$1" ] && {
+        error "__install_the_given_package_if_needed <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    if is_package_installed "$1" ; then
+        return 0
+    else
+        __install_the_given_package "$1"
+    fi
+}
+
+__config_build_variables() {
+    step "config build variables"
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        unset TOOLCHAIN_ROOT_DIR
+        unset TOOLCHAIN_BIN__DIR
+
+        unset SYSROOT
+        unset MACOSX_DEPLOYMENT_TARGET
+
+        TOOLCHAIN_ROOT_DIR="$(xcode-select -p)"
+        TOOLCHAIN_BIN__DIR="$TOOLCHAIN_ROOT_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+        export PATH="$TOOLCHAIN_BIN__DIR:$PATH"
+
+        SYSROOT="$TOOLCHAIN_ROOT_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        MACOSX_DEPLOYMENT_TARGET="$(echo "$NATIVE_OS_VERS" | cut -d. -f1).$(echo "$NATIVE_OS_VERS" | cut -d. -f2)"
+
+        CFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Qunused-arguments"
+        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+        LDFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+    fi
+
+    for TOOLNAME in $(list_tools_in_the_toolchain)
+    do
+        unset TOOLNAME_UPPERCASE
+        TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
+
+        unset TOOLPATH
+        TOOLPATH="$(eval echo \$${TOOLNAME_UPPERCASE})"
+
+        if [ -z "$TOOLPATH" ] ; then
+            case $TOOLNAME in
+                cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
+                cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
+                *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
+            esac
+        else
+            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not exist."
+            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not executable."
+        fi
+
+        eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
+    done
+
+    unset TOOLNAME_UPPERCASE
+    unset TOOLNAME
+    unset TOOLPATH
+
+    for item in $PACKAGE_CDEFINE
+    do
+        CPPFLAGS="$CPPFLAGS -D$item"
+    done
+
+    if [ -n "$PACKAGE_CCFLAGS" ] ; then
+        CFLAGS="$CFLAGS $PACKAGE_CCFLAGS"
+    fi
+
+    if [ -n "$PACKAGE_LDFLAGS" ] ; then
+        LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+    fi
+
+    if [ "$LINK_TYPE" = static-only ] ; then
+         CFLAGS=" $CFLAGS -static"
+        LDFLAGS="$LDFLAGS -static"
+    fi
+
+    if [ "$VERBOSE" = yes ] ; then
+        export PKG_CONFIG_DEBUG_SPEW=set
+    fi
+
+    LD_LIBRARY_DIR="$LD_LIBRARY_DIR_OLD"
+
+    for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+    do
+        DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '-' '_')
+
+        unset DEP_PKG_INSTALL_DIR
+        unset DEP_PKG_BINARY__DIR
+        unset DEP_PKG_INCLUDE_DIR
+        unset DEP_PKG_LIBRARY_DIR
+        unset DEP_PKG_PKGCONF_DIR
+
+        DEP_PKG_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE"
+        DEP_PKG_BINARY__DIR="$DEP_PKG_INSTALL_DIR/bin"
+        DEP_PKG_INCLUDE_DIR="$DEP_PKG_INSTALL_DIR/include"
+        DEP_PKG_LIBRARY_DIR="$DEP_PKG_INSTALL_DIR/lib"
+        DEP_PKG_PKGCONF_DIR="$DEP_PKG_INSTALL_DIR/lib/pkgconfig"
+
+        eval "${DEP_PKG_NAME_UNDERSCORE}_INSTALL_DIR='$DEP_PKG_INSTALL_DIR'"
+        eval "${DEP_PKG_NAME_UNDERSCORE}_BINARY__DIR='$DEP_PKG_BINARY__DIR'"
+        eval "${DEP_PKG_NAME_UNDERSCORE}_INCLUDE_DIR='$DEP_PKG_INCLUDE_DIR'"
+        eval "${DEP_PKG_NAME_UNDERSCORE}_LIBRARY_DIR='$DEP_PKG_LIBRARY_DIR'"
+
+        CPPFLAGS="-I$DEP_PKG_INCLUDE_DIR $CPPFLAGS"
+         LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+
+        if [ -z "$PKG_CONFIG_PATH" ] ; then
+            PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR"
+        else
+            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEP_PKG_PKGCONF_DIR"
+        fi
+
+        if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
+            LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_DIR"
+        fi
+
+        if [ -d " $DEP_PKG_BINARY__DIR" ] ; then
+            PATH="$DEP_PKG_BINARY__DIR:$PATH"
+        fi
+    done
+
+    export LD_LIBRARY_DIR
+    export PATH
+
+    if [ "$VERBOSE" = yes ] ; then
+        CFLAGS="$CFLAGS -v"
+    fi
+
+    CXXFLAGS="$CFLAGS"
+
+    if [ -n "$PACKAGE_XXFLAGS" ] ; then
+        CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
+    fi
+
+    PACKAGE_BUILDIN_DIR="$PACKAGE_BSCRIPT_DIR/$TIMESTAMP_UNIX"
+    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE_NAME"
+    PACKAGE_BINARY__DIR="$PACKAGE_INSTALL_DIR/bin"
+    PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALL_DIR/include"
+    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+    PACKAGE_PKGCONF_DIR="$PACKAGE_INSTALL_DIR/lib/pkgconfig"
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            cargo)
+                # eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
+                # eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
+
+                # # https://libraries.io/cargo/cc
+                # export HOST_CC="$CC"
+                # export HOST_CFLAGS="$CFLAGS"
+
+                # export HOST_CXX="$CXX"
+                # export HOST_CXXFLAGS="$CXXFLAGS"
+
+                # export HOST_AR="$AR"
+                ;;
+               go)
+                # https://golang.org/doc/install/source#environment
+                export CGO_ENABLED=1
+                export CGO_CFLAGS="$CFLAGS"
+                export CGO_CXXFLAGS="$CXXFLAGS"
+                export CGO_CPPFLAGS="$CPPFLAGS"
+                export CGO_LDFLAGS="$LDFLAGS"
+
+                export GO111MODULE="auto"
+                export GOPROXY=https://goproxy.cn
+                ;;
+        esac
+    done
+
+    STATIC_LIBRARY_EXT=.a
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        SHARED_LIBRARY_EXT=.dylib
+    else
+        SHARED_LIBRARY_EXT=.so
+    fi
+
+    LDFLAGS="-L$PACKAGE_WORKING_DIR $LDFLAGS"
+}
+
+__printf_build_variables() {
+    step "printf build variables"
+
+    for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
+    do
+        eval export "$TOOL=\"\$$TOOL\""
+        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+    done
+
+    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+    do
+        eval export "$FLAG=\"\$$FLAG\""
+        printf "\n%17s = " "$FLAG"
+        FIRST=yes
+        for item in $(eval echo \$$FLAG | tr ':' ' ')
+        do
+            if [ "$FIRST" = yes ] ; then
+                FIRST=NO
+                echo "$item"
+            else
+                echo "                    $item"
+            fi
+        done
+    done
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            cargo)
+                echo
+                env | grep CARGO
+                echo
+                echo "    HOST_AR       = $HOST_AR"
+                echo "    HOST_CC       = $HOST_CC"
+                echo "    HOST_CXX      = $HOST_CXX"
+                echo "    HOST_CFLAGS   = $HOST_CFLAGS"
+                echo "    HOST_CXXFLAGS = $HOST_CXXFLAGS"
+                echo
+                echo "  TARGET_AR       = $TARGET_AR"
+                echo "  TARGET_CC       = $TARGET_CC"
+                echo "  TARGET_CXX      = $TARGET_CXX"
+                echo "  TARGET_CFLAGS   = $TARGET_CFLAGS"
+                echo "  TARGET_CXXFLAGS = $TARGET_CXXFLAGS"
+                ;;
+               go)
+                echo
+                echo "      GO111MODULE = $GO111MODULE"
+                echo "      GOPROXY     = $GOPROXY"
+                echo
+                echo "     CGO_ENABLED  = $CGO_ENABLED"
+                echo "     CGO_CFLAGS   = $CGO_CFLAGS"
+                echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
+                echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
+                echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
+                ;;
+        esac
+    done
+
+    printf '%s\n' "
+STATIC_LIBRARY_EXT  = $STATIC_LIBRARY_EXT
+SHARED_LIBRARY_EXT  = $SHARED_LIBRARY_EXT
+
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_SRC_TOP_DIR = $PACKAGE_SRC_TOP_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_BUILDIN_DIR = $PACKAGE_BUILDIN_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
+PACKAGE_BINARY__DIR = $PACKAGE_BINARY__DIR
+PACKAGE_INCLUDE_DIR = $PACKAGE_INCLUDE_DIR
+PACKAGE_LIBRARY_DIR = $PACKAGE_LIBRARY_DIR
+PACKAGE_PKGCONF_DIR = $PACKAGE_PKGCONF_DIR
+
+LD_LIBRARY_DIR      = $LD_LIBRARY_DIR
+"
+
+    step "list PATH"
+    IFS_OLD=$IFS
+    IFS=':'
+    for item in $PATH
+    do
+        printf '%s\n' "$item"
+    done
+    IFS=$IFS_OLD
+
+    if [ "$VERBOSE" = yes ] ; then
+        step "show export variables"
+        run export -p
+        echo
+    fi
+}
+
+__install_logs() {
+    PACKAGE_LOG_DIR="$PACKAGE_INSTALL_DIR/share/log"
+    for item in "$PACKAGE_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR"
+    do
+        for item2 in 'config.log' 'compile_commands.json'
+        do
+            if [ -f "$item/$item2" ] ; then
+                if [ ! -d "$PACKAGE_LOG_DIR" ] ; then
+                    install -d "$PACKAGE_LOG_DIR"
+                fi
+                echo "-- Installing: $PACKAGE_LOG_DIR/$item2"
+                install -m 644 "$item/$item2" "$PACKAGE_LOG_DIR" || return 1
+            fi
+        done
+    done
+}
+
+install_incs() {
+    while [ -n "$1" ]
+    do
+        unset X1
+        unset X2
+        X1=$(echo "$1" | cut -d: -f1)
+        X2=$(echo "$1" | cut -d: -f2)
+
+        [ "$X1" = "$X2" ] && unset X2
+
+        install -v -d         "$PACKAGE_INCLUDE_DIR/$X2" || return 1
+        install -v -m 644 $X1 "$PACKAGE_INCLUDE_DIR/$X2" || return 1
+
+        shift
+    done
+}
+
+install_libs() {
+    install -v -d "$PACKAGE_LIBRARY_DIR" || return 1
+    for item in $@
+    do
+        case $item in
+            *.a) install -v -m 644 $item "$PACKAGE_LIBRARY_DIR" || return 1 ;;
+            *)   install -v -m 755 $item "$PACKAGE_LIBRARY_DIR" || return 1 ;;
+        esac
+    done
+}
+
+install_pcfs() {
+    install -v -d        "$PACKAGE_PKGCONF_DIR" &&
+    install -v -m 644 $@ "$PACKAGE_PKGCONF_DIR"
+}
+
+install_bins() {
+    install -v -d        "$PACKAGE_BINARY__DIR" &&
+    install -v -m 755 $@ "$PACKAGE_BINARY__DIR"
+}
+
+install_mans() {
+    for item in $@
+    do
+        unset NUMBER
+        NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
+        case $NUMBER in
+            [1-8]);;
+            *)    die "$item: not a manpage."
+        esac
+        install -v -d           "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 $item "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
+    done
+}
+
+install_pc_file() {
+    install -v -d "$PACKAGE_PKGCONF_DIR" &&
+    cat >         "$PACKAGE_PKGCONF_DIR/$1.pc"
+}
+
+# __show_infomation_of_all_available_packages [--json|--yaml|--shell]
+  __show_infomation_of_all_available_packages() {
+    case $1 in
+        --json) __show_infomation_as_json__of_all_available_packages ;;
+        --yaml) __show_infomation_as_yaml__of_all_available_packages ;;
+        --shell)__show_infomation_as_shell_of_all_available_packages ;;
+        '')     __show_infomation_as_mixed_of_all_available_packages ;;
+        *)    die "__show_infomation_of_all_available_packages [--json|--yaml|--shell], unrecognized option: $1"
+    esac
+}
+
+__show_infomation_as_mixed_of_all_available_packages() {
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '========'
+        fi
+        __show_infomation_of_the_given_package "$PACKAGE"
+    done
+}
+
+__show_infomation_as_json__of_all_available_packages() {
+    printf '%s\n' '['
+
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' ','
+        fi
+        __show_infomation_as_json__of_the_given_package "$PACKAGE"
+    done
+
+    printf '%s\n' ']'
+}
+
+__show_infomation_as_yaml__of_all_available_packages() {
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '---'
+        fi
+        __show_infomation_as_yaml__of_the_given_package "$PACKAGE"
+    done
+}
+
+__show_infomation_as_shell_of_all_available_packages() {
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '#---'
+        fi
+        __show_infomation_as_shell_of_the_given_package "$PACKAGE"
+    done
+}
+
+# __show_infomation_as_json__of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_json__of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    __install_the_given_package_if_needed jq >&2
+
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = yes ] ; then
+        PARALLEL=true
+    else
+        PARALLEL=false
+    fi
+
+    jq  --null-input \
+        --arg name "$PACKAGE_NAME" \
+        --arg version "$PACKAGE_VERSION" \
+        --arg summary "$PACKAGE_SUMMARY" \
+        --arg webpage "$PACKAGE_WEBPAGE" \
+        --arg license "$PACKAGE_LICENSE" \
+        --arg git_url "$PACKAGE_GIT_URL" \
+        --arg git_sha "$PACKAGE_GIT_SHA" \
+        --arg git_tag "$PACKAGE_GIT_TAG" \
+        --arg src_url "$PACKAGE_SRC_URL" \
+        --arg src_sha "$PACKAGE_SRC_SHA" \
+        --arg fix_url "$PACKAGE_FIX_URL" \
+        --arg fix_sha "$PACKAGE_FIX_SHA" \
+        --arg dep_pkg "$PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME" \
+        --arg bsystem "$PACKAGE_BUILD_SYSTEM" \
+        --arg binsrcd "$PACKAGE_BUILD_IN_BSCRIPT_DIR" \
+        --arg parallel "$PARALLEL" \
+        --arg cdefine "$PACKAGE_CDEFINE" \
+        --arg ccflags "$PACKAGE_CCFLAGS" \
+        --arg xxflags "$PACKAGE_XXFLAGS" \
+        --arg ldflags "$PACKAGE_LDFLAGS" \
+        --arg developer "$PACKAGE_DEVELOPER" \
+'{
+    "name":$name,
+    "version":$version,
+    "summary":$summary,
+    "webpage":$webpage,
+    "license":$license,
+    "git": {
+        "url":$git_url,
+        "tag":$git_tag,
+        "sha":$git_sha
+    },
+    "src": {
+        "url":$src_url,
+        "sha":$src_sha
+    },
+    "fix": {
+        "url":$fix_url,
+        "sha":$fix_sha
+    },
+    "dep": {
+        "when-build":$dep_pkg,
+        "at-runtime":$dep_pkg
+    },
+    "build": {
+        "system":$bsystem,
+        "ccflags":$ccflags,
+        "cdefine":$cdefine,
+        "xxflags":$xxflags,
+        "ldflags":$ldflags,
+        "binsrcd":$binsrcd,
+        "parallel":$parallel
+    },
+    "developer":$developer
+}'
+}
+
+# __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_yaml__of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    cat <<EOF
+name: $PACKAGE_NAME
+version: $PACKAGE_VERSION
+summary: $PACKAGE_SUMMARY
+webpage: $PACKAGE_WEBPAGE
+license: $PACKAGE_LICENSE
+
+git:
+    url: $PACKAGE_GIT_URL
+    sha: $PACKAGE_GIT_SHA
+    tag: $PACKAGE_GIT_TAG
+
+src:
+    url: $PACKAGE_SRC_URL
+    sha: $PACKAGE_SRC_SHA
+
+fix:
+    url: $PACKAGE_FIX_URL
+    sha: $PACKAGE_FIX_SHA
+
+dep:
+    when-build: $PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD
+    at-runtime: $PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME
+
+build:
+    system: $PACKAGE_BUILD_SYSTEM
+    binsrcd: $PACKAGE_BUILD_IN_BSCRIPT_DIR
+    cdefine: $PACKAGE_CDEFINE
+    ccflags: $PACKAGE_CCFLAGS
+    xxflags: $PACKAGE_XXFLAGS
+    ldflags: $PACKAGE_LDFLAGS
+    parallel: $PARALLEL
+
+developer: $PACKAGE_DEVELOPER
+EOF
+}
+
+# __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_shell_of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    while read KEY
+    do
+        printf "%s='%s'\n" "${PACKAGE_NAME_UPPERCASE_UNDERSCORE}_${KEY}" "$(eval echo \$$KEY)"
+    done <<EOF
+PACKAGE_NAME
+PACKAGE_SUMMARY
+PACKAGE_WEBPAGE
+PACKAGE_GIT_URL
+PACKAGE_GIT_SHA
+PACKAGE_GIT_TAG
+PACKAGE_SVN_URL
+PACKAGE_SRC_URL
+PACKAGE_SRC_SHA
+PACKAGE_SRC_NAME
+PACKAGE_SRC_PATH
+PACKAGE_SRC_TYPE
+PACKAGE_FIX_URL
+PACKAGE_FIX_SHA
+PACKAGE_FIX_NAME
+PACKAGE_FIX_PATH
+PACKAGE_FIX_TYPE
+PACKAGE_VERSION
+PACKAGE_VERSION_MAJOR
+PACKAGE_VERSION_MINOR
+PACKAGE_VERSION_PATCH
+PACKAGE_VERSION_TWEAK
+PACKAGE_DEVELOPER
+PACKAGE_LICENSE
+PACKAGE_BSCRIPT
+PACKAGE_BSYSTEM
+PACKAGE_BINBSTD
+PACKAGE_BUILD_SYSTEM
+PACKAGE_BUILD_SYSTEM_GO
+PACKAGE_BUILD_SYSTEM_RAKE
+PACKAGE_BUILD_SYSTEM_NINJA
+PACKAGE_BUILD_SYSTEM_GMAKE
+PACKAGE_BUILD_SYSTEM_CMAKE
+PACKAGE_BUILD_SYSTEM_XMAKE
+PACKAGE_BUILD_SYSTEM_MESON
+PACKAGE_BUILD_SYSTEM_CARGO
+PACKAGE_BUILD_SYSTEM_AUTOGENSH
+PACKAGE_BUILD_SYSTEM_AUTOTOOLS
+PACKAGE_BUILD_SYSTEM_CONFIGURE
+PACKAGE_BUILD_IN_BSCRIPT_DIR
+PACKAGE_BUILD_IN_PARALLEL
+PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD
+PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME
+PACKAGE_CDEFINE
+PACKAGE_CCFLAGS
+PACKAGE_XXFLAGS
+PACKAGE_LDFLAGS
+PACKAGE_FORMULA_FILEPATH
+EOF
+}
+
+# __show_infomation_of_the_given_package <PACKAGE-NAME> [OPTIONS]
+#
+# __show_infomation_of_the_given_package @all
+# __show_infomation_of_the_given_package @all --json
+# __show_infomation_of_the_given_package @all --yaml
+# __show_infomation_of_the_given_package @all --shell
+#
+# __show_infomation_of_the_given_package curl
+# __show_infomation_of_the_given_package curl --json
+# __show_infomation_of_the_given_package curl --yaml
+# __show_infomation_of_the_given_package curl --shell
+#
+# __show_infomation_of_the_given_package curl version
+# __show_infomation_of_the_given_package curl webpage
+  __show_infomation_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__show_infomation_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    case $1 in
+        @all) shift ; __show_infomation_of_all_available_packages $@ ; return $?
+    esac
+
+    unset SHOW_INFOMATION_ARGS
+
+    for arg in $@
+    do
+        case $arg in
+            "$1")
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  if [ -z "$SHOW_INFOMATION_ARGS" ] ; then
+                    SHOW_INFOMATION_ARGS="$arg"
+                else
+                    SHOW_INFOMATION_ARGS="$SHOW_INFOMATION_ARGS $arg"
+                fi
+        esac
+    done
+
+    case $SHOW_INFOMATION_ARGS in
+        --json)
+            __show_infomation_as_json__of_the_given_package "$1"
+            ;;
+        --yaml)
+            __show_infomation_as_yaml__of_the_given_package "$1"
+            ;;
+        --shell)
+            __show_infomation_as_shell_of_the_given_package "$1"
+            ;;
+        formula)
+            __path_of_formula_of_the_given_package "$1"
+            ;;
+        installed-dir)
+            if is_package_installed "$1" ; then
+                printf '%s\n' "$MY_INSTALL_DIR/$1"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-metadata-raw)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-metadata-json)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-files)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-files"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-datetime-unix)
+            __load_installed_metadata_of_the_given_package "$1"
+            printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
+            ;;
+        installed-datetime-formatted)
+            __load_installed_metadata_of_the_given_package "$1"
+            format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
+            ;;
+        installed-pkg-version)
+            __load_installed_metadata_of_the_given_package "$1"
+            printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
+            ;;
+        '') __show_infomation_as_mixed_of_the_given_package $@
+            ;;
+        *)  __load_formula_of_the_given_package "$1"
+            __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
+            eval echo \$PACKAGE_$__PACKAGE_GET__KEY__
+    esac
+}
+
+# __show_infomation_as_mixed_of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_mixed_of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    printf '%b\n' \
+"name    : $(mark_is_package_installed_or_not $1)
+version : $PACKAGE_VERSION
+summary : $PACKAGE_SUMMARY
+webpage : $PACKAGE_WEBPAGE
+src.url : $PACKAGE_SRC_URL
+src.path: $PACKAGE_SRC_PATH
+depends : $PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME"
+
+    is_package_installed "$1" || return 0
+
+    __load_installed_metadata_of_the_given_package "$1"
+
+    cat <<EOF
+    installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
+EOF
+}
+
+mark_is_package_installed_or_not() {
+    if is_package_installed "$1" ; then
+        echo "${COLOR_GREEN}$1${COLOR_OFF}"
+    else
+        echo "${COLOR_RED}$1${COLOR_OFF}"
+    fi
+}
+
+__record_installed_files_of_the_given_package() {
+    if [ -z "$2" ] ; then
+        INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
+        echo "-- Installing: $INSTALLED_FILES_FILEPATH"
+
+        exec 7> "$INSTALLED_FILES_FILEPATH"
+
+        __record_installed_files_of_the_given_package "$1" "$MY_INSTALL_DIR/$1"
+
+        exec 7>&-
+
+        sed_in_place "s|$MY_INSTALL_DIR/$1/||" "$INSTALLED_FILES_FILEPATH"
+    else
+        for file in $(ls $2)
+        do
+            file="$2/$file"
+            if [ -d "$file" ] ; then
+                __record_installed_files_of_the_given_package "$1" "$file"
+            else
+                printf '%s %s\n' $(md5sum "$file") "$file" >&7
+            fi
+        done
+    fi
+}
+
+# __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
+  __record_installed_metadata_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__record_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata"
+
+    printf '%b\n' "-- Installing: $INSTALLED_METADATA_FILEPATH"
+
+    cat > "$INSTALLED_METADATA_FILEPATH" <<EOF
+#This file is automatically generated by ppkg.
+#Please do not manually modify this file.
+
+INSTALLED_BY_PPKG_VERSION='$MY_VERSION'
+
+INSTALLED_TIMESTAMP_UNIX='$TIMESTAMP_UNIX'
+
+INSTALLED_PACKAGE_NAME='$PACKAGE_NAME'
+
+INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
+INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
+INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
+INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
+
+INSTALLED_PACKAGE_DEVELOPER='$PACKAGE_DEVELOPER'
+
+INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
+INSTALLED_PACKAGE_GIT_SHA='$PACKAGE_GIT_SHA'
+INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
+
+INSTALLED_PACKAGE_SVN_URL='$PACKAGE_SVN_URL'
+
+INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
+INSTALLED_PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
+
+INSTALLED_PACKAGE_FIX_URL='$PACKAGE_FIX_URL'
+INSTALLED_PACKAGE_FIX_SHA='$PACKAGE_FIX_SHA'
+
+INSTALLED_PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD='$PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD'
+INSTALLED_PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME='$PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME'
+
+BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
+BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
+BUILD_USE_TOOLCHAIN_VERS_MAJOR='$TOOLCHAIN_VERS_MAJOR'
+EOF
+}
+
+# __load_installed_metadata_of_the_given_package <PACKAGE-NAME>
+  __load_installed_metadata_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    unset INSTALLED_BY_PPKG_VERSION
+
+    unset INSTALLED_TIMESTAMP_UNIX
+
+    unset INSTALLED_PACKAGE_NAME
+    unset INSTALLED_PACKAGE_VERSION
+    unset INSTALLED_PACKAGE_SUMMARY
+    unset INSTALLED_PACKAGE_WEBPAGE
+    unset INSTALLED_PACKAGE_LICENSE
+    unset INSTALLED_PACKAGE_DEVELOPER
+
+    unset INSTALLED_PACKAGE_GIT_URL
+    unset INSTALLED_PACKAGE_GIT_SHA
+    unset INSTALLED_PACKAGE_GIT_TAG
+
+    unset INSTALLED_PACKAGE_SVN_URL
+
+    unset INSTALLED_PACKAGE_SRC_URL
+    unset INSTALLED_PACKAGE_SRC_SHA
+
+    unset INSTALLED_PACKAGE_FIX_URL
+    unset INSTALLED_PACKAGE_FIX_SHA
+
+    unset INSTALLED_PACKAGE_DIRECT_DEPENDENCIES_WHEN_BUILD
+    unset INSTALLED_PACKAGE_DIRECT_DEPENDENCIES_AT_RUNTIME
+
+    unset INSTALLED_PACKAGE_BUILD_SYSTEM
+
+    unset BUILD_USE_TOOLCHAIN_NAME
+    unset BUILD_USE_TOOLCHAIN_VERS
+    unset BUILD_USE_TOOLCHAIN_VERS_MAJOR
+
+    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
+
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata"
+
+    . "$INSTALLED_METADATA_FILEPATH" || return 1
+
+    if [ -z "$INSTALLED_BY_PPKG_VERSION" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_BY_PPKG_VERSION must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_TIMESTAMP_UNIX" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_TIMESTAMP_UNIX must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_NAME" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_NAME must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_VERSION must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_SUMMARY" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SUMMARY must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
+        return 1
+    fi
+
+    if [ "$INSTALLED_PACKAGE_NAME" != "$1" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. INSTALLED_PACKAGE_NAME mismatch.\n    Actually: $INSTALLED_PACKAGE_NAME\n    Expected: $1"
+        return 1
+    fi
+
+    if [ "${#INSTALLED_TIMESTAMP_UNIX}" -ne 10 ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_TIMESTAMP_UNIX must be 10."
+        return 1
+    fi
+}
+
+# run in a subshell
+configure() {
+    export FORCE_UNSAFE_CONFIGURE=1
+
+    CONFIGURE_ARGS="
+        --prefix='$PACKAGE_INSTALL_DIR'
+        --disable-option-checking
+        --disable-rpath
+        --disable-nls
+        --enable-largefile
+        CC='$CC'
+        CFLAGS='$CFLAGS'
+        CXX='$CXX'
+        CXXFLAGS='$CXXFLAGS'
+        CPP='$CPP'
+        CPPFLAGS='$CPPFLAGS'
+        LDFLAGS='$LDFLAGS'
+        AR='$AR'
+        RANLIB='$RANLIB'
+        PKG_CONFIG='$PKG_CONFIG'
+        PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
+        PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'"
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
+    else
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
+    fi
+
+    case $INSTALL_LIB in
+        static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --disable-shared" ;;
+        shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared --disable-static" ;;
+        both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
+        yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
+        no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
+    esac
+
+    if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ ; then
+        echo
+    else
+        if [ -f "$PACKAGE_BUILDIN_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BUILDIN_DIR/config.log"
+        elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+        fi
+        return 1
+    fi
+
+    if [ "$VERBOSE" = yes ] ; then
+        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
+        do
+            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
+            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+        done
+        unset Makefile
+    fi
+
+    makew clean &&
+    makew       &&
+    makew install
+}
+
+# make wrapper
+makew() {
+    if [ "$DEBUG" = yes ] ; then
+        run "$GMAKE -j$BUILD_NJOBS --debug $*"
+    else
+        run "$GMAKE -j$BUILD_NJOBS $*"
+    fi
+}
+
+# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+# https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
+# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+# run in a subshell
+cmakew() {
+    run $CMAKE \
+        -Wno-dev \
+        -G "'Unix Makefiles'" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -DCMAKE_COLOR_MAKEFILE=ON \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_TESTING=OFF \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR \
+        -S $PACKAGE_BSCRIPT_DIR \
+        -B $PACKAGE_BUILDIN_DIR &&
+    cmake --build   "$PACKAGE_BUILDIN_DIR" &&
+    cmake --install "$PACKAGE_BUILDIN_DIR"
+}
+
+# https://mesonbuild.com/Cross-compilation.html
+# run in a subshell
+mesonw() {
+    run "$MESON" setup \
+        --prefix="$PACKAGE_INSTALL_DIR" \
+        --buildtype=release \
+        --backend=ninja \
+        --pkg-config-path="$PKG_CONFIG_PATH" \
+        --build.pkg-config-path="$PKG_CONFIG_PATH" \
+        $@ "$PACKAGE_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+    {
+        if command -v build_configed > /dev/null ; then
+            build_configed
+        fi
+    } &&
+    run ninja -C "$PACKAGE_BUILDIN_DIR" &&
+    run ninja -C "$PACKAGE_BUILDIN_DIR" install
+}
+
+to_meson_array() {
+    RESULT="[''"
+    for item in $@
+    do
+        RESULT="$RESULT, '$item'"
+    done
+    RESULT="$RESULT]"
+    echo "$RESULT"
+}
+
+
+########################################################################
+
+list_all_installed_libs() {
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+        cd  "$MY_INSTALL_DIR" || return 1
+    else
+        return 0
+    fi
+
+    for item in *
+    do
+        if is_package_installed "$item" ; then
+            if [ -d "$MY_INSTALL_DIR/$item/libs" ] ; then
+                find "$MY_INSTALL_DIR/$item/libs" -name "lib*\.a"
+            fi
+        fi
+    done
+}
+
+__ldd() {
+    [ -z "$1" ] && {
+        error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    [ -z "$3" ] && die "type is not specified."
+    [ -z "$4" ] && die "name is not specified."
+
+    READELF="$(echo_path_of_tool_in_the_toolchain readelf)"
+
+    ldd_recursion() {
+        [ -z "$1" ] && {
+            error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+            return 1
+        }
+
+        is_package_installed "$1" || {
+            error "package [$1] is not installed."
+            return 1
+        }
+
+        [ -z "$3" ] && die "type is not specified."
+        [ -z "$4" ] && die "name is not specified."
+
+        FILE_PATH="$MY_INSTALL_DIR/$1/$2/$3/$4"
+        [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
+        echo "$FILE_PATH"
+
+        DLL=$("$READELF" -d "$FILE_PATH" | grep ".so" | sed 's/.*\[\(.*\)\].*/\1/')
+        for item in $DLL
+        do
+            ldd_recursion $(read_ldd_cache $item) $(expr "$5" + 1)
+        done
+    }
+
+    ldd_recursion "$1" "$2" "$3" "$4" 0
+}
+
+list_tools_in_the_toolchain() {
+    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf
+}
+
+list_flags_used_by_tools_in_the_toolchain() {
+    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+}
+
+echo_path_of_tool_in_the_toolchain() {
+    case $1 in
+        cc)  command -v cc  || command -v gcc || command -v clang   ;;
+        cxx) command -v c++ || command -v g++ || command -v clang++ ;;
+        *)   command -v "$1"
+    esac
+}
+
+inspect_install_arguments() {
+    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
+    unset TARGET_ARCH
+
+    unset USER_SPECIFIED_PACKAGES
+
+    unset DRYRUN
+
+    LOG_LEVEL_QUIET=0
+    LOG_LEVEL_NORMAL=1
+    LOG_LEVEL_VERBOSE=2
+    LOG_LEVEL_TRACE=3
+    LOG_LEVEL_DEBUG=4
+
+    LOG_LEVEL=$LOG_LEVEL_NORMAL
+
+    BUILD_NJOBS=$NATIVE_OS_NCPU
+
+    BUILD_TYPE=release
+
+    LINK_TYPE=shared-prefered
+
+    INSTALL_EXE=yes
+    INSTALL_MAN=yes
+    INSTALL_DOC=yes
+    INSTALL_LIB=yes
+
+    KEEP_WORK_DIR=no
+
+    TREE_ARGS='--dirsfirst'
+
+    while [ -n "$1" ]
+    do
+        case "$1" in
+            --china)
+                ;;
+            --xtrace|-x)
+                LOG_LEVEL=$LOG_LEVEL_TRACE
+                ;;
+            --debug|-d)
+                LOG_LEVEL=$LOG_LEVEL_DEBUG
+                ;;
+            --verbose|-v)
+                LOG_LEVEL=$LOG_LEVEL_VERBOSE
+                ;;
+            --quiet|-q)
+                LOG_LEVEL=$LOG_LEVEL_QUIET
+                ;;
+            --dry-run)
+                DRYRUN=yes
+                ;;
+            --keep-work-dir)
+                KEEP_WORK_DIR=yes
+                ;;
+            --tree-args=*)
+                TREE_ARGS=$(getvalue "$1")
+                ;;
+            --build-type=*)
+                BUILD_TYPE=$(getvalue "$1")
+                case $BUILD_TYPE in
+                    debug|release) ;;
+                    '') die "--build-type=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--build-type=<VALUE>, VALUE must be one of debug release"
+                esac
+                ;;
+            --install-doc)
+                INSTALL_DOC=yes
+                ;;
+            --install-man)
+                INSTALL_MAN=yes
+                ;;
+            --install-exe)
+                INSTALL_EXE=yes
+                ;;
+            --install-lib=*)
+                INSTALL_LIB=$(getvalue "$1")
+                case $INSTALL_LIB in
+                    static|shared|both|yes|no) ;;
+                    '') die "--install-lib=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--install-lib=<VALUE>, VALUE must be one of static shared both yes no"
+                esac
+                ;;
+            --link-type=*)
+                LINK_TYPE=$(getvalue "$1")
+                case $LINK_TYPE in
+                    static-only|shared-only|static-prefered|shared-prefered) ;;
+                    '') die "--link-type=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--link-type=<VALUE>, VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                esac
+                ;;
+            --jobs=*)
+                BUILD_NJOBS=$(getvalue "$1")
+                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be a integer."
+                ;;
+            [a-z]*)
+                if [ "$1" = 'all' ] ; then
+                    USER_SPECIFIED_PACKAGES="$(__list_available_packages)"
+                else
+                    if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
+                        USER_SPECIFIED_PACKAGES="$1"
+                    else
+                        USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
+                    fi
+                fi
+                ;;
+            *)  die "unrecognized argument: $1"
+        esac
+        shift
+    done
+
+    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
+        exec 1>/dev/null
+        exec 2>&1
+    fi
+
+    if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_DEBUG" ] ; then
+        export PKG_CONFIG_DEBUG_SPEW=set
+    fi
+
+    LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
+}
+
+init() {
+    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+    #IFS_DEFAULT=$(printf ' \t\n')
+    #IFS=$IFS_DEFAULT
+
+    # MY represents this software's
+
+    MY_VERSION=0.1.2
+
+    MY_HOME_PAGE="https://github.com/leleliu008/ppkg"
+    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository.git"
+    MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
+
+    MY_HOME_DIR="$HOME/.ppkg"
+    MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
+    MY_INSTALL_DIR="$MY_HOME_DIR/install.d"
+    MY_SOURCE_DIR="$MY_HOME_DIR/source.d"
+    MY_BINARY_DIR="$MY_HOME_DIR/binary.d"
+    MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
+    MY_PATCH__DIR="$MY_HOME_DIR/patch.d"
+
+    MY_INIT_RC="$MY_HOME_DIR/init.rc"
+
+    install -d "$MY_HOME_DIR"
+
+    if [ -f "$MY_INIT_RC" ] ; then
+        .   "$MY_INIT_RC" || die "load $MY_INIT_RC failed."
+    else
+        cat > "$MY_INIT_RC" <<EOF
+# influential environment variables:
+#      CC=/usr/bin/cc
+#     CXX=/usr/bin/c++
+#     CPP=/usr/bin/cpp
+#      AS=/usr/bin/as
+#      LD=/usr/bin/ld
+#      AR=/usr/bin/ar
+#      NM=/usr/bin/nm
+#    SIZE=/usr/bin/size
+#   STRIP=/usr/bin/strip
+#  RANLIB=/usr/bin/ranlib
+# STRINGS=/usr/bin/strings
+# OBJDUMP=/usr/bin/objdump
+# OBJCOPY=/usr/bin/objcopy
+# READELF=/usr/bin/readelf
+
+#   CFLAGS=
+# CPPFLAGS=
+#  LDFLAGS=
+
+# https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
+# PKG_CONFIG_LIBDIR=
+# PKG_CONFIG_PATH=
+
+# MACOSX_DEPLOYMENT_TARGET
+EOF
+    fi
+
+    [ -e "$MY_HOME_DIR/repos" ] || {
+        printf '%s\n' "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
+    }
+
+    unset NATIVE_OS_KIND
+    unset NATIVE_OS_TYPE
+    unset NATIVE_OS_NAME
+    unset NATIVE_OS_VERS
+    unset NATIVE_OS_ARCH
+    unset NATIVE_OS_NCPU
+    unset NATIVE_OS_LIBC
+    unset NATIVE_OS_SUBS
+
+    NATIVE_OS_KIND=$(os kind)
+    NATIVE_OS_TYPE=$(os type)
+    NATIVE_OS_NAME=$(os name)
+    NATIVE_OS_VERS=$(os vers)
+    NATIVE_OS_ARCH=$(os arch)
+    NATIVE_OS_NCPU=$(os ncpu)
+    NATIVE_OS_LIBC=$(os libc)
+    NATIVE_OS_SUBS=$(os subs)
+    NATIVE_OS_EUID=$(os euid)
+
+    if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
+        sudo=sudo
+    fi
+
+    TIMESTAMP_UNIX="$(date +%s)"
+
+    __setup_PATH_env
+}
+
+__setup_PATH_env() {
+    # pip install --user <PKG>
+    bppend_to_PATH "$HOME/.local/bin"
+
+    # cpan install to default local location
+    bppend_to_PATH "$HOME/perl5/bin"
+
+    if [ -f "$HOME/.cargo/env" ] ; then
+        .   "$HOME/.cargo/env"
+    fi
+}
+
+help() {
+    if command -v base64 > /dev/null ; then
+        LOGO_BASE64_ENCODED='ICAgICAgICAgICAgIF8gICAgICAgICAKIF8gX18gIF8gX18gfCB8IF9fX18gXyAKfCAnXyBcfCAn
+XyBcfCB8LyAvIF9gIHwKfCB8XykgfCB8XykgfCAgIDwgKF98IHwKfCAuX18vfCAuX18vfF98XF9c
+X18sIHwKfF98ICAgfF98ICAgICAgICB8X19fLyAK'
+
+        if command -v lolcat > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
+        elif command -v awk > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat_awk
+        else
+            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
+        fi
+    fi
+
+    echo "
+${COLOR_GREEN}A portable package manager for UNIX.${COLOR_OFF}
+
+${COLOR_GREEN}ppkg <ACTION> [ARGUMENT...]${COLOR_OFF}
+
+${COLOR_GREEN}ppkg --help${COLOR_OFF}
+${COLOR_GREEN}ppkg -h${COLOR_OFF}
+    show help of this command.
+
+${COLOR_GREEN}ppkg --version${COLOR_OFF}
+${COLOR_GREEN}ppkg -V${COLOR_OFF}
+    show version of this command.
+
+${COLOR_GREEN}ppkg --homedir${COLOR_OFF}
+    show home directory of this software.
+
+${COLOR_GREEN}ppkg --homepage${COLOR_OFF}
+    show home webpage of this software.
+
+${COLOR_GREEN}ppkg env${COLOR_OFF}
+    show current machine os info.
+
+${COLOR_GREEN}ppkg integrate zsh   [--output-dir=<DIR>] [-x | --china]${COLOR_OFF}
+    download a zsh-completion script file to a approprivate location.
+
+${COLOR_GREEN}ppkg update${COLOR_OFF}
+    update the formula repositories.
+
+${COLOR_GREEN}ppkg cleanup${COLOR_OFF}
+    cleanup the unused cache.
+
+${COLOR_GREEN}ppkg ls-available${COLOR_OFF}
+    list the available packages.
+
+${COLOR_GREEN}ppkg ls-installed${COLOR_OFF}
+    list the installed packages.
+
+${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
+    list the outdated  packages.
+
+${COLOR_GREEN}ppkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+    is PACKAGE available?
+
+${COLOR_GREEN}ppkg is-installed <PACKAGE-NAME>${COLOR_OFF}
+    is PACKAGE installed?
+
+${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
+    is PACKAGE outdated?
+
+${COLOR_GREEN}ppkg search <KEYWORD>${COLOR_OFF}
+    search available packages.
+ 
+${COLOR_GREEN}ppkg formula create <PACKAGE-NAME>${COLOR_OFF}
+    create a new formula.
+
+${COLOR_GREEN}ppkg formula delete <PACKAGE-NAME>${COLOR_OFF}
+    delete a exist formula.
+
+${COLOR_GREEN}ppkg formula rename <P1> <P2>${COLOR_OFF}
+    rename a exist formula to new name.
+
+${COLOR_GREEN}ppkg formula view <PACKAGE-NAME>${COLOR_OFF}
+    view the formula of the given package.
+
+${COLOR_GREEN}ppkg formula edit <PACKAGE-NAME>${COLOR_OFF}
+    edit the formula of the given package.
+
+${COLOR_GREEN}ppkg formula list${COLOR_OFF}
+    list all formulas.
+
+${COLOR_GREEN}ppkg formula-repo [list]${COLOR_OFF}
+    list formula-repos.
+
+${COLOR_GREEN}ppkg formula-repo add <FORMULA-REPO-NAME> <FORMULA-REPO-URL>${COLOR_OFF}
+    add a new formula-repo.
+
+${COLOR_GREEN}ppkg formula-repo del <FORMULA-REPO-NAME>${COLOR_OFF}
+    delete a exist formula-repo.
+
+${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
+    list files of the given installed package in a tree-like format.
+
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> <7z|zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+    pack the given installed package.
+
+${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
+    show logs of the given installed package.
+
+${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY|--json|--yaml|--shell]${COLOR_OFF}
+    show information of the given package.
+
+${COLOR_GREEN}ppkg info @all [--json|--yaml|--shell]${COLOR_OFF}
+    show information of all the available packages.
+
+${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
+    download formula resources of the given package to the cache.
+
+${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
+    download formula resources of all available packages to the cache.
+
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME>${COLOR_OFF}
+    show the depends of the given package.
+
+${COLOR_GREEN}ppkg homepage [--open] [PACKAGE]${COLOR_OFF}
+    show or open the homepage of the given package or this project in web browser.
+
+${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    install the given packages.
+
+${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    reinstall the given packages.
+
+${COLOR_GREEN}ppkg upgrade   [PACKAGE]... [--jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    upgrade the given packages or all outdated packages.
+
+${COLOR_GREEN}ppkg upgrade @self  [-x | --china]${COLOR_OFF}
+    upgrade this software.
+
+${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
+    uninstall the given packages.
+    "
+
+    if [ -z "$1" ] ; then
+        exit
+    else
+        exit "$1"
+    fi
+}
+
+main() {
+    unset XTRACE
+    unset COUNTRY
+
+    for arg in $@
+    do
+        case $arg in
+            --xtrace|-x) XTRACE=yes; set -x ;;
+            --china)     COUNTRY=china ;;
+            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
+        esac
+    done
+
+    init
+
+    case $1 in
+        ''|--help|-h) 
+            help
+            ;;
+        --version|-V)
+            printf '%s\n' "$MY_VERSION"
+            ;;
+        --homedir)
+            printf '%s\n' "$MY_HOME_DIR"
+            ;;
+        --homepage)
+            printf '%s\n' "$MY_HOME_PAGE"
+            ;;
+        env)
+            printf '%b\n' "${COLOR_GREEN}ppkg $MY_VERSION, portable package manager for UNIX.${COLOR_OFF}"
+            printf '%s\n'
+            run os
+            ;;
+
+        ls-available) shift; __list_available_packages ;;
+        ls-installed) shift; __list_installed_packages ;;
+        ls-outdated)  shift; __list__outdated_packages ;;
+
+        is-available) shift; is_package_available $@ ;;
+        is-installed) shift; is_package_installed $@ ;;
+        is-outdated)  shift; is_package__outdated $@ ;;
+
+        formula-repo)
+            shift
+            case $1 in
+                list) shift; __list_formula_repositories ;;
+                add)  shift; __add_a_formula_repo $@ ;;
+                del)  shift; __del_a_formula_repo $@ ;;
+                *) help 1
+            esac
+            ;;
+        formula)
+            shift
+            case $1 in
+                create) shift; __create_formula_of_the_given_package $@ ;;
+                delete) shift; __delete_formula_of_the_given_package $@ ;;
+                rename) shift; __rename_formula_of_the_given_package $@ ;;
+                view)   shift;   __view_formula_of_the_given_package $@ ;;
+                edit)   shift;   __edit_formula_of_the_given_package $@ ;;
+                list)   shift; __list_formulas ;;
+                   *)   help 1
+            esac
+            ;;
+
+        update)  __update_formula_repositories ;;
+        cleanup) __cleanup ;;
+
+        search)  shift; __search_packages "$*" ;;
+ 
+        install) shift;   __install_the_given_packages $@ ;;
+      reinstall) shift; __reinstall_the_given_packages $@ ;;
+      uninstall) shift; __uninstall_the_given_packages $@ ;;
+
+        upgrade)
+            shift
+            case $1 in
+                @self)
+                    shift
+                    __upgrade_self "$MY_UPGRAGE_URL" $@ ;;
+                *)  __upgrade_packages $@ ;;
+            esac
+            ;;
+        integrate)
+            shift
+            case $1 in
+                zsh) __integrate_zsh_completions 'https://raw.githubusercontent.com/leleliu008/ppkg/master/zsh-completion/_ppkg' ;;
+                *)   die "ppkg integrate $1: not support."
+            esac
+            ;;
+        homepage) shift;  __show_or_open_homepage_of_the_given_package $@ ;;
+        depends)  shift; __show_packages_depended_by_the_given_package $@ ;;
+        fetch)    shift;        __fetch_resources_of_the_given_package $@ ;;
+
+        logs) shift; __logs_the_given_installed_package $@ ;;
+        pack) shift; __pack_the_given_installed_package $@ ;;
+        tree) shift; __tree_the_given_installed_package $@ ;;
+
+        info)
+            shift
+            __show_infomation_of_the_given_package $@
+            ;;
+        ldd)
+            shift
+            __ldd $@
+            ;;
+        gen-github-workflows)
+            shift
+            __gen_github_workflows $@
+            ;;
+        test)
+            __compare_versions_with_brew
+            ;;
+        *)  die "unrecognized argument: $1"
+    esac
+}
+
+main $@

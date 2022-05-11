@@ -1,224 +1,209 @@
-# zpkg
-a lightweight, portable package manager for UNIX.
+# ppkg
+portable package manager for UNIX.
 
-## Install zpkg via HomeBrew
+## Install ppkg via HomeBrew
 
 ```bash
 brew tap leleliu008/fpliu
-brew install zpkg
+brew install ppkg
 ```
 
-## Install zpkg via running shell script
+## Install ppkg via cURL
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/zpkg/master/install.sh)"
-```
-**CHINESE USER IF NO VPN**, please try following instructions:
-```bash
-curl -LO https://raw.githubusercontents.com/leleliu008/zpkg/master/install.sh
-chmod +x install.sh
-./install.sh --china
+curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+chmod a+x ppkg
+mv ppkg /usr/local/bin/
 ```
 
-## Install zpkg step by step
-```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/zpkg/master/bin/zpkg
-chmod a+x zpkg
-mv zpkg /usr/local/bin/
-
-# following instructions is optional, and these instructions only worked in zsh
-zpkg integrate zsh
-autoload -U compinit && compinit
-```
-
-## zpkg command usage
+## ppkg command usage
 *   show help of this command
         
-        zpkg -h
-        zpkg --help
+        ppkg -h
+        ppkg --help
         
 *   show version of this command
         
-        zpkg -V
-        zpkg --version
+        ppkg -V
+        ppkg --version
         
 *   show current machine os and environment variables
 
-        zpkg env
+        ppkg env
 
 *   integrate `zsh-completion` script
 
-        zpkg integrate zsh
-        zpkg integrate zsh -x
-        zpkg integrate zsh --china
-        zpkg integrate zsh --china -x
+        ppkg integrate zsh
+        ppkg integrate zsh -x
+        ppkg integrate zsh --china
+        ppkg integrate zsh --china -x
         
-    I have provide a zsh-completion script for `zpkg`. when you've typed `zpkg` then type `TAB` key, it will auto complete the rest for you.
+    I have provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, it will auto complete the rest for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
 *   update the formula repositories
 
-        zpkg update
+        ppkg update
         
-    **Note:** this software supports multi formula repositories. Offical formula repository is [zpkg-formula-repository](https://github.com/leleliu008/zpkg-formula-repository)
+    **Note:** this software supports multi formula repositories. Offical formula repository is [ppkg-formula-repository](https://github.com/leleliu008/ppkg-formula-repository)
 
 *   search packages can be installed
         
-        zpkg search curl
-        zpkg search lib
+        ppkg search curl
+        ppkg search lib
         
 *   show infomation of the given package or all available packages
         
-        zpkg info curl
-        zpkg info curl version
-        zpkg info curl summary
-        zpkg info curl webpage
-        zpkg info curl src.git
-        zpkg info curl installed-dir
-        zpkg info curl installed-metadata
-        zpkg info curl installed-datetime-unix
-        zpkg info curl installed-datetime-formatted
-        zpkg info curl installed-pkg-version
-        zpkg info curl --json
-        zpkg info curl --json | jq .
-        zpkg info @all
-        zpkg info @all --json
-        zpkg info @all --json | jq .
+        ppkg info curl
+        ppkg info curl version
+        ppkg info curl summary
+        ppkg info curl webpage
+        ppkg info curl src.git
+        ppkg info curl installed-dir
+        ppkg info curl installed-metadata
+        ppkg info curl installed-datetime-unix
+        ppkg info curl installed-datetime-formatted
+        ppkg info curl installed-pkg-version
+        ppkg info curl --json
+        ppkg info curl --json | jq .
+        ppkg info @all
+        ppkg info @all --json
+        ppkg info @all --json | jq .
         
 
-    For more keys, please see [README.md](https://github.com/leleliu008/zpkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
+    For more keys, please see [README.md](https://github.com/leleliu008/ppkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
 
 *   install packages
         
-        zpkg install curl
-        zpkg install curl bzip2
-        zpkg install curl bzip2 --jobs=4
-        zpkg install curl bzip2 --jobs=4 -v
-        zpkg install curl bzip2 --jobs=4 -v -x
-        zpkg install curl bzip2 --jobs=4 -v -x --dry-run
-        zpkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-working-dir
+        ppkg install curl
+        ppkg install curl bzip2
+        ppkg install curl bzip2 --jobs=4
+        ppkg install curl bzip2 --jobs=4 -v
+        ppkg install curl bzip2 --jobs=4 -v -x
+        ppkg install curl bzip2 --jobs=4 -v -x --dry-run
+        ppkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-working-dir
         
 *   reinstall packages
         
-        zpkg reinstall curl
-        zpkg reinstall curl bzip2 -v
+        ppkg reinstall curl
+        ppkg reinstall curl bzip2 -v
         
 *   uninstall packages
 
-        zpkg uninstall curl
-        zpkg uninstall curl bzip2
+        ppkg uninstall curl
+        ppkg uninstall curl bzip2
         
 *   upgrade the outdated packages
 
-        zpkg upgrade
-        zpkg upgrade curl
-        zpkg upgrade curl bzip2 -v
+        ppkg upgrade
+        ppkg upgrade curl
+        ppkg upgrade curl bzip2 -v
         
 *   upgrade this software
 
-        zpkg upgrade @self
-        zpkg upgrade @self -x
-        zpkg upgrade @self --china
-        zpkg upgrade @self --china -x
+        ppkg upgrade @self
+        ppkg upgrade @self -x
+        ppkg upgrade @self --china
+        ppkg upgrade @self --china -x
         
 
 *   list the avaliable formula repos
 
-        zpkg formula-repo list
+        ppkg formula-repo list
 
 *   add a new formula repo
 
-        zpkg formula-repo add my_repo https://github.com/leleliu008/zpkg-formula-repository.git
+        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository.git
 
 *   delete a existing formula repo
 
-        zpkg formula-repo del my_repo
+        ppkg formula-repo del my_repo
 
 *   view the formula of the given package
         
-        zpkg formula view curl
+        ppkg formula view curl
         
 *   edit the formula of the given package
         
-        zpkg formula edit curl
+        ppkg formula edit curl
         
 *   create the formula of the given package
         
-        zpkg formula create curl
+        ppkg formula create curl
         
 *   delete the formula of the given package
         
-        zpkg formula delete curl
+        ppkg formula delete curl
         
 *   rename the formula of the given package to new name
         
-        zpkg formula rename curl curl7
+        ppkg formula rename curl curl7
         
 *   list the available packages
         
-        zpkg ls-available
+        ppkg ls-available
         
 *   list the installed packages
         
-        zpkg ls-installed
+        ppkg ls-installed
         
 *   list the outdated packages
         
-        zpkg ls-outdated
+        ppkg ls-outdated
         
 *   is the given package available ?
         
-        zpkg is-available curl
-        zpkg is-available curl ge 7.50.0
-        zpkg is-available curl gt 7.50.0
-        zpkg is-available curl le 7.50.0
-        zpkg is-available curl lt 7.50.0
-        zpkg is-available curl eq 7.50.0
-        zpkg is-available curl ne 7.50.0
+        ppkg is-available curl
+        ppkg is-available curl ge 7.50.0
+        ppkg is-available curl gt 7.50.0
+        ppkg is-available curl le 7.50.0
+        ppkg is-available curl lt 7.50.0
+        ppkg is-available curl eq 7.50.0
+        ppkg is-available curl ne 7.50.0
         
 *   is the given package installed ?
         
-        zpkg is-installed curl
+        ppkg is-installed curl
         
 *   is the given package outdated ?
         
-        zpkg is-outdated curl
+        ppkg is-outdated curl
         
 *   list files of the given installed package in a tree-like format.
         
-        zpkg tree curl
-        zpkg tree curl -L 3
+        ppkg tree curl
+        ppkg tree curl -L 3
         
 *   download formula resources of the given package to the cache
         
-        zpkg fetch curl
+        ppkg fetch curl
         
 *   show logs of the given installed package
         
-        zpkg logs curl
+        ppkg logs curl
         
 *   pack the given installed package
         
-        zpkg pack curl
+        ppkg pack curl
         
 *   show or open the homepage of the given package or this project
         
-        zpkg homepage
-        zpkg homepage --open
-        zpkg homepage --open curl
-        zpkg homepage curl --open
+        ppkg homepage
+        ppkg homepage --open
+        ppkg homepage --open curl
+        ppkg homepage curl --open
         
 *   show the installation direcotory of the given package or this software
         
-        zpkg prefix
-        zpkg prefix curl
+        ppkg prefix
+        ppkg prefix curl
         
 *   show the depended packages of the given package
         
-        zpkg depends curl
+        ppkg depends curl
         
 *   cleanup the unused cache
         
-        zpkg cleanup
+        ppkg cleanup
         

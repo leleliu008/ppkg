@@ -3,36 +3,40 @@
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;34m'         # Blue
+COLOR_BLUE='\033[0;94m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
 print() {
-    printf "%b" "$*"
+    printf '%b' "$*"
 }
 
 echo() {
-    print "$*\n"
+    printf '%b\n' "$*"
 }
 
 info() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
+    printf '%b\n' "💠  $*"
 }
 
-success() {
-    print "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
+note() {
+    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+}
+
+success() {
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}"
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
     exit 1
 }
 
@@ -71,7 +75,7 @@ step() {
 }
 
 run() {
-    info "$*"
+    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
     eval "$*"
 }
 
@@ -176,7 +180,7 @@ main() {
     unset RELEASE_VERSION_MINOR
     unset RELEASE_VERSION_PATCH
 
-    RELEASE_VERSION=$(bin/zpkg --version)
+    RELEASE_VERSION=$(bin/ppkg --version)
     RELEASE_VERSION_MAJOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f1)
     RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
     RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
@@ -199,20 +203,19 @@ main() {
 
     RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
 
-    sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/zpkg
-    sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
+    sed_in_place "s|MY_VERSION=[0-9]\+\.[0-9]\+\.[0-9]\+|MY_VERSION=$RELEASE_VERSION|" bin/ppkg
 
     unset RELEASE_FILE_NAME
-    RELEASE_FILE_NAME="zpkg-$RELEASE_VERSION.tar.gz"
+    RELEASE_FILE_NAME="ppkg-$RELEASE_VERSION.tar.gz"
 
-    run tar zvcf "$RELEASE_FILE_NAME" bin/zpkg zsh-completion/_zpkg
+    run tar zvcf "$RELEASE_FILE_NAME" bin/ppkg zsh-completion/_ppkg
 
     unset RELEASE_FILE_SHA256SUM
     RELEASE_FILE_SHA256SUM=$(sha256sum "$RELEASE_FILE_NAME")
 
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    run git add bin/zpkg install.sh
+    run git add bin/ppkg
     run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
@@ -222,11 +225,11 @@ main() {
 
     run cd homebrew-fpliu
 
-    sed_in_place "/sha256   /c \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/zpkg.rb
-    sed_in_place "s@[0-9]\.[0-9]\.[0-9]@$RELEASE_VERSION@g" Formula/zpkg.rb
+    sed_in_place "/sha256   /c \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ppkg.rb
+    sed_in_place "s@[0-9]\+\.[0-9]\+\.[0-9]\+@$RELEASE_VERSION@g"       Formula/ppkg.rb
 
-    run git add Formula/zpkg.rb
-    run git commit -m "'publish new version $RELEASE_VERSION'"
+    run git add Formula/ppkg.rb
+    run git commit -m "'publish new version ppkg $RELEASE_VERSION'"
     run git push origin master
 
     run cd ..
