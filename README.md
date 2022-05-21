@@ -1,18 +1,18 @@
 # ppkg
-portable package manager for UNIX.
+portable package manager for Unix-like system.
 
-## Install ppkg via HomeBrew
-
-```bash
-brew tap leleliu008/fpliu
-brew install ppkg
-```
-
-## Install ppkg via cURL
+## Install ppkg
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
 chmod a+x ppkg
 mv ppkg /usr/local/bin/
+ppkg setup
+```
+
+## Uninstall ppkg
+```bash
+rm /usr/local/bin/ppkg
+rm -rf /opt/ppkg
 ```
 
 ## ppkg command usage
