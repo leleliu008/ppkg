@@ -4800,7 +4800,7 @@ __setup() {
         fi
     done
 
-    CORE_TOOL_FILENAME_PREFIX="ppkg-core-$(uname -s)-$(uname -m)"
+    CORE_TOOL_FILENAME_PREFIX="ppkg-core-$(uname -s | tr A-Z a-z)-$(uname -m)"
 
     case $CORE_TOOL_FILENAME_PREFIX in
         ppkg-core-linux-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
