@@ -4800,9 +4800,15 @@ __setup() {
         fi
     done
 
-    CORE_TOOL_VERSION='2022.05.15'
+    CORE_TOOL_FILENAME_PREFIX="ppkg-core-$(uname -s)-$(uname -m)"
 
-    CORE_TOOL_BASE_URL="https://github.com/leleliu008/ppkg-prebuild-repository/releases/download/$CORE_TOOL_VERSION"
+    case $CORE_TOOL_FILENAME_PREFIX in
+        ppkg-core-linux-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
+        ppkg-core-macos-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
+        *)                      CORE_TOOL_VERSION='0000.00.00' ;;
+    esac
+
+    CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_FILENAME_PREFIX/releases/download/$CORE_TOOL_VERSION"
 
     if [ -z "$FETCH_TOOL" ] ; then
         error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found, you could download curl from $CORE_TOOL_BASE_URL/curl, then try again."
@@ -4821,11 +4827,11 @@ __setup() {
 
     export PATH="$SETUP_WORKING_DIR:$PATH"
 
-    fetch "$CORE_TOOL_BASE_URL/ppkg-core-$CORE_TOOL_VERSION-linux-x86_64.tar.xz" --output-dir="$MY_HOME_DIR"
+    fetch "$CORE_TOOL_BASE_URL/$CORE_TOOL_FILENAME_PREFIX.tar.xz" --output-dir="$MY_HOME_DIR"
 
     run install -d "$MY_HOME_DIR/core"
 
-    run tar vxf "$MY_HOME_DIR/ppkg-core-$CORE_TOOL_VERSION-linux-x86_64.tar.xz" --overwrite --strip-components=1 -C "$MY_HOME_DIR/core"
+    run tar vxf "$MY_HOME_DIR/$CORE_TOOL_FILENAME_PREFIX.tar.xz" --overwrite --strip-components=1 -C "$MY_HOME_DIR/core"
 
     success "ppkg have been setup."
 }
