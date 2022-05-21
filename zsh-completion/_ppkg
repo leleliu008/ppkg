@@ -157,7 +157,7 @@ function _ppkg() {
                         ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug output]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
