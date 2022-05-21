@@ -4800,12 +4800,22 @@ __setup() {
         fi
     done
 
-    CORE_TOOL_FILENAME_PREFIX="ppkg-core-$(uname -s | tr A-Z a-z)-$(uname -m)"
+    case $(uname -s) in
+        Linux)   CORE_TOOL_FILENAME_PREFIX="ppkg-core-linux-$(uname -m)"   ;;
+        Darwin)  CORE_TOOL_FILENAME_PREFIX="ppkg-core-macos-$(uname -m)"   ;;
+        FreeBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-freebsd-$(uname -m)" ;;
+        OpenBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-openbsd-$(uname -m)" ;;
+         NetBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-netbsd-$(uname -m)"  ;;
+              *) die "unsupported os: $(uname -s)"
+    esac
 
     case $CORE_TOOL_FILENAME_PREFIX in
-        ppkg-core-linux-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
-        ppkg-core-macos-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
-        *)                      CORE_TOOL_VERSION='0000.00.00' ;;
+        ppkg-core-linux-x86_64)   CORE_TOOL_VERSION='2022.05.15' ;;
+        ppkg-core-macos-x86_64)   CORE_TOOL_VERSION='2022.05.15' ;;
+        ppkg-core-freebsd-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
+        ppkg-core-openbsd-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
+        ppkg-core-netbsd-x86_64)  CORE_TOOL_VERSION='2022.05.15' ;;
+        *)                        CORE_TOOL_VERSION='0000.00.00' ;;
     esac
 
     CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_FILENAME_PREFIX/releases/download/$CORE_TOOL_VERSION"
