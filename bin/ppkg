@@ -4768,8 +4768,8 @@ __setup() {
         return 0
     }
 
-    CURRENT_GROUP_NAME="$(id --name -g)"
-    CURRENT_USER__NAME="$(id --name -u)"
+    CURRENT_GROUP_NAME="$(id -n -g)"
+    CURRENT_USER__NAME="$(id -n -u)"
 
     if [ -d "$MY_HOME_DIR" ] ; then
         if [ -r "$MY_HOME_DIR" ] && [ -w "$MY_HOME_DIR" ] && [ -x "$MY_HOME_DIR" ] ; then
