@@ -3535,25 +3535,34 @@ __config_build_variables() {
     step "config build variables"
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        unset TOOLCHAIN_ROOT_DIR
-        unset TOOLCHAIN_BIN__DIR
+        unset DEVELOPER_DIR
 
-        unset SYSROOT
-        unset MACOSX_DEPLOYMENT_TARGET
+        DEVELOPER_DIR="$(xcode-select -p)"
 
-        TOOLCHAIN_ROOT_DIR="$(xcode-select -p)"
-        TOOLCHAIN_BIN__DIR="$TOOLCHAIN_ROOT_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin"
-        export PATH="$TOOLCHAIN_BIN__DIR:$PATH"
+        if [ -d         "$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin" ] ; then
+            export PATH="$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+        else
+            export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+        fi
 
-        SYSROOT="$TOOLCHAIN_ROOT_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-        MACOSX_DEPLOYMENT_TARGET="$(echo "$NATIVE_OS_VERS" | cut -d. -f1).$(echo "$NATIVE_OS_VERS" | cut -d. -f2)"
+        if [ -z "$MACOSX_DEPLOYMENT_TARGET" ] ; then
+            MACOSX_DEPLOYMENT_TARGET="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f1).$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f2)"
+        fi
 
-        CFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Qunused-arguments"
+        export MACOSX_DEPLOYMENT_TARGET
+
+        if [ -d     "$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ] ; then
+            SYSROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        else
+            SYSROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
+        fi
+
+          CFLAGS="-isysroot $SYSROOT -Qunused-arguments"
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
-        LDFLAGS="-isysroot $SYSROOT -arch $NATIVE_OS_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
-    else
-        CFLAGS="$CFLAGS -fPIC"
+         LDFLAGS="-isysroot $SYSROOT"
     fi
+
+    CFLAGS="$CFLAGS -fPIC"
 
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,-S -Os -DNDEBUG"
