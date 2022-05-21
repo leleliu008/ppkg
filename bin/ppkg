@@ -3556,8 +3556,8 @@ __config_build_variables() {
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
-        CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os -DNDEBUG"
-        LDFLAGS="$LDFLAGS -Wl,--strip-debug"
+        CCFLAGS="$CCFLAGS -Wl,-S -Os -DNDEBUG"
+        LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
     for TOOLNAME in $(list_tools_in_the_toolchain)
