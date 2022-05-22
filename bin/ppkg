@@ -1790,7 +1790,6 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
         case $PACKAGE_FIX_URL in
-            *.fix)     PACKAGE_FIX_TYPE=patch   ;;
             *.diff)    PACKAGE_FIX_TYPE=patch   ;;
             *.patch)   PACKAGE_FIX_TYPE=patch   ;;
             *.zip)     PACKAGE_FIX_TYPE=zip     ;;
@@ -1800,7 +1799,7 @@ __load_formula_of_the_given_package() {
             *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
             *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
             *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
-            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
         if [ -z "$PACKAGE_FIX_SHA" ] ; then
@@ -1813,7 +1812,6 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_RES_URL" ] ; then
         case $PACKAGE_RES_URL in
-            *.fix)     PACKAGE_FIX_TYPE=patch   ;;
             *.diff)    PACKAGE_FIX_TYPE=patch   ;;
             *.patch)   PACKAGE_FIX_TYPE=patch   ;;
             *.zip)     PACKAGE_FIX_TYPE=zip     ;;
@@ -1823,7 +1821,6 @@ __load_formula_of_the_given_package() {
             *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
             *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
             *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
-            *)  die "unrecognized res extension : $PACKAGE_RES_URL.\n    supported res extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
         if [ -z "$PACKAGE_RES_SHA" ] ; then
@@ -3374,8 +3371,8 @@ __install_the_given_package() {
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
         case $PACKAGE_FIX_URL in
-            *.patch|*.fix)
-                step "copy source files to the installing src directory"
+            *.patch|*.diff)
+                step "copy patch file to the installing fix directory"
                 run cp    "$PACKAGE_FIX_PATH"   "$PACKAGE_INSTALLING_FIX_DIR"
                 ;;
             *.zip)
@@ -3386,7 +3383,7 @@ __install_the_given_package() {
                 step "uncompressed patch file to the installing fix directory"
                 run tar xf "$PACKAGE_FIX_PATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1
                 ;;
-            *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+            *)  die "unrecognized extension : $PACKAGE_FIX_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
     fi
 
@@ -3641,7 +3638,7 @@ __config_build_variables() {
         eval "${DEP_PKG_NAME_UNDERSCORE}_INCLUDE_DIR='$DEP_PKG_INCLUDE_DIR'"
         eval "${DEP_PKG_NAME_UNDERSCORE}_LIBRARY_DIR='$DEP_PKG_LIBRARY_DIR'"
 
-        if [ -d " $DEP_PKG_BINARY__DIR" ] ; then
+        if [ -d  "$DEP_PKG_BINARY__DIR" ] ; then
             PATH="$DEP_PKG_BINARY__DIR:$PATH"
         fi
 
