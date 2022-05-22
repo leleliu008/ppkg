@@ -1819,15 +1819,15 @@ __load_formula_of_the_given_package() {
         PACKAGE_RES_PATH="$MY_CACHE_DIR/res/$PACKAGE_RES_NAME"
 
         case $PACKAGE_RES_NAME in
-            *.diff)    PACKAGE_FIX_TYPE=patch   ;;
-            *.patch)   PACKAGE_FIX_TYPE=patch   ;;
-            *.zip)     PACKAGE_FIX_TYPE=zip     ;;
-            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz  ;;
-            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz  ;;
-            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
-            *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
+            *.diff)    PACKAGE_RES_TYPE=patch   ;;
+            *.patch)   PACKAGE_RES_TYPE=patch   ;;
+            *.zip)     PACKAGE_RES_TYPE=zip     ;;
+            *.tar.xz)  PACKAGE_RES_TYPE=tar.xz  ;;
+            *.tar.gz)  PACKAGE_RES_TYPE=tar.gz  ;;
+            *.tar.lz)  PACKAGE_RES_TYPE=tar.lz  ;;
+            *.tar.bz2) PACKAGE_RES_TYPE=tar.bz2 ;;
+            *.tgz)     PACKAGE_RES_TYPE=tar.gz  ;;
+            *.txz)     PACKAGE_RES_TYPE=tar.xz  ;;
         esac
     fi
 
@@ -3574,6 +3574,11 @@ __config_build_variables() {
           CFLAGS="-isysroot $SYSROOT -Qunused-arguments"
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
          LDFLAGS="-isysroot $SYSROOT"
+    else
+        if [ "$LINK_TYPE" = static-only ] ; then
+             CFLAGS=" $CFLAGS -static --static"
+            LDFLAGS="$LDFLAGS -static --static"
+        fi
     fi
 
     CFLAGS="$CFLAGS -fPIC"
@@ -3595,6 +3600,7 @@ __config_build_variables() {
             case $TOOLNAME in
                 cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
                 cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
+                cpp) TOOLPATH="$CC -E"
                 *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
             esac
         else
@@ -3621,11 +3627,6 @@ __config_build_variables() {
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
         LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
-    fi
-
-    if [ "$LINK_TYPE" = static-only ] ; then
-         CFLAGS=" $CFLAGS -static --static"
-        LDFLAGS="$LDFLAGS -static --static"
     fi
 
     if [ "$VERBOSE" = yes ] ; then
