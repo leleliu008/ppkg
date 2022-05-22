@@ -1789,29 +1789,36 @@ __load_formula_of_the_given_package() {
     esac
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
-        case $PACKAGE_FIX_URL in
-            *.diff)    PACKAGE_FIX_TYPE=patch   ;;
-            *.patch)   PACKAGE_FIX_TYPE=patch   ;;
-            *.zip)     PACKAGE_FIX_TYPE=zip     ;;
-            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz  ;;
-            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz  ;;
-            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
-            *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
-            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
-        esac
-
         if [ -z "$PACKAGE_FIX_SHA" ] ; then
             die "fix.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
-        PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL")
+        PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL" | sed 's|?.*||')
         PACKAGE_FIX_PATH="$MY_CACHE_DIR/fix/$PACKAGE_FIX_NAME"
+
+        case $PACKAGE_FIX_NAME in
+            *.diff)    PACKAGE_FIX_TYPE=patch   ;;
+            *.patch)   PACKAGE_FIX_TYPE=patch   ;;
+            *.zip)     PACKAGE_FIX_TYPE=zip     ;;
+            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz  ;;
+            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz  ;;
+            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz  ;;
+            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
+            *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
+            *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
+            *)  die "unrecognized fix extension : $PACKAGE_FIX_NAME.\n    supported fix extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        esac
     fi
 
     if [ -n "$PACKAGE_RES_URL" ] ; then
-        case $PACKAGE_RES_URL in
+        if [ -z "$PACKAGE_RES_SHA" ] ; then
+            die "res.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+        fi
+
+        PACKAGE_RES_NAME=$(basename "$PACKAGE_RES_URL" | sed 's|?.*||')
+        PACKAGE_RES_PATH="$MY_CACHE_DIR/res/$PACKAGE_RES_NAME"
+
+        case $PACKAGE_RES_NAME in
             *.diff)    PACKAGE_FIX_TYPE=patch   ;;
             *.patch)   PACKAGE_FIX_TYPE=patch   ;;
             *.zip)     PACKAGE_FIX_TYPE=zip     ;;
@@ -1822,13 +1829,6 @@ __load_formula_of_the_given_package() {
             *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
             *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
         esac
-
-        if [ -z "$PACKAGE_RES_SHA" ] ; then
-            die "res.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
-        fi
-
-        PACKAGE_RES_NAME=$(basename "$PACKAGE_RES_URL")
-        PACKAGE_RES_PATH="$MY_CACHE_DIR/res/$PACKAGE_RES_NAME"
     fi
 
     if [ -n "$PACKAGE_VERSION" ] ; then
@@ -4942,7 +4942,7 @@ init() {
 # PKG_CONFIG_LIBDIR=
 # PKG_CONFIG_PATH=
 
-# MACOSX_DEPLOYMENT_TARGET
+# MACOSX_DEPLOYMENT_TARGET=10.15
 EOF
     fi
 
