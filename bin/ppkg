@@ -3641,21 +3641,30 @@ __config_build_variables() {
         eval "${DEP_PKG_NAME_UNDERSCORE}_INCLUDE_DIR='$DEP_PKG_INCLUDE_DIR'"
         eval "${DEP_PKG_NAME_UNDERSCORE}_LIBRARY_DIR='$DEP_PKG_LIBRARY_DIR'"
 
-        CPPFLAGS="-I$DEP_PKG_INCLUDE_DIR $CPPFLAGS"
-         LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+        if [ -d " $DEP_PKG_BINARY__DIR" ] ; then
+            PATH="$DEP_PKG_BINARY__DIR:$PATH"
+        fi
 
-        if [ -z "$PKG_CONFIG_PATH" ] ; then
-            PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR"
-        else
-            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEP_PKG_PKGCONF_DIR"
+        if [ -d "$DEP_PKG_INCLUDE_DIR" ] ; then
+            CPPFLAGS="-I$DEP_PKG_INCLUDE_DIR $CPPFLAGS"
         fi
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_DIR"
+            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+
+            if [ -z "$LD_LIBRARY_DIR" ] ; then
+                LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
+            else
+                LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_DIR"
+            fi
         fi
 
-        if [ -d " $DEP_PKG_BINARY__DIR" ] ; then
-            PATH="$DEP_PKG_BINARY__DIR:$PATH"
+        if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
+            if [ -z "$PKG_CONFIG_PATH" ] ; then
+                PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR"
+            else
+                PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR:$PKG_CONFIG_PATH"
+            fi
         fi
     done
 
@@ -3718,27 +3727,64 @@ __config_build_variables() {
 __printf_build_variables() {
     step "printf build variables"
 
+    printf '%s\n' "
+        BUILD_NJOBS = $BUILD_NJOBS
+        BUILD_TYPE  = $BUILD_TYPE
+
+     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+
+     NATIVE_OS_KIND = $NATIVE_OS_KIND
+     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_NAME = $NATIVE_OS_NAME
+     NATIVE_OS_VERS = $NATIVE_OS_VERS
+     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
+    "
+
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
         eval export "$TOOL=\"\$$TOOL\""
-        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+        printf "%19s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
+
+    echo
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
         eval export "$FLAG=\"\$$FLAG\""
-        printf "\n%17s = " "$FLAG"
+        printf "\n%19s = " "$FLAG"
         FIRST=yes
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
             if [ "$FIRST" = yes ] ; then
-                FIRST=NO
-                echo "$item"
+                FIRST=no
+                printf '%s\n' "$item"
             else
-                echo "                    $item"
+                printf '%s\n' "                      $item"
             fi
         done
     done
+
+    echo
+
+    printf "\n%19s = " PATH
+    FIRST=yes
+    for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+            printf '%s\n' "$item" | tr '|' ' '
+        else
+            printf '%s\n' "                      $item" | tr '|' ' '
+        fi
+    done
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        echo
+        env | sed -n '/^CMAKE_/p'
+    fi
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
