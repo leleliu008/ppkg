@@ -3600,7 +3600,7 @@ __config_build_variables() {
             case $TOOLNAME in
                 cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
                 cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
-                cpp) TOOLPATH="$CC -E"
+                cpp) TOOLPATH="$CC -E" ;;
                 *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
             esac
         else
