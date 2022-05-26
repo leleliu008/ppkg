@@ -20,51 +20,51 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: bin/zpkg --help
-      - run: bin/zpkg --version
+      - run: bin/ppkg --help
+      - run: bin/ppkg --version
 
-      - run: bin/zpkg env
+      - run: bin/ppkg env
 
-      - run: bin/zpkg setup
+      - run: bin/ppkg setup
 
-      - run: bin/zpkg integrate zsh
+      - run: bin/ppkg integrate zsh
 
-      - run: bin/zpkg update
+      - run: bin/ppkg update
 
-      - run: bin/zpkg search lib
-      - run: bin/zpkg search libzip
+      - run: bin/ppkg search lib
+      - run: bin/ppkg search libzip
 
-      - run: bin/zpkg info libzip
-      - run: bin/zpkg info libzip version
-      - run: bin/zpkg info libzip webpage
-      - run: bin/zpkg info libzip
+      - run: bin/ppkg info libzip
+      - run: bin/ppkg info libzip version
+      - run: bin/ppkg info libzip webpage
+      - run: bin/ppkg info libzip
 
-      - run: bin/zpkg depends libzip
+      - run: bin/ppkg depends libzip
 
-      - run: bin/zpkg homepage
-      - run: bin/zpkg homepage libzip
+      - run: bin/ppkg homepage
+      - run: bin/ppkg homepage libzip
 
-      - run: bin/zpkg install libzip
+      - run: bin/ppkg install libzip
 
-      - run: bin/zpkg prefix
-      - run: bin/zpkg prefix libzip
+      - run: bin/ppkg prefix
+      - run: bin/ppkg prefix libzip
 
-      - run: bin/zpkg tree libzip
-      - run: bin/zpkg pack libzip
+      - run: bin/ppkg tree libzip
+      - run: bin/ppkg pack libzip
 
-      - run: bin/zpkg formula-repo list
-      - run: bin/zpkg formula view curl
+      - run: bin/ppkg formula-repo list
+      - run: bin/ppkg formula view curl
 
-      - run: bin/zpkg ls-available
-      - run: bin/zpkg ls-installed
-      - run: bin/zpkg ls-outdated
+      - run: bin/ppkg ls-available
+      - run: bin/ppkg ls-installed
+      - run: bin/ppkg ls-outdated
 
-      - run: bin/zpkg is-available libzip
-      - run: bin/zpkg is-installed libzip
-      - run: bin/zpkg is-outdated libzip || echo "not outdated"
+      - run: bin/ppkg is-available libzip
+      - run: bin/ppkg is-installed libzip
+      - run: bin/ppkg is-outdated libzip || echo "not outdated"
 
-      - run: bin/zpkg uninstall libzip
+      - run: bin/ppkg uninstall libzip
 
-      - run: bin/zpkg fetch curl
+      - run: bin/ppkg fetch curl
 
-      - run: bin/zpkg upgrade @self
+      - run: bin/ppkg upgrade @self
