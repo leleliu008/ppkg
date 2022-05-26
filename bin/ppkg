@@ -5003,25 +5003,29 @@ __setup() {
         fi
     done
 
-    case $(uname -s) in
-        Linux)   CORE_TOOL_FILENAME_PREFIX="ppkg-core-linux-$(uname -m)"   ;;
-        Darwin)  CORE_TOOL_FILENAME_PREFIX="ppkg-core-macos-$(uname -m)"   ;;
-        FreeBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-freebsd-$(uname -m)" ;;
-        OpenBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-openbsd-$(uname -m)" ;;
-         NetBSD) CORE_TOOL_FILENAME_PREFIX="ppkg-core-netbsd-$(uname -m)"  ;;
+    unset NATIVE_OS_KIND
+    unset NATIVE_OS_ARCH
+
+    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_OS_ARCH="$(uname -m)"
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        NATIVE_OS_KIND=macos
+    fi
+
+    case $NATIVE_OS_KIND in
+        linux)   CORE_TOOL_VERSION='2022.05.22'; CORE_TOOL_SHA256='f2020303c48629f1c2de2ad9d1181ba807337a5a6dcc1cc08e5f27a505d3a915' ;;
+        macos)   CORE_TOOL_VERSION='2022.05.22' ;;
+        freebsd) CORE_TOOL_VERSION='2022.05.22' ;;
+        openbsd) CORE_TOOL_VERSION='2022.05.22' ;;
+         netbsd) CORE_TOOL_VERSION='2022.05.22' ;;
               *) die "unsupported os: $(uname -s)"
     esac
 
-    case $CORE_TOOL_FILENAME_PREFIX in
-        ppkg-core-linux-x86_64)   CORE_TOOL_VERSION='2022.05.15' ;;
-        ppkg-core-macos-x86_64)   CORE_TOOL_VERSION='2022.05.15' ;;
-        ppkg-core-freebsd-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
-        ppkg-core-openbsd-x86_64) CORE_TOOL_VERSION='2022.05.15' ;;
-        ppkg-core-netbsd-x86_64)  CORE_TOOL_VERSION='2022.05.15' ;;
-        *)                        CORE_TOOL_VERSION='0000.00.00' ;;
-    esac
+    CORE_TOOL_REPONAME="ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    CORE_TOOL_FILENAME="ppkg-core-$CORE_TOOL_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.tar.xz"
 
-    CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_FILENAME_PREFIX/releases/download/$CORE_TOOL_VERSION"
+    CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_REPONAME/releases/download/$CORE_TOOL_VERSION"
 
     if [ -z "$FETCH_TOOL" ] ; then
         error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found, you could download curl from $CORE_TOOL_BASE_URL/curl, then try again."
@@ -5040,11 +5044,11 @@ __setup() {
 
     export PATH="$SETUP_WORKING_DIR:$PATH"
 
-    fetch "$CORE_TOOL_BASE_URL/$CORE_TOOL_FILENAME_PREFIX.tar.xz" --output-dir="$MY_HOME_DIR"
+    fetch "$CORE_TOOL_BASE_URL/$CORE_TOOL_FILENAME" --sha256="$CORE_TOOL_SHA256" --output-dir="$MY_HOME_DIR"
 
     run install -d "$MY_HOME_DIR/core"
 
-    run tar vxf "$MY_HOME_DIR/$CORE_TOOL_FILENAME_PREFIX.tar.xz" --overwrite --strip-components=1 -C "$MY_HOME_DIR/core"
+    run tar vxf "$MY_HOME_DIR/$CORE_TOOL_FILENAME" --overwrite --strip-components=1 -C "$MY_HOME_DIR/core"
 
     success "ppkg have been setup."
 }
