@@ -155,6 +155,7 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
+                        '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-installing-dir[do not delete installing dir even if installed success]' \
@@ -176,10 +177,24 @@ function _ppkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                        '(--debug -d)'{--debug,-d}'[debug]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                        '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--dry-run[dry-run]' \
+                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug output]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
+                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                        '--install-exe[install executable programs]' \
+                        '--install-doc[install documents]' \
+                        '--install-man[install manpages]' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--disable-ccache[do not use ccache]' \
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
                     ;;
                 upgrade)
                     _arguments \
@@ -196,10 +211,24 @@ function _ppkg() {
                                 *)
                                 _arguments \
                                     ':package-name:_ppkg_outdated_packages' \
-                                    '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                                    '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                                    '(--debug -d)'{--debug,-d}'[debug]' \
-                                    '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                                    '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
+                                    '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                                    '--dry-run[dry-run]' \
+                                    '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                                    '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                                    '(--debug -d)'{--debug,-d}'[debug output]' \
+                                    '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
+                                    '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
+                                    '--build-type=-[set build type]:build-type:(debug release)' \
+                                    '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                                    '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                                    '--install-exe[install executable programs]' \
+                                    '--install-doc[install documents]' \
+                                    '--install-man[install manpages]' \
+                                    '--export-compile-commands-json[generates compile_commands.json]' \
+                                    '--disable-ccache[do not use ccache]' \
+                                    '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                                    '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
                             esac
                     esac
                     ;;

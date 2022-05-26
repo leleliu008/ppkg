@@ -3326,10 +3326,8 @@ __install_the_given_package() {
 
     PKG_CONFIG=$(command -v pkg-config || true)
 
-    step "fetch sources if needed"
+    step "fetch resources if needed"
     __fetch_sources_of_the_given_package "$1"
-
-    step "fetch patches if needed"
     __fetch_patches_of_the_given_package "$1"
 
     case $PACKAGE_SRC_TYPE in
@@ -3559,6 +3557,9 @@ __config_build_variables() {
             export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
         fi
 
+        # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
+        # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
+        # https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-mmacosx-version-min
         if [ -z "$MACOSX_DEPLOYMENT_TARGET" ] ; then
             MACOSX_DEPLOYMENT_TARGET="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f1).$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f2)"
         fi
@@ -3635,6 +3636,9 @@ __config_build_variables() {
 
     LD_LIBRARY_DIR="$LD_LIBRARY_DIR_OLD"
 
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+    unset CMAKE_FIND_ROOT_PATH
+
     for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
         DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '-' '_')
@@ -3680,6 +3684,12 @@ __config_build_variables() {
             else
                 PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR:$PKG_CONFIG_PATH"
             fi
+        fi
+
+        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
+            CMAKE_FIND_ROOT_PATH="$DEP_PKG_INSTALL_DIR"
+        else
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$DEP_PKG_INSTALL_DIR"
         fi
     done
 
@@ -4567,6 +4577,9 @@ cmakew() {
     run cmake \
         -Wno-dev \
         -G "'Unix Makefiles'" \
+        -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+        -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_FIND_ROOT_PATH'" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
         -DCMAKE_COLOR_MAKEFILE=ON \
@@ -4745,6 +4758,14 @@ inspect_install_arguments() {
             --keep-installing-dir)
                 KEEP_INSTALLING_DIR=yes
                 ;;
+            --toolchain=*)
+                TOOLCHAIN_NAME=$(getvalue "$1")
+                case $TOOLCHAIN_NAME in
+                    gcc|zig|llvm) ;;
+                    '') die "--toolchain=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--toolchain=<VALUE>, VALUE must be one of gcc zig llvm"
+                esac
+                ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
                 ;;
@@ -4811,6 +4832,118 @@ inspect_install_arguments() {
     fi
 
     LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
+
+    if [ -z "$TOOLCHAIN_NAME" ] ; then
+        case $NATIVE_OS_KIND in
+            linux)  TOOLCHAIN_NAME=zig ;;
+            darwin) TOOLCHAIN_NAME=xcode
+        esac
+    fi
+
+    if [ "$TOOLCHAIN_NAME" = 'xcode' ] ; then
+        :
+    else
+        TOOLCHAIN_ROOT="$MY_HOME_DIR/toolchains/$TOOLCHAIN_NAME"
+        GNU_BINUTILS_ROOT="$MY_HOME_DIR/toolchains/gnu-binutils"
+
+        if [ -f "$TOOLCHAIN_ROOT/installed" ] ; then
+            :
+        else
+            __install_toolchain
+        fi
+
+        if [ -f "$GNU_BINUTILS_ROOT/installed" ] ; then
+            :
+        else
+            __install_gnu_binutils
+        fi
+
+        if [ "$TOOLCHAIN_NAME" = 'zig' ] ; then
+            export      CC="$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl"
+            export     CXX="$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl"
+            export     CPP="$CC -E"
+            export      AS="$GNU_BINUTILS_ROOT/bin/as"
+            export      LD="$GNU_BINUTILS_ROOT/bin/ld"
+            export      AR="$GNU_BINUTILS_ROOT/bin/ar"
+            export      NM="$GNU_BINUTILS_ROOT/bin/nm"
+            export    SIZE="$GNU_BINUTILS_ROOT/bin/size"
+            export   STRIP="$GNU_BINUTILS_ROOT/bin/strip"
+            export  RANLIB="$GNU_BINUTILS_ROOT/bin/ranlib"
+            export STRINGS="$GNU_BINUTILS_ROOT/bin/strings"
+            export OBJDUMP="$GNU_BINUTILS_ROOT/bin/objdump"
+            export OBJCOPY="$GNU_BINUTILS_ROOT/bin/objcopy"
+            export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
+
+            # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
+            export CFLAGS="$CFLAGS -fno-sanitize=undefined"
+        fi
+    fi
+}
+
+__install_gnu_binutils() {
+    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        linux-x86_64)
+            GNU_BINUTILS_VERS='2.37'
+            GNU_BINUTILS_SHA='8dc7c1cc4509746f5613ac70e7fa927f131438f4489c9b6818280702bf57959e'
+            GNU_BINUTILS_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/gnu-binutils-2.37-linux-x86_64.tar.xz'
+            ;;
+        linux-aarch64)
+            ;;
+        macos-x86_64)
+            ;;
+        macos-aarch64)
+            ;;
+    esac
+
+    unset GNU_BINUTILS_FILENAME
+
+    GNU_BINUTILS_FILEPATH="$MY_HOME_DIR/toolchains/$(basename "$GNU_BINUTILS_URL")"
+
+    fetch "$GNU_BINUTILS_URL" --sha256="$GNU_BINUTILS_SHA" --output-dir="$MY_HOME_DIR/toolchains"
+
+    run install -d "$GNU_BINUTILS_ROOT"
+
+    run tar vxf "$GNU_BINUTILS_FILEPATH" -C "$GNU_BINUTILS_ROOT" --strip-components=1
+
+    printf '%s\n' "$GNU_BINUTILS_VERS" > "$GNU_BINUTILS_ROOT/installed"
+}
+
+# __install_toolchain <TOOLCHAIN-NAME>
+  __install_toolchain() {
+    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        linux-x86_64)
+            TOOLCHAIN_VERS='0.10.0'
+            TOOLCHAIN_SHA='29289bcb43ee97ed92086a8607c8081e5516748cd017e9580bcdd36d453724c7'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            ;;
+        linux-aarch64)
+            TOOLCHAIN_VERS='0.10.0'
+            TOOLCHAIN_SHA='cb7e1ab49525cf7ab385c4988eea9863b6645eee28ee36a73f56287a88e365b5'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-aarch64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            ;;
+        macos-x86_64)
+            TOOLCHAIN_VERS='0.10.0'
+            TOOLCHAIN_SHA='6c9ab977e11013f9cfdd8e8f54a3a30355787e222c317885ff02d9b871ee3a42'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-x86_64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            ;;
+        macos-aarch64)
+            TOOLCHAIN_VERS='0.10.0'
+            TOOLCHAIN_SHA='acbd27487c3ab17ee7c46b06fd7fad9c44229f63d7cec018f717a6f41cc90db6'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-aarch64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            ;;
+    esac
+
+    unset TOOLCHAIN_FILENAME
+
+    TOOLCHAIN_FILEPATH="$MY_HOME_DIR/toolchains/$(basename "$TOOLCHAIN_URL")"
+
+    fetch "$TOOLCHAIN_URL" --sha256="$TOOLCHAIN_SHA" --output-dir="$MY_HOME_DIR/toolchains"
+
+    run install -d "$TOOLCHAIN_ROOT"
+
+    run tar vxf "$TOOLCHAIN_FILEPATH" -C "$TOOLCHAIN_ROOT" --strip-components=1
+
+    printf '%s\n' "$TOOLCHAIN_VERS" > "$TOOLCHAIN_ROOT/installed"
 }
 
 __is_core_tools_installed() {
