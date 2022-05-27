@@ -3708,37 +3708,8 @@ __config_build_variables() {
 
     PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE_NAME"
 
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            cargo)
-                # eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
-                # eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
-
-                # # https://libraries.io/cargo/cc
-                # export HOST_CC="$CC"
-                # export HOST_CFLAGS="$CFLAGS"
-
-                # export HOST_CXX="$CXX"
-                # export HOST_CXXFLAGS="$CXXFLAGS"
-
-                # export HOST_AR="$AR"
-                ;;
-               go)
-                # https://golang.org/doc/install/source#environment
-                export CGO_ENABLED=1
-                export CGO_CFLAGS="$CFLAGS"
-                export CGO_CXXFLAGS="$CXXFLAGS"
-                export CGO_CPPFLAGS="$CPPFLAGS"
-                export CGO_LDFLAGS="$LDFLAGS"
-
-                export GO111MODULE="auto"
-                export GOPROXY=https://goproxy.cn
-                ;;
-        esac
-    done
-
     STATIC_LIBRARY_SUFFIX=.a
+
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         SHARED_LIBRARY_SUFFIX=.dylib
     else
@@ -3747,6 +3718,120 @@ __config_build_variables() {
 
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+
+    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        unset CMAKE_PREFIX_PATH
+        unset CMAKE_APPLE_SILICON_PROCESSOR
+        unset CMAKE_BUILD_PARALLEL_LEVEL
+        unset CMAKE_BUILD_TYPE
+        unset CMAKE_CONFIGURATION_TYPES
+        unset CMAKE_CONFIG_TYPE
+        unset CMAKE_EXPORT_COMPILE_COMMANDS
+        unset CMAKE_GENERATOR
+        unset CMAKE_GENERATOR_INSTANCE
+        unset CMAKE_GENERATOR_PLATFORM
+        unset CMAKE_GENERATOR_TOOLSET
+        unset CMAKE_INSTALL_MODE
+        unset CMAKE_C_COMPILER_LAUNCHER
+        unset CMAKE_C_LINKER_LAUNCHER
+        unset CMAKE_CXX_COMPILER_LAUNCHER
+        unset CMAKE_CXX_LINKER_LAUNCHER
+        unset CMAKE_MSVCIDE_RUN_PATH
+        unset CMAKE_NO_VERBOSE
+        unset CMAKE_OSX_ARCHITECTURES
+        unset CMAKE_TOOLCHAIN_FILE
+        unset DESTDIR
+        unset CTEST_INTERACTIVE_DEBUG_MODE
+        unset CTEST_OUTPUT_ON_FAILURE
+        unset CTEST_PARALLEL_LEVEL
+        unset CTEST_PROGRESS_OUTPUT
+        unset CTEST_USE_LAUNCHERS_DEFAULT
+        unset DASHBOARD_TEST_FROM_CTEST
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
+        export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
+        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
+            export CMAKE_GENERATOR='Ninja'
+        else
+            export CMAKE_GENERATOR='Unix Makefiles'
+        fi
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+            export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+        else
+            export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
+        fi
+
+        case $BUILD_TYPE in
+            debug)   CMAKE_BUILD_TYPE=Debug   ;;
+            release) CMAKE_BUILD_TYPE=Release ;;
+        esac
+
+        case $INSTALL_LIB in
+            static)  BUILD_SHARED_LIBS=OFF ;;
+            *)       BUILD_SHARED_LIBS=ON
+        esac
+
+        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
+            CMAKE_VERBOSE_MAKEFILE=OFF
+            CMAKE_COLOR_MAKEFILE=OFF
+        else
+            CMAKE_VERBOSE_MAKEFILE=ON
+            CMAKE_COLOR_MAKEFILE=ON
+        fi
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+            CMAKE_FIND_DEBUG_MODE=ON
+        else
+            CMAKE_FIND_DEBUG_MODE=OFF
+        fi
+
+        CMAKE_TOOLCHAIN_FILE="$PACKAGE_INSTALLING_TOP_DIR/toolchain.cmake"
+
+        cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
+set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
+
+set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
+
+set(CMAKE_C_COMPILER "$CC")
+set(CMAKE_C_FLAGS "$CFLAGS $CPPFLAGS $LDFLAGS")
+
+set(CMAKE_CXX_COMPILER "$CXX")
+set(CMAKE_CXX_FLAGS "$CXXFLAGS $CPPFLAGS $LDFLAGS")
+
+set(CMAKE_ASM_COMPILER "$CC")
+
+set(CMAKE_AR      "$AR")
+set(CMAKE_RANLIB  "$RANLIB")
+
+set(CMAKE_LINKER  "$LD")
+
+set(CMAKE_NM      "$NM")
+set(CMAKE_READELF "$READELF")
+
+set(CMAKE_OBJCOPY "$OBJCOPY")
+set(CMAKE_OBJDUMP "$OBJDUMP")
+
+set(CMAKE_STRIP   "$STRIP")
+
+set(CMAKE_DLLTOOL "$DLLTOOL")
+
+set(CMAKE_ADDR2LINE "$ADDR2LINE")
+
+set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
+
+set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
+EOF
+
+        if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
+            run cat "$CMAKE_TOOLCHAIN_FILE"
+        fi
+    fi
 }
 
 __printf_build_variables() {
@@ -4576,20 +4661,13 @@ cmakew() {
     run cmake --version
     run cmake \
         -Wno-dev \
-        -G "'Unix Makefiles'" \
-        -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-        -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_FIND_ROOT_PATH'" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_COLOR_MAKEFILE=ON \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_TESTING=OFF \
-        -DBUILD_SHARED_LIBS=OFF \
         -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR \
+        -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
+        -DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE \
+        -DCMAKE_COLOR_MAKEFILE=$CMAKE_COLOR_MAKEFILE \
         -S $PACKAGE_INSTALLING_BST_DIR \
         -B $PACKAGE_INSTALLING_TMP_DIR $@ &&
-    run cmake --build   "$PACKAGE_INSTALLING_TMP_DIR" &&
+    run cmake --build   "$PACKAGE_INSTALLING_TMP_DIR" -- -j$BUILD_NJOBS &&
     run cmake --install "$PACKAGE_INSTALLING_TMP_DIR"
 }
 
@@ -4689,7 +4767,7 @@ __ldd() {
 }
 
 list_tools_in_the_toolchain() {
-    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf
+    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf dlltool addr2line
 }
 
 list_flags_used_by_tools_in_the_toolchain() {
@@ -4859,8 +4937,8 @@ inspect_install_arguments() {
         fi
 
         if [ "$TOOLCHAIN_NAME" = 'zig' ] ; then
-            export      CC="$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl"
-            export     CXX="$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl"
+            export      CC="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
+            export     CXX="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
             export     CPP="$CC -E"
             export      AS="$GNU_BINUTILS_ROOT/bin/as"
             export      LD="$GNU_BINUTILS_ROOT/bin/ld"
@@ -4873,6 +4951,8 @@ inspect_install_arguments() {
             export OBJDUMP="$GNU_BINUTILS_ROOT/bin/objdump"
             export OBJCOPY="$GNU_BINUTILS_ROOT/bin/objcopy"
             export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
+            export DLLTOOL="$GNU_BINUTILS_ROOT/bin/dlltool"
+            export ADDR2LINE="$GNU_BINUTILS_ROOT/bin/addr2line"
 
             # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
             export CFLAGS="$CFLAGS -fno-sanitize=undefined"
@@ -4942,6 +5022,19 @@ __install_gnu_binutils() {
     run install -d "$TOOLCHAIN_ROOT"
 
     run tar vxf "$TOOLCHAIN_FILEPATH" -C "$TOOLCHAIN_ROOT" --strip-components=1
+
+    cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc" <<EOF
+#!/bin/sh
+set -e
+$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl \$*
+EOF
+    cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++" <<EOF
+#!/bin/sh
+set -e
+$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl \$*
+EOF
+    chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
+    chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
 
     printf '%s\n' "$TOOLCHAIN_VERS" > "$TOOLCHAIN_ROOT/installed"
 }
