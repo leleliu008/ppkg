@@ -228,6 +228,14 @@ tolower() {
     fi
 }
 
+git() {
+    if [ -f "$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" ] ; then
+        command git -c http.sslCAInfo="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" $*
+    else
+        command git $*
+    fi
+}
+
 own() {
     ls -ld "$1" | cut -d ' ' -f3,4 | tr ' ' ':'
 }
