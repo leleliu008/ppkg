@@ -18,51 +18,49 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - run: bin/zpkg --help
-      - run: bin/zpkg --version
+      - run: bin/ppkg --help
+      - run: bin/ppkg --version
 
 
-      - run: bin/zpkg env
+      - run: bin/ppkg env
 
-      - run: bin/zpkg integrate zsh
+      - run: bin/ppkg integrate zsh
 
-      - run: bin/zpkg update
+      - run: bin/ppkg update
 
-      - run: bin/zpkg search lib
-      - run: bin/zpkg search zlib
+      - run: bin/ppkg search lib
+      - run: bin/ppkg search zlib
 
-      - run: bin/zpkg info zlib
-      - run: bin/zpkg info zlib version
-      - run: bin/zpkg info zlib webpage
-      - run: bin/zpkg info zlib
+      - run: bin/ppkg info zlib
+      - run: bin/ppkg info zlib version
+      - run: bin/ppkg info zlib webpage
+      - run: bin/ppkg info zlib
 
-      - run: bin/zpkg depends zlib
+      - run: bin/ppkg depends zlib
 
-      - run: bin/zpkg homepage
-      - run: bin/zpkg homepage zlib
+      - run: bin/ppkg homepage
+      - run: bin/ppkg homepage zlib
 
-      - run: bin/zpkg install zlib
-
-      - run: bin/zpkg prefix
-      - run: bin/zpkg prefix zlib
-
-      - run: bin/zpkg tree zlib
-      - run: bin/zpkg pack zlib
-
-      - run: bin/zpkg formula-repo list
-      - run: bin/zpkg formula view curl
+      - run: bin/ppkg install zlib
 
 
-      - run: bin/zpkg ls-available
-      - run: bin/zpkg ls-installed
-      - run: bin/zpkg ls-outdated
+      - run: bin/ppkg tree zlib
+      - run: bin/ppkg pack zlib
 
-      - run: bin/zpkg is-available zlib
-      - run: bin/zpkg is-installed zlib
-      - run: bin/zpkg is-outdated zlib || echo "not outdated"
+      - run: bin/ppkg formula-repo list
+      - run: bin/ppkg formula view curl
 
-      - run: bin/zpkg uninstall zlib
 
-      - run: bin/zpkg fetch curl
+      - run: bin/ppkg ls-available
+      - run: bin/ppkg ls-installed
+      - run: bin/ppkg ls-outdated
 
-      - run: bin/zpkg upgrade @self
+      - run: bin/ppkg is-available zlib
+      - run: bin/ppkg is-installed zlib
+      - run: bin/ppkg is-outdated zlib || echo "not outdated"
+
+      - run: bin/ppkg uninstall zlib
+
+      - run: bin/ppkg fetch curl
+
+      - run: bin/ppkg upgrade @self

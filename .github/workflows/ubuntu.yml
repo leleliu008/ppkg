@@ -46,8 +46,6 @@ jobs:
 
       - run: bin/ppkg install libzip
 
-      - run: bin/ppkg prefix
-      - run: bin/ppkg prefix libzip
 
       - run: bin/ppkg tree libzip
       - run: bin/ppkg pack libzip
