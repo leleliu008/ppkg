@@ -29,23 +29,23 @@ jobs:
       - run: bin/ppkg update
 
       - run: bin/ppkg search lib
-      - run: bin/ppkg search zlib
+      - run: bin/ppkg search libzip
 
-      - run: bin/ppkg info zlib
-      - run: bin/ppkg info zlib version
-      - run: bin/ppkg info zlib webpage
-      - run: bin/ppkg info zlib
+      - run: bin/ppkg info libzip
+      - run: bin/ppkg info libzip version
+      - run: bin/ppkg info libzip webpage
+      - run: bin/ppkg info libzip
 
-      - run: bin/ppkg depends zlib
+      - run: bin/ppkg depends libzip
 
       - run: bin/ppkg homepage
-      - run: bin/ppkg homepage zlib
+      - run: bin/ppkg homepage libzip
 
-      - run: bin/ppkg install zlib
+      - run: bin/ppkg install libzip
 
 
-      - run: bin/ppkg tree zlib
-      - run: bin/ppkg pack zlib
+      - run: bin/ppkg tree libzip
+      - run: bin/ppkg pack libzip tar.xz
 
       - run: bin/ppkg formula-repo list
       - run: bin/ppkg formula view curl
@@ -55,11 +55,11 @@ jobs:
       - run: bin/ppkg ls-installed
       - run: bin/ppkg ls-outdated
 
-      - run: bin/ppkg is-available zlib
-      - run: bin/ppkg is-installed zlib
-      - run: bin/ppkg is-outdated zlib || echo "not outdated"
+      - run: bin/ppkg is-available libzip
+      - run: bin/ppkg is-installed libzip
+      - run: bin/ppkg is-outdated libzip || echo "not outdated"
 
-      - run: bin/ppkg uninstall zlib
+      - run: bin/ppkg uninstall libzip
 
       - run: bin/ppkg fetch curl
 

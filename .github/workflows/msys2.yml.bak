@@ -58,7 +58,7 @@ jobs:
 
 
       - run: bin/ppkg tree base64
-      - run: bin/ppkg pack base64 --type=tar.bz2
+      - run: bin/ppkg pack base64 tar.xz
 
       - run: bin/ppkg formula-repo list
       - run: bin/ppkg formula view curl
