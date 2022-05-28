@@ -28,6 +28,8 @@ jobs:
 
       - run: bin/ppkg env
 
+      - run: bin/ppkg setup
+
       - run: bin/ppkg integrate zsh
 
       - run: bin/ppkg update
