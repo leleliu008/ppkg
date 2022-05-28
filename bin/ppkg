@@ -1865,7 +1865,7 @@ __load_formula_of_the_given_package() {
             autotools)   PACKAGE_DEPENDS="$PACKAGE_DEPENDS perl m4 autoconf automake" ;;
             cmake*)      PACKAGE_DEPENDS="$PACKAGE_DEPENDS cmake" ;;
             xmake)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS xmake" ;;
-            meson)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS meson ninja" ;;
+            meson)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS meson" ;;
             ninja)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS ninja" ;;
             rake)        PACKAGE_DEPENDS="$PACKAGE_DEPENDS ruby"  ;;
             cargo)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS rustup" ;;
@@ -3823,6 +3823,8 @@ set(CMAKE_DLLTOOL "$DLLTOOL")
 
 set(CMAKE_ADDR2LINE "$ADDR2LINE")
 
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
+
 set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
@@ -5107,7 +5109,7 @@ __setup() {
     fi
 
     case $NATIVE_OS_KIND in
-        linux)   CORE_TOOL_VERSION='2022.05.27'; CORE_TOOL_SHA256='cb7ba7699b0b5664824d12652edead1e6a72034e23bedf7ce7b706273abc825a' ;;
+        linux)   CORE_TOOL_VERSION='2022.05.28'; CORE_TOOL_SHA256='701edafaefd1bfa50001b321602673a31e39ca008862efd45637a9976fb8cc8c' ;;
         macos)   CORE_TOOL_VERSION='2022.05.22' ;;
         freebsd) CORE_TOOL_VERSION='2022.05.22' ;;
         openbsd) CORE_TOOL_VERSION='2022.05.22' ;;
