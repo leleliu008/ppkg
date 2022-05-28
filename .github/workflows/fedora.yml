@@ -1,4 +1,4 @@
-name: Gentoo
+name: Fedora
 
 on:
   push:
@@ -10,18 +10,25 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     
-    container: madhacking/gentoo
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [28, 30, 33, 34]
+
+    container: fedora:${{ matrix.tag }}
 
     steps:
-      - run: emerge dev-vcs/git
+      - run: dnf -y update
+      - run: dnf -y install git
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - run: bin/ppkg --help
       - run: bin/ppkg --version
 
-
       - run: bin/ppkg env
+
+      - run: bin/ppkg setup
 
       - run: bin/ppkg integrate zsh
 
@@ -33,13 +40,11 @@ jobs:
       - run: bin/ppkg info libzip
       - run: bin/ppkg info libzip version
       - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip
+      - run: bin/ppkg info libzip src.url
 
       - run: bin/ppkg depends libzip
 
-
       - run: bin/ppkg install libzip
-
 
       - run: bin/ppkg tree libzip
       - run: bin/ppkg pack libzip tar.xz
@@ -47,14 +52,13 @@ jobs:
       - run: bin/ppkg formula-repo list
       - run: bin/ppkg formula view curl
 
-
       - run: bin/ppkg ls-available
       - run: bin/ppkg ls-installed
       - run: bin/ppkg ls-outdated
 
       - run: bin/ppkg is-available libzip
       - run: bin/ppkg is-installed libzip
-      - run: bin/ppkg is-outdated libzip || echo "not outdated"
+      - run: bin/ppkg is-outdated  libzip || echo "not outdated"
 
       - run: bin/ppkg uninstall libzip
 

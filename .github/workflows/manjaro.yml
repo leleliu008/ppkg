@@ -1,4 +1,4 @@
-name: CentOS Linux
+name: Manjaro Linux
 
 on:
   push:
@@ -10,27 +10,20 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ['7.5.1804', '8.3.2011']
-
-    container: centos:${{ matrix.tag }}
+    container: zelec/manjarolinux
 
     steps:
-      - run: yum -y update && yum -y install git
-        if:  ${{ matrix.tag == '7.5.1804' }}
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm git
 
-      - run: dnf -y update && dnf -y install git
-        if:  ${{ matrix.tag == '8.3.2011' }}
-
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - run: bin/ppkg --help
       - run: bin/ppkg --version
 
-
       - run: bin/ppkg env
+
+      - run: bin/ppkg setup
 
       - run: bin/ppkg integrate zsh
 
@@ -42,20 +35,18 @@ jobs:
       - run: bin/ppkg info libzip
       - run: bin/ppkg info libzip version
       - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip
+      - run: bin/ppkg info libzip src.url
 
       - run: bin/ppkg depends libzip
 
-
       - run: bin/ppkg install libzip
 
-
       - run: bin/ppkg tree libzip
+
       - run: bin/ppkg pack libzip tar.xz
 
       - run: bin/ppkg formula-repo list
       - run: bin/ppkg formula view curl
-
 
       - run: bin/ppkg ls-available
       - run: bin/ppkg ls-installed
@@ -63,7 +54,7 @@ jobs:
 
       - run: bin/ppkg is-available libzip
       - run: bin/ppkg is-installed libzip
-      - run: bin/ppkg is-outdated libzip || echo 'not outdated'
+      - run: bin/ppkg is-outdated  libzip || echo "not outdated"
 
       - run: bin/ppkg uninstall libzip
 
