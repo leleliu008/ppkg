@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: apt -y update
-      - run: apt -y install git
+      - run: apt -y install curl
 
       - uses: actions/checkout@v3
 

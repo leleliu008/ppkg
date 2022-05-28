@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: zypper update -y
-      - run: zypper install -y git
+      - run: zypper install -y curl
 
       - uses: actions/checkout@v3
 
