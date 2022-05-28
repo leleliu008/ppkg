@@ -723,6 +723,10 @@ fetch() {
                         FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
                     fi
 
+                    if [ -f "$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" ] ; then
+                        FETCH_TOOL_CURL_OPTIONS="--cacert $MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+                    fi
+
                     run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     ;;
                 wget)
@@ -5131,6 +5135,9 @@ __setup() {
 
     SETUP_WORKING_DIR=$(mktemp -d)
 
+    # https://curl.se/docs/caextract.html
+    fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+
     for item in tar xz
     do
         fetch "$CORE_TOOL_BASE_URL/$item" --output-dir="$SETUP_WORKING_DIR"
@@ -5144,6 +5151,9 @@ __setup() {
     run install -d "$MY_HOME_DIR/core"
 
     run tar vxf "$MY_HOME_DIR/$CORE_TOOL_FILENAME" --overwrite --strip-components=1 -C "$MY_HOME_DIR/core"
+
+    run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
+    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
 
     success "ppkg have been setup."
 }
