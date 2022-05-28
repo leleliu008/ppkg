@@ -5109,7 +5109,7 @@ __setup() {
     fi
 
     case $NATIVE_OS_KIND in
-        linux)   CORE_TOOL_VERSION='2022.05.28'; CORE_TOOL_SHA256='701edafaefd1bfa50001b321602673a31e39ca008862efd45637a9976fb8cc8c' ;;
+        linux)   CORE_TOOL_VERSION='2022.05.28'; CORE_TOOL_SHA256='05696974303e95ab45d435bd3a6c24deb3857ebaccf9de8b46bc3409bef922f7' ;;
         macos)   CORE_TOOL_VERSION='2022.05.22' ;;
         freebsd) CORE_TOOL_VERSION='2022.05.22' ;;
         openbsd) CORE_TOOL_VERSION='2022.05.22' ;;
