@@ -39,8 +39,6 @@ jobs:
 
       - run: bin/ppkg depends libzip
 
-      - run: bin/ppkg homepage
-      - run: bin/ppkg homepage libzip
 
       - run: bin/ppkg install libzip
 
@@ -99,8 +97,6 @@ jobs:
 
       - run: ppkg depends libzip
 
-      - run: ppkg homepage
-      - run: ppkg homepage libzip
 
       - run: ppkg install libzip
 
@@ -157,8 +153,6 @@ jobs:
 
       - run: ppkg depends libzip
 
-      - run: ppkg homepage
-      - run: ppkg homepage libzip
 
       - run: ppkg install libzip
 

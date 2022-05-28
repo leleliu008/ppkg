@@ -51,8 +51,6 @@ jobs:
 
       - run: bin/ppkg depends base64
 
-      - run: bin/ppkg homepage
-      - run: bin/ppkg homepage base64
 
       - run: bin/ppkg install base64
 
