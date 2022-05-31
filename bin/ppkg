@@ -3283,6 +3283,7 @@ __install_the_given_package() {
     unset PACKAGE_INSTALLING_FIX_DIR
     unset PACKAGE_INSTALLING_RES_DIR
     unset PACKAGE_INSTALLING_BIN_DIR
+    unset PACKAGE_INSTALLING_INC_DIR
     unset PACKAGE_INSTALLING_LIB_DIR
     unset PACKAGE_INSTALLING_TMP_DIR
 
@@ -3300,6 +3301,7 @@ __install_the_given_package() {
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
     PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
     PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/bin"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_INSTALLING_TOP_DIR/inc"
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
     PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
 
@@ -3307,12 +3309,13 @@ __install_the_given_package() {
     if [ -d "$PACKAGE_INSTALLING_TOP_DIR" ] ; then
         run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/src"
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/fix"
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/res"
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/bin"
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/lib"
-    run install -d "$PACKAGE_INSTALLING_TOP_DIR/tmp"
+    run install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    run install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    run install -d "$PACKAGE_INSTALLING_RES_DIR"
+    run install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    run install -d "$PACKAGE_INSTALLING_INC_DIR"
+    run install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    run install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
     step "calculate packages that are depended by $1"
     unset RECURSIVE_DEPENDENT_PACKAGES
@@ -3596,6 +3599,11 @@ __config_build_variables() {
 
     CFLAGS="$CFLAGS -fPIC"
 
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        CCFLAGS="$CCFLAGS -v -Wl,-v"
+        LDFLAGS="$LDFLAGS -v -Wl,-v"
+    fi
+
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,-S -Os -DNDEBUG"
         LDFLAGS="$LDFLAGS -Wl,-S"
@@ -3728,7 +3736,8 @@ __config_build_variables() {
         SHARED_LIBRARY_SUFFIX=.so
     fi
 
-    LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+    CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
+     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
@@ -4967,6 +4976,8 @@ inspect_install_arguments() {
             export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
             export DLLTOOL="$GNU_BINUTILS_ROOT/bin/dlltool"
             export ADDR2LINE="$GNU_BINUTILS_ROOT/bin/addr2line"
+
+            export PATH="$GNU_BINUTILS_ROOT/bin:$PATH"
 
             # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
             export CFLAGS="$CFLAGS -fno-sanitize=undefined"
