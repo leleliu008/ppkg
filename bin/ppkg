@@ -1705,8 +1705,11 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_IN_PARALLEL
     unset PACKAGE_PARALLEL
 
-    # packages that are depended by this package
-    unset PACKAGE_DEPENDS
+    # commands that are depended by this package when building
+    unset PACKAGE_DEP_CMD
+
+    # packages that are depended by this package when building and/or runtime
+    unset PACKAGE_DEP_PKG
 
     unset PACKAGE_CDEFINE
     unset PACKAGE_CCFLAGS
@@ -1873,15 +1876,13 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     PACKAGE_DEPENDS="$PACKAGE_DEPENDS perl m4 autoconf automake" ;;
-            autotools)   PACKAGE_DEPENDS="$PACKAGE_DEPENDS perl m4 autoconf automake" ;;
-            cmake*)      PACKAGE_DEPENDS="$PACKAGE_DEPENDS cmake" ;;
-            xmake)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS xmake" ;;
-            meson)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS meson" ;;
-            ninja)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS ninja" ;;
-            rake)        PACKAGE_DEPENDS="$PACKAGE_DEPENDS ruby"  ;;
-            cargo)       PACKAGE_DEPENDS="$PACKAGE_DEPENDS rustup" ;;
-            go)          PACKAGE_DEPENDS="$PACKAGE_DEPENDS golang" ;;
+            autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
+            autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
+            xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake" ;;
+            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
+            rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"  ;;
+            # cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
+            # go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
         esac
     done
 
@@ -1902,16 +1903,6 @@ __load_formula_of_the_given_package() {
     if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEPENDS="$PACKAGE_DEPENDS ccache"
-    fi
-
-    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] ; then
-        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-            PACKAGE_DEPENDS="$PACKAGE_DEPENDS bear"
-        fi
     fi
 
     PACKAGE_FORMULA_LOADED=yes
@@ -3078,7 +3069,7 @@ $LINE"
 # __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
   __get_packages_that_are_directly_depended_by_the_given_package() {
       __load_formula_of_the_given_package "$1" || return 1
-      printf '%s\n' "$PACKAGE_DEPENDS"
+      printf '%s\n' "$PACKAGE_DEP_PKG"
 }
 
 # this fuction should be run in subshell
@@ -3295,6 +3286,87 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
+    if [ -z "$TOOLCHAIN_NAME" ] ; then
+        case $NATIVE_OS_KIND in
+            darwin) TOOLCHAIN_NAME=xcode ;;
+            linux)  if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+                        TOOLCHAIN_NAME=gcc
+                    else
+                        TOOLCHAIN_NAME=zig
+                    fi
+        esac
+    fi
+
+    step "install build tools if needed"
+    if [ "$TOOLCHAIN_NAME" = 'xcode' ] ; then
+        :
+    else
+        TOOLCHAIN_ROOT="$MY_HOME_DIR/toolchains/$TOOLCHAIN_NAME"
+        GNU_BINUTILS_ROOT="$MY_HOME_DIR/toolchains/gnu-binutils"
+
+        if [ -f "$TOOLCHAIN_ROOT/installed" ] ; then
+            :
+        else
+            __install_toolchain
+        fi
+
+        if [ -f "$GNU_BINUTILS_ROOT/installed" ] ; then
+            :
+        else
+            __install_gnu_binutils
+        fi
+
+        if [ "$TOOLCHAIN_NAME" = 'zig' ] ; then
+            export      CC="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
+            export     CXX="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
+            # export      LD="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-ld"
+            export     CPP="$CC -E"
+            export      AS="$GNU_BINUTILS_ROOT/bin/as"
+            export      LD="$GNU_BINUTILS_ROOT/bin/ld"
+            export      AR="$GNU_BINUTILS_ROOT/bin/ar"
+            export      NM="$GNU_BINUTILS_ROOT/bin/nm"
+            export    SIZE="$GNU_BINUTILS_ROOT/bin/size"
+            export   STRIP="$GNU_BINUTILS_ROOT/bin/strip"
+            export  RANLIB="$GNU_BINUTILS_ROOT/bin/ranlib"
+            export STRINGS="$GNU_BINUTILS_ROOT/bin/strings"
+            export OBJDUMP="$GNU_BINUTILS_ROOT/bin/objdump"
+            export OBJCOPY="$GNU_BINUTILS_ROOT/bin/objcopy"
+            export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
+            export DLLTOOL="$GNU_BINUTILS_ROOT/bin/dlltool"
+            export ADDR2LINE="$GNU_BINUTILS_ROOT/bin/addr2line"
+
+            export PATH="$GNU_BINUTILS_ROOT/bin:$PATH"
+
+            # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
+            export CFLAGS="$CFLAGS -fno-sanitize=undefined"
+        fi
+
+        if [ "$NATIVE_OS_KIND" = linux ] ; then
+            if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+                export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
+                export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
+                export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+            fi
+
+            if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+                export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
+                export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+            fi
+        fi
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake"
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD bear"
+    fi
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ccache"
+    fi
+
 
     PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/install.0.d/$1"
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
@@ -3319,10 +3391,10 @@ __install_the_given_package() {
 
     step "calculate packages that are depended by $1"
     unset RECURSIVE_DEPENDENT_PACKAGES
-    if [ -z "$PACKAGE_DEPENDS" ] ; then
+    if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn "no packages that are depended by $1, skipped."
     else
-        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEPENDS)"
+        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
@@ -3489,6 +3561,20 @@ __install_the_given_package() {
         esac
     fi
 
+    step "create symbolic link for CC and CXX to use ccache"
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        if [ -z "$CCACHE" ] ; then
+            die "ccache is not installed."
+        fi
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CC")"
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CXX")"
+    else
+        note "ccache is disabled, skipped."
+    fi
+
+    run ln -sf "$CC" "$PACKAGE_INSTALLING_BIN_DIR/cc"
+    run ln -sf "$LD" "$PACKAGE_INSTALLING_BIN_DIR/ld"
+
     if [ "$DRYRUN" = yes ] ; then
         if [ -z "$SHELL" ] ; then
             SHELL=$(command -v zsh || command -v bash || command -v sh)
@@ -3520,8 +3606,8 @@ __install_the_given_package() {
             meson)     mesonw ;;
             ninja)     ninjaw clean && ninjaw && ninjaw install ;;
             gmake)     gmakew clean && gmakew && gmakew install ;;
-            cargo)     run cargo install -vv --path "$PACKAGE_INSTALLING_BST_DIR" --root="$PACKAGE_INSTALL_DIR" ;;
-            go)        run go build -v -trimpath ;;
+            cargo)     cargow install ;;
+            go)        gow ;;
         esac
     fi
 
@@ -3548,7 +3634,7 @@ __install_the_given_package() {
     fi
 
     if [ "$KEEP_INSTALLING_DIR" != yes ] ; then
-        step "delete installing directory."
+        step "delete the installing directory."
         run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
 
@@ -3597,7 +3683,8 @@ __config_build_variables() {
         fi
     fi
 
-    CFLAGS="$CFLAGS -fPIC"
+     CFLAGS="$CFLAGS -fPIC -fcommon"
+    # LDFLAGS="$LDFLAGS -Wl,-z,muldefs"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -3813,9 +3900,130 @@ __config_build_variables() {
         fi
 
         CMAKE_TOOLCHAIN_FILE="$PACKAGE_INSTALLING_TOP_DIR/toolchain.cmake"
+    fi
 
-        cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
-set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        # https://docs.rs/backtrace/latest/backtrace/
+        export RUST_BACKTRACE=1
+
+        unset RUST_TARGET
+
+        case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+            linux-x86_64)  RUST_TARGET=x86_64-unknown-linux-musl ;;
+            linux-aarch64) RUST_TARGET=x86_64-unknown-linux-musl ;;
+        esac
+
+        
+        # RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
+
+        # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        # export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
+        # export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
+
+        # this environment variable is not defined by Rust, but it is widely used by third-party project.
+        export RUST_TARGET
+
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
+        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
+
+        # echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+
+        # PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE=yes
+        # if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+        #     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+        # fi
+
+        # https://libraries.io/cargo/cc
+        # https://crates.io/crates/cc
+        # https://docs.rs/cc/latest/cc/
+        # https://github.com/alexcrichton/cc-rs
+        export HOST_CC="$CC"
+        export HOST_CFLAGS="$CFLAGS"
+
+        export HOST_CXX="$CXX"
+        export HOST_CXXFLAGS="$CXXFLAGS"
+
+        export HOST_AR="$AR"
+
+        export TARGET_CC="$CC"
+        export TARGET_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
+
+        export TARGET_CXX="$CXX"
+        export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
+
+        export TARGET_AR="$AR"
+
+
+        # https://libraries.io/cargo/pkg-config
+        # https://crates.io/crates/pkg-config
+        # https://docs.rs/pkg-config/latest/pkg_config/
+        # https://github.com/rust-lang/pkg-config-rs
+        # export TARGET_PKG_CONFIG_ALLOW_CROSS=1
+
+
+        # https://libraries.io/cargo/cmake
+        # https://crates.io/crates/cmake
+        # https://docs.rs/cmake/latest/cmake/
+        # https://github.com/alexcrichton/cmake-rs
+        # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
+        # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
+
+
+        for item in $RECURSIVE_DEPENDENT_PACKAGES
+        do
+            case $item in
+                openssl)
+                    unset OPENSSL_DIR
+                    # https://docs.rs/openssl/0.10.35/openssl/
+                    export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                    ;;
+            esac
+        done
+
+        env | grep CARGO_
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        # https://golang.org/doc/install/source#environment
+        export CGO_ENABLED=0
+        export CGO_CFLAGS="$CFLAGS"
+        export CGO_CXXFLAGS="$CXXFLAGS"
+        export CGO_CPPFLAGS="$CPPFLAGS"
+        export CGO_LDFLAGS="$LDFLAGS"
+
+        export GO111MODULE='auto'
+
+        if [ "$COUNTRY" = china ] ; then
+            export GOPROXY='https://goproxy.cn'
+        fi
+
+        unset GOOS
+        unset GOARCH
+
+        # export GOOS="$TARGET_OS_TYPE"
+
+        # case $TARGET_OS_ARCH in
+        #     armv7*)  export GOARCH=arm   ;;
+        #     arm64*)  export GOARCH=arm64 ;;
+        #     aarch64) export GOARCH=arm64 ;;
+        #     i386)    export GOARCH=386   ;;
+        #     i686)    export GOARCH=386   ;;
+        #     x86_64)  export GOARCH=amd64 ;;
+        # esac
+    fi
+}
+
+create_cmake_toolchain_file() {
+    cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
+message(STATUS "CMake command: \${CMAKE_COMMAND}")
+message(STATUS "CMake version: \${CMAKE_VERSION}")
+
+if ("\${BUILD_SHARED_LIBS}" STREQUAL "")
+    set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
+endif()
 
 set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
 
@@ -3851,9 +4059,8 @@ set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
-        if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
-            run cat "$CMAKE_TOOLCHAIN_FILE"
-        fi
+    if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
+        run cat "$CMAKE_TOOLCHAIN_FILE"
     fi
 }
 
@@ -3918,39 +4125,6 @@ __printf_build_variables() {
         echo
         env | sed -n '/^CMAKE_/p'
     fi
-
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            cargo)
-                echo
-                env | grep CARGO
-                echo
-                echo "    HOST_AR       = $HOST_AR"
-                echo "    HOST_CC       = $HOST_CC"
-                echo "    HOST_CXX      = $HOST_CXX"
-                echo "    HOST_CFLAGS   = $HOST_CFLAGS"
-                echo "    HOST_CXXFLAGS = $HOST_CXXFLAGS"
-                echo
-                echo "  TARGET_AR       = $TARGET_AR"
-                echo "  TARGET_CC       = $TARGET_CC"
-                echo "  TARGET_CXX      = $TARGET_CXX"
-                echo "  TARGET_CFLAGS   = $TARGET_CFLAGS"
-                echo "  TARGET_CXXFLAGS = $TARGET_CXXFLAGS"
-                ;;
-               go)
-                echo
-                echo "      GO111MODULE = $GO111MODULE"
-                echo "      GOPROXY     = $GOPROXY"
-                echo
-                echo "     CGO_ENABLED  = $CGO_ENABLED"
-                echo "     CGO_CFLAGS   = $CGO_CFLAGS"
-                echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
-                echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
-                echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
-                ;;
-        esac
-    done
 
     printf '%s\n' "
 
@@ -4059,6 +4233,25 @@ install_mans() {
     done
 }
 
+# install_completion <fish|bash|zsh> <COMMAND> <FILE-PATH>
+  install_completion() {
+    case $1 in
+        bash)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/bash/completions" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/bash/completions/$2"
+            ;;
+        fish)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d/$2.fish"
+            ;;
+        zsh)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/zsh/site-functions" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/zsh/site-functions/_$2"
+            ;;
+        *)  die "install_completion unsupported shell: $1"
+    esac
+}
+
 install_pc_file() {
     install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
     cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
@@ -4158,7 +4351,7 @@ __show_infomation_as_shell_of_all_available_packages() {
         --arg src_sha "$PACKAGE_SRC_SHA" \
         --arg fix_url "$PACKAGE_FIX_URL" \
         --arg fix_sha "$PACKAGE_FIX_SHA" \
-        --arg dep_pkg "$PACKAGE_DEPENDS" \
+        --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg bsystem "$PACKAGE_BUILD_SYSTEM" \
         --arg binsrcd "$PACKAGE_BUILD_IN_BSCRIPT_DIR" \
         --arg parallel "$PARALLEL" \
@@ -4227,7 +4420,7 @@ fix:
     url: $PACKAGE_FIX_URL
     sha: $PACKAGE_FIX_SHA
 
-dep: $PACKAGE_DEPENDS
+dep: $PACKAGE_DEP_PKG
 
 build:
     system: $PACKAGE_BUILD_SYSTEM
@@ -4291,7 +4484,7 @@ PACKAGE_BUILD_SYSTEM_AUTOTOOLS
 PACKAGE_BUILD_SYSTEM_CONFIGURE
 PACKAGE_BUILD_IN_BSCRIPT_DIR
 PACKAGE_BUILD_IN_PARALLEL
-PACKAGE_DEPENDS
+PACKAGE_DEP_PKG
 PACKAGE_CDEFINE
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
@@ -4417,7 +4610,7 @@ summary : $PACKAGE_SUMMARY
 webpage : $PACKAGE_WEBPAGE
 src.url : $PACKAGE_SRC_URL
 src.path: $PACKAGE_SRC_PATH
-depends : $PACKAGE_DEPENDS"
+depends : $PACKAGE_DEP_PKG"
 
     is_package_installed "$1" || return 0
 
@@ -4486,7 +4679,7 @@ INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
 INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
 INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
 INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
-INSTALLED_PACKAGE_DEPENDS='$PACKAGE_DEPENDS'
+INSTALLED_PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
 
 INSTALLED_PACKAGE_DEVELOPER='$PACKAGE_DEVELOPER'
 
@@ -4543,7 +4736,7 @@ EOF
     unset INSTALLED_PACKAGE_FIX_URL
     unset INSTALLED_PACKAGE_FIX_SHA
 
-    unset INSTALLED_PACKAGE_DEPENDS
+    unset INSTALLED_PACKAGE_DEP_PKG
 
     unset INSTALLED_PACKAGE_BUILD_SYSTEM
 
@@ -4598,6 +4791,228 @@ EOF
     fi
 }
 
+gow() {
+    if command -v bat > /dev/null ; then
+        run "go env | bat --language=bash --paging=never --style=plain"
+    else
+        run "go env"
+    fi
+
+    printf '\n'
+
+    # https://pkg.go.dev/cmd/go
+    # https://pkg.go.dev/cmd/link
+
+    unset GO_BUILD_ARGS
+    unset GO_BUILD_ARGV_V
+    unset GO_BUILD_ARGV_X
+    unset GO_BUILD_ARGV_O
+    unset GO_BUILD_ARGV_MOD
+    unset GO_BUILD_ARGV_TAGS
+    unset GO_BUILD_ARGV_LDFLAGS
+
+    unset GO_BUILD_ARGS_EXTRA
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -v) shift ; GO_BUILD_ARGV_V='-v' ;;
+            -x) shift ; GO_BUILD_ARGV_X='-x' ;;
+            -o) shift ; GO_BUILD_ARGV_O="$1" ; shift ;;
+            -X) shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="-X $1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -X $1"
+                fi
+                shift
+                ;;
+            -ldflags)
+                shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="$1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$1 $GO_BUILD_ARGV_LDFLAGS"
+                fi
+                shift
+                ;;
+            *)  GO_BUILD_ARGS_EXTRA="$GO_BUILD_ARGS_EXTRA $1" ; shift
+        esac
+    done
+
+    GO_BUILD_ARGS='-trimpath'
+
+    if [ -z "$GO_BUILD_ARGV_V" ] ; then
+        if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+    fi
+
+    if [ -z "$GO_BUILD_ARGV_X" ] ; then
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+    fi
+
+    if [ "$BUILD_TYPE" = release ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
+    fi
+
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external -extldflags=-static"
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
+
+    if [ -z "$GO_BUILD_ARGV_O" ] ; then
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/"
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/$GO_BUILD_ARGV_O"
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
+
+    run go build $GO_BUILD_ARGS
+
+    for item in $(ls "$PACKAGE_INSTALLING_TMP_DIR")
+    do
+        case $item in
+            *.a)  run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
+            *.so) run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
+            *)    run install_bins "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
+        esac
+    done
+}
+
+cargow() {
+    run rustup target add "$RUST_TARGET"
+
+    case $1 in
+        build)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-build.html
+
+            unset CARGO_BUILD_ARGS
+            unset CARGO_BUILD_ARG_VV
+            unset CARGO_BUILD_ARG_TARGET
+            unset CARGO_BUILD_ARG_RELEASE
+
+            for arg in $@
+            do
+                case $arg in
+                    --vv)      CARGO_BUILD_ARG_VV=set      ;;
+                    --target)  CARGO_BUILD_ARG_TARGET=set  ;;
+                    --release) CARGO_BUILD_ARG_RELEASE=set ;;
+                esac
+            done
+
+            CARGO_BUILD_ARGS="$@"
+
+            if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
+            fi
+
+            if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
+            fi
+
+            run cargo clean && run cargo $CARGO_BUILD_ARGS
+            ;;
+        install)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-install.html
+
+            unset CARGO_INSTALL_ARGS
+            unset CARGO_INSTALL_ARG_TARGET
+            unset CARGO_INSTALL_ARG_PATH
+            unset CARGO_INSTALL_ARG_ROOT
+            unset CARGO_INSTALL_ARG_VV
+
+            for arg in $@
+            do
+                case $arg in
+                    --target) CARGO_INSTALL_ARG_TARGET=set ;;
+                    --path)   CARGO_INSTALL_ARG_PATH=set   ;;
+                    --root)   CARGO_INSTALL_ARG_ROOT=set   ;;
+                    --vv)     CARGO_INSTALL_ARG_VV=set     ;;
+                esac
+            done
+
+            CARGO_INSTALL_ARGS="$@"
+
+            if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $RUST_TARGET"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_INSTALLING_BST_DIR"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$PACKAGE_INSTALL_DIR"
+            fi
+
+            run cargo clean && run cargo $CARGO_INSTALL_ARGS
+            ;;
+        cbuild|cinstall)
+            unset CARGO_CINSTALL_ARGS
+            unset CARGO_CINSTALL_ARG_Q
+            unset CARGO_CINSTALL_ARG_V
+            unset CARGO_CINSTALL_ARG_VV
+            unset CARGO_CINSTALL_ARG_DEBUG
+            unset CARGO_CINSTALL_ARG_RELEASE
+            unset CARGO_CINSTALL_ARG_TARGET
+            unset CARGO_CINSTALL_ARG_PREFIX
+
+            for arg in $@
+            do
+                case $arg in
+                    -q|--quiet)   CARGO_CINSTALL_ARG_Q=set       ;;
+                    -v|--verbose) CARGO_CINSTALL_ARG_V=set       ;;
+                    -vv)          CARGO_CINSTALL_ARG_VV=set      ;;
+                    --debug)      CARGO_CINSTALL_ARG_DEBUG=set   ;;
+                    --release)    CARGO_CINSTALL_ARG_RELEASE=set ;;
+                    --target)     CARGO_CINSTALL_ARG_TARGET=set  ;;
+                    --prefix)     CARGO_CINSTALL_ARG_PREFIX=set  ;;
+                esac
+            done
+
+            CARGO_CINSTALL_ARGS="$@"
+
+            if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --release"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_TARGET" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --target $RUST_TARGET"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_PREFIX" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $PACKAGE_INSTALL_DIR"
+            fi
+
+            run cargo $CARGO_CINSTALL_ARGS
+            ;;
+        *) cargo $@
+    esac
+}
+
 # run in a subshell
 configure() {
     export FORCE_UNSAFE_CONFIGURE=1
@@ -4631,7 +5046,6 @@ configure() {
         static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --disable-shared" ;;
         shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared --disable-static" ;;
         both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
-        yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
 
@@ -4681,7 +5095,7 @@ gmakew() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmakew() {
-    run cmake --version
+    create_cmake_toolchain_file
     run cmake \
         -Wno-dev \
         -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR \
@@ -4864,7 +5278,7 @@ inspect_install_arguments() {
                 case $TOOLCHAIN_NAME in
                     gcc|zig|llvm) ;;
                     '') die "--toolchain=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--toolchain=<VALUE>, VALUE must be one of gcc zig llvm"
+                    *)  die "--toolchain=<VALUE>, VALUE must be one of llvm gcc zig"
                 esac
                 ;;
             --tree-args=*)
@@ -4923,6 +5337,11 @@ inspect_install_arguments() {
         shift
     done
 
+    if [ "$INSTALL_LIB" = yes ] ; then
+        INSTALL_LIB=both
+    fi
+
+
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
@@ -4933,56 +5352,6 @@ inspect_install_arguments() {
     fi
 
     LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
-
-    if [ -z "$TOOLCHAIN_NAME" ] ; then
-        case $NATIVE_OS_KIND in
-            linux)  TOOLCHAIN_NAME=zig ;;
-            darwin) TOOLCHAIN_NAME=xcode
-        esac
-    fi
-
-    if [ "$TOOLCHAIN_NAME" = 'xcode' ] ; then
-        :
-    else
-        TOOLCHAIN_ROOT="$MY_HOME_DIR/toolchains/$TOOLCHAIN_NAME"
-        GNU_BINUTILS_ROOT="$MY_HOME_DIR/toolchains/gnu-binutils"
-
-        if [ -f "$TOOLCHAIN_ROOT/installed" ] ; then
-            :
-        else
-            __install_toolchain
-        fi
-
-        if [ -f "$GNU_BINUTILS_ROOT/installed" ] ; then
-            :
-        else
-            __install_gnu_binutils
-        fi
-
-        if [ "$TOOLCHAIN_NAME" = 'zig' ] ; then
-            export      CC="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
-            export     CXX="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
-            export     CPP="$CC -E"
-            export      AS="$GNU_BINUTILS_ROOT/bin/as"
-            export      LD="$GNU_BINUTILS_ROOT/bin/ld"
-            export      AR="$GNU_BINUTILS_ROOT/bin/ar"
-            export      NM="$GNU_BINUTILS_ROOT/bin/nm"
-            export    SIZE="$GNU_BINUTILS_ROOT/bin/size"
-            export   STRIP="$GNU_BINUTILS_ROOT/bin/strip"
-            export  RANLIB="$GNU_BINUTILS_ROOT/bin/ranlib"
-            export STRINGS="$GNU_BINUTILS_ROOT/bin/strings"
-            export OBJDUMP="$GNU_BINUTILS_ROOT/bin/objdump"
-            export OBJCOPY="$GNU_BINUTILS_ROOT/bin/objcopy"
-            export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
-            export DLLTOOL="$GNU_BINUTILS_ROOT/bin/dlltool"
-            export ADDR2LINE="$GNU_BINUTILS_ROOT/bin/addr2line"
-
-            export PATH="$GNU_BINUTILS_ROOT/bin:$PATH"
-
-            # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
-            export CFLAGS="$CFLAGS -fno-sanitize=undefined"
-        fi
-    fi
 }
 
 __install_gnu_binutils() {
@@ -5018,23 +5387,23 @@ __install_gnu_binutils() {
     case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
         linux-x86_64)
             TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='29289bcb43ee97ed92086a8607c8081e5516748cd017e9580bcdd36d453724c7'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            TOOLCHAIN_SHA='50bc6d94a214f9933d613bec61bd8f6951313bc6bce5abd9a6acb1d2faa2a03e'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2836+2360f8c49.tar.xz'
             ;;
         linux-aarch64)
             TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='cb7e1ab49525cf7ab385c4988eea9863b6645eee28ee36a73f56287a88e365b5'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-aarch64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            TOOLCHAIN_SHA='bc1864f85fe795e7ba2b53d941c7797a1fea31b5a297767e8b4fb687e67dc600'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-aarch64-0.10.0-dev.2674+d980c6a38.tar.xz'
             ;;
         macos-x86_64)
             TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='6c9ab977e11013f9cfdd8e8f54a3a30355787e222c317885ff02d9b871ee3a42'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-x86_64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            TOOLCHAIN_SHA='3f631abbc718bbf2c34f4691391591d7f0962c408671315e5c2e7d3fb67553e8'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-x86_64-0.10.0-dev.2674+d980c6a38.tar.xz'
             ;;
         macos-aarch64)
             TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='acbd27487c3ab17ee7c46b06fd7fad9c44229f63d7cec018f717a6f41cc90db6'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-aarch64-0.10.0-dev.2377+71e2a56e3.tar.xz'
+            TOOLCHAIN_SHA='af186c474bb1d654cf3756c00f350c805647a843a47d6fa07a3d25fc6e1bd8d0'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-aarch64-0.10.0-dev.2674+d980c6a38.tar.xz'
             ;;
     esac
 
@@ -5051,12 +5420,12 @@ __install_gnu_binutils() {
     cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc" <<EOF
 #!/bin/sh
 set -e
-$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl \$*
+$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl "\$@"
 EOF
     cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++" <<EOF
 #!/bin/sh
 set -e
-$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl \$*
+$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl "\$@"
 EOF
     chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
     chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
@@ -5084,22 +5453,17 @@ __is_core_tools_installed() {
 }
 
 __setup() {
-    __is_core_tools_installed && {
-        success "ppkg alreadly have been setup."
-        return 0
-    }
-
-    CURRENT_GROUP_NAME="$(id -n -g)"
     CURRENT_USER__NAME="$(id -n -u)"
+    CURRENT_GROUP_NAME="$(id -n -g)"
 
     if [ -d "$MY_HOME_DIR" ] ; then
         if [ -r "$MY_HOME_DIR" ] && [ -w "$MY_HOME_DIR" ] && [ -x "$MY_HOME_DIR" ] ; then
             :
         else
             if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-                     chown "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
+                     chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
             else
-                sudo chown "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
+                sudo chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
             fi
         fi
     else
