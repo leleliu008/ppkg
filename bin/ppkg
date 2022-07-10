@@ -240,7 +240,7 @@ own() {
     ls -ld "$1" | cut -d ' ' -f3,4 | tr ' ' ':'
 }
 
-is_integer () {
+is_integer() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
@@ -259,7 +259,13 @@ is_elf_file() {
         return 2
     }
 
-    [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+
+    if command -v hexdump > /dev/null ; then
+        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    else
+        [ "$(head -c 4 "$1")" = "$(printf '\177ELF')" ]
+    fi
 }
 
 # format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
@@ -1593,7 +1599,7 @@ command_exists_in_filesystem_and_version_matched() {
 # pkg_set webpage "https://www.libjpeg-turbo.org"
 
 # pkg_set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# pkg_set git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+# pkg_set git.sha "5db6aa6cab1b146e07b60cc1736a01f21da01154"
 
 # pkg_set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
 # pkg_set src.sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
@@ -1602,7 +1608,7 @@ command_exists_in_filesystem_and_version_matched() {
 
 # pkg_set license "IJG"
 
-# pkg_set depends "nasm:build flex:build bison:build openssl zlib"
+# pkg_set dep.pkg "nasm flex bison openssl zlib"
 
 # pkg_set bsystem "cmake"
 
@@ -1717,8 +1723,9 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_LDFLAGS
 
     unset PACKAGE_FORMULA_FILEPATH
+    unset PACKAGE_FORMULA_FILETYPE
 
-
+    unset PACKAGE_USE_ZIG
 
     unset -f build0
     unset -f prepare
@@ -1727,7 +1734,46 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    . "$PACKAGE_FORMULA_FILEPATH" || return 1
+    case $PACKAGE_FORMULA_FILEPATH in
+        *.sh)
+            PACKAGE_FORMULA_FILETYPE=sh
+            . "$PACKAGE_FORMULA_FILEPATH" || return 1 ;;
+        *.yml)
+            PACKAGE_FORMULA_FILETYPE=yml
+
+            for key in summary webpage git-url git-sha git-tag src-url src-sha dep-pkg license version
+            do
+                unset __KEY_UPPERCASE_UNDERSCORE__
+                unset __VALUE__
+
+                __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
+                __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
+
+                if [ "$__VALUE__" = null ] ; then
+                       __VALUE__=
+                fi
+
+                eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+            done
+
+            for key in bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig
+            do
+                unset __KEY_UPPERCASE_UNDERSCORE__
+                unset __VALUE__
+
+                __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
+                __VALUE__="$(yq ".install.$key" "$PACKAGE_FORMULA_FILEPATH")"
+
+                if [ "$__VALUE__" = null ] ; then
+                       __VALUE__=
+                fi
+
+                eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+            done
+
+            unset PACKAGE_INSTALL_ACTIONS
+            PACKAGE_INSTALL_ACTIONS="$(yq .install.actions "$PACKAGE_FORMULA_FILEPATH")"
+    esac
 
     PACKAGE_NAME="$1"
     PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '+-.' '_')
@@ -1891,11 +1937,13 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        PACKAGE_USE_ZIG=no
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        PACKAGE_USE_ZIG=no
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
@@ -1903,6 +1951,10 @@ __load_formula_of_the_given_package() {
     if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    fi
+
+    if [ -z "$PACKAGE_USE_ZIG" ] ; then
+        PACKAGE_USE_ZIG=yes
     fi
 
     PACKAGE_FORMULA_LOADED=yes
@@ -2021,7 +2073,7 @@ pkg_set src.sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a
 #pkg_set license "MIT"
 
 # the packages are depended by this package. If specify multiple values, separate them with spaces.
-#pkg_set depends "a b c"
+#pkg_set dep.pkg "a b c"
 
 prepare() {
     :
@@ -2089,7 +2141,7 @@ __list_formulas() {
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
         if [ -d  "$MY_FORMULA_REPO_DIR/$repo/formula" ] ; then
-            ls "$MY_FORMULA_REPO_DIR/$repo/formula"/*.sh
+            find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f -name '*.sh' -or -name '*.yml'
         fi
     done
 }
@@ -2161,6 +2213,10 @@ __repo_of_formula_of_the_given_package() {
             printf '%s\n' "$repo"
             return 0
         fi
+        if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml" ] ; then
+            printf '%s\n' "$repo"
+            return 0
+        fi
     done
 
     error "package [$1] is not available."
@@ -2178,6 +2234,10 @@ __repo_of_formula_of_the_given_package() {
     do
         if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
             printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
+            return 0
+        fi
+        if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml" ] ; then
+            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml"
             return 0
         fi
     done
@@ -2471,8 +2531,7 @@ __gen_github_workflows() {
 __list_available_packages() {
     for FORMULA_REPO_NAME in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" || return 1
-        ls -1 *.sh | sed 's/\.sh$//g' || return 1
+        find "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | sort | uniq || return 1
     done
 }
 
@@ -2644,7 +2703,7 @@ __search_packages() {
 
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh$//g' | grep "$*"
+        find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | grep "$*"
     done
 }
 
@@ -2676,7 +2735,7 @@ __compare_versions_with_brew() {
 
     cd "$MY_HOME_DIR/repos.d/offical/formula"
 
-    for item in $(ls -1 *.sh | sed 's/\.sh//')
+    for item in $(find . -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | sort | uniq)
     do
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
@@ -3068,8 +3127,7 @@ $LINE"
 # this fuction should be run in subshell
 # __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
   __get_packages_that_are_directly_depended_by_the_given_package() {
-      __load_formula_of_the_given_package "$1" || return 1
-      printf '%s\n' "$PACKAGE_DEP_PKG"
+      __load_formula_of_the_given_package "$1" && printf '%s\n' "$PACKAGE_DEP_PKG"
 }
 
 # this fuction should be run in subshell
@@ -3289,10 +3347,18 @@ __install_the_given_package() {
     if [ -z "$TOOLCHAIN_NAME" ] ; then
         case $NATIVE_OS_KIND in
             darwin) TOOLCHAIN_NAME=xcode ;;
-            linux)  if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-                        TOOLCHAIN_NAME=gcc
-                    else
+            linux)  if [ "$PACKAGE_USE_ZIG" = yes ] ; then
                         TOOLCHAIN_NAME=zig
+                    else
+                        TOOLCHAIN_NAME=gcc
+                    fi
+
+                    if [ "$TOOLCHAIN_NAME" != 'zig' ] ; then
+                        if [ "$LINK_TYPE" = 'static-only' ] || [ "$LINK_TYPE" = 'static-prefered' ] ; then
+                            if [ "$PACKAGE_NAME" != musl-libc ] && [ "$PACKAGE_NAME" != linux-headers ] ; then
+                                PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG musl-libc linux-headers"
+                            fi
+                        fi
                     fi
         esac
     fi
@@ -3339,18 +3405,27 @@ __install_the_given_package() {
 
             # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
             export CFLAGS="$CFLAGS -fno-sanitize=undefined"
-        fi
+            export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
+        elif [ "$TOOLCHAIN_NAME" = 'gcc' ] ; then
+            if [ "$NATIVE_OS_KIND" = linux ] ; then
+                # if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+                #     export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
+                #     export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
+                #     export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+                # fi
 
-        if [ "$NATIVE_OS_KIND" = linux ] ; then
-            if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-                export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
-                export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
-                export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
-            fi
+                # if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+                #     export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
+                #     export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+                # fi
 
-            if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-                export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
-                export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+                if [ "$PACKAGE_BUILD_SYSTEM_CARGO" != yes ] ; then
+                    if [ "$PACKAGE_NAME" != musl-libc ] ; then
+                        export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
+                    fi
+                    export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
+                    # liblto_plugin.so: error loading plugin: Dynamic loading not supported
+                fi
             fi
         fi
     fi
@@ -3388,6 +3463,15 @@ __install_the_given_package() {
     run install -d "$PACKAGE_INSTALLING_INC_DIR"
     run install -d "$PACKAGE_INSTALLING_LIB_DIR"
     run install -d "$PACKAGE_INSTALLING_TMP_DIR"
+
+    if [ "$PACKAGE_FORMULA_FILETYPE" = yml ] && [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
+        cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
+build() {
+    $PACKAGE_INSTALL_ACTIONS
+}
+EOF
+        . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
+    fi
 
     step "calculate packages that are depended by $1"
     unset RECURSIVE_DEPENDENT_PACKAGES
@@ -3594,6 +3678,12 @@ __install_the_given_package() {
         run cd    "$PACKAGE_INSTALLING_TMP_DIR" || return 1
     fi
 
+    export       CC_FOR_BUILD="$CC"
+    export      CPP_FOR_BUILD="$CPP"
+    export   CFLAGS_FOR_BUILD="$CFLAGS"
+    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
+    export  LDFLAGS_FOR_BUILD="$LDFLAGS"
+
     step "building"
     if command -v build > /dev/null ; then
         build $1
@@ -3673,18 +3763,18 @@ __config_build_variables() {
             SYSROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
         fi
 
-          CFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+         CCFLAGS="-isysroot $SYSROOT -Qunused-arguments"
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
          LDFLAGS="-isysroot $SYSROOT"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
-             CFLAGS=" $CFLAGS -static --static"
+            CCFLAGS="$CCFLAGS -static --static"
             LDFLAGS="$LDFLAGS -static --static"
         fi
     fi
 
-     CFLAGS="$CFLAGS -fPIC -fcommon"
-    # LDFLAGS="$LDFLAGS -Wl,-z,muldefs"
+    CCFLAGS="$CFLAGS -fPIC -fno-common"
+    LDFLAGS="$LDFLAGS -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -3730,7 +3820,7 @@ __config_build_variables() {
     done
 
     if [ -n "$PACKAGE_CCFLAGS" ] ; then
-        CFLAGS="$CFLAGS $PACKAGE_CCFLAGS"
+        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     fi
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
@@ -3798,16 +3888,29 @@ __config_build_variables() {
         else
             CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$DEP_PKG_INSTALL_DIR"
         fi
+
+        DEP_PKG_ACLOCAL_PATH="$DEP_PKG_INSTALL_DIR/share/aclocal"
+
+        if [ -d "$DEP_PKG_ACLOCAL_PATH" ] ; then
+            if [ -z "$ACLOCAL_PATH" ] ; then
+                ACLOCAL_PATH="$DEP_PKG_ACLOCAL_PATH"
+            else
+                ACLOCAL_PATH="$DEP_PKG_ACLOCAL_PATH:$ACLOCAL_PATH"
+            fi
+        fi
     done
 
+    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
+    export ACLOCAL_PATH
     export LD_LIBRARY_DIR
     export PATH
 
     if [ "$VERBOSE" = yes ] ; then
-        CFLAGS="$CFLAGS -v"
+        CCFLAGS="$CCFLAGS -v"
     fi
 
-    CXXFLAGS="$CFLAGS"
+      CFLAGS="$CCFLAGS"
+    CXXFLAGS="$CCFLAGS"
 
     if [ -n "$PACKAGE_XXFLAGS" ] ; then
         CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
@@ -4608,16 +4711,16 @@ EOF
 version : $PACKAGE_VERSION
 summary : $PACKAGE_SUMMARY
 webpage : $PACKAGE_WEBPAGE
-src.url : $PACKAGE_SRC_URL
-src.path: $PACKAGE_SRC_PATH
-depends : $PACKAGE_DEP_PKG"
+src-url : $PACKAGE_SRC_URL
+src-loc : $PACKAGE_SRC_PATH
+dep-pkg : $PACKAGE_DEP_PKG"
 
     is_package_installed "$1" || return 0
 
     __load_installed_metadata_of_the_given_package "$1"
 
     cat <<EOF
-    installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
+installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
 EOF
 }
 
@@ -4863,7 +4966,7 @@ gow() {
     fi
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external -extldflags=-static"
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static -fno-use-linker-plugin\""
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
@@ -5070,7 +5173,7 @@ configure() {
     fi
 
     gmakew clean &&
-    gmakew       &&
+    gmakew V=1   &&
     gmakew install
 }
 
@@ -5239,7 +5342,7 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=shared-prefered
+    LINK_TYPE=static-only
 
     INSTALL_EXE=yes
     INSTALL_MAN=yes
@@ -5549,10 +5652,22 @@ init() {
 
     export PATH="$MY_HOME_DIR/core/bin:$PATH"
 
-    export LD_LIBRARY_DIR="$MY_HOME_DIR/core/lib:$LD_LIBRARY_DIR"
+    # https://man7.org/linux/man-pages/man8/ld.so.8.html
+    if [ -z "$LD_LIBRARY_DIR" ] ; then
+        export LD_LIBRARY_DIR="$MY_HOME_DIR/core/lib"
+    else
+        export LD_LIBRARY_DIR="$MY_HOME_DIR/core/lib:$LD_LIBRARY_DIR"
+    fi
 
+    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
+    if [ -z "$ACLOCAL_PATH" ] ; then
+        export ACLOCAL_PATH="$MY_HOME_DIR/core/share/aclocal"
+    else
+        export ACLOCAL_PATH="$MY_HOME_DIR/core/share/aclocal:$ACLOCAL_PATH"
+    fi
+
+    # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
     if [ -d "$MY_HOME_DIR/core/libexec/git-core" ] ; then
-        # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
         export GIT_EXEC_PATH="$MY_HOME_DIR/core/libexec/git-core"
         export GIT_TEMPLATE_DIR="$MY_HOME_DIR/core/share/git-core/templates"
     fi
