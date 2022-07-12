@@ -1741,7 +1741,7 @@ __load_formula_of_the_given_package() {
         *.yml)
             PACKAGE_FORMULA_FILETYPE=yml
 
-            for key in summary webpage git-url git-sha git-tag src-url src-sha dep-pkg license version
+            for key in summary webpage git-url git-sha git-tag src-url src-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig
             do
                 unset __KEY_UPPERCASE_UNDERSCORE__
                 unset __VALUE__
@@ -1756,23 +1756,23 @@ __load_formula_of_the_given_package() {
                 eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
             done
 
-            for key in bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig
-            do
-                unset __KEY_UPPERCASE_UNDERSCORE__
-                unset __VALUE__
-
-                __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-                __VALUE__="$(yq ".install.$key" "$PACKAGE_FORMULA_FILEPATH")"
-
-                if [ "$__VALUE__" = null ] ; then
-                       __VALUE__=
-                fi
-
-                eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
-            done
+            unset PACKAGE_PREPARE_ACTIONS
+            PACKAGE_PREPARE_ACTIONS="$(yq .prepare "$PACKAGE_FORMULA_FILEPATH")"
 
             unset PACKAGE_INSTALL_ACTIONS
-            PACKAGE_INSTALL_ACTIONS="$(yq .install.actions "$PACKAGE_FORMULA_FILEPATH")"
+            PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
+
+            if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
+                case "$(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | head -n 1 | cut -d ' ' -f1)" in
+                    configure)    PACKAGE_BSYSTEM=configure ;;
+                    cmakew)       PACKAGE_BSYSTEM=cmake ;;
+                    xmakew)       PACKAGE_BSYSTEM=xmake ;;
+                    mesonw)       PACKAGE_BSYSTEM=meson ;;
+                    gmakew)       PACKAGE_BSYSTEM=gmake ;;
+                    cargow)       PACKAGE_BSYSTEM=cargo ;;
+                    go|gow)       PACKAGE_BSYSTEM=go    ;;
+                esac
+            fi
     esac
 
     PACKAGE_NAME="$1"
@@ -1925,7 +1925,7 @@ __load_formula_of_the_given_package() {
             autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake" ;;
-            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
+            # meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
             rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"  ;;
             # cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
             # go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
@@ -3464,13 +3464,23 @@ __install_the_given_package() {
     run install -d "$PACKAGE_INSTALLING_LIB_DIR"
     run install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
-    if [ "$PACKAGE_FORMULA_FILETYPE" = yml ] && [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
-        cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
+    if [ "$PACKAGE_FORMULA_FILETYPE" = yml ] ; then
+        if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
+            cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
+prepare() {
+    $PACKAGE_PREPARE_ACTIONS
+}
+EOF
+            . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
+        fi
+        if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
+            cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
 build() {
     $PACKAGE_INSTALL_ACTIONS
 }
 EOF
-        . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
+            . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
+        fi
     fi
 
     step "calculate packages that are depended by $1"
