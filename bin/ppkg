@@ -1598,17 +1598,17 @@ command_exists_in_filesystem_and_version_matched() {
 # pkg_set summary "JPEG image codec that aids compression and decompression"
 # pkg_set webpage "https://www.libjpeg-turbo.org"
 
-# pkg_set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# pkg_set git.sha "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+# pkg_set git-url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# pkg_set git-sha "5db6aa6cab1b146e07b60cc1736a01f21da01154"
 
-# pkg_set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
-# pkg_set src.sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+# pkg_set src-url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
+# pkg_set src-sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
 
 # pkg_set version "1.0.0"
 
 # pkg_set license "IJG"
 
-# pkg_set dep.pkg "nasm flex bison openssl zlib"
+# pkg_set dep-pkg "nasm flex bison openssl zlib"
 
 # pkg_set bsystem "cmake"
 
@@ -1741,7 +1741,7 @@ __load_formula_of_the_given_package() {
         *.yml)
             PACKAGE_FORMULA_FILETYPE=yml
 
-            for key in summary webpage git-url git-sha git-tag src-url src-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig
+            for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig parallel
             do
                 unset __KEY_UPPERCASE_UNDERSCORE__
                 unset __VALUE__
@@ -1763,15 +1763,18 @@ __load_formula_of_the_given_package() {
             PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
 
             if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
-                case "$(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | head -n 1 | cut -d ' ' -f1)" in
-                    configure)    PACKAGE_BSYSTEM=configure ;;
-                    cmakew)       PACKAGE_BSYSTEM=cmake ;;
-                    xmakew)       PACKAGE_BSYSTEM=xmake ;;
-                    mesonw)       PACKAGE_BSYSTEM=meson ;;
-                    gmakew)       PACKAGE_BSYSTEM=gmake ;;
-                    cargow)       PACKAGE_BSYSTEM=cargo ;;
-                    go|gow)       PACKAGE_BSYSTEM=go    ;;
-                esac
+                for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[ ]*||' | cut -d ' ' -f1)
+                do
+                    case "$FirstWordOfLineInInstallActions" in
+                        configure)    PACKAGE_BSYSTEM=configure ; break ;;
+                        cmakew)       PACKAGE_BSYSTEM=cmake ; break ;;
+                        xmakew)       PACKAGE_BSYSTEM=xmake ; break ;;
+                        mesonw)       PACKAGE_BSYSTEM=meson ; break ;;
+                        gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
+                        cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
+                        go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+                    esac
+                done
             fi
     esac
 
@@ -1798,7 +1801,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
-        die "webpage or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "webpage or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
@@ -1806,7 +1809,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
-        die "src.url or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "src-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     case $PACKAGE_SRC_URL in
@@ -1836,7 +1839,7 @@ __load_formula_of_the_given_package() {
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SHA" ] ; then
-                die "src.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+                die "src-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
@@ -1851,7 +1854,7 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
         if [ -z "$PACKAGE_FIX_SHA" ] ; then
-            die "fix.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+            die "fix-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL" | sed 's|?.*||')
@@ -1873,7 +1876,7 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_RES_URL" ] ; then
         if [ -z "$PACKAGE_RES_SHA" ] ; then
-            die "res.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+            die "res-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_RES_NAME=$(basename "$PACKAGE_RES_URL" | sed 's|?.*||')
@@ -1925,7 +1928,7 @@ __load_formula_of_the_given_package() {
             autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake" ;;
-            # meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
+            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
             rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"  ;;
             # cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
             # go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
@@ -2060,13 +2063,13 @@ pkg_set summary "Summary of this package"
 
 pkg_set webpage "https://www.xx.com"
 
-# the source code download url of this package. the value of src.url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
-pkg_set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
+# the source code download url of this package. the value of src-url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
+pkg_set src-url "https://www.xx.com/pkgname-x.y.z.tar.gz"
 
-# the sha256sum of source code. If the value of src.url end with .git, this function is optional, otherwise, this function must be invoked.
-pkg_set src.sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+# the sha256sum of source code. If the value of src-url end with .git, this function is optional, otherwise, this function must be invoked.
+pkg_set src-sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
 
-# the version of this package. If this function is not invoked, it will be calculated from src.url.
+# the version of this package. If this function is not invoked, it will be calculated from src-url.
 #pkg_set version "x.y.z"
 
 # the license of this package.
@@ -3414,16 +3417,17 @@ __install_the_given_package() {
                 #     export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
                 # fi
 
-                # if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-                #     export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
-                #     export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
-                # fi
+                if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+                    export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
+                    export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
+                fi
 
                 if [ "$PACKAGE_BUILD_SYSTEM_CARGO" != yes ] ; then
-                    if [ "$PACKAGE_NAME" != musl-libc ] ; then
-                        export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
-                    fi
-                    export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
+                    :
+                    # if [ "$PACKAGE_NAME" != musl-libc ] ; then
+                    #     export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
+                    # fi
+                    # export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
                     # liblto_plugin.so: error loading plugin: Dynamic loading not supported
                 fi
             fi
@@ -3468,7 +3472,7 @@ __install_the_given_package() {
         if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
             cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
 prepare() {
-    $PACKAGE_PREPARE_ACTIONS
+$PACKAGE_PREPARE_ACTIONS
 }
 EOF
             . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
@@ -3476,7 +3480,7 @@ EOF
         if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
             cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
 build() {
-    $PACKAGE_INSTALL_ACTIONS
+$PACKAGE_INSTALL_ACTIONS
 }
 EOF
             . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
@@ -3522,7 +3526,7 @@ EOF
                 step "copy source files to the installing src directory"
                 run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             else
-                die "src.url point to dir is not exist."
+                die "src-url point to dir is not exist."
             fi
             ;;
         git)
@@ -3716,6 +3720,46 @@ EOF
         return 1
     }
 
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
+        for x in bin sbin
+        do
+            if [ -d "$PACKAGE_INSTALL_DIR/$x" ] ; then
+                for y in $(ls "$PACKAGE_INSTALL_DIR/$x")
+                do
+                    FILEPATH="$PACKAGE_INSTALL_DIR/$x/$y"
+
+                    if [ -d "$FILEPATH" ] ; then
+                        continue
+                    fi
+
+                    unset FILE_HEADER_EXPACT
+                    unset FILE_HEADER_ACTUAL
+
+                    FILE_HEADER_ACTUAL="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+
+                    case $FILE_HEADER_ACTUAL in
+                        7F454C4602010100000000000000000003003E00)
+                            # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                            unset PT_INTERP
+                            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                            DYNAMIC_LINKER_PATH='/lib64/ld-linux-x86-64.so.2'
+
+                            if [ -n "$PT_INTERP" ] && [ "$PT_INTERP" != "$DYNAMIC_LINKER_PATH" ] ; then
+                                run patchelf --set-interpreter "$DYNAMIC_LINKER_PATH" "$FILEPATH"
+                            fi
+
+                            run patchelf --replace-needed libc.so libc.so.6 "$FILEPATH"
+
+                            if [ "$BUILD_TYPE" = release ] ; then
+                                run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                            fi
+                    esac
+                done
+            fi
+        done
+    fi
+
     step "install logs"
     __install_logs "$1"
 
@@ -3780,6 +3824,9 @@ __config_build_variables() {
         if [ "$LINK_TYPE" = static-only ] ; then
             CCFLAGS="$CCFLAGS -static --static"
             LDFLAGS="$LDFLAGS -static --static"
+        else
+            CCFLAGS="$CCFLAGS -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
+            LDFLAGS="$LDFLAGS -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
         fi
     fi
 
@@ -4464,6 +4511,8 @@ __show_infomation_as_shell_of_all_available_packages() {
         --arg src_sha "$PACKAGE_SRC_SHA" \
         --arg fix_url "$PACKAGE_FIX_URL" \
         --arg fix_sha "$PACKAGE_FIX_SHA" \
+        --arg res_url "$PACKAGE_RES_URL" \
+        --arg res_sha "$PACKAGE_RES_SHA" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg bsystem "$PACKAGE_BUILD_SYSTEM" \
         --arg binsrcd "$PACKAGE_BUILD_IN_BSCRIPT_DIR" \
@@ -4491,6 +4540,10 @@ __show_infomation_as_shell_of_all_available_packages() {
     "fix": {
         "url":$fix_url,
         "sha":$fix_sha
+    },
+    "res": {
+        "url":$res_url,
+        "sha":$res_sha
     },
     "dep": {
         "when-build":$dep_pkg,
@@ -4532,6 +4585,10 @@ src:
 fix:
     url: $PACKAGE_FIX_URL
     sha: $PACKAGE_FIX_SHA
+
+res:
+    url: $PACKAGE_RES_URL
+    sha: $PACKAGE_RES_SHA
 
 dep: $PACKAGE_DEP_PKG
 
@@ -5224,6 +5281,28 @@ cmakew() {
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 mesonw() {
+    unset MESON_ARGUMENT_DEFAULT_LIBRARY
+
+    case $INSTALL_LIB in
+        static|shared|both) MESON_ARGUMENT_DEFAULT_LIBRARY="-Ddefault_library=$INSTALL_LIB"
+    esac
+
+        MESON_CROSS_FILE="$PACKAGE_INSTALLING_TMP_DIR/cross-file"
+
+    cat > "$MESON_CROSS_FILE" <<EOF
+[binaries]
+c = '$CC'
+cpp = '$CXX'
+ar = '$AR'
+strip = '$STRIP'
+
+[built-in options]
+c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
+c_link_args = $(to_meson_array $LDFLAGS)
+cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
+cpp_link_args = $(to_meson_array $LDFLAGS)
+EOF
+
     run meson --version
     run ninja --version
     run meson setup \
@@ -5232,6 +5311,7 @@ mesonw() {
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH" \
+        $MESON_ARGUMENT_DEFAULT_LIBRARY \
         $@ "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
@@ -5500,8 +5580,8 @@ __install_gnu_binutils() {
     case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
         linux-x86_64)
             TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='50bc6d94a214f9933d613bec61bd8f6951313bc6bce5abd9a6acb1d2faa2a03e'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2836+2360f8c49.tar.xz'
+            TOOLCHAIN_SHA='217f34df3e447f248052ebb2111b8a695ea99578cb658a7993cd0feb58e609e6'
+            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.3475+b3d463c9e.tar.xz'
             ;;
         linux-aarch64)
             TOOLCHAIN_VERS='0.10.0'
