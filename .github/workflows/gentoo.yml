@@ -8,12 +8,12 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     container: madhacking/gentoo
 
     steps:
-      - run: emerge dev-vcs/git
+      - run: emerge curl g++
 
       - uses: actions/checkout@v3
 

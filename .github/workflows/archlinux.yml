@@ -8,13 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     container: archlinux
 
     steps:
       - run: pacman -Syy --noconfirm
-      - run: pacman -S   --noconfirm git
+      - run: pacman -S   --noconfirm curl g++
 
       - uses: actions/checkout@v3
 

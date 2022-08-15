@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
@@ -18,15 +18,17 @@ jobs:
     container: centos:${{ matrix.tag }}
 
     steps:
-      - run: yum -y update && yum -y install curl
-        if:  ${{ matrix.tag == '7.5.1804' }}
-
       - run: |
-          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
-          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
-          dnf -y update
-          dnf -y install curl
-        if:  ${{ matrix.tag == '8.3.2011' }}
+          if [ ${{ matrix.tag }} = '7.5.1804' ] ; then
+            yum -y update
+            yum -y install curl g++
+          else
+            sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+            sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+
+            dnf -y update
+            dnf -y install curl g++
+          fi
 
       - uses: actions/checkout@v3
 

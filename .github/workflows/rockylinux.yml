@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: dnf -y update
-      - run: dnf -y install curl
+      - run: dnf -y install curl g++
 
       - uses: actions/checkout@v3
 

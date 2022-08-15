@@ -8,20 +8,21 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     container: voidlinux/voidlinux
 
     steps:
-      - run: xbps-install -Sy git
+      - run: xbps-install -Sy curl g++
 
       - uses: actions/checkout@v3
 
       - run: bin/ppkg --help
       - run: bin/ppkg --version
 
-
       - run: bin/ppkg env
+
+      - run: bin/ppkg setup
 
       - run: bin/ppkg integrate zsh
 
