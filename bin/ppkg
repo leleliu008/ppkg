@@ -1587,58 +1587,6 @@ command_exists_in_filesystem_and_version_matched() {
 
 # }}}
 ##############################################################################
-# {{{ define formula syntax
-
-# set the given package's information
-#
-# USAGE:
-# pkg_set <KEY> <VALUE>
-#
-# EXAMPLES:
-# pkg_set summary "JPEG image codec that aids compression and decompression"
-# pkg_set webpage "https://www.libjpeg-turbo.org"
-
-# pkg_set git-url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# pkg_set git-sha "5db6aa6cab1b146e07b60cc1736a01f21da01154"
-
-# pkg_set src-url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
-# pkg_set src-sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
-
-# pkg_set version "1.0.0"
-
-# pkg_set license "IJG"
-
-# pkg_set dep-pkg "nasm flex bison openssl zlib"
-
-# pkg_set bsystem "cmake"
-
-# pkg_set bscript "src"
-
-# pkg_set binbstd 'yes'
-# pkg_set binbstd 'no'
-pkg_set() {
-    [ -z "$1" ] && {
-        error "pkg_set <KEY> <VALUE>..., <KEY> must not be empty."
-        return 1
-    }
-
-    [ -z "$2" ] && {
-        error "pkg_set <KEY> <VALUE>..., <VALUE> must not be empty."
-        return 1
-    }
-
-
-    unset __PACKAGE_SET_KEY__
-
-    __PACKAGE_SET_KEY__="$(printf '%s\n' "$1" | tr '+-.' '_' | tr a-z A-Z)"
-
-    shift
-
-    eval "PACKAGE_$__PACKAGE_SET_KEY__='$@'"
-}
-
-# }}}
-##############################################################################
 # {{{ operations of formula
 
 __load_formula_of_the_given_package() {
@@ -1723,9 +1671,6 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_LDFLAGS
 
     unset PACKAGE_FORMULA_FILEPATH
-    unset PACKAGE_FORMULA_FILETYPE
-
-    unset PACKAGE_USE_ZIG
 
     unset -f build0
     unset -f prepare
@@ -1734,49 +1679,41 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    case $PACKAGE_FORMULA_FILEPATH in
-        *.sh)
-            PACKAGE_FORMULA_FILETYPE=sh
-            . "$PACKAGE_FORMULA_FILEPATH" || return 1 ;;
-        *.yml)
-            PACKAGE_FORMULA_FILETYPE=yml
+    for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    do
+        unset __KEY_UPPERCASE_UNDERSCORE__
+        unset __VALUE__
 
-            for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags use-zig parallel
-            do
-                unset __KEY_UPPERCASE_UNDERSCORE__
-                unset __VALUE__
+        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
+        __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
 
-                __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-                __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
+        if [ "$__VALUE__" = null ] ; then
+                __VALUE__=
+        fi
 
-                if [ "$__VALUE__" = null ] ; then
-                       __VALUE__=
-                fi
+        eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+    done
 
-                eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
-            done
+    unset PACKAGE_PREPARE_ACTIONS
+    PACKAGE_PREPARE_ACTIONS="$(yq .prepare "$PACKAGE_FORMULA_FILEPATH")"
 
-            unset PACKAGE_PREPARE_ACTIONS
-            PACKAGE_PREPARE_ACTIONS="$(yq .prepare "$PACKAGE_FORMULA_FILEPATH")"
+    unset PACKAGE_INSTALL_ACTIONS
+    PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
 
-            unset PACKAGE_INSTALL_ACTIONS
-            PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
-
-            if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
-                for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[ ]*||' | cut -d ' ' -f1)
-                do
-                    case "$FirstWordOfLineInInstallActions" in
-                        configure)    PACKAGE_BSYSTEM=configure ; break ;;
-                        cmakew)       PACKAGE_BSYSTEM=cmake ; break ;;
-                        xmakew)       PACKAGE_BSYSTEM=xmake ; break ;;
-                        mesonw)       PACKAGE_BSYSTEM=meson ; break ;;
-                        gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
-                        cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
-                        go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
-                    esac
-                done
-            fi
-    esac
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
+        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[ ]*||' | cut -d ' ' -f1)
+        do
+            case "$FirstWordOfLineInInstallActions" in
+                configure)    PACKAGE_BSYSTEM=configure ; break ;;
+                cmakew)       PACKAGE_BSYSTEM=cmake ; break ;;
+                xmakew)       PACKAGE_BSYSTEM=xmake ; break ;;
+                mesonw)       PACKAGE_BSYSTEM=meson ; break ;;
+                gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
+                cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
+                go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+            esac
+        done
+    fi
 
     PACKAGE_NAME="$1"
     PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '+-.' '_')
@@ -1940,13 +1877,11 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        PACKAGE_USE_ZIG=no
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        PACKAGE_USE_ZIG=no
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
@@ -1954,10 +1889,6 @@ __load_formula_of_the_given_package() {
     if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
-
-    if [ -z "$PACKAGE_USE_ZIG" ] ; then
-        PACKAGE_USE_ZIG=yes
     fi
 
     PACKAGE_FORMULA_LOADED=yes
@@ -2054,43 +1985,19 @@ __load_formula_of_the_given_package() {
     unset REPO_NAME
     REPO_NAME=offical
 
-    if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" ] ; then
-        die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh formula already exists."
+    if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" ] ; then
+        die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml formula already exists."
     fi
 
-    cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" <<EOF
-pkg_set summary "Summary of this package"
-
-pkg_set webpage "https://www.xx.com"
-
-# the source code download url of this package. the value of src-url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
-pkg_set src-url "https://www.xx.com/pkgname-x.y.z.tar.gz"
-
-# the sha256sum of source code. If the value of src-url end with .git, this function is optional, otherwise, this function must be invoked.
-pkg_set src-sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
-
-# the version of this package. If this function is not invoked, it will be calculated from src-url.
-#pkg_set version "x.y.z"
-
-# the license of this package.
-#pkg_set license "MIT"
-
-# the packages are depended by this package. If specify multiple values, separate them with spaces.
-#pkg_set dep.pkg "a b c"
-
-prepare() {
-    :
-    #this function is optional, you can delete it, if don't use it.
-}
-
-build() {
-    :
-    #configure
-    #cargow
-    #mesonw
-    #cmakew
-    #makew
-}
+    cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" <<EOF
+summary: Summary of this package
+webpage: https://www.xx.com
+bin-url: https://www.xx.com/pkgname-x.y.z.tar.gz
+bin-sha: c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1
+version: x.y.z
+dep.pkg: a b c
+prepare:
+install:
 EOF
     __edit_formula_of_the_given_package "$1"
 }
@@ -2126,8 +2033,8 @@ __rename_formula_of_the_given_package() {
     unset PACKAGE_FORMULA_FILEPATH_OLD
     unset PACKAGE_FORMULA_FILEPATH_NEW
 
-    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
-    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
+    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.yml"
+    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.yml"
 
     if [ -f "$PACKAGE_FORMULA_FILEPATH_NEW" ] ; then
         die "$2 package is already exist."
@@ -2144,7 +2051,7 @@ __list_formulas() {
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
         if [ -d  "$MY_FORMULA_REPO_DIR/$repo/formula" ] ; then
-            find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f -name '*.sh' -or -name '*.yml'
+            find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f -name '*.yml'
         fi
     done
 }
@@ -2212,10 +2119,6 @@ __repo_of_formula_of_the_given_package() {
 
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
-            printf '%s\n' "$repo"
-            return 0
-        fi
         if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml" ] ; then
             printf '%s\n' "$repo"
             return 0
@@ -2235,10 +2138,6 @@ __repo_of_formula_of_the_given_package() {
 
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
-        if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
-            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
-            return 0
-        fi
         if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml" ] ; then
             printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.yml"
             return 0
@@ -2414,7 +2313,7 @@ __fetch_resources_of_the_given_package() {
     }
 
     [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
-    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 11
+    [ -f "$MY_INSTALL_DIR/$1/installed-metadata-ppkg" ] || return 11
     [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 12
 }
 
@@ -2534,7 +2433,7 @@ __gen_github_workflows() {
 __list_available_packages() {
     for FORMULA_REPO_NAME in $(__list_formula_repositories | cut -d= -f1)
     do
-        find "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | sort | uniq || return 1
+        find "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" -maxdepth 1 -type f -name '*.yml' -exec basename {} \; | sed -e 's|\.yml$||' | sort | uniq || return 1
     done
 }
 
@@ -2689,8 +2588,8 @@ __cleanup() {
         do
             if [ -f "$item" ] ; then
                 case $item in
-                    *.sh)
-                        __load_formula_of_the_given_package $(echo "$item" | sed 's/\.sh//g')
+                    *.yml)
+                        __load_formula_of_the_given_package $(printf '%s\n' "$item" | sed 's/\.yml//g')
                 esac
             fi
         done
@@ -2706,7 +2605,7 @@ __search_packages() {
 
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | grep "$*"
+        find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f -name '*.yml' -exec basename {} \; | sed -e 's|\.yml$||' | grep "$*"
     done
 }
 
@@ -2738,7 +2637,7 @@ __compare_versions_with_brew() {
 
     cd "$MY_HOME_DIR/repos.d/offical/formula"
 
-    for item in $(find . -maxdepth 1 -type f \( -name '*.sh' -or -name '*.yml' \) -exec basename {} \; | sed -e 's|\.sh$||' -e 's|\.yml$||' | sort | uniq)
+    for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} \; | sed -e 's|\.yml$||' | sort | uniq)
     do
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
@@ -3017,8 +2916,8 @@ $LINE"
             if [ "$VIEWER" = 'bat' ] ; then
                 case $item in
                     *.png) ;;
-                    *.sh|*/installed-metadata)
-                        bat -l bash "$item" ;;
+                    */installed-metadata-ppkg)
+                        bat -l yaml "$item" ;;
                     *)  bat "$item"
                 esac
             else
@@ -3067,8 +2966,10 @@ $LINE"
         esac
     done
 
+    INSTALLED_PACKAGE_NAME="$1"
+
     if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
-        INSTALLED_PACKAGE_VERSION="$INSTALLED_TIMESTAMP_UNIX"
+        INSTALLED_PACKAGE_VERSION="$INSTALLED_PACKAGE_DATETIME"
     fi
 
     unset PACKED_DIR_NAME
@@ -3347,93 +3248,6 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
-    if [ -z "$TOOLCHAIN_NAME" ] ; then
-        case $NATIVE_OS_KIND in
-            darwin) TOOLCHAIN_NAME=xcode ;;
-            linux)  if [ "$PACKAGE_USE_ZIG" = yes ] ; then
-                        TOOLCHAIN_NAME=zig
-                    else
-                        TOOLCHAIN_NAME=gcc
-                    fi
-
-                    if [ "$TOOLCHAIN_NAME" != 'zig' ] ; then
-                        if [ "$LINK_TYPE" = 'static-only' ] || [ "$LINK_TYPE" = 'static-prefered' ] ; then
-                            if [ "$PACKAGE_NAME" != musl-libc ] && [ "$PACKAGE_NAME" != linux-headers ] ; then
-                                PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG musl-libc linux-headers"
-                            fi
-                        fi
-                    fi
-        esac
-    fi
-
-    step "install build tools if needed"
-    if [ "$TOOLCHAIN_NAME" = 'xcode' ] ; then
-        :
-    else
-        TOOLCHAIN_ROOT="$MY_HOME_DIR/toolchains/$TOOLCHAIN_NAME"
-        GNU_BINUTILS_ROOT="$MY_HOME_DIR/toolchains/gnu-binutils"
-
-        if [ -f "$TOOLCHAIN_ROOT/installed" ] ; then
-            :
-        else
-            __install_toolchain
-        fi
-
-        if [ -f "$GNU_BINUTILS_ROOT/installed" ] ; then
-            :
-        else
-            __install_gnu_binutils
-        fi
-
-        if [ "$TOOLCHAIN_NAME" = 'zig' ] ; then
-            export      CC="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
-            export     CXX="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
-            # export      LD="$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-ld"
-            export     CPP="$CC -E"
-            export      AS="$GNU_BINUTILS_ROOT/bin/as"
-            export      LD="$GNU_BINUTILS_ROOT/bin/ld"
-            export      AR="$GNU_BINUTILS_ROOT/bin/ar"
-            export      NM="$GNU_BINUTILS_ROOT/bin/nm"
-            export    SIZE="$GNU_BINUTILS_ROOT/bin/size"
-            export   STRIP="$GNU_BINUTILS_ROOT/bin/strip"
-            export  RANLIB="$GNU_BINUTILS_ROOT/bin/ranlib"
-            export STRINGS="$GNU_BINUTILS_ROOT/bin/strings"
-            export OBJDUMP="$GNU_BINUTILS_ROOT/bin/objdump"
-            export OBJCOPY="$GNU_BINUTILS_ROOT/bin/objcopy"
-            export READELF="$GNU_BINUTILS_ROOT/bin/readelf"
-            export DLLTOOL="$GNU_BINUTILS_ROOT/bin/dlltool"
-            export ADDR2LINE="$GNU_BINUTILS_ROOT/bin/addr2line"
-
-            export PATH="$GNU_BINUTILS_ROOT/bin:$PATH"
-
-            # https://github.com/ziglang/zig/wiki/FAQ#why-do-i-get-illegal-instruction-when-using-with-zig-cc-to-build-c-code
-            export CFLAGS="$CFLAGS -fno-sanitize=undefined"
-            export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
-        elif [ "$TOOLCHAIN_NAME" = 'gcc' ] ; then
-            if [ "$NATIVE_OS_KIND" = linux ] ; then
-                # if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-                #     export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
-                #     export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
-                #     export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
-                # fi
-
-                if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-                    export CPPFLAGS="$CPPFLAGS -I$MY_INSTALL_DIR/musl-libc/include -I$MY_INSTALL_DIR/linux-headers/include"
-                    export  LDFLAGS=" $LDFLAGS -L$MY_INSTALL_DIR/musl-libc/lib"
-                fi
-
-                if [ "$PACKAGE_BUILD_SYSTEM_CARGO" != yes ] ; then
-                    :
-                    # if [ "$PACKAGE_NAME" != musl-libc ] ; then
-                    #     export CC="$MY_INSTALL_DIR/musl-libc/bin/musl-gcc"
-                    # fi
-                    # export LDFLAGS="$LDFLAGS -fno-use-linker-plugin"
-                    # liblto_plugin.so: error loading plugin: Dynamic loading not supported
-                fi
-            fi
-        fi
-    fi
-
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
         PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake"
     fi
@@ -3468,23 +3282,22 @@ __install_the_given_package() {
     run install -d "$PACKAGE_INSTALLING_LIB_DIR"
     run install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
-    if [ "$PACKAGE_FORMULA_FILETYPE" = yml ] ; then
-        if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
-            cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
+    if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
+        cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
 prepare() {
 $PACKAGE_PREPARE_ACTIONS
 }
 EOF
-            . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
-        fi
-        if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
-            cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
+        . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
+    fi
+
+    if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
+        cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
 build() {
 $PACKAGE_INSTALL_ACTIONS
 }
 EOF
-            . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
-        fi
+        . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
     fi
 
     step "calculate packages that are depended by $1"
@@ -3740,16 +3553,8 @@ EOF
                     case $FILE_HEADER_ACTUAL in
                         7F454C4602010100000000000000000003003E00)
                             # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                            unset PT_INTERP
-                            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                            DYNAMIC_LINKER_PATH='/lib64/ld-linux-x86-64.so.2'
-
-                            if [ -n "$PT_INTERP" ] && [ "$PT_INTERP" != "$DYNAMIC_LINKER_PATH" ] ; then
-                                run patchelf --set-interpreter "$DYNAMIC_LINKER_PATH" "$FILEPATH"
-                            fi
-
-                            run patchelf --replace-needed libc.so libc.so.6 "$FILEPATH"
+                            # unset PT_INTERP
+                            # PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                             if [ "$BUILD_TYPE" = release ] ; then
                                 run "$STRIP" $STRIP_ARG "$FILEPATH" || true
@@ -3824,9 +3629,6 @@ __config_build_variables() {
         if [ "$LINK_TYPE" = static-only ] ; then
             CCFLAGS="$CCFLAGS -static --static"
             LDFLAGS="$LDFLAGS -static --static"
-        else
-            CCFLAGS="$CCFLAGS -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
-            LDFLAGS="$LDFLAGS -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
         fi
     fi
 
@@ -3923,7 +3725,7 @@ __config_build_variables() {
         fi
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            LDFLAGS="-Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
 
             if [ -z "$LD_LIBRARY_DIR" ] ; then
                 LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
@@ -3956,6 +3758,8 @@ __config_build_variables() {
             fi
         fi
     done
+
+     LDFLAGS="-Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
@@ -4074,12 +3878,12 @@ __config_build_variables() {
         esac
 
         
-        # RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
+        RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
 
         # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        # export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
-        # export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
+        export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
+        export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
 
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
         export RUST_TARGET
@@ -4089,12 +3893,12 @@ __config_build_variables() {
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
-        # echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+        echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
 
-        # PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE=yes
-        # if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
-        #     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
-        # fi
+        PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE=yes
+        if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+        fi
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -4727,7 +4531,7 @@ EOF
             ;;
         installed-metadata-raw)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+                cat "$MY_INSTALL_DIR/$1/installed-metadata-ppkg"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4735,7 +4539,7 @@ EOF
             ;;
         installed-metadata-json)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+                cat "$MY_INSTALL_DIR/$1/installed-metadata-ppkg"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4751,11 +4555,11 @@ EOF
             ;;
         installed-datetime-unix)
             __load_installed_metadata_of_the_given_package "$1"
-            printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
+            printf '%s\n' "$INSTALLED_PACKAGE_DATETIME"
             ;;
         installed-datetime-formatted)
             __load_installed_metadata_of_the_given_package "$1"
-            format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
+            format_unix_timestamp "$INSTALLED_PACKAGE_DATETIME" '+%Y-%m-%d %H:%M:%S'
             ;;
         installed-pkg-version)
             __load_installed_metadata_of_the_given_package "$1"
@@ -4774,7 +4578,7 @@ EOF
     __load_formula_of_the_given_package "$1"
 
     printf '%b\n' \
-"name    : $(mark_is_package_installed_or_not $1)
+"pkgname : $(mark_is_package_installed_or_not $1)
 version : $PACKAGE_VERSION
 summary : $PACKAGE_SUMMARY
 webpage : $PACKAGE_WEBPAGE
@@ -4787,7 +4591,7 @@ dep-pkg : $PACKAGE_DEP_PKG"
     __load_installed_metadata_of_the_given_package "$1"
 
     cat <<EOF
-installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
+installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_DATETIME '+%Y-%m-%d %H:%M:%S') CST
 EOF
 }
 
@@ -4812,13 +4616,15 @@ __record_installed_files_of_the_given_package() {
 
         sed_in_place "s|$MY_INSTALL_DIR/$1/||" "$INSTALLED_FILES_FILEPATH"
     else
-        for file in $(ls $2)
+        for FILENAME in $(ls "$2")
         do
-            file="$2/$file"
-            if [ -d "$file" ] ; then
-                __record_installed_files_of_the_given_package "$1" "$file"
+            FILEPATH="$2/$FILENAME"
+
+            if [ -d "$FILEPATH" ] ; then
+                printf 'd %s %s\n' '0000000000000000000000000000000000000000000000000000000000000000' "$FILEPATH/" >&7
+                __record_installed_files_of_the_given_package "$1" "$FILEPATH"
             else
-                printf '%s %s\n' $(md5sum "$file") "$file" >&7
+                printf 'f %s %s\n' $(sha256sum "$FILEPATH") "$FILEPATH" >&7
             fi
         done
     fi
@@ -4831,43 +4637,22 @@ __record_installed_files_of_the_given_package() {
         return 1
     }
 
-    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata-ppkg"
 
     printf '%b\n' "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
-    cat > "$INSTALLED_METADATA_FILEPATH" <<EOF
-#This file is automatically generated by ppkg.
-#Please do not manually modify this file.
+    run cp "$PACKAGE_FORMULA_FILEPATH" "$INSTALLED_METADATA_FILEPATH"
 
-INSTALLED_BY_PPKG_VERSION='$MY_VERSION'
+    if ! grep -q '^version: ' "$INSTALLED_METADATA_FILEPATH" ; then
+        cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
+version: $PACKAGE_VERSION
+EOF
+    fi
 
-INSTALLED_TIMESTAMP_UNIX='$TIMESTAMP_UNIX'
-
-INSTALLED_PACKAGE_NAME='$PACKAGE_NAME'
-
-INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
-INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
-INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
-INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
-INSTALLED_PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
-
-INSTALLED_PACKAGE_DEVELOPER='$PACKAGE_DEVELOPER'
-
-INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
-INSTALLED_PACKAGE_GIT_SHA='$PACKAGE_GIT_SHA'
-INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
-
-INSTALLED_PACKAGE_SVN_URL='$PACKAGE_SVN_URL'
-
-INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
-INSTALLED_PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
-
-INSTALLED_PACKAGE_FIX_URL='$PACKAGE_FIX_URL'
-INSTALLED_PACKAGE_FIX_SHA='$PACKAGE_FIX_SHA'
-
-BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
-BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
-BUILD_USE_TOOLCHAIN_VERS_MAJOR='$TOOLCHAIN_VERS_MAJOR'
+    cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
+pkgname: $PACKAGE_NAME
+ppkgvers: $MY_VERSION
+datetime: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -4883,16 +4668,10 @@ EOF
         return 1
     }
 
-    unset INSTALLED_BY_PPKG_VERSION
-
-    unset INSTALLED_TIMESTAMP_UNIX
-
-    unset INSTALLED_PACKAGE_NAME
     unset INSTALLED_PACKAGE_VERSION
     unset INSTALLED_PACKAGE_SUMMARY
     unset INSTALLED_PACKAGE_WEBPAGE
     unset INSTALLED_PACKAGE_LICENSE
-    unset INSTALLED_PACKAGE_DEVELOPER
 
     unset INSTALLED_PACKAGE_GIT_URL
     unset INSTALLED_PACKAGE_GIT_SHA
@@ -4906,32 +4685,44 @@ EOF
     unset INSTALLED_PACKAGE_FIX_URL
     unset INSTALLED_PACKAGE_FIX_SHA
 
+    unset INSTALLED_PACKAGE_RES_URL
+    unset INSTALLED_PACKAGE_RES_SHA
+
     unset INSTALLED_PACKAGE_DEP_PKG
 
-    unset INSTALLED_PACKAGE_BUILD_SYSTEM
+    unset INSTALLED_PACKAGE_BSYSTEM
 
-    unset BUILD_USE_TOOLCHAIN_NAME
-    unset BUILD_USE_TOOLCHAIN_VERS
-    unset BUILD_USE_TOOLCHAIN_VERS_MAJOR
+    unset INSTALLED_PACKAGE_PPKGVERS
+
+    unset INSTALLED_PACKAGE_DATETIME
+
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
 
-    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    . "$INSTALLED_METADATA_FILEPATH" || return 1
+    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    do
+        unset __KEY_UPPERCASE_UNDERSCORE__
+        unset __VALUE__
 
-    if [ -z "$INSTALLED_BY_PPKG_VERSION" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_BY_PPKG_VERSION must not be empty."
+        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
+        __VALUE__="$(yq ".$key" "$INSTALLED_METADATA_FILEPATH")"
+
+        if [ "$__VALUE__" = null ] ; then
+                __VALUE__=
+        fi
+
+        eval "INSTALLED_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+    done
+
+    if [ -z "$INSTALLED_PACKAGE_PPKGVERS" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_PPKGVERS must not be empty."
         return 1
     fi
 
-    if [ -z "$INSTALLED_TIMESTAMP_UNIX" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_TIMESTAMP_UNIX must not be empty."
-        return 1
-    fi
-
-    if [ -z "$INSTALLED_PACKAGE_NAME" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_NAME must not be empty."
+    if [ -z "$INSTALLED_PACKAGE_DATETIME" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_DATETIME must not be empty."
         return 1
     fi
 
@@ -4950,13 +4741,8 @@ EOF
         return 1
     fi
 
-    if [ "$INSTALLED_PACKAGE_NAME" != "$1" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. INSTALLED_PACKAGE_NAME mismatch.\n    Actually: $INSTALLED_PACKAGE_NAME\n    Expected: $1"
-        return 1
-    fi
-
-    if [ "${#INSTALLED_TIMESTAMP_UNIX}" -ne 10 ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_TIMESTAMP_UNIX must be 10."
+    if [ "${#INSTALLED_PACKAGE_DATETIME}" -ne 10 ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_DATETIME must be 10."
         return 1
     fi
 }
@@ -5190,7 +4976,7 @@ configure() {
     CONFIGURE_ARGS="
         --prefix='$PACKAGE_INSTALL_DIR'
         --disable-option-checking
-        --disable-rpath
+        --enable-rpath
         --disable-nls
         --enable-largefile
         CC='$CC'
@@ -5432,7 +5218,7 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=static-only
+    LINK_TYPE=shared-prefered
 
     INSTALL_EXE=yes
     INSTALL_MAN=yes
@@ -5465,14 +5251,6 @@ inspect_install_arguments() {
                 ;;
             --keep-installing-dir)
                 KEEP_INSTALLING_DIR=yes
-                ;;
-            --toolchain=*)
-                TOOLCHAIN_NAME=$(getvalue "$1")
-                case $TOOLCHAIN_NAME in
-                    gcc|zig|llvm) ;;
-                    '') die "--toolchain=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--toolchain=<VALUE>, VALUE must be one of llvm gcc zig"
-                esac
                 ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
@@ -5547,85 +5325,6 @@ inspect_install_arguments() {
     LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
 }
 
-__install_gnu_binutils() {
-    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-        linux-x86_64)
-            GNU_BINUTILS_VERS='2.37'
-            GNU_BINUTILS_SHA='8dc7c1cc4509746f5613ac70e7fa927f131438f4489c9b6818280702bf57959e'
-            GNU_BINUTILS_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/gnu-binutils-2.37-linux-x86_64.tar.xz'
-            ;;
-        linux-aarch64)
-            ;;
-        macos-x86_64)
-            ;;
-        macos-aarch64)
-            ;;
-    esac
-
-    unset GNU_BINUTILS_FILENAME
-
-    GNU_BINUTILS_FILEPATH="$MY_HOME_DIR/toolchains/$(basename "$GNU_BINUTILS_URL")"
-
-    fetch "$GNU_BINUTILS_URL" --sha256="$GNU_BINUTILS_SHA" --output-dir="$MY_HOME_DIR/toolchains"
-
-    run install -d "$GNU_BINUTILS_ROOT"
-
-    run tar vxf "$GNU_BINUTILS_FILEPATH" -C "$GNU_BINUTILS_ROOT" --strip-components=1
-
-    printf '%s\n' "$GNU_BINUTILS_VERS" > "$GNU_BINUTILS_ROOT/installed"
-}
-
-# __install_toolchain <TOOLCHAIN-NAME>
-  __install_toolchain() {
-    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-        linux-x86_64)
-            TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='217f34df3e447f248052ebb2111b8a695ea99578cb658a7993cd0feb58e609e6'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.3475+b3d463c9e.tar.xz'
-            ;;
-        linux-aarch64)
-            TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='bc1864f85fe795e7ba2b53d941c7797a1fea31b5a297767e8b4fb687e67dc600'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-linux-aarch64-0.10.0-dev.2674+d980c6a38.tar.xz'
-            ;;
-        macos-x86_64)
-            TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='3f631abbc718bbf2c34f4691391591d7f0962c408671315e5c2e7d3fb67553e8'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-x86_64-0.10.0-dev.2674+d980c6a38.tar.xz'
-            ;;
-        macos-aarch64)
-            TOOLCHAIN_VERS='0.10.0'
-            TOOLCHAIN_SHA='af186c474bb1d654cf3756c00f350c805647a843a47d6fa07a3d25fc6e1bd8d0'
-            TOOLCHAIN_URL='https://ziglang.org/builds/zig-macos-aarch64-0.10.0-dev.2674+d980c6a38.tar.xz'
-            ;;
-    esac
-
-    unset TOOLCHAIN_FILENAME
-
-    TOOLCHAIN_FILEPATH="$MY_HOME_DIR/toolchains/$(basename "$TOOLCHAIN_URL")"
-
-    fetch "$TOOLCHAIN_URL" --sha256="$TOOLCHAIN_SHA" --output-dir="$MY_HOME_DIR/toolchains"
-
-    run install -d "$TOOLCHAIN_ROOT"
-
-    run tar vxf "$TOOLCHAIN_FILEPATH" -C "$TOOLCHAIN_ROOT" --strip-components=1
-
-    cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc" <<EOF
-#!/bin/sh
-set -e
-$TOOLCHAIN_ROOT/zig cc  -target x86_64-linux-musl "\$@"
-EOF
-    cat > "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++" <<EOF
-#!/bin/sh
-set -e
-$TOOLCHAIN_ROOT/zig c++ -target x86_64-linux-musl "\$@"
-EOF
-    chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-cc"
-    chmod +x "$TOOLCHAIN_ROOT/x86_64-linux-musl-zig-c++"
-
-    printf '%s\n' "$TOOLCHAIN_VERS" > "$TOOLCHAIN_ROOT/installed"
-}
-
 __is_core_tools_installed() {
     [ -d "$MY_HOME_DIR" ]          || return 1
     [ -d "$MY_HOME_DIR/core" ]     || return 1
@@ -5689,7 +5388,7 @@ __setup() {
     fi
 
     case $NATIVE_OS_KIND in
-        linux)   CORE_TOOL_VERSION='2022.05.28'; CORE_TOOL_SHA256='7436aac0807929bc1917a76cd910ce70be5e2c9c8ec5abc82a79b55dd0b43508' ;;
+        linux)   CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
         macos)   CORE_TOOL_VERSION='2022.05.22' ;;
         freebsd) CORE_TOOL_VERSION='2022.05.22' ;;
         openbsd) CORE_TOOL_VERSION='2022.05.22' ;;
