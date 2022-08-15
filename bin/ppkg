@@ -1864,11 +1864,12 @@ __load_formula_of_the_given_package() {
         case $item in
             autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
-            xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake" ;;
-            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson" ;;
-            rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"  ;;
-            # cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
-            # go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
+            cmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG cmake"  ;;
+            xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake"  ;;
+            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson"  ;;
+            rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"   ;;
+            cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
+            go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
         esac
     done
 
