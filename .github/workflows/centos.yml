@@ -27,7 +27,7 @@ jobs:
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
 
             dnf -y update
-            dnf -y install curl g++
+            dnf -y install curl gcc-c++
           fi
 
       - uses: actions/checkout@v3

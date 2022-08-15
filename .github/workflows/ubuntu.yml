@@ -16,7 +16,7 @@ jobs:
       matrix:
         version: [20.04, 22.04]
 
-    container: ubuntu:${{ matrix.tag }}
+    container: ubuntu:${{ matrix.version }}
 
     steps:
       - run: apt -y update
