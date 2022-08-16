@@ -1659,8 +1659,8 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_IN_PARALLEL
     unset PACKAGE_PARALLEL
 
-    # commands that are depended by this package when building
-    unset PACKAGE_DEP_CMD
+    # packages that are depended by this package when building and will be installed via uppm
+    unset PACKAGE_DEP_UPP
 
     # packages that are depended by this package when building and/or runtime
     unset PACKAGE_DEP_PKG
@@ -1929,7 +1929,7 @@ __load_formula_of_the_given_package() {
     case $VIEW_FORMULA_PAGING in
         ''|auto)
             if command -v bat > /dev/null ; then
-                bat --paging=auto "$PACKAGE_FORMULA_FILEPATH"
+                bat --language=yaml --paging=auto "$PACKAGE_FORMULA_FILEPATH"
             else
                 cat "$PACKAGE_FORMULA_FILEPATH"
                 echo
@@ -1938,7 +1938,7 @@ __load_formula_of_the_given_package() {
             ;;
         always)
             if command -v bat > /dev/null ; then
-                bat --paging=always "$PACKAGE_FORMULA_FILEPATH"
+                bat --language=yaml --paging=always "$PACKAGE_FORMULA_FILEPATH"
             else
                 more "$PACKAGE_FORMULA_FILEPATH"
                 echo
@@ -1947,7 +1947,7 @@ __load_formula_of_the_given_package() {
             ;;
         never)
             if command -v bat > /dev/null ; then
-                bat --paging=never "$PACKAGE_FORMULA_FILEPATH"
+                bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
             else
                 cat "$PACKAGE_FORMULA_FILEPATH"
                 echo
@@ -3249,16 +3249,13 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
-        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake"
-    fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD bear"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
     fi
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ccache"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
 
@@ -4622,10 +4619,10 @@ __record_installed_files_of_the_given_package() {
             FILEPATH="$2/$FILENAME"
 
             if [ -d "$FILEPATH" ] ; then
-                printf 'd %s %s\n' '0000000000000000000000000000000000000000000000000000000000000000' "$FILEPATH/" >&7
+                printf 'd %s %s\n' "$FILEPATH/" >&7
                 __record_installed_files_of_the_given_package "$1" "$FILEPATH"
             else
-                printf 'f %s %s\n' $(sha256sum "$FILEPATH") "$FILEPATH" >&7
+                printf 'f %s %s\n' "$FILEPATH"  >&7
             fi
         done
     fi
