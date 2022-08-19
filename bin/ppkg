@@ -3249,6 +3249,7 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
+    step "install depentent tools via uppm"
 
     if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
@@ -3258,6 +3259,19 @@ __install_the_given_package() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
+    if [ -z "$PACKAGE_DEP_UPP"] ; then
+        note "no tools to be installed via uppm, skipped."
+    else
+        run uppm env
+        run uppm update
+
+        for item in $PACKAGE_DEP_UPP
+        do
+            run uppm install "$item"
+        done
+    fi
+
+    step "create installing relevant directories"
 
     PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/install.0.d/$1"
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
@@ -3268,10 +3282,10 @@ __install_the_given_package() {
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
     PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
 
-    step "create installing relevant directories"
     if [ -d "$PACKAGE_INSTALLING_TOP_DIR" ] ; then
         run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
+
     run install -d "$PACKAGE_INSTALLING_SRC_DIR"
     run install -d "$PACKAGE_INSTALLING_FIX_DIR"
     run install -d "$PACKAGE_INSTALLING_RES_DIR"
@@ -3723,7 +3737,7 @@ __config_build_variables() {
         fi
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            LDFLAGS="-Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
 
             if [ -z "$LD_LIBRARY_DIR" ] ; then
                 LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
@@ -3757,8 +3771,6 @@ __config_build_variables() {
         fi
     done
 
-     LDFLAGS="-Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
-
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
     export LD_LIBRARY_DIR
@@ -3786,7 +3798,7 @@ __config_build_variables() {
     fi
 
     CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
-     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
