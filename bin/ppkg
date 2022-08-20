@@ -3580,6 +3580,14 @@ EOF
     step "install logs"
     __install_logs "$1"
 
+    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+        step2 "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_la_files_for_the_given_target $@
+
+        step2 "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_pc_files_for_the_given_target $@
+    fi
+
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
 
@@ -3645,7 +3653,7 @@ __config_build_variables() {
     fi
 
     CCFLAGS="$CFLAGS -fPIC -fno-common"
-    LDFLAGS="$LDFLAGS -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+    LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -4129,6 +4137,58 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
         run export -p
         echo
     fi
+}
+
+__adjust_la_files_for_the_given_target() {
+    [ -d "$PACKAGE_INSTALL_DIR/lib" ] || {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name "*.la")"
+
+    [ -z "$LA_FILES" ] && {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    for lafile in $LA_FILES
+    do
+        sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
+        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$lafile"
+        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
+        #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
+    done
+}
+
+__adjust_pc_files_for_the_given_target() {
+    [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || {
+        note "no .pc files installed, skipped"
+        return 0
+    }
+
+    PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name "*.pc")"
+
+    [ -z "$PC_FILES" ] && {
+        note "no .pc files installed, skipped"
+        return 0
+    }
+
+    for pcfile in $PC_FILES
+    do
+        sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
+        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$pcfile"
+        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
+        #sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
+
+        if grep 'Libs.private:' "$pcfile" > /dev/null ; then
+            LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
+            LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
+            sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+            sed_in_place '/Libs.private/d' "$pcfile"
+        fi
+    done
 }
 
 __install_logs() {
