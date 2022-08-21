@@ -3260,7 +3260,7 @@ __install_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_DEP_UPP"] ; then
-        note "no tools to be installed via uppm, skipped."
+        note "no tools need to be installed via uppm, skipped."
     else
         run uppm env
         run uppm update
@@ -4183,10 +4183,23 @@ __adjust_pc_files_for_the_given_target() {
         #sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
 
         if grep 'Libs.private:' "$pcfile" > /dev/null ; then
-            LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
-            LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            sed_in_place '/Libs.private/d' "$pcfile"
+            if grep 'Libs:' "$pcfile" > /dev/null ; then
+                LIBS_PRIVATE_CONTENT=$(sed -n '/Libs.private:/p' "$pcfile" | cut -c14-)
+                sed_in_place "/Libs:/s|\$|$LIBS_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Libs.private:/d' "$pcfile"
+            else
+                sed_in_place 's|Libs.private:|Libs:|' "$pcfile"
+            fi
+        fi
+
+        if grep 'Requires.private:' "$pcfile" > /dev/null ; then
+            if grep 'Requires:' "$pcfile" > /dev/null ; then
+                REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
+                sed_in_place "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Requires.private:/d' "$pcfile"
+            else
+                sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
+            fi
         fi
     done
 }
@@ -5415,6 +5428,7 @@ __is_core_tools_installed() {
 }
 
 __setup() {
+    ################################# step 1: create home dir #################################
     CURRENT_USER__NAME="$(id -n -u)"
     CURRENT_GROUP_NAME="$(id -n -g)"
 
@@ -5436,6 +5450,8 @@ __setup() {
         fi
     fi
 
+    ################################# step 2: select a fetch tool #################################
+
     unset FETCH_TOOL
 
     for FETCH_TOOL in curl wget http lynx aria2c axel
@@ -5446,6 +5462,15 @@ __setup() {
             unset FETCH_TOOL
         fi
     done
+
+    if [ -z "$FETCH_TOOL" ] ; then
+        error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found, you could download curl from $CORE_TOOL_BASE_URL/curl, then try again."
+        return 1
+    else
+        unset FETCH_TOOL
+    fi
+
+    ################################# step 3: fetch core tools #################################
 
     unset NATIVE_OS_KIND
     unset NATIVE_OS_ARCH
@@ -5459,24 +5484,17 @@ __setup() {
 
     case $NATIVE_OS_KIND in
         linux)   CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
-        macos)   CORE_TOOL_VERSION='2022.05.22' ;;
-        freebsd) CORE_TOOL_VERSION='2022.05.22' ;;
-        openbsd) CORE_TOOL_VERSION='2022.05.22' ;;
-         netbsd) CORE_TOOL_VERSION='2022.05.22' ;;
-              *) die "unsupported os: $(uname -s)"
+        macos)   CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
+        freebsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
+        openbsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
+         netbsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
+              *) die "$(uname -s) has not been supported yet."
     esac
 
     CORE_TOOL_REPONAME="ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     CORE_TOOL_FILENAME="ppkg-core-$CORE_TOOL_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.tar.xz"
 
     CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_REPONAME/releases/download/$CORE_TOOL_VERSION"
-
-    if [ -z "$FETCH_TOOL" ] ; then
-        error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found, you could download curl from $CORE_TOOL_BASE_URL/curl, then try again."
-        return 1
-    else
-        unset FETCH_TOOL
-    fi
 
     SETUP_WORKING_DIR=$(mktemp -d)
 
