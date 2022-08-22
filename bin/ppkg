@@ -1769,15 +1769,24 @@ __load_formula_of_the_given_package() {
     case $PACKAGE_SRC_TYPE in
         dir)
             PACKAGE_SRC_PATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            fi
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
             PACKAGE_SRC_PATH="$MY_CACHE_DIR/src/$PACKAGE_SRC_NAME"
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            fi
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SHA" ] ; then
                 die "src-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
+
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 case $PACKAGE_VERSION in
@@ -1785,6 +1794,7 @@ __load_formula_of_the_given_package() {
                     v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
                 esac
             fi
+
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
             PACKAGE_SRC_PATH="$MY_CACHE_DIR/src/$PACKAGE_SRC_NAME"
     esac
@@ -4726,14 +4736,23 @@ __record_installed_files_of_the_given_package() {
 
     run cp "$PACKAGE_FORMULA_FILEPATH" "$INSTALLED_METADATA_FILEPATH"
 
+    sed_in_place "1i pkgname: $PACKAGE_NAME" "$INSTALLED_METADATA_FILEPATH"
+
     if ! grep -q '^version: ' "$INSTALLED_METADATA_FILEPATH" ; then
-        cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
-version: $PACKAGE_VERSION
-EOF
+        sed_in_place "2i version: $PACKAGE_VERSION" "$INSTALLED_METADATA_FILEPATH"
+    fi
+
+    if [ "$PACKAGE_SRC_TYPE" = git ] || [ "$PACKAGE_SRC_TYPE" = dir ] ; then
+        if ! grep -q '^git-sha: ' "$INSTALLED_METADATA_FILEPATH" ; then
+            if grep -q '^git-url: ' "$INSTALLED_METADATA_FILEPATH" ; then
+                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$INSTALLED_METADATA_FILEPATH"
+            else
+                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$INSTALLED_METADATA_FILEPATH"
+            fi
+        fi
     fi
 
     cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
-pkgname: $PACKAGE_NAME
 ppkgvers: $MY_VERSION
 datetime: $TIMESTAMP_UNIX
 EOF
@@ -4819,7 +4838,7 @@ EOF
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] ; then
+    if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] && [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
         error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
         return 1
     fi
