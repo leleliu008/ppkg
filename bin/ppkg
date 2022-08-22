@@ -4683,9 +4683,7 @@ dep-pkg : $PACKAGE_DEP_PKG"
 
     __load_installed_metadata_of_the_given_package "$1"
 
-    cat <<EOF
-installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_DATETIME '+%Y-%m-%d %H:%M:%S') CST
-EOF
+    printf '%b\n' "${COLOR_GREEN}installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_DATETIME '+%Y-%m-%d %H:%M:%S') CST${COLOR_OFF}"
 }
 
 mark_is_package_installed_or_not() {
@@ -4752,7 +4750,10 @@ __record_installed_files_of_the_given_package() {
         fi
     fi
 
+    sed_in_place '/^#src-url: dir:/d' "$INSTALLED_METADATA_FILEPATH"
+
     cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
+
 ppkgvers: $MY_VERSION
 datetime: $TIMESTAMP_UNIX
 EOF
