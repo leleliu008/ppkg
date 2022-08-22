@@ -1878,8 +1878,8 @@ __load_formula_of_the_given_package() {
             xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake"  ;;
             meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson"  ;;
             rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"   ;;
-            cargo)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG rustup" ;;
-            go)          PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG golang" ;;
+            cargo)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP rustup" ;;
+            go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
         esac
     done
 
@@ -3269,7 +3269,7 @@ __install_the_given_package() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
-    if [ -z "$PACKAGE_DEP_UPP"] ; then
+    if [ -z "$PACKAGE_DEP_UPP" ] ; then
         note "no tools need to be installed via uppm, skipped."
     else
         run uppm env
@@ -5537,6 +5537,11 @@ __setup() {
 
     run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
+
+    UPPM_INSTALL_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/uppm-2022.08.22-linux-x86_64.tar.xz'
+    fetch "$UPPM_INSTALL_URL" --output-dir="$MY_HOME_DIR"
+
+    run tar vxf "$MY_HOME_DIR/uppm-2022.08.22-linux-x86_64.tar.xz" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
     success "ppkg have been setup."
 }
