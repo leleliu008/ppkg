@@ -1874,11 +1874,17 @@ __load_formula_of_the_given_package() {
         case $item in
             autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
             autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
-            cmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG cmake"  ;;
-            xmake)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG xmake"  ;;
-            meson)       PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG meson"  ;;
-            rake)        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG ruby"   ;;
-            cargo)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP rustup" ;;
+
+            configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
+            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
+            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
+            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
+            xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
+            meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP meson"  ;;
+            ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
+            gmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
+            rake)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"   ;;
+            #cargo)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP rustup" ;;
             go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
         esac
     done
@@ -3281,9 +3287,27 @@ __install_the_given_package() {
         done
     fi
 
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        command -v rustup > /dev/null || {
+            # https://www.rust-lang.org/tools/install
+            note "${COLOR_GREEN}rustup cargo rustc{COLOR_OFF} ${COLOR_YELLOW}commands are required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
+
+            if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
+                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+            fi
+
+            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+
+            run bash "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y || return 1
+
+            export CARGO_HOME=$HOME/.cargo
+            export PATH="$CARGO_HOME/bin:$PATH"
+        }
+    fi
+
     step "create installing relevant directories"
 
-    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/install.0.d/$1"
+    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing/$1"
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
     PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
@@ -5429,20 +5453,15 @@ inspect_install_arguments() {
 }
 
 __is_core_tools_installed() {
-    [ -d "$MY_HOME_DIR" ]          || return 1
-    [ -d "$MY_HOME_DIR/core" ]     || return 1
-    [ -d "$MY_HOME_DIR/core/bin" ] || return 1
+    [ -d "$MY_HOME_DIR" ]               || return 1
+    [ -d "$MY_HOME_DIR/core" ]          || return 1
+    [ -d "$MY_HOME_DIR/core/bin" ]      || return 1
+    [ -e "$MY_HOME_DIR/core/bin/uppm" ] || return 1
 
-    for CORE_TOOL_NAME in curl git bash base64 date hexdump realpath sed grep gawk
+    for item in $CORE_UPPM_PACKAGE_NAMES
     do
-        if [ -e "$MY_HOME_DIR/core/bin/$CORE_TOOL_NAME" ] ; then
-            continue
-        else
-            return 1
-        fi
+        "$MY_HOME_DIR/core/bin/uppm" is-package-installed "$item" || return 1
     done
-
-    unset CORE_TOOL_NAME
 
     return 0
 }
@@ -5503,56 +5522,70 @@ __setup() {
     fi
 
     case $NATIVE_OS_KIND in
-        linux)   CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
-        macos)   CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
-        freebsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
-        openbsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
-         netbsd) CORE_TOOL_VERSION='2022.08.16'; CORE_TOOL_SHA256='03f596783da0747fce07594bea45999b9205faa7b78bf337f0128ad7f6c5caf3' ;;
+        linux)   CORE_TOOL_VERSION='2022.08.16' ;;
+        macos)   CORE_TOOL_VERSION='2022.08.16' ;;
+        freebsd) CORE_TOOL_VERSION='2022.08.16' ;;
+        openbsd) CORE_TOOL_VERSION='2022.08.16' ;;
+         netbsd) CORE_TOOL_VERSION='2022.08.16' ;;
               *) die "$(uname -s) has not been supported yet."
     esac
 
-    CORE_TOOL_REPONAME="ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    CORE_TOOL_FILENAME="ppkg-core-$CORE_TOOL_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH.tar.xz"
-
-    CORE_TOOL_BASE_URL="https://github.com/leleliu008/$CORE_TOOL_REPONAME/releases/download/$CORE_TOOL_VERSION"
+    CORE_TOOL_BASE_URL="https://github.com/leleliu008/ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH/releases/download/$CORE_TOOL_VERSION"
 
     SETUP_WORKING_DIR=$(mktemp -d)
 
     # https://curl.se/docs/caextract.html
     fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-    for item in tar xz
-    do
-        fetch "$CORE_TOOL_BASE_URL/$item" --output-dir="$SETUP_WORKING_DIR"
-        run chmod +x "$SETUP_WORKING_DIR/$item"
-    done
+    command -v tar > /dev/null || {
+        fetch "$CORE_TOOL_BASE_URL/tar" --output-dir="$SETUP_WORKING_DIR"
+        run chmod +x "$SETUP_WORKING_DIR/tar"
+    }
 
-    export PATH="$SETUP_WORKING_DIR:$PATH"
+    command -v xz > /dev/null || {
+        fetch "$CORE_TOOL_BASE_URL/xz" --output-dir="$SETUP_WORKING_DIR"
+        run chmod +x "$SETUP_WORKING_DIR/xz"
+    }
 
-    fetch "$CORE_TOOL_BASE_URL/$CORE_TOOL_FILENAME" --sha256="$CORE_TOOL_SHA256" --output-dir="$MY_HOME_DIR"
-
-    run install -d "$MY_HOME_DIR/core"
-
-    run tar vxf "$MY_HOME_DIR/$CORE_TOOL_FILENAME" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+    if [ -d    "$MY_HOME_DIR/core" ] ; then
+        rm -rf "$MY_HOME_DIR/core"
+    fi
 
     run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
 
     UPPM_INSTALL_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/uppm-2022.08.22-linux-x86_64.tar.xz'
-    fetch "$UPPM_INSTALL_URL" --output-dir="$MY_HOME_DIR"
 
-    run tar vxf "$MY_HOME_DIR/uppm-2022.08.22-linux-x86_64.tar.xz" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+    fetch "$UPPM_INSTALL_URL" --output-dir="$SETUP_WORKING_DIR"
+
+    run tar vxf "$SETUP_WORKING_DIR/uppm-2022.08.22-linux-x86_64.tar.xz" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+
+    rm "$MY_HOME_DIR/core/installed-files"
+    rm "$MY_HOME_DIR/core/installed-metadata-ppkg"
+
+    export PATH="$SETUP_WORKING_DIR:$PATH"
+
+    export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+
+    run "$MY_HOME_DIR/core/bin/uppm env"
+
+    run "$MY_HOME_DIR/core/bin/uppm update"
+
+    for item in $CORE_UPPM_PACKAGE_NAMES
+    do
+        run "$MY_HOME_DIR/core/bin/uppm install $item"
+    done
 
     success "ppkg have been setup."
 }
 
 init() {
+    CORE_UPPM_PACKAGE_NAMES='bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq'
+
     __is_core_tools_installed || {
         error "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
         return 1
     }
-
-    export PATH="$MY_HOME_DIR/core/bin:$PATH"
 
     # https://man7.org/linux/man-pages/man8/ld.so.8.html
     if [ -z "$LD_LIBRARY_DIR" ] ; then
@@ -5569,9 +5602,9 @@ init() {
     fi
 
     # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
-    if [ -d "$MY_HOME_DIR/core/libexec/git-core" ] ; then
-        export GIT_EXEC_PATH="$MY_HOME_DIR/core/libexec/git-core"
-        export GIT_TEMPLATE_DIR="$MY_HOME_DIR/core/share/git-core/templates"
+    if [ -d "$HOME/.uppm/installed/git/libexec/git-core" ] ; then
+        export GIT_EXEC_PATH="$HOME/.uppm/installed/git/libexec/git-core"
+        export GIT_TEMPLATE_DIR="$HOME/.uppm/installed/git/share/git-core/templates"
     fi
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
@@ -5649,6 +5682,28 @@ EOF
     if [ -f "$HOME/.cargo/env" ] ; then
         .   "$HOME/.cargo/env"
     fi
+
+    for dir in "$HOME/.uppm/installed"
+    do
+        if [ -d "$dir" ] ; then
+            for item in $(find "$dir" -maxdepth 2 -type d -name bin)
+            do
+                bppend_to_PATH "$item"
+            done
+
+            for item in $(find "$dir" -maxdepth 2 -type d -name lib)
+            do
+                export LD_LIBRARY_DIR="$item:$LD_LIBRARY_DIR"
+            done
+
+            for item in $(find "$dir" -maxdepth 3 -type d -name aclocal)
+            do
+                export ACLOCAL_PATH="$item:$ACLOCAL_PATH"
+            done
+        fi
+    done
+
+    export PATH="$MY_HOME_DIR/core/bin:$PATH"
 }
 
 help() {
@@ -5813,7 +5868,7 @@ main() {
     MY_HOME_DIR="/opt/ppkg"
 
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
-    MY_INSTALL_DIR="$MY_HOME_DIR/install.1.d"
+    MY_INSTALL_DIR="$MY_HOME_DIR/installed"
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_CACHE_DIR="$MY_HOME_DIR/cache.d"
 
@@ -5849,8 +5904,7 @@ main() {
             return 0
             ;;
         env)
-            printf '%b\n' "
-${COLOR_GREEN}ppkg $MY_VERSION${COLOR_OFF}
+            printf '%b\n' "${COLOR_GREEN}ppkg $MY_VERSION${COLOR_OFF}
 
 ${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
 
