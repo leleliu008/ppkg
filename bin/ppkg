@@ -3284,6 +3284,7 @@ __install_the_given_package() {
         for item in $PACKAGE_DEP_UPP
         do
             run uppm install "$item"
+            bppend_to_PATH "$("$MY_HOME_DIR/core/bin/uppm" info "$item" installed-dir)/bin"
         done
     fi
 
@@ -3304,6 +3305,8 @@ __install_the_given_package() {
             export PATH="$CARGO_HOME/bin:$PATH"
         }
     fi
+
+    __setup_PATH_env
 
     step "create installing relevant directories"
 
@@ -5677,6 +5680,10 @@ EOF
 
     TIMESTAMP_UNIX="$(date +%s)"
 
+    __setup_PATH_env
+}
+
+__setup_PATH_env() {
     # pip install --user <PKG>
     bppend_to_PATH "$HOME/.local/bin"
 
