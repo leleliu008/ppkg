@@ -5458,7 +5458,7 @@ __is_core_tools_installed() {
     [ -d "$MY_HOME_DIR/core/bin" ]      || return 1
     [ -e "$MY_HOME_DIR/core/bin/uppm" ] || return 1
 
-    for item in $CORE_UPPM_PACKAGE_NAMES
+    for item in bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
     do
         "$MY_HOME_DIR/core/bin/uppm" is-package-installed "$item" || return 1
     done
@@ -5547,6 +5547,8 @@ __setup() {
         run chmod +x "$SETUP_WORKING_DIR/xz"
     }
 
+    export PATH="$SETUP_WORKING_DIR:$PATH"
+
     if [ -d    "$MY_HOME_DIR/core" ] ; then
         rm -rf "$MY_HOME_DIR/core"
     fi
@@ -5563,15 +5565,13 @@ __setup() {
     rm "$MY_HOME_DIR/core/installed-files"
     rm "$MY_HOME_DIR/core/installed-metadata-ppkg"
 
-    export PATH="$SETUP_WORKING_DIR:$PATH"
-
     export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
 
     run "$MY_HOME_DIR/core/bin/uppm env"
 
     run "$MY_HOME_DIR/core/bin/uppm update"
 
-    for item in $CORE_UPPM_PACKAGE_NAMES
+    for item in bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
     do
         run "$MY_HOME_DIR/core/bin/uppm install $item"
     done
@@ -5580,8 +5580,6 @@ __setup() {
 }
 
 init() {
-    CORE_UPPM_PACKAGE_NAMES='bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq'
-
     __is_core_tools_installed || {
         error "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
         return 1
