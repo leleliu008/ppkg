@@ -3685,8 +3685,15 @@ __config_build_variables() {
          LDFLAGS="-isysroot $SYSROOT"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
-            CCFLAGS="$CCFLAGS -static --static"
-            LDFLAGS="$LDFLAGS -static --static"
+            if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+                CMAKE_EXE_LINKER_FLAGS=-static
+
+                export  CFLAGS="$(printf '%s\n'  "$CFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+                export LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+            else
+                CCFLAGS="$CCFLAGS -static --static"
+                LDFLAGS="$LDFLAGS -static --static"
+            fi
         fi
     fi
 
@@ -4049,6 +4056,7 @@ set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
 
 set(CMAKE_C_COMPILER "$CC")
 set(CMAKE_C_FLAGS "$CFLAGS $CPPFLAGS $LDFLAGS")
+set(CMAKE_EXE_LINKER_FLAGS $CMAKE_EXE_LINKER_FLAGS)
 
 set(CMAKE_CXX_COMPILER "$CXX")
 set(CMAKE_CXX_FLAGS "$CXXFLAGS $CPPFLAGS $LDFLAGS")
@@ -5462,7 +5470,7 @@ __is_core_tools_installed() {
     [ -d "$MY_HOME_DIR/core/bin" ]      || return 1
     [ -e "$MY_HOME_DIR/core/bin/uppm" ] || return 1
 
-    for item in bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
+    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
     do
         "$MY_HOME_DIR/core/bin/uppm" is-package-installed "$item" || return 1
     done
@@ -5581,7 +5589,7 @@ __setup() {
     name = leleliu008
 EOF
 
-    for item in bash gnu-coreutils util-linux gawk gsed grep tree findutils curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
+    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
     do
         run "$MY_HOME_DIR/core/bin/uppm install $item"
     done
