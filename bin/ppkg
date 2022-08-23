@@ -5563,7 +5563,7 @@ __setup() {
 
     fetch "$UPPM_INSTALL_URL" --output-dir="$SETUP_WORKING_DIR"
 
-    run tar vxf "$SETUP_WORKING_DIR/uppm-2022.08.22-linux-x86_64.tar.xz" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+    run tar vxf "$SETUP_WORKING_DIR/uppm-2022.08.23-linux-x86_64.tar.xz" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
     rm "$MY_HOME_DIR/core/installed-files"
     rm "$MY_HOME_DIR/core/installed-metadata-ppkg"
