@@ -5559,7 +5559,7 @@ __setup() {
     run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
 
-    UPPM_INSTALL_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/uppm-2022.08.22-linux-x86_64.tar.xz'
+    UPPM_INSTALL_URL='https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/uppm-2022.08.23-linux-x86_64.tar.xz'
 
     fetch "$UPPM_INSTALL_URL" --output-dir="$SETUP_WORKING_DIR"
 
