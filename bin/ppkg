@@ -1807,7 +1807,7 @@ __load_formula_of_the_given_package() {
         PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL" | sed 's|?.*||')
         PACKAGE_FIX_PATH="$MY_CACHE_DIR/fix/$PACKAGE_FIX_NAME"
 
-        case $PACKAGE_FIX_URL in
+        case $PACKAGE_FIX_NAME in
             *.diff)    PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.patch)   PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.zip)     PACKAGE_FIX_TYPE=zip    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
@@ -3197,7 +3197,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             fi
             ;;
         png)
-            __install_the_given_package graphviz || return 1
+            (main install graphviz) || return 1
 
             if command -v fc-match > /dev/null ; then
                 # Error: fontconfig: Couldn't find font.
@@ -5731,7 +5731,7 @@ __setup_PATH_env() {
         fi
     done
 
-    export PATH="$MY_HOME_DIR/core/bin:$PATH"
+    bppend_to_PATH "$MY_HOME_DIR/core/bin"
 }
 
 help() {
