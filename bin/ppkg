@@ -1750,19 +1750,19 @@ __load_formula_of_the_given_package() {
     fi
 
     case $PACKAGE_SRC_URL in
-        dir://*)   PACKAGE_SRC_TYPE=dir     ;;
-        *.git)     PACKAGE_SRC_TYPE=git     ;;
-        *.zip)     PACKAGE_SRC_TYPE=zip     ;;
-        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz  ;;
-        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz  ;;
-        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz  ;;
-        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2 ;;
-        *.tgz)     PACKAGE_SRC_TYPE=tar.gz  ;;
-        *.txz)     PACKAGE_SRC_TYPE=tar.xz  ;;
-        *.c)       PACKAGE_SRC_TYPE=c       ;;
-        *.cc)      PACKAGE_SRC_TYPE=cxx     ;;
-        *.cxx)     PACKAGE_SRC_TYPE=cxx     ;;
-        *.cpp)     PACKAGE_SRC_TYPE=cxx     ;;
+        dir://*)   PACKAGE_SRC_TYPE=dir ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git" ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip" ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz" ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip" ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar lzip" ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar bzip2" ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip" ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz" ;;
+        *.c)       PACKAGE_SRC_TYPE=c      ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
+        *.cc)      PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
+        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
+        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
@@ -1807,17 +1807,17 @@ __load_formula_of_the_given_package() {
         PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL" | sed 's|?.*||')
         PACKAGE_FIX_PATH="$MY_CACHE_DIR/fix/$PACKAGE_FIX_NAME"
 
-        case $PACKAGE_FIX_NAME in
-            *.diff)    PACKAGE_FIX_TYPE=patch   ;;
-            *.patch)   PACKAGE_FIX_TYPE=patch   ;;
-            *.zip)     PACKAGE_FIX_TYPE=zip     ;;
-            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz  ;;
-            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz  ;;
-            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2 ;;
-            *.tgz)     PACKAGE_FIX_TYPE=tar.gz  ;;
-            *.txz)     PACKAGE_FIX_TYPE=tar.xz  ;;
-            *)  die "unrecognized fix extension : $PACKAGE_FIX_NAME.\n    supported fix extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        case $PACKAGE_FIX_URL in
+            *.diff)    PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
+            *.patch)   PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
+            *.zip)     PACKAGE_FIX_TYPE=zip    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
+            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
+            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
+            *.tgz)     PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            *.txz)     PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
     fi
 
@@ -1829,16 +1829,17 @@ __load_formula_of_the_given_package() {
         PACKAGE_RES_NAME=$(basename "$PACKAGE_RES_URL" | sed 's|?.*||')
         PACKAGE_RES_PATH="$MY_CACHE_DIR/res/$PACKAGE_RES_NAME"
 
-        case $PACKAGE_RES_NAME in
-            *.diff)    PACKAGE_RES_TYPE=patch   ;;
-            *.patch)   PACKAGE_RES_TYPE=patch   ;;
-            *.zip)     PACKAGE_RES_TYPE=zip     ;;
-            *.tar.xz)  PACKAGE_RES_TYPE=tar.xz  ;;
-            *.tar.gz)  PACKAGE_RES_TYPE=tar.gz  ;;
-            *.tar.lz)  PACKAGE_RES_TYPE=tar.lz  ;;
-            *.tar.bz2) PACKAGE_RES_TYPE=tar.bz2 ;;
-            *.tgz)     PACKAGE_RES_TYPE=tar.gz  ;;
-            *.txz)     PACKAGE_RES_TYPE=tar.xz  ;;
+        case $PACKAGE_RES_URL in
+            *.diff)    PACKAGE_RES_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
+            *.patch)   PACKAGE_RES_TYPE=patch  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
+            *.zip)     PACKAGE_RES_TYPE=zip    ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
+            *.tar.xz)  PACKAGE_RES_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            *.tar.gz)  PACKAGE_RES_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            *.tar.lz)  PACKAGE_RES_TYPE=tar.lz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
+            *.tar.bz2) PACKAGE_RES_TYPE=tar.bz2; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
+            *.tgz)     PACKAGE_RES_TYPE=tar.gz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            *.txz)     PACKAGE_RES_TYPE=tar.xz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            *)  die "unrecognized res extension : $PACKAGE_FIX_URL.\n    supported res extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
     fi
 
@@ -5683,6 +5684,20 @@ EOF
     __setup_PATH_env
 }
 
+bppend_to_ACLOCAL_PATH() {
+    case ":${ACLOCAL_PATH}:" in
+        *:"$1":*) ;;
+        *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
+    esac
+}
+
+bppend_to_LD_LIBRARY_DIR() {
+    case ":${LD_LIBRARY_DIR}:" in
+        *:"$1":*) ;;
+        *) export LD_LIBRARY_DIR="$1:$LD_LIBRARY_DIR" ;;
+    esac
+}
+
 __setup_PATH_env() {
     # pip install --user <PKG>
     bppend_to_PATH "$HOME/.local/bin"
@@ -5697,19 +5712,21 @@ __setup_PATH_env() {
     for dir in "$HOME/.uppm/installed"
     do
         if [ -d "$dir" ] ; then
-            for item in $(find "$dir" -maxdepth 2 -type d -name bin)
+            for item in $(ls "$dir")
             do
-                bppend_to_PATH "$item"
-            done
+                if [ -d "$dir/$item" ] && [ -f "$dir/$item/installed-metadata-uppm" ] ; then
+                    if [ -d "$dir/$item/bin" ] ; then
+                        bppend_to_PATH "$dir/$item/bin"
+                    fi
 
-            for item in $(find "$dir" -maxdepth 2 -type d -name lib)
-            do
-                export LD_LIBRARY_DIR="$item:$LD_LIBRARY_DIR"
-            done
+                    if [ -d "$dir/$item/lib" ] ; then
+                        bppend_to_LD_LIBRARY_DIR "$dir/$item/lib"
+                    fi
 
-            for item in $(find "$dir" -maxdepth 3 -type d -name aclocal)
-            do
-                export ACLOCAL_PATH="$item:$ACLOCAL_PATH"
+                    if [ -d "$dir/$item/share/aclocal" ] ; then
+                        bppend_to_ACLOCAL_PATH "$dir/$item/share/aclocal"
+                    fi
+                fi
             done
         fi
     done
