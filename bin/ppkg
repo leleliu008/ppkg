@@ -5511,10 +5511,11 @@ __setup() {
         fi
     fi
 
-    if [ -d        "$MY_HOME_DIR/core/bin" ] ; then
-        rm -rf     "$MY_HOME_DIR/core/bin"
-        install -d "$MY_HOME_DIR/core/bin"
+    if [ -d    "$MY_HOME_DIR/core/bin" ] ; then
+        rm -rf "$MY_HOME_DIR/core/bin"
     fi
+
+    install -d "$MY_HOME_DIR/core/bin"
 
     #################################################################################
 
@@ -5548,28 +5549,35 @@ __setup() {
 }
 
 __setup_ubuntu() {
-    $sudo apt -y update
-    $sudo apt -y install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo apt -y update
+    run $sudo apt -y install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
 }
 
 __setup_macos() {
-    brew update
-    brew install bash findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config yq git curl cmake gcc ninja make libtool
+    command -v brew > /dev/null || {
+        XX="$MY_HOME_DIR/homebrew-install.sh"
+        run rm -f   "$XX"
+        run curl -o "$XX" -L 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh'
+        run bash    "$XX"
+    }
+
+    run brew update
+    run brew install bash coreutils findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config yq git curl cmake ninja make libtool
 }
 
 __setup_freebsd() {
-    $sudo pkg update
-    $sudo pkg install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkg update
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
 }
 
 __setup_openbsd() {
-    $sudo pkg_add update
-    $sudo pkg_add -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkg_add update
+    run $sudo pkg_add -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
 }
 
 __setup__netbsd() {
-    $sudo pkgin -y update
-    $sudo pkgin -y install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkgin -y update
+    run $sudo pkgin -y install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
 }
 
 __setup_uppm() {
