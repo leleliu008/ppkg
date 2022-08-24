@@ -5554,7 +5554,7 @@ __setup_ubuntu() {
 
 __setup_macos() {
     brew update
-    brew install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    brew install bash findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config yq git curl cmake gcc ninja make libtool
 }
 
 __setup_freebsd() {
