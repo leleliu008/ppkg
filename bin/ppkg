@@ -3942,7 +3942,7 @@ __config_build_variables() {
             darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin ;;
             darwin-aarch64) RUST_TARGET=aarch64-apple-darwin ;;
 
-            freebsd-x86_64) RUST_TARGET=x86_64-unknown-freebsd ;;
+            freebsd-amd64)  RUST_TARGET=x86_64-unknown-freebsd ;;
 
             netbsd-x86_64)  RUST_TARGET=x86_64-unknown-netbsd ;;
         esac
