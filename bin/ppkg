@@ -3936,8 +3936,15 @@ __config_build_variables() {
         unset RUST_TARGET
 
         case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-            linux-x86_64)  RUST_TARGET=x86_64-unknown-linux-musl ;;
-            linux-aarch64) RUST_TARGET=x86_64-unknown-linux-musl ;;
+            linux-x86_64)   RUST_TARGET=x86_64-unknown-linux-musl ;;
+            linux-aarch64)  RUST_TARGET=aarch64-unknown-linux-musl ;;
+
+            darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin ;;
+            darwin-aarch64) RUST_TARGET=aarch64-apple-darwin ;;
+
+            freebsd-x86_64) RUST_TARGET=x86_64-unknown-freebsd ;;
+
+            netbsd-x86_64)  RUST_TARGET=x86_64-unknown-netbsd ;;
         esac
 
         
