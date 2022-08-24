@@ -6003,6 +6003,7 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
             return 0
             ;;
         setup)
+            shift
             __setup $@
             return 0
             ;;
