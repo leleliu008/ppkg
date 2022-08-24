@@ -5486,7 +5486,6 @@ __is_core_tools_installed() {
 }
 
 __setup() {
-    ################################# step 1: create home dir #################################
     CURRENT_USER__NAME="$(id -n -u)"
     CURRENT_GROUP_NAME="$(id -n -g)"
 
@@ -5508,8 +5507,68 @@ __setup() {
         fi
     fi
 
-    ################################# step 2: select a fetch tool #################################
+    if [ -d        "$MY_HOME_DIR/core/bin" ] ; then
+        rm -rf     "$MY_HOME_DIR/core/bin"
+        install -d "$MY_HOME_DIR/core/bin"
+    fi
 
+    #################################################################################
+
+    unset NATIVE_OS_KIND
+    unset NATIVE_OS_ARCH
+
+    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_OS_ARCH="$(uname -m)"
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        NATIVE_OS_KIND=macos
+    fi
+
+    #################################################################################
+
+    if [ "$1" = '--use-system-package-manager' ] ; then
+        case $NATIVE_OS_KIND in
+            linux)   __setup_ubuntu  ;;
+            macos)   __setup_macos   ;;
+            freebsd) __setup_freebsd ;;
+            openbsd) __setup_openbsd ;;
+            netbsd)  __setup__netbsd ;;
+            *) die "$(uname -s) is not supported yet."
+        esac
+
+        ln -s /usr/bin/true "$MY_HOME_DIR/core/bin/uppm"
+    else
+        [ "$(id -u)" -ne 0 ] && sudo=sudo
+        __setup_uppm
+    fi
+}
+
+__setup_ubuntu() {
+    $sudo apt -y update
+    $sudo apt -y install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+}
+
+__setup_macos() {
+    brew update
+    brew install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+}
+
+__setup_freebsd() {
+    $sudo pkg update
+    $sudo pkg install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+}
+
+__setup_openbsd() {
+    $sudo pkg_add update
+    $sudo pkg_add -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+}
+
+__setup__netbsd() {
+    $sudo pkgin -y update
+    $sudo pkgin -y install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+}
+
+__setup_uppm() {
     unset FETCH_TOOL
 
     for FETCH_TOOL in curl wget http lynx aria2c axel
@@ -5526,18 +5585,6 @@ __setup() {
         return 1
     else
         unset FETCH_TOOL
-    fi
-
-    ################################# step 3: fetch core tools #################################
-
-    unset NATIVE_OS_KIND
-    unset NATIVE_OS_ARCH
-
-    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_OS_ARCH="$(uname -m)"
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        NATIVE_OS_KIND=macos
     fi
 
     case $NATIVE_OS_KIND in
@@ -5567,10 +5614,6 @@ __setup() {
     }
 
     export PATH="$SETUP_WORKING_DIR:$PATH"
-
-    if [ -d    "$MY_HOME_DIR/core" ] ; then
-        rm -rf "$MY_HOME_DIR/core"
-    fi
 
     run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
@@ -5956,7 +5999,7 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
             return 0
             ;;
         setup)
-            __setup
+            __setup $@
             return 0
             ;;
     esac
