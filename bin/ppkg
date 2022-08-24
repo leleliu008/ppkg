@@ -3699,10 +3699,14 @@ __config_build_variables() {
                 LDFLAGS="$LDFLAGS -static --static"
             fi
         fi
+
+        LDFLAGS="$LDFLAGS -Wl,--as-needed"
     fi
 
+    # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+
     CCFLAGS="$CFLAGS -fPIC -fno-common"
-    LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+    LDFLAGS="$LDFLAGS -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -5546,6 +5550,8 @@ __setup() {
         [ "$(id -u)" -ne 0 ] && sudo=sudo
         __setup_uppm
     fi
+
+    success "ppkg have been succefully setup."
 }
 
 __setup_ubuntu() {
@@ -5655,8 +5661,6 @@ EOF
     do
         run "$MY_HOME_DIR/core/bin/uppm install $item"
     done
-
-    success "ppkg have been setup."
 }
 
 init() {
