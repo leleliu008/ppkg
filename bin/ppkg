@@ -3700,13 +3700,12 @@ __config_build_variables() {
             fi
         fi
 
-        LDFLAGS="$LDFLAGS -Wl,--as-needed"
+        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+
+        LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-
     CCFLAGS="$CFLAGS -fPIC -fno-common"
-    LDFLAGS="$LDFLAGS -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
