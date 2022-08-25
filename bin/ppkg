@@ -3711,7 +3711,7 @@ __config_build_variables() {
         LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    CCFLAGS="$CFLAGS -fPIC -fno-common"
+    CCFLAGS="$CFLAGS -fPIC -fno-common -Wno-unused-command-line-argument"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -3719,7 +3719,7 @@ __config_build_variables() {
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
-        CCFLAGS="$CCFLAGS -Wl,-S -Os -DNDEBUG"
+        CCFLAGS="$CCFLAGS -Os -DNDEBUG"
         LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
@@ -3879,7 +3879,7 @@ int main(int argc, char * argv[]) {
 }
 EOF
 
-    run "$WRAPPED_CC" -o "$CC" "$CC.c"
+    run "$WRAPPED_CC" -std=c99 -o "$CC" "$CC.c"
     run ln -s "$CC" "$CXX"
 
     ##################################################################################
