@@ -1873,8 +1873,8 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
-            autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl m4 autoconf automake" ;;
+            autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
+            autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
 
             configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
             cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
@@ -2992,6 +2992,12 @@ $LINE"
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         NATIVE_OS_KIND=macos
+    fi
+
+    if [ "$NATIVE_OS_ARCH" = 'amd64' ] ; then
+        NATIVE_OS_ARCH=x86_64
+    elif [ "$NATIVE_OS_ARCH" = 'aarch64' ] ; then
+        NATIVE_OS_ARCH=arm64
     fi
 
     unset PACKED_DIR_NAME
@@ -5530,6 +5536,12 @@ __setup() {
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         NATIVE_OS_KIND=macos
+    fi
+
+    if [ "$NATIVE_OS_ARCH" = 'amd64' ] ; then
+        NATIVE_OS_ARCH=x86_64
+    elif [ "$NATIVE_OS_ARCH" = 'aarch64' ] ; then
+        NATIVE_OS_ARCH=arm64
     fi
 
     #################################################################################
