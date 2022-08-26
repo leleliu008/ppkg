@@ -105,10 +105,12 @@ int main(int argc, char * argv[]) {
     if (WRAPPED_PROGRAM[0] == '/') {
         if (execv(WRAPPED_PROGRAM, argv) == -1) {
             perror(WRAPPED_PROGRAM);
+            return 1;
         }
     } else {
         if (execvp(WRAPPED_PROGRAM, argv) == -1) {
             fprintf(stderr, "command not found: %s\b", WRAPPED_PROGRAM);
+            return 1;
         }
     }
 
