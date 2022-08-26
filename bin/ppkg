@@ -5681,7 +5681,30 @@ __setup() {
 
     if [ "$1" = '--use-system-package-manager' ] ; then
         case $NATIVE_OS_KIND in
-            linux)   __setup_ubuntu  ;;
+            linux)
+                if [ -e /etc/os-release ] ; then
+                    (
+                        unset ID
+
+                        . /etc/os-release
+
+                        case $ID in
+                            debian)  __setup_ubuntu ;;
+                            ubuntu)  __setup_ubuntu ;;
+                            alpine)  __setup_alpine ;;
+                            centos)  __setup_centos ;;
+                            fedora)  __setup_fedora ;;
+                            rhel)    __setup_fedora ;;
+                            gentoo)  __setup_gentoo ;;
+                            manjaro) __setup_manjaro ;;
+                            arch)    __setup_archlinux ;;
+                            void)    __setup_voidlinux ;;
+                            linuxmint) __setup_ubuntu ;;
+                            opensuse-leap) ;;
+                        esac
+                    )
+                fi
+                ;;
             macos)   __setup_macos   ;;
             freebsd) __setup_freebsd ;;
             openbsd) __setup_openbsd ;;
@@ -5699,8 +5722,15 @@ __setup() {
 }
 
 __setup_ubuntu() {
+    run $sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
+    run $sudo add-apt-repository ppa:rmescandon/yq
     run $sudo apt -y update
-    run $sudo apt -y install bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo apt -y install bash findutils gawk sed grep tree unzip tar gzip lzip patch patchelf pkg-config golang git curl cmake g++ ninja-build make libtool yq
+}
+
+__setup_alpine() {
+    run $sudo apt update
+    run $sudo apt add bash findutils gawk sed grep tree unzip tar gzip lzip patch patchelf pkgconf go yq git curl cmake g++ ninja make libtool
 }
 
 __setup_macos() {
