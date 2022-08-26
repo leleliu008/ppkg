@@ -3766,8 +3766,8 @@ int main() {
 }
 EOF
 
-    if "$CC" -Wno-unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
-        CCFLAGS="$CCFLAGS -Wno-unused-command-line-argument"
+    if "$CC" -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+        CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
     fi
 
     ##################################################################################
@@ -4265,8 +4265,8 @@ __printf_build_variables() {
      NATIVE_OS_LIBC = $NATIVE_OS_LIBC
      NATIVE_OS_SUBS = $NATIVE_OS_SUBS
 
-         WRAPPED_CC ="$WRAPPED_CC"
-        WRAPPED_CXX ="$WRAPPED_CXX"
+        WRAPPED_CC  = $WRAPPED_CC
+        WRAPPED_CXX = $WRAPPED_CXX
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
