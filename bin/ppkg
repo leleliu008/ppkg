@@ -3308,7 +3308,7 @@ __install_the_given_package() {
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         command -v rustup > /dev/null || {
             # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}rustup cargo rustc{COLOR_OFF} ${COLOR_YELLOW}commands are required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
+            note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
             if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
                 run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
@@ -3719,7 +3719,7 @@ __config_build_variables() {
         LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    CCFLAGS="$CFLAGS -fPIC -fno-common -Wno-unused-command-line-argument"
+    CCFLAGS="$CFLAGS -fPIC -fno-common"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -3747,9 +3747,8 @@ __config_build_variables() {
                 *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
             esac
         else
-            # [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not exist."
-            # [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not executable."
-            :
+            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not exist."
+            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not executable."
         fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
@@ -3759,6 +3758,17 @@ __config_build_variables() {
     unset TOOLNAME
     unset TOOLPATH
 
+    ##################################################################################
+
+    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.c" <<EOF
+int main() {
+    return 0;
+}
+EOF
+
+    if "$CC" -Wno-unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+        CCFLAGS="$CCFLAGS -Wno-unused-command-line-argument"
+    fi
 
     ##################################################################################
 
