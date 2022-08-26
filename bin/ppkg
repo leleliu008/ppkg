@@ -3910,7 +3910,7 @@ EOF
 
     for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
-        DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '-' '_')
+        DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '+-.' '_')
 
         unset DEP_PKG_INSTALL_DIR
         unset DEP_PKG_BINARY__DIR
