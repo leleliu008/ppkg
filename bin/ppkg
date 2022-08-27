@@ -1881,7 +1881,7 @@ __load_formula_of_the_given_package() {
             cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
             cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
             xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
-            # meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP meson"  ;;
+            meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
             ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
             gmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
             rake)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"   ;;
@@ -5133,7 +5133,7 @@ gow() {
     fi
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static -fno-use-linker-plugin\""
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
