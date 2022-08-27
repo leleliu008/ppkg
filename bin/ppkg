@@ -4130,10 +4130,8 @@ EOF
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
-        echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
-
-        PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE=yes
-        if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+        if [ "$LINK_TYPE" = static-only ] && [ "$NATIVE_OS_LIBC" = musl ] ; then
+            echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
             export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
         fi
 
