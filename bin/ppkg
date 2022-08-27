@@ -2345,12 +2345,8 @@ __fetch_resources_of_the_given_package() {
 __gen_github_workflows() {
     set -e
 
-    unset BREAK
-    unset NDEPENDED_PACKAGES
-    unset AVAILABLE_PACKAGES
     unset GROUP_SIZE
     unset OUTPUT_DIR
-    unset I
 
     while [ -n "$1" ]
     do
@@ -2388,6 +2384,10 @@ __gen_github_workflows() {
         __update_formula_repositories
     fi
 
+    unset AVAILABLE_PACKAGES
+    unset YDEPENDED_PACKAGES
+    unset NDEPENDED_PACKAGES
+
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
     for item in test v8 webrtc
@@ -2397,55 +2397,63 @@ __gen_github_workflows() {
 
     for x in $AVAILABLE_PACKAGES
     do
-        for y in $AVAILABLE_PACKAGES
+        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $(__get_packages_that_are_directly_depended_by_the_given_package "$x")"
+    done
+
+    YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)
+
+    echo YDEPENDED_PACKAGES=$YDEPENDED_PACKAGES
+
+    unset AVAILABLE_PACKAGES_COUNT
+
+    AVAILABLE_PACKAGES_COUNT="$(list_length $AVAILABLE_PACKAGES)"
+
+    echo $AVAILABLE_PACKAGES_COUNT
+
+    I=0
+    J=0
+    K=0
+
+    for x in $AVAILABLE_PACKAGES
+    do
+        I=$(expr "$I" + 1)
+        K=$(expr "$K" + 1)
+
+        EXIST=n
+
+        for y in $YDEPENDED_PACKAGES
         do
             if [ "$x" = "$y" ] ; then
-                continue
-            else
-                for z in $(__get_packages_that_are_directly_depended_by_the_given_package "$y")
-                do
-                    if [ "$x" = "$z" ] ; then
-                        BREAK=yes
-                        break 2
-                    fi
-                done
+                EXIST=y
+                break
             fi
         done
-        if [ "$BREAK" = yes ] ; then
-            unset BREAK
-        else
+
+        if [ "$EXIST" = n ] ; then
             if [ -z "$NDEPENDED_PACKAGES" ] ; then
                 NDEPENDED_PACKAGES="$x"
             else
                 NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
             fi
-            if [ "$(list_length $NDEPENDED_PACKAGES)" -eq "$GROUP_SIZE" ] ; then
-                unset OUTPUT_FILEPATH
+        fi
 
-                I=$(expr ${I-0} + 1)
-                OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
-                NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
+        if [ "$I" -eq "$AVAILABLE_PACKAGES_COUNT" ] || [ "$K" -eq "$GROUP_SIZE" ] ; then
+            unset OUTPUT_FILEPATH
 
-                echo
-                run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
-                sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
-                sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
+            J=$(expr "$J" + 1)
+            OUTPUT_FILEPATH="$OUTPUT_DIR/ci$J.yml"
+            NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
-                unset NDEPENDED_PACKAGES
-            fi
+            echo
+            run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+            sed_in_place "s/INDEX/$J/"                          "$OUTPUT_FILEPATH"
+            sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"       "$OUTPUT_FILEPATH"
+
+            unset NDEPENDED_PACKAGES
+
+            K=0
         fi
     done
-    if [ -n "$NDEPENDED_PACKAGES" ] ; then
-        unset OUTPUT_FILEPATH
-
-        I=$(expr ${I-0} + 1)
-        OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
-        NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
-
-        run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
-        sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
-        sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
-    fi
 }
 
 __list_available_packages() {
@@ -4084,15 +4092,26 @@ EOF
         unset RUST_TARGET
 
         case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-            linux-x86_64)   RUST_TARGET=x86_64-unknown-linux-musl ;;
-            linux-aarch64)  RUST_TARGET=aarch64-unknown-linux-musl ;;
-
-            darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin ;;
+            linux-x86_64)
+                case $NATIVE_OS_LIBC in
+                    glibc) RUST_TARGET=x86_64-unknown-linux-gnu  ;;
+                    musl)  RUST_TARGET=x86_64-unknown-linux-musl ;;
+                    *)     die "unrecognized libc."
+                esac
+                ;;
+            linux-aarch64)
+                case $NATIVE_OS_LIBC in
+                    glibc) RUST_TARGET=aarch64-unknown-linux-gnu  ;;
+                    musl)  RUST_TARGET=aarch64-unknown-linux-musl ;;
+                    *)     die "unrecognized libc."
+                esac
+                ;;
+            darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin  ;;
             darwin-aarch64) RUST_TARGET=aarch64-apple-darwin ;;
 
             freebsd-amd64)  RUST_TARGET=x86_64-unknown-freebsd ;;
 
-            netbsd-x86_64)  RUST_TARGET=x86_64-unknown-netbsd ;;
+            netbsd-x86_64)  RUST_TARGET=x86_64-unknown-netbsd  ;;
         esac
 
         
