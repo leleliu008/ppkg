@@ -1659,16 +1659,16 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_IN_PARALLEL
     unset PACKAGE_PARALLEL
 
-    # python modules that are depended by this package when building and/or runtime, which will be installed via pip3
-    unset PACKAGE_DEP_PYM
-
-    #   perl modules that are depended by this package when building and/or runtime, which will be installed via cpan
+    # space-separated    perl modules that are depended by this package when installing and/or runtime, which will be installed via cpan
     unset PACKAGE_DEP_PLM
 
-    #       packages that are depended by this package when building and/or runtime, which will be installed via uppm
+    # space-separated python packages that are depended by this package when installing and/or runtime, which will be installed via pip3
+    unset PACKAGE_DEP_PYM
+
+    # space-separated   ppkg packages that are depended by this package when installing and/or runtime, which will be installed via uppm
     unset PACKAGE_DEP_UPP
 
-    #       packages that are depended by this package when building and/or runtime, which will be installed by myself
+    # space-separated   ppkg packages that are depended by this package when installing and/or runtime, which will be installed via ppkg
     unset PACKAGE_DEP_PKG
 
     unset PACKAGE_CDEFINE
