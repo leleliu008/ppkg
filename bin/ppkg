@@ -586,12 +586,13 @@ sha256sum() {
 ##############################################################################
 # {{{ fetch
 
-# fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
-# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-# fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-path=PATH>
+# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
 fetch() {
     unset FETCH_URL
+    unset FETCH_URI
     unset FETCH_SHA256
     unset FETCH_OUTPUT_DIR
     unset FETCH_OUTPUT_NAME
@@ -621,6 +622,17 @@ fetch() {
             --sha256=*)
                 FETCH_SHA256=$(getvalue "$1")
                 ;;
+            --uri=*)
+                FETCH_URI=$(getvalue "$1")
+                if [ -z "$FETCH_URI" ] ; then
+                    error "fetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
+                    return 1
+                else
+                    if [ "$COUNTRY" = 'china' ] ; then
+                        FETCH_URI="$(get_china_mirror_url "$FETCH_URI")"
+                    fi
+                fi
+                ;;
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
@@ -646,10 +658,10 @@ fetch() {
 
     fetch command usage:
 
-    fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
-    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-    fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-path=PATH>
+    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
                 return 1
         esac
         shift
@@ -741,42 +753,28 @@ fetch() {
                         FETCH_TOOL_CURL_OPTIONS="--cacert $MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
                     fi
 
-                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
                     ;;
                 wget)
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    else
-                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    fi
+                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
                     ;;
                 http)
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    else
-                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    fi
+                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
                     ;;
                 lynx)
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
-                    else
-                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
-                    fi
+                    run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'" ||
+                    run "lynx -source '$FETCH_URI' > '$FETCH_OUTPUT_PATH'"
                     ;;
                 aria2c)
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
-                    else
-                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
-                    fi
+                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'" ||
+                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URI'"
                     ;;
                 axel)
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    else
-                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    fi
+                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
                     ;;
                 *)  error "fetch() unimplementation: $FETCH_TOOL"
                     return 1
@@ -1605,6 +1603,7 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_SVN_URL
 
     unset PACKAGE_SRC_URL
+    unset PACKAGE_SRC_URI
     unset PACKAGE_SRC_SHA
     unset PACKAGE_SRC_NAME
     unset PACKAGE_SRC_TYPE
@@ -1685,7 +1684,7 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in summary webpage git-url git-sha git-tag src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -2227,49 +2226,43 @@ prompt_user_to_install_bat() {
 # fetch source code if needed
 __fetch_sources_of_the_given_package() {
     case $PACKAGE_SRC_TYPE in
+        dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
         git)
+            if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                GIT_REF_SPEC="+refs/heads/master:refs/remotes/origin/master"
+            else
+                GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+            fi
+
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if git -C "$PACKAGE_SRC_PATH" rev-parse 2> /dev/null ; then
-                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
-                        if [ "$PACKAGE_GIT_SHA" = "$(git -C "$PACKAGE_SRC_PATH" rev-parse HEAD)" ] ; then
-                            success "$PACKAGE_SRC_PATH already have been fetched."
-                            return 0
-                        fi
-                        run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
-                        run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master
-                    else
-                        run git -C "$PACKAGE_SRC_PATH" pull &&
-                        run git -C "$PACKAGE_SRC_PATH" submodule update --recursive
+                    if [ -n "$PACKAGE_GIT_SHA" ] && [ "$PACKAGE_GIT_SHA" = "$(git -C "$PACKAGE_SRC_PATH" rev-parse HEAD)" ] ; then
+                        success "$PACKAGE_SRC_PATH already have been fetched."
+                        return 0
                     fi
+
+                    run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin "$GIT_REF_SPEC" || return 1
+                    run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
+                    run git -C "$PACKAGE_SRC_PATH" submodule update --init || return 1
+
+                    return 0
                 else
-                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
-                        run rm -rf "$PACKAGE_SRC_PATH" &&
-                        run git -C "$PACKAGE_SRC_PATH" init &&
-                        run git -C "$PACKAGE_SRC_PATH" remote add origin "$PACKAGE_SRC_URL" &&
-                        run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
-                        run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master
-                    else
-                        run rm -rf "$PACKAGE_SRC_PATH" &&
-                        run git -C "$PACKAGE_SRC_PATH/.." clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
-                    fi
-                fi
-            else
-                if [ -n "$PACKAGE_GIT_SHA" ] ; then
-                    run install -d "$PACKAGE_SRC_PATH" &&
-                    run git -C "$PACKAGE_SRC_PATH" init &&
-                    run git -C "$PACKAGE_SRC_PATH" remote add origin "$PACKAGE_SRC_URL" &&
-                    run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
-                    run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master
-                else
-                    if [ !          -d "$MY_CACHE_DIR/src" ] ; then
-                        run install -d "$MY_CACHE_DIR/src"
-                    fi
-                    run git -C "$MY_CACHE_DIR/src" clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
+                    run rm -rf "$PACKAGE_SRC_PATH" || return 1
                 fi
             fi
+
+            run install -d "$PACKAGE_SRC_PATH" || return 1
+            run git -C "$PACKAGE_SRC_PATH" -c init.defaultBranch=master init || return 1
+            run git -C "$PACKAGE_SRC_PATH" remote add origin "$PACKAGE_SRC_URL" || return 1
+            run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin "$GIT_REF_SPEC" || return 1
+            run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
+            run git -C "$PACKAGE_SRC_PATH" submodule update --init || return 1
             ;;
-        dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
-        *)  fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
+        *)  if [ -z   "$PACKAGE_SRC_URI" ] ; then
+                fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
+            else
+                fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH" --uri="$PACKAGE_SRC_URI"
+            fi
     esac
 }
 
@@ -3354,7 +3347,7 @@ __install_the_given_package() {
         step "install depentent tools via pip3"
 
         run pip3 --version
-        run pip3 install --upgrade pip
+        run pip3 install --upgrade pip setuptools wheel
         run pip3 --version
 
         for item in $PACKAGE_DEP_PYM
@@ -5049,6 +5042,7 @@ EOF
     unset INSTALLED_PACKAGE_SVN_URL
 
     unset INSTALLED_PACKAGE_SRC_URL
+    unset INSTALLED_PACKAGE_SRC_URI
     unset INSTALLED_PACKAGE_SRC_SHA
 
     unset INSTALLED_PACKAGE_FIX_URL
@@ -5070,7 +5064,7 @@ EOF
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
