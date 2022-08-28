@@ -1659,10 +1659,16 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_IN_PARALLEL
     unset PACKAGE_PARALLEL
 
-    # packages that are depended by this package when building and will be installed via uppm
+    # python modules that are depended by this package when building and/or runtime, which will be installed via pip3
+    unset PACKAGE_DEP_PYM
+
+    #   perl modules that are depended by this package when building and/or runtime, which will be installed via cpan
+    unset PACKAGE_DEP_PLM
+
+    #       packages that are depended by this package when building and/or runtime, which will be installed via uppm
     unset PACKAGE_DEP_UPP
 
-    # packages that are depended by this package when building and/or runtime
+    #       packages that are depended by this package when building and/or runtime, which will be installed by myself
     unset PACKAGE_DEP_PKG
 
     unset PACKAGE_CDEFINE
@@ -1679,7 +1685,7 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -1889,6 +1895,18 @@ __load_formula_of_the_given_package() {
             go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
         esac
     done
+
+    if [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] ; then
+        PACKAGE_DEP_PYM=meson
+    fi
+
+    if [ -n "$PACKAGE_DEP_PYM" ] ; then
+        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG python3"
+    fi
+
+    if [ -n "$PACKAGE_DEP_PLM" ] ; then
+        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl"
+    fi
 
     if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
         BUILD_NJOBS=1
@@ -3284,7 +3302,28 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
-    step "install depentent tools via uppm"
+    #########################################################################################
+
+    if [ -z "$PACKAGE_DEP_PKG" ] ; then
+        RECURSIVE_DEPENDENT_PACKAGES=
+    else
+        step "calculating dependency tree of $1"
+        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
+    fi
+
+    __setup_PATH_env
+
+    for PKG in $RECURSIVE_DEPENDENT_PACKAGES
+    do
+        if [ -d "$MY_INSTALL_DIR/$PKG/bin" ] ; then
+            bppend_to_PATH "$MY_INSTALL_DIR/$PKG/bin"
+        fi
+    done
+
+    echo PATH:
+    printf '%s\n' "$PATH" | tr ':' '\n'
+
+    #########################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
@@ -3294,9 +3333,11 @@ __install_the_given_package() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
-    if [ -z "$PACKAGE_DEP_UPP" ] ; then
-        note "no tools need to be installed via uppm, skipped."
-    else
+    #########################################################################################
+
+    if [ -n "$PACKAGE_DEP_UPP" ] ; then
+        step "install depentent tools via uppm"
+
         run uppm env
         run uppm update
 
@@ -3307,11 +3348,22 @@ __install_the_given_package() {
         done
     fi
 
-    if [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] ; then
-        if ! command -v meson > /dev/null ; then
-            run pip3 install meson
-        fi
+    #########################################################################################
+
+    if [ -n "$PACKAGE_DEP_PYM" ] ; then
+        step "install depentent tools via pip3"
+
+        run pip3 --version
+        run pip3 install --upgrade pip
+        run pip3 --version
+
+        for item in $PACKAGE_DEP_PYM
+        do
+            run pip3 install "$item" --upgrade
+        done
     fi
+
+    #########################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         command -v rustup > /dev/null || {
@@ -3331,7 +3383,7 @@ __install_the_given_package() {
         }
     fi
 
-    __setup_PATH_env
+    #########################################################################################
 
     step "create installing relevant directories"
 
@@ -3356,6 +3408,8 @@ __install_the_given_package() {
     run install -d "$PACKAGE_INSTALLING_LIB_DIR"
     run install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
+    #########################################################################################
+
     if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
         cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
 prepare() {
@@ -3374,12 +3428,10 @@ EOF
         . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
     fi
 
-    step "calculate packages that are depended by $1"
-    unset RECURSIVE_DEPENDENT_PACKAGES
-    if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        warn "no packages that are depended by $1, skipped."
-    else
-        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
+    #########################################################################################
+
+    if [ -z "$RECURSIVE_DEPENDENT_PACKAGES" ] ; then
+        step "generating dependency tree of $1"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
@@ -3393,6 +3445,9 @@ EOF
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
         fi
     fi
+
+    #########################################################################################
+
 
     unset PKG_CONFIG
 
@@ -3783,8 +3838,8 @@ EOF
     export WRAPPED_CC="$CC"
     export WRAPPED_CXX="$CXX"
 
-    CC="$PACKAGE_INSTALLING_BIN_DIR/wrapper-cc"
-    CXX="$PACKAGE_INSTALLING_BIN_DIR/wrapper-c++"
+     CC="$MY_HOME_DIR/core/bin/wrapper-cc"
+    CXX="$MY_HOME_DIR/core/bin/wrapper-c++"
 
     cat > "$CC.c" <<EOF
 #include <stdio.h>
@@ -3890,7 +3945,7 @@ int main(int argc, char * argv[]) {
 EOF
 
     run "$WRAPPED_CC" -std=c99 -o "$CC" "$CC.c"
-    run ln -s "$CC" "$CXX"
+    run ln -sf "$CC" "$CXX"
 
     ##################################################################################
 
@@ -5015,7 +5070,7 @@ EOF
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
