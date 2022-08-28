@@ -2229,7 +2229,7 @@ __fetch_sources_of_the_given_package() {
         dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
         git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                GIT_REF_SPEC="+refs/heads/master:refs/remotes/origin/master"
+                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
             else
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
             fi
