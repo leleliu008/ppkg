@@ -1598,7 +1598,8 @@ __load_formula_of_the_given_package() {
 
     unset PACKAGE_GIT_URL
     unset PACKAGE_GIT_SHA
-    unset PACKAGE_GIT_TAG
+    unset PACKAGE_GIT_REF
+    unset PACKAGE_SHALLOW
 
     unset PACKAGE_SVN_URL
 
@@ -1684,7 +1685,7 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    for key in summary webpage git-url git-sha git-tag src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -2234,6 +2235,16 @@ __fetch_sources_of_the_given_package() {
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
             fi
 
+            if [ "$PACKAGE_SHALLOW" = yes ] ; then
+                GIT_FETCH_EXTRA_OPTIONS='--depth=1'
+            else
+                if [ -f "$PACKAGE_SRC_PATH/.git/shallow" ] ; then
+                    GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                else
+                    GIT_FETCH_EXTRA_OPTIONS=
+                fi
+            fi
+
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if git -C "$PACKAGE_SRC_PATH" rev-parse 2> /dev/null ; then
                     if [ -n "$PACKAGE_GIT_SHA" ] && [ "$PACKAGE_GIT_SHA" = "$(git -C "$PACKAGE_SRC_PATH" rev-parse HEAD)" ] ; then
@@ -2241,7 +2252,7 @@ __fetch_sources_of_the_given_package() {
                         return 0
                     fi
 
-                    run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin "$GIT_REF_SPEC" || return 1
+                    run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --prune --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
                     run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
                     run git -C "$PACKAGE_SRC_PATH" submodule update --init || return 1
 
@@ -2254,7 +2265,7 @@ __fetch_sources_of_the_given_package() {
             run install -d "$PACKAGE_SRC_PATH" || return 1
             run git -C "$PACKAGE_SRC_PATH" -c init.defaultBranch=master init || return 1
             run git -C "$PACKAGE_SRC_PATH" remote add origin "$PACKAGE_SRC_URL" || return 1
-            run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin "$GIT_REF_SPEC" || return 1
+            run git -C "$PACKAGE_SRC_PATH" -c protocol.version=2 fetch --prune --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
             run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
             run git -C "$PACKAGE_SRC_PATH" submodule update --init || return 1
             ;;
@@ -4662,7 +4673,7 @@ __show_infomation_as_shell_of_all_available_packages() {
         --arg license "$PACKAGE_LICENSE" \
         --arg git_url "$PACKAGE_GIT_URL" \
         --arg git_sha "$PACKAGE_GIT_SHA" \
-        --arg git_tag "$PACKAGE_GIT_TAG" \
+        --arg git_tag "$PACKAGE_GIT_REF" \
         --arg src_url "$PACKAGE_SRC_URL" \
         --arg src_sha "$PACKAGE_SRC_SHA" \
         --arg fix_url "$PACKAGE_FIX_URL" \
@@ -4732,7 +4743,7 @@ license: $PACKAGE_LICENSE
 git:
     url: $PACKAGE_GIT_URL
     sha: $PACKAGE_GIT_SHA
-    tag: $PACKAGE_GIT_TAG
+    tag: $PACKAGE_GIT_REF
 
 src:
     url: $PACKAGE_SRC_URL
@@ -4774,7 +4785,7 @@ PACKAGE_SUMMARY
 PACKAGE_WEBPAGE
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
-PACKAGE_GIT_TAG
+PACKAGE_GIT_REF
 PACKAGE_SVN_URL
 PACKAGE_SRC_URL
 PACKAGE_SRC_SHA
@@ -5037,7 +5048,7 @@ EOF
 
     unset INSTALLED_PACKAGE_GIT_URL
     unset INSTALLED_PACKAGE_GIT_SHA
-    unset INSTALLED_PACKAGE_GIT_TAG
+    unset INSTALLED_PACKAGE_GIT_REF
 
     unset INSTALLED_PACKAGE_SVN_URL
 
@@ -5064,7 +5075,7 @@ EOF
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-tag src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
