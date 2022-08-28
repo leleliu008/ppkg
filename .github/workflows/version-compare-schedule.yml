@@ -1,0 +1,26 @@
+name: version-compare
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+  schedule:
+    - cron: '* 20 * * *'
+
+jobs:
+  schedule:
+
+    runs-on: macos-latest
+
+    steps:
+      - run: brew update
+
+      - uses: actions/checkout@v3
+
+      - run: bin/ppkg --help
+      - run: bin/ppkg env
+      - run: bin/ppkg setup --use-system-package-manager
+      - run: bin/ppkg update
+      - run: git -C ~/.ppkg/repos.d/offical checkout ${{ github.ref_name }}
+      - run: bin/ppkg compare-versions brew
