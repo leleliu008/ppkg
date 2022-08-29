@@ -2690,7 +2690,7 @@ __compare_versions_with_brew() {
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
         if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
-            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | head -n 1 | sed 's|stable ||' | cut -d ' ' -f2 | cut -d ',' -f1)
+            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | head -n 1 | sed -e 's|^==> .*: ||' -e 's|stable ||' | cut -d ' ' -f1)
             if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
                 printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
             else
@@ -5706,7 +5706,7 @@ __is_core_tools_installed() {
     [ -d "$MY_HOME_DIR/core/bin" ]      || return 1
     [ -e "$MY_HOME_DIR/core/bin/uppm" ] || return 1
 
-    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
+    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         "$MY_HOME_DIR/core/bin/uppm" is-package-installed "$item" || return 1
     done
@@ -5914,7 +5914,7 @@ __setup_uppm() {
     name = leleliu008
 EOF
 
-    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz lzip patch patchelf pkg-config yq
+    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         run "$MY_HOME_DIR/core/bin/uppm install $item"
     done

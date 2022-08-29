@@ -69,9 +69,8 @@ jobs:
       - run: bin/ppkg pack libzip tar.gz
       - run: bin/ppkg pack libzip tar.xz
       - run: bin/ppkg pack libzip tar.bz2
-      - run: bin/ppkg pack libzip 7z
-      - run: bin/ppkg pack libzip zip
-      - run: bin/ppkg pack libzip aar
+        #- run: bin/ppkg pack libzip 7z
+        #- run: bin/ppkg pack libzip zip
 
       - run: bin/ppkg ls-available
       - run: bin/ppkg ls-installed
