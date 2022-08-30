@@ -136,7 +136,9 @@ function _ppkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '2:output-type:(7z zip tar.gz tar.xz tar.bz2)'
+                        '--type=-[set output type]:output-type:(7z zip tar.gz tar.xz tar.bz2)' \
+                        '--keep-packing-dir[do not delete packing dir even if packed success]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 homepage)
                     _arguments \

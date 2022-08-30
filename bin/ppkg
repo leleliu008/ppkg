@@ -2989,44 +2989,47 @@ $LINE"
 }
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE> [--keep-packing-dir]
-# __pack_the_given_installed_package    autoconf    tar.xz
+# __pack_the_given_installed_package <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir]
+# __pack_the_given_installed_package    autoconf       tar.xz
   __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1"
 
-    case $2 in
-        7z) ;;
-        zip)
-            ;;
-        tar.gz)
-            ;;
-        tar.xz)
-            ;;
-        tar.bz2)
-            ;;
-        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, <TYPE> must not be empty." ;;
-        *) die "$_0 pack <PACKAGE-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip tar.gz tar.xz tar.bz2."
-    esac
+    INSTALLED_PACKAGE_NAME="$1"
 
-    for option in $(shiftn 2 $@)
+    unset PACKED_FILETYPE
+
+    shift
+
+    while [ -n "$1" ]
     do
-        case $option in
+        case $1 in
             --keep-packing-dir)
                 KEEP_PACKING_DIR=yes
                 ;;
             -x|--xtrace)
                 ;;
-            *)  die "$_0 pack <PACKAGE-NAME> <TYPE> [--keep-packing-dir], unrecognized option: $option"
+            --type=*)
+                PACKED_FILETYPE=$(getvalue "$1")
+                case $PACKED_FILETYPE in
+                    zip|tar.gz|tar.xz|tar.bz2) ;;
+                    '')die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], <TYPE> must not be empty." ;;
+                    *) die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], unsupported <TYPE>: $PACKED_FILETYPE, the supported types are zip tar.gz tar.xz tar.bz2."
+                esac
+                ;;
+            *)  die "$_0 pack <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir], unrecognized option: $1"
         esac
+        shift
     done
 
-    INSTALLED_PACKAGE_NAME="$1"
+    if [ -z "$PACKED_FILETYPE" ] ; then
+        PACKED_FILETYPE='tar.xz'
+    fi
 
     if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
         INSTALLED_PACKAGE_VERSION="$INSTALLED_PACKAGE_DATETIME"
     fi
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         NATIVE_OS_KIND=macos
     fi
 
@@ -3036,15 +3039,50 @@ $LINE"
         NATIVE_OS_ARCH=arm64
     fi
 
-    unset PACKED_DIR_NAME
-    if [ -z "$NATIVE_OS_LIBC" ] ; then
-        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
+
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
+        if [ -d "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/lib" ] ; then
+            for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/lib" \( -type f -o -type l \))
+            do
+                case $FILEPATH in
+                    */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                    */lib*.so*) PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                    */*.o)      PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                esac
+            done
+        fi
+
+        if [ -z "$PACKED_DIR_NAME" ] ; then
+            if [ -d "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/bin" ] ; then
+                for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/bin" \( -type f -o -type l \))
+                do
+                    unset FILE_MAGIC
+
+                    FILE_MAGIC="$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+
+                    if [ "$FILE_MAGIC" = '7F454C46' ] ; then
+                        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                        # unset PT_INTERP
+                        PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                        if [ -n "$PT_INTERP" ] ; then
+                            PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
+                            break
+                        fi
+                    fi
+                done
+            fi
+        fi
+    fi
+
+    if [ "$PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
+        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
     else
         PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     fi
 
-    unset PACKED_FILE_NAME
-    PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
+    PACKED_FILENAME="$PACKED_DIR_NAME.$PACKED_FILETYPE"
 
     step "create packing directory"
     printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
@@ -3057,23 +3095,23 @@ $LINE"
     run ln -s "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    case $2 in
-        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
-        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME"   ;;
-        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
-        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
-        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+    case $PACKED_FILETYPE in
+        7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
+        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME"   ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
     esac
 
     step "check integrity of packed file"
-    case $2 in
-        7z)    run 7za t -t7z "$PACKED_FILE_NAME" ;;
-        zip)   run unzip -t   "$PACKED_FILE_NAME" ;;
-        tar.*) run tar   -tf  "$PACKED_FILE_NAME" ;;
+    case $PACKED_FILETYPE in
+        7z)    run 7za t -t7z "$PACKED_FILENAME" ;;
+        zip)   run unzip -t   "$PACKED_FILENAME" ;;
+        tar.*) run tar   -tf  "$PACKED_FILENAME" ;;
     esac
 
     step "show size of packed file"
-    run "du -sh $PACKED_FILE_NAME | cut -f1"
+    run "du -sh $PACKED_FILENAME | cut -f1"
 
     if [ ! -d "$MY_CACHE_DIR/bin" ] ; then
         step "create cached binary dir"
@@ -3081,7 +3119,7 @@ $LINE"
     fi
 
     step "copy packed file to cached dir"
-    run cp "$PACKED_FILE_NAME" "$MY_CACHE_DIR/bin/"
+    run cp "$PACKED_FILENAME" "$MY_CACHE_DIR/bin/"
 
     if [ "$KEEP_PACKING_DIR" = yes ] ; then
         echo
@@ -5199,7 +5237,9 @@ gow() {
     fi
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
+        if [ "$LINKE_TYPE" = static-only ] ; then
+            GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
+        fi
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
