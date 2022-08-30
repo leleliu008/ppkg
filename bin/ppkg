@@ -3074,6 +3074,13 @@ $LINE"
                 done
             fi
         fi
+
+        if [ -z "$PACKED_DIR_NAME" ] ; then
+            for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" \( -type f -o -type l \) -a -name "*.a")
+            do
+                PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
+            done
+        fi
     fi
 
     if [ "$PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
