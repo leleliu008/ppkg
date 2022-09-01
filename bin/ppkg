@@ -4487,6 +4487,7 @@ __adjust_la_files_for_the_given_target() {
     do
         sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
         sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$lafile"
+        sed_in_place "s|-R[^' ]*||g"               "$lafile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
         #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
     done
@@ -4505,11 +4506,13 @@ __adjust_pc_files_for_the_given_target() {
         return 0
     }
 
+    # cc: error: unrecognized command line option ‘-R’
     for pcfile in $PC_FILES
     do
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
         sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$pcfile"
+        sed_in_place "s|-R[^' ]*||g"               "$pcfile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
         #sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
 
