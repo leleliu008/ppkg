@@ -3508,6 +3508,8 @@ EOF
 
     PKG_CONFIG=$(command -v pkg-config || true)
 
+    export PKG_CONFIG
+
     step "fetch resources if needed"
     __fetch_sources_of_the_given_package "$1"
     __fetch_patches_of_the_given_package "$1"
@@ -4092,6 +4094,7 @@ EOF
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
+    export PKG_CONFIG_PATH
     export LD_LIBRARY_DIR
     export PATH
 
@@ -4404,7 +4407,7 @@ __printf_build_variables() {
 
     echo
 
-    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+    for FLAG in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
     do
         eval export "$FLAG=\"\$$FLAG\""
         printf "\n%19s = " "$FLAG"
@@ -4420,22 +4423,29 @@ __printf_build_variables() {
         done
     done
 
-    echo
+    printf '%s\n'
+
+    printf '  PKG_CONFIG        = %s\n' "$PKG_CONFIG"
+
+    printf '  PKG_CONFIG_PATH   = '
+    __printf_colon_separated_list "$PKG_CONFIG_PATH"
+
+    printf '%s\n'
+
+    printf '  PKG_CONFIG_LIBDIR = '
+    __printf_colon_separated_list "$PKG_CONFIG_LIBDIR"
+
+    printf '%s\n'
+
+    printf '  PKG_CONFIG_DEBUG_SPEW = %s\n' "$PKG_CONFIG_DEBUG_SPEW"
+
+    printf '%s\n'
 
     printf "\n%19s = " PATH
-    FIRST=yes
-    for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
-    do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
-            printf '%s\n' "$item" | tr '|' ' '
-        else
-            printf '%s\n' "                      $item" | tr '|' ' '
-        fi
-    done
+    __printf_colon_separated_list "$PATH"
 
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
-        echo
+        printf '%s\n'
         env | sed -n '/^CMAKE_/p'
     fi
 
@@ -4446,13 +4456,18 @@ PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
 PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
 PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
 
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-
-     LD_LIBRARY_DIR = $LD_LIBRARY_DIR
-
 STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
 SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
+
+PACKAGE_INSTALL_DIR  = $PACKAGE_INSTALL_DIR
+
 "
+    printf '%s\n'
+
+    printf '     LD_LIBRARY_DIR = '
+    __printf_colon_separated_list "$LD_LIBRARY_DIR"
+
+    printf '%s\n'
 
     step "list PATH"
     IFS_OLD=$IFS
@@ -4468,6 +4483,20 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
         run export -p
         echo
     fi
+}
+
+__printf_colon_separated_list() {
+    FIRST=yes
+
+    for item in $(printf '%s\n' "$@" | tr ' ' '|' | tr ':' ' ')
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+            printf '%s\n' "$item" | tr '|' ' '
+        else
+            printf '%s\n' "                      $item" | tr '|' ' '
+        fi
+    done
 }
 
 __adjust_la_files_for_the_given_target() {
@@ -5615,10 +5644,6 @@ __ldd() {
 
 list_tools_in_the_toolchain() {
     list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf dlltool addr2line
-}
-
-list_flags_used_by_tools_in_the_toolchain() {
-    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 }
 
 echo_path_of_tool_in_the_toolchain() {
