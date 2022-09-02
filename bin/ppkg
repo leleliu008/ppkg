@@ -1685,7 +1685,7 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -5146,6 +5146,9 @@ EOF
     unset INSTALLED_PACKAGE_RES_SHA
 
     unset INSTALLED_PACKAGE_DEP_PKG
+    unset INSTALLED_PACKAGE_DEP_UPP
+    unset INSTALLED_PACKAGE_DEP_PYM
+    unset INSTALLED_PACKAGE_DEP_PLM
 
     unset INSTALLED_PACKAGE_BSYSTEM
 
@@ -5158,7 +5161,7 @@ EOF
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
