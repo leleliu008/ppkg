@@ -3510,6 +3510,13 @@ EOF
 
     export PKG_CONFIG
 
+    unset M4
+
+    M4=$(command -v m4 || true)
+
+    export M4
+
+
     step "fetch resources if needed"
     __fetch_sources_of_the_given_package "$1"
     __fetch_patches_of_the_given_package "$1"
@@ -4253,10 +4260,10 @@ EOF
         # https://docs.rs/cc/latest/cc/
         # https://github.com/alexcrichton/cc-rs
         export HOST_CC="$CC"
-        export HOST_CFLAGS="$CFLAGS"
+        export HOST_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
 
         export HOST_CXX="$CXX"
-        export HOST_CXXFLAGS="$CXXFLAGS"
+        export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
 
         export HOST_AR="$AR"
 
