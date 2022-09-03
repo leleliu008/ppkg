@@ -667,6 +667,10 @@ fetch() {
         shift
     done
 
+    if [ -z "$FETCH_URI" ] ; then
+        FETCH_URI="$FETCH_URL"
+    fi
+
     if [ -z "$FETCH_OUTPUT_PATH" ] ; then
         if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
             FETCH_OUTPUT_PATH='-'
