@@ -138,7 +138,7 @@ function _ppkg() {
                         '1:package-name:_ppkg_installed_packages' \
                         '--type=-[set output type]:output-type:(7z zip tar.gz tar.xz tar.bz2)' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                        '-x[trace execution of commands]'
                     ;;
                 homepage)
                     _arguments \
@@ -161,10 +161,6 @@ function _ppkg() {
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-installing-dir[do not delete installing dir even if installed success]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
-                        '(--debug -d)'{--debug,-d}'[debug output]' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
-                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -174,7 +170,12 @@ function _ppkg() {
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
-                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
+                        + '(verbose_level)' \
+                        '-x[trace execution of commands]' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
                     ;;
                 reinstall)
                     _arguments \
@@ -183,10 +184,6 @@ function _ppkg() {
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-installing-dir[do not delete installing dir even if installed success]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
-                        '(--debug -d)'{--debug,-d}'[debug output]' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
-                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -196,7 +193,12 @@ function _ppkg() {
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
-                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
+                        + '(verbose_level)' \
+                        '-x[trace execution of commands]' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
                     ;;
                 upgrade)
                     _arguments \
@@ -217,10 +219,6 @@ function _ppkg() {
                                     '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                                     '--dry-run[dry-run]' \
                                     '--keep-installing-dir[do not delete installing dir even if installed success]' \
-                                    '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
-                                    '(--debug -d)'{--debug,-d}'[debug output]' \
-                                    '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
-                                    '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                                     '--build-type=-[set build type]:build-type:(debug release)' \
                                     '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                                     '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -230,7 +228,12 @@ function _ppkg() {
                                     '--export-compile-commands-json[generates compile_commands.json]' \
                                     '--disable-ccache[do not use ccache]' \
                                     '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
-                                    '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
+                                    '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
+                                    + '(verbose_level)' \
+                                    '-x[trace execution of commands]' \
+                                    '-vv[debug mode. many many messages will be output to terminal]' \
+                                    '-v[verbose mode. many messages will be output to terminal]' \
+                                    '-q[silent mode. no any messages will be output to terminal]'
                             esac
                     esac
                     ;;
