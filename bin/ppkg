@@ -3931,66 +3931,76 @@ int main(int argc, char * argv[]) {
     }
 
     if (argc > 1) {
-        int sharedOptionIndex = -1;
-        int staticOptionIndex = -1;
-        int static2OptionIndex = -1;
+        const char * options[4] = { "-shared", "-static", "--static", "-Wl,-Bdynamic" };
+              int    indexes[4] = {    -1,         -1,        -1,            -1       };
 
         int lastIndex = argc - 1;
 
-        for (int i = 0; i <= lastIndex; i++) {
-            if (strcmp(argv[i], "-shared") == 0) {
-                sharedOptionIndex = i;
-
-                if ((staticOptionIndex > 0) && (static2OptionIndex > 0)) {
-                    break;
+        for (int i = 1; i < argc; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (strcmp(argv[i], options[j]) == 0) {
+                    indexes[j] = i;
                 }
-            }
 
-            if (strcmp(argv[i], "-static") == 0) {
-                staticOptionIndex = i;
-
-                if ((sharedOptionIndex > 0) && (static2OptionIndex > 0)) {
-                    break;
-                }
-            }
-
-            if (strcmp(argv[i], "--static") == 0) {
-                static2OptionIndex = i;
-
-                if ((sharedOptionIndex > 0) && (staticOptionIndex > 0)) {
-                    break;
+                if (indexes[0] > 0) {
+                    if ((indexes[1] > 0) && (indexes[2] > 0)) {
+                        goto lable;
+                    }
                 }
             }
         }
 
-        //printf("sharedOptionIndex=%d\n", sharedOptionIndex);
-        //printf("staticOptionIndex=%d\n", staticOptionIndex);
-        //printf("static2OptionIndex=%d\n", static2OptionIndex);
+        lable:
+        // printf("      -shared = %d\n", indexes[0]);
+        // printf("      -static = %d\n", indexes[1]);
+        // printf("     --static = %d\n", indexes[2]);
+        // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
 
-        if (sharedOptionIndex > 0) {
-            if (staticOptionIndex > 0) {
-                for (int i = staticOptionIndex; i < lastIndex; i++) {
+        // if -shared option is passed, then remove -static and --static options if they also are passed
+        if (indexes[0] > 0) {
+            if (indexes[1] > 0) {
+                for (int i = indexes[1]; i < lastIndex; i++) {
                     argv[i] = argv[i + 1];
                 }
 
                 argv[lastIndex] = NULL;
                 lastIndex -= 1;
 
-                if (static2OptionIndex > staticOptionIndex) {
-                    static2OptionIndex -= 1;
+                if (indexes[2] > indexes[1]) {
+                    indexes[2] -= 1;
                 }
             }
 
-            if (static2OptionIndex > 0) {
-                for (int i = static2OptionIndex; i < lastIndex; i++) {
+            if (indexes[2] > 0) {
+                for (int i = indexes[2]; i < lastIndex; i++) {
                     argv[i] = argv[i + 1];
                 }
                 argv[lastIndex] = NULL;
+            }
+        } else {
+            // if -shared option is not passed, but -static or --static option is passed, then remove -Wl,-Bdynamic option if it also is passed
+            if (indexes[3] > 0) {
+                if (indexes[1] > 0) {
+                    for (int i = indexes[3]; i < lastIndex; i++) {
+                        argv[i] = argv[i + 1];
+                    }
+                    argv[lastIndex] = NULL;
+                } else if (indexes[2] > 0) {
+                    for (int i = indexes[3]; i < lastIndex; i++) {
+                        argv[i] = argv[i + 1];
+                    }
+                    argv[lastIndex] = NULL;
+                }
             }
         }
     }
 
     argv[0] = WRAPPED_PROGRAM;
+
+    // for (int i = 0; argv[i] != NULL; i++) {
+    //     printf("%s ", argv[i]);
+    // }
+    // printf("\n");
 
     if (WRAPPED_PROGRAM[0] == '/') {
         if (execv(WRAPPED_PROGRAM, argv) == -1) {
@@ -5552,6 +5562,49 @@ EOF
         -B $PACKAGE_INSTALLING_TMP_DIR $@ &&
     run cmake --build   "$PACKAGE_INSTALLING_TMP_DIR" -- -j$BUILD_NJOBS &&
     run cmake --install "$PACKAGE_INSTALLING_TMP_DIR"
+}
+
+# https://github.com/xmake-io/xmake/issues/2003
+# run in a subshell
+xmakew() {
+    export XMAKE_ROOT=y
+
+    XMAKE=$(command -v xmake)
+
+    [ -z "$XMAKE" ] && die "command not found: xmake"
+
+    run xmake --version
+
+    XMAKE_CONFIG_OPTIONS="$@"
+
+    XMAKE_CONFIG_OPTION_CLEAN=
+    XMAKE_CONFIG_OPTION_MODE=
+    XMAKE_CONFIG_OPTION_vD=
+
+    for arg in $@
+    do
+        case $arg in
+            -c|--clean)  XMAKE_CONFIG_OPTION_CLEAN=set ;;
+            -m|--mode=*) XMAKE_CONFIG_OPTION_MODE=set  ;;
+            -vD)         XMAKE_CONFIG_OPTION_vD=set ;;
+        esac
+    done
+
+    if [ "$LOG_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_CLEAN" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --clean"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_MODE" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
+    fi
+
+    run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_INSTALLING_BST_DIR --buildir=$PACKAGE_INSTALLING_TMP_DIR &&
+    run $XMAKE --jobs=$BUILD_NJOBS &&
+    run $XMAKE install -o "$PACKAGE_INSTALL_DIR"
 }
 
 # https://mesonbuild.com/Cross-compilation.html
