@@ -3063,7 +3063,7 @@ $LINE"
 
                     if [ "$FILE_MAGIC" = '7F454C46' ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                        # unset PT_INTERP
+                        unset PT_INTERP
                         PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                         if [ -n "$PT_INTERP" ] ; then
@@ -3740,16 +3740,50 @@ EOF
                         continue
                     fi
 
+                    if [ -L "$FILEPATH" ] ; then
+                        continue
+                    fi
+
                     unset FILE_HEADER_EXPACT
                     unset FILE_HEADER_ACTUAL
 
-                    FILE_HEADER_ACTUAL="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+                    FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
 
                     case $FILE_HEADER_ACTUAL in
-                        7F454C4602010100000000000000000003003E00)
+                        7F454C460[12]01010000000000000000000[23])
                             # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                            # unset PT_INTERP
-                            # PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                            unset PT_INTERP
+                            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                            if [ -n "$PT_INTERP" ] ; then
+                                unset DT_RUNPATH
+                                DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" | tr ':' ' ')
+
+                                for NEEDED in $(patchelf --print-needed "$FILEPATH")
+                                do
+                                    case $NEEDED in
+                                        libc.so.6) ;;
+                                        libm.so.6) ;;
+                                        libgcc_s.so.1) ;;
+                                        ld-linux-x86-64.so.2) ;;
+                                        *)  for LIBDIR in "$PACKAGE_INSTALL_DIR/lib" $SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
+                                            do
+                                                if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                                    for RUNPATH in $DT_RUNPATH
+                                                    do
+                                                        if [ "$LIBDIR" = "$RUNPATH" ] ; then
+                                                            break 2
+                                                        fi
+                                                    done
+
+                                                    run patchelf --add-rpath "$LIBDIR" "$FILEPATH"
+                                                    DT_RUNPATH="$DT_RUNPATH $LIBDIR"
+                                                    break
+                                                fi
+                                            done
+                                    esac
+                                done
+                            fi
 
                             if [ "$BUILD_TYPE" = release ] ; then
                                 run "$STRIP" $STRIP_ARG "$FILEPATH" || true
@@ -4045,6 +4079,8 @@ EOF
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
 
+    unset SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
+
     for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
         DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '+-.' '_')
@@ -4075,7 +4111,9 @@ EOF
         fi
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST="$SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST $DEP_PKG_LIBRARY_DIR"
+
+            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
 
             if [ -z "$LD_LIBRARY_DIR" ] ; then
                 LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
@@ -4137,7 +4175,7 @@ EOF
     fi
 
     CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
-     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
