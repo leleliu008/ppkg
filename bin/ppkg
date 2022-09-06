@@ -3728,74 +3728,13 @@ EOF
         return 1
     }
 
-    if [ "$NATIVE_OS_KIND" = linux ] ; then
-        for x in bin sbin
-        do
-            if [ -d "$PACKAGE_INSTALL_DIR/$x" ] ; then
-                for y in $(ls "$PACKAGE_INSTALL_DIR/$x")
-                do
-                    FILEPATH="$PACKAGE_INSTALL_DIR/$x/$y"
-
-                    if [ -d "$FILEPATH" ] ; then
-                        continue
-                    fi
-
-                    if [ -L "$FILEPATH" ] ; then
-                        continue
-                    fi
-
-                    unset FILE_HEADER_EXPACT
-                    unset FILE_HEADER_ACTUAL
-
-                    FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
-
-                    case $FILE_HEADER_ACTUAL in
-                        7F454C460[12]01010000000000000000000[23])
-                            # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                            unset PT_INTERP
-                            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                            if [ -n "$PT_INTERP" ] ; then
-                                unset DT_RUNPATH
-                                DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" | tr ':' ' ')
-
-                                for NEEDED in $(patchelf --print-needed "$FILEPATH")
-                                do
-                                    case $NEEDED in
-                                        libc.so.6) ;;
-                                        libm.so.6) ;;
-                                        libgcc_s.so.1) ;;
-                                        ld-linux-x86-64.so.2) ;;
-                                        *)  for LIBDIR in "$PACKAGE_INSTALL_DIR/lib" $SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
-                                            do
-                                                if [ -e "$LIBDIR/$NEEDED" ] ; then
-                                                    for RUNPATH in $DT_RUNPATH
-                                                    do
-                                                        if [ "$LIBDIR" = "$RUNPATH" ] ; then
-                                                            break 2
-                                                        fi
-                                                    done
-
-                                                    run patchelf --add-rpath "$LIBDIR" "$FILEPATH"
-                                                    DT_RUNPATH="$DT_RUNPATH $LIBDIR"
-                                                    break
-                                                fi
-                                            done
-                                    esac
-                                done
-                            fi
-
-                            if [ "$BUILD_TYPE" = release ] ; then
-                                run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                            fi
-                    esac
-                done
-            fi
-        done
-    fi
-
     step "install logs"
     __install_logs "$1"
+
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
+        step2 "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_elf_files_for_the_given_target $@
+    fi
 
     if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
         step2 "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
@@ -3828,6 +3767,75 @@ EOF
 
     echo
     success "$1 have been installed successfully."
+}
+
+__adjust_elf_files_for_the_given_target() {
+    for x in bin sbin
+    do
+        if [ -d "$PACKAGE_INSTALL_DIR/$x" ] ; then
+            for y in $(ls "$PACKAGE_INSTALL_DIR/$x")
+            do
+                FILEPATH="$PACKAGE_INSTALL_DIR/$x/$y"
+
+                if [ -d "$FILEPATH" ] ; then
+                    continue
+                fi
+
+                if [ -L "$FILEPATH" ] ; then
+                    continue
+                fi
+
+                unset FILE_HEADER_EXPACT
+                unset FILE_HEADER_ACTUAL
+
+                FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+
+                case $FILE_HEADER_ACTUAL in
+                    7F454C460[12]01010000000000000000000[23])
+                        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                        # unset PT_INTERP
+                        # PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                        unset DT_NEEDED
+                        DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
+
+                        if [ -n "$DT_NEEDED" ] ; then
+                            unset DT_RUNPATH
+                            DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
+
+                            for NEEDED in $DT_NEEDED
+                            do
+                                case $NEEDED in
+                                    libc.so.6) ;;
+                                    libm.so.6) ;;
+                                    libgcc_s.so.1) ;;
+                                    ld-linux-x86-64.so.2) ;;
+                                    *)  for LIBDIR in "$PACKAGE_INSTALL_DIR/lib" $SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
+                                        do
+                                            if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                                for RUNPATH in $DT_RUNPATH
+                                                do
+                                                    if [ "$LIBDIR" = "$RUNPATH" ] ; then
+                                                        break 2
+                                                    fi
+                                                done
+
+                                                run patchelf --add-rpath "$LIBDIR" "$FILEPATH"
+                                                DT_RUNPATH="$DT_RUNPATH $LIBDIR"
+                                                break
+                                            fi
+                                        done
+                                esac
+                            done
+                        fi
+
+                        if [ "$BUILD_TYPE" = release ] ; then
+                            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                        fi
+                esac
+            done
+        fi
+    done
 }
 
 __config_build_variables() {
@@ -4113,7 +4121,7 @@ EOF
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
             SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST="$SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST $DEP_PKG_LIBRARY_DIR"
 
-            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath-link,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
 
             if [ -z "$LD_LIBRARY_DIR" ] ; then
                 LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
