@@ -3770,12 +3770,23 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
+    BASE64_ENCODE_STRING_COMMAND="$MY_HOME_DIR/core/bin/base64-encode-string"
+
     for x in bin sbin lib libexec
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for FILEPATH in $(find "$PACKAGE_INSTALL_DIR/$x")
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
         do
+            unset BASE64_DECODED_RELATIVE_FILEPATH
+            BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
+
+            if [ "$BASE64_DECODED_RELATIVE_FILEPATH" = '.' ] ; then
+                continue
+            fi
+
+            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
             [ -d "$FILEPATH" ] && continue
             [ -L "$FILEPATH" ] && continue
 
@@ -5997,6 +6008,15 @@ __setup() {
         [ "$(id -u)" -ne 0 ] && sudo=sudo
         __setup_uppm
     fi
+
+    cat > "$MY_HOME_DIR/core/bin/base64-encode-string" <<EOF
+#!/bin/sh
+set -e
+printf '%s\n' "\$@" | base64 -w 0
+printf '\n'
+EOF
+
+    chmod +x "$MY_HOME_DIR/core/bin/base64-encode-string"
 
     success "ppkg have been succefully setup."
 }
