@@ -4088,7 +4088,7 @@ EOF
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 
-    LD_LIBRARY_DIR="$LD_LIBRARY_DIR_OLD"
+    LD_LIBRARY_PATH="$LD_LIBRARY_PATH_OLD"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
@@ -4129,10 +4129,10 @@ EOF
 
             LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath-link,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
 
-            if [ -z "$LD_LIBRARY_DIR" ] ; then
-                LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR"
+            if [ -z "$LD_LIBRARY_PATH" ] ; then
+                LD_LIBRARY_PATH="$DEP_PKG_LIBRARY_DIR"
             else
-                LD_LIBRARY_DIR="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_DIR"
+                LD_LIBRARY_PATH="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_PATH"
             fi
         fi
 
@@ -4164,7 +4164,7 @@ EOF
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
     export PKG_CONFIG_PATH
-    export LD_LIBRARY_DIR
+    export LD_LIBRARY_PATH
     export PATH
 
     if [ "$VERBOSE" = yes ] ; then
@@ -4479,13 +4479,11 @@ PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
 STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
 SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
 
-PACKAGE_INSTALL_DIR  = $PACKAGE_INSTALL_DIR
-
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
 "
-    printf '%s\n'
 
-    printf '     LD_LIBRARY_DIR = '
-    __printf_colon_separated_list "$LD_LIBRARY_DIR"
+    printf '    LD_LIBRARY_PATH = '
+    __printf_colon_separated_list "$LD_LIBRARY_PATH"
 
     printf '%s\n'
 
@@ -5905,7 +5903,7 @@ inspect_install_arguments() {
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 
-    LD_LIBRARY_DIR_OLD="$LD_LIBRARY_DIR"
+    LD_LIBRARY_PATH_OLD="$LD_LIBRARY_PATH"
 }
 
 __is_core_tools_installed() {
@@ -6146,10 +6144,10 @@ init() {
     }
 
     # https://man7.org/linux/man-pages/man8/ld.so.8.html
-    if [ -z "$LD_LIBRARY_DIR" ] ; then
-        export LD_LIBRARY_DIR="$MY_HOME_DIR/core/lib"
+    if [ -z "$LD_LIBRARY_PATH" ] ; then
+        export LD_LIBRARY_PATH="$MY_HOME_DIR/core/lib"
     else
-        export LD_LIBRARY_DIR="$MY_HOME_DIR/core/lib:$LD_LIBRARY_DIR"
+        export LD_LIBRARY_PATH="$MY_HOME_DIR/core/lib:$LD_LIBRARY_PATH"
     fi
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
@@ -6241,10 +6239,10 @@ bppend_to_ACLOCAL_PATH() {
     esac
 }
 
-bppend_to_LD_LIBRARY_DIR() {
-    case ":${LD_LIBRARY_DIR}:" in
+bppend_to_LD_LIBRARY_PATH() {
+    case ":${LD_LIBRARY_PATH}:" in
         *:"$1":*) ;;
-        *) export LD_LIBRARY_DIR="$1:$LD_LIBRARY_DIR" ;;
+        *) export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH" ;;
     esac
 }
 
@@ -6269,9 +6267,9 @@ __setup_PATH_env() {
                         bppend_to_PATH "$dir/$item/bin"
                     fi
 
-                    if [ -d "$dir/$item/lib" ] ; then
-                        bppend_to_LD_LIBRARY_DIR "$dir/$item/lib"
-                    fi
+                    # if [ -d "$dir/$item/lib" ] ; then
+                    #     bppend_to_LD_LIBRARY_PATH "$dir/$item/lib"
+                    # fi
 
                     if [ -d "$dir/$item/share/aclocal" ] ; then
                         bppend_to_ACLOCAL_PATH "$dir/$item/share/aclocal"
