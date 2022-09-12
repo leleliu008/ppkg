@@ -3426,7 +3426,8 @@ __install_the_given_package() {
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
                 note "perl module $item has been already installed."
             else
-                run cpan "$item"
+                # Would you like to configure as much as possible automatically? [yes]
+                run "printf '%s\n' 'yes' | cpan $item"
             fi
         done
     fi
