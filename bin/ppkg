@@ -3424,7 +3424,7 @@ __install_the_given_package() {
         for item in $PACKAGE_DEP_PLM
         do
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
-                info "perl module $item has been already installed."
+                note "perl module $item has been already installed."
             else
                 run cpan "$item"
             fi
