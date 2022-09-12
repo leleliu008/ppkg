@@ -4183,8 +4183,18 @@ EOF
             fi
         fi
 
+        # https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
         if [ -d "$DEP_PKG_INSTALL_DIR/share/gir-1.0" ] ; then
-            if [ -z "$ACLOCAL_PATH" ] ; then
+            if [ -z "$XDG_DATA_DIRS" ] ; then
+                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share"
+            else
+                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share:$XDG_DATA_DIRS"
+            fi
+        fi
+
+        # https://help.gnome.org/admin//system-admin-guide/2.32/mimetypes-database.html.en
+        if [ -d "$DEP_PKG_INSTALL_DIR/share/mime" ] ; then
+            if [ -z "$XDG_DATA_DIRS" ] ; then
                 XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share"
             else
                 XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share:$XDG_DATA_DIRS"
@@ -4198,7 +4208,7 @@ EOF
     export LD_LIBRARY_PATH
     export PATH
 
-    # https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
+    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
     export XDG_DATA_DIRS
 
     if [ "$VERBOSE" = yes ] ; then
@@ -6155,15 +6165,22 @@ __setup_uppm() {
 
     export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
 
-    run "$MY_HOME_DIR/core/bin/uppm env"
+    if [ -f ~/.uppm/repos.d/offical/.git/config ] ; then
+        CLONE=no
+    else
+        CLONE=yes
+    fi
 
+    run "$MY_HOME_DIR/core/bin/uppm env"
     run "$MY_HOME_DIR/core/bin/uppm update"
 
-    cat >> ~/.uppm/repos.d/offical/.git/config <<EOF
+    if [ "$CLONE" = yes ] ; then
+        cat >> ~/.uppm/repos.d/offical/.git/config <<EOF
 [user]
     email = leleliu008@gmail.com
     name = leleliu008
 EOF
+    fi
 
     for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
