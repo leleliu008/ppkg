@@ -3467,6 +3467,8 @@ __install_the_given_package() {
                         # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
                         export EXPATLIBPATH="$expat_LIBRARY_DIR"
                         export EXPATINCPATH="$expat_INCLUDE_DIR"
+                        echo EXPATLIBPATH=$EXPATLIBPATH
+                        echo EXPATINCPATH=$EXPATINCPATH
                         ;;
                 esac
 
@@ -4179,6 +4181,11 @@ EOF
             else
                 XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share:$XDG_DATA_DIRS"
             fi
+        fi
+
+        if [ "$DEP_PKG_NAME" = docbook ] ; then
+            # http://xmlsoft.org/xslt/xsltproc.html
+            export XML_CATALOG_FILES="$docbook_INSTALL_DIR/catalog.xml"
         fi
     done
 
