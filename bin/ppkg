@@ -3426,6 +3426,14 @@ __install_the_given_package() {
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
                 note "perl module $item has been already installed."
             else
+                case $item in
+                    XML::Parser)
+                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
+                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
+                        export EXPATINCPATH="$expat_INCLUDE_DIR"
+                        ;;
+                esac
+
                 # Would you like to configure as much as possible automatically? [yes]
                 run "printf '%s\n' 'yes' | cpan $item"
             fi
