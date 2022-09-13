@@ -3910,14 +3910,14 @@ __export_relevant_environment_variables() {
             esac
         fi
 
-        if [ -z "$TOOLPATH" ] ; then
-            die "$TOOLNAME is not found."
-        fi
+        # if [ -z "$TOOLPATH" ] ; then
+        #     die "$TOOLNAME is not found."
+        # fi
 
-        if [ "$TOOLNAME" != cpp ] ; then
-            [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
-            [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
-        fi
+        # if [ "$TOOLNAME" != cpp ] ; then
+        #     [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
+        #     [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
+        # fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
     done
