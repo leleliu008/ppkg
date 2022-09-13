@@ -3325,7 +3325,13 @@ __install_the_given_packages() {
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
-            (__install_the_given_package "$INSTALLING_PACKAGE")
+            (
+                # brew install meson
+                # Error: The current work directory doesn't exist, cannot proceed.
+                # beacuse previous package's work direcotory is deleted.
+                cd ~
+                __install_the_given_package "$INSTALLING_PACKAGE"
+            )
         fi
     done
 }
@@ -3334,49 +3340,11 @@ __install_the_given_packages() {
 __install_the_given_package() {
     printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
 
-    # brew install meson
-    # Error: The current work directory doesn't exist, cannot proceed.
-    # beacuse previous package's work direcotory is deleted.
-    cd ~
-
-    unset PACKAGE_INSTALLING_TOP_DIR
-    unset PACKAGE_INSTALLING_SRC_DIR
-    unset PACKAGE_INSTALLING_BST_DIR
-    unset PACKAGE_INSTALLING_FIX_DIR
-    unset PACKAGE_INSTALLING_RES_DIR
-    unset PACKAGE_INSTALLING_BIN_DIR
-    unset PACKAGE_INSTALLING_INC_DIR
-    unset PACKAGE_INSTALLING_LIB_DIR
-    unset PACKAGE_INSTALLING_TMP_DIR
-
-    unset PACKAGE_INSTALL_DIR
-
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
 
     step "load formula"
     __load_formula_of_the_given_package "$1"
-
-    #########################################################################################
-
-    if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        RECURSIVE_DEPENDENT_PACKAGES=
-    else
-        step "calculating dependency tree of $1"
-        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
-    fi
-
-    __setup_PATH_env
-
-    for PKG in $RECURSIVE_DEPENDENT_PACKAGES
-    do
-        if [ -d "$MY_INSTALL_DIR/$PKG/bin" ] ; then
-            bppend_to_PATH "$MY_INSTALL_DIR/$PKG/bin"
-        fi
-    done
-
-    echo PATH:
-    printf '%s\n' "$PATH" | tr ':' '\n'
 
     #########################################################################################
 
@@ -3393,15 +3361,83 @@ __install_the_given_package() {
     if [ -n "$PACKAGE_DEP_UPP" ] ; then
         step "install depentent tools via uppm"
 
-        run uppm env
-        run uppm update
+        # run uppm env
+
+        UPPM_NEED_UPDATE=yes
 
         for item in $PACKAGE_DEP_UPP
         do
-            run uppm install "$item"
-            bppend_to_PATH "$("$MY_HOME_DIR/core/bin/uppm" info "$item" installed-dir)/bin"
+            if uppm is-package-installed "$item" ; then
+                note "package [$item] already has been installed."
+            else
+                if [ "$UPPM_NEED_UPDATE" = yes ] ; then
+                    UPPM_NEED_UPDATE=no
+                    run uppm update
+                fi
+
+                run uppm install "$item"
+            fi
+            # bppend_to_PATH "$("$MY_HOME_DIR/core/bin/uppm" info "$item" installed-dir)/bin"
         done
     fi
+
+    #########################################################################################
+
+    step "create relevant directories"
+
+    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing/$1"
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/bin"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_INSTALLING_TOP_DIR/inc"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
+    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
+
+    if [ -z "$PACKAGE_BSCRIPT" ] ; then
+        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
+    else
+        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+    fi
+
+    rm -rf     "$PACKAGE_INSTALLING_TOP_DIR"
+
+    install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    install -d "$PACKAGE_INSTALLING_RES_DIR"
+    install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    install -d "$PACKAGE_INSTALLING_INC_DIR"
+    install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    install -d "$PACKAGE_INSTALLING_TMP_DIR"
+
+    unset PACKAGE_INSTALL_DIR
+
+    #########################################################################################
+
+    unset RECURSIVE_DEPENDENT_PACKAGES
+
+    if [ -n "$PACKAGE_DEP_PKG" ] ; then
+        step "generating dependency tree of $1"
+        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
+
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
+
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+        # __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
+        fi
+    fi
+
+    #########################################################################################
+
+    __setup_PATH_env
+    __export_relevant_environment_variables "$1"
+    __printf_relevant_environment_variables "$1"
 
     #########################################################################################
 
@@ -3462,31 +3498,6 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    step "create installing relevant directories"
-
-    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing/$1"
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/bin"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_INSTALLING_TOP_DIR/inc"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
-
-    if [ -d "$PACKAGE_INSTALLING_TOP_DIR" ] ; then
-        run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
-    fi
-
-    run install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    run install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    run install -d "$PACKAGE_INSTALLING_RES_DIR"
-    run install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    run install -d "$PACKAGE_INSTALLING_INC_DIR"
-    run install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    run install -d "$PACKAGE_INSTALLING_TMP_DIR"
-
-    #########################################################################################
-
     if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
         cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
 prepare() {
@@ -3506,38 +3517,6 @@ EOF
     fi
 
     #########################################################################################
-
-    if [ -z "$RECURSIVE_DEPENDENT_PACKAGES" ] ; then
-        step "generating dependency tree of $1"
-
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
-
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
-        # __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
-
-        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
-            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
-        fi
-    fi
-
-    #########################################################################################
-
-
-    unset PKG_CONFIG
-
-    PKG_CONFIG=$(command -v pkg-config || true)
-
-    export PKG_CONFIG
-
-    unset M4
-
-    M4=$(command -v m4 || true)
-
-    export M4
-
 
     step "fetch resources if needed"
     __fetch_sources_of_the_given_package "$1"
@@ -3615,12 +3594,6 @@ EOF
         esac
     fi
 
-    if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
-    else
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    fi
-
     step "tree files of the installing top directory"
     run tree --dirsfirst -L 2 "$PACKAGE_INSTALLING_TOP_DIR"
 
@@ -3634,9 +3607,6 @@ EOF
         step "list files of the installing build script directory"
         run ls -l "$PACKAGE_INSTALLING_BST_DIR"
     fi
-
-    __config_build_variables "$1"
-    __printf_build_variables "$1"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         ccache -s > "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
@@ -3700,8 +3670,8 @@ EOF
         note "ccache is disabled, skipped."
     fi
 
-    run ln -sf "$CC" "$PACKAGE_INSTALLING_BIN_DIR/cc"
-    run ln -sf "$LD" "$PACKAGE_INSTALLING_BIN_DIR/ld"
+    # run ln -sf "$CC" "$PACKAGE_INSTALLING_BIN_DIR/cc"
+    # run ln -sf "$LD" "$PACKAGE_INSTALLING_BIN_DIR/ld"
 
     if [ "$DRYRUN" = yes ] ; then
         if [ -z "$SHELL" ] ; then
@@ -3714,21 +3684,16 @@ EOF
         run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
     fi
 
+    step "building"
+
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
         if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
             run cd "$PACKAGE_INSTALLING_BST_DIR" || return 1
         fi
     else
-        run cd    "$PACKAGE_INSTALLING_TMP_DIR" || return 1
+            run cd "$PACKAGE_INSTALLING_TMP_DIR" || return 1
     fi
 
-    export       CC_FOR_BUILD="$CC"
-    export      CPP_FOR_BUILD="$CPP"
-    export   CFLAGS_FOR_BUILD="$CFLAGS"
-    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
-    export  LDFLAGS_FOR_BUILD="$LDFLAGS"
-
-    step "building"
     if command -v build > /dev/null ; then
         build $1
     else
@@ -3866,8 +3831,8 @@ __adjust_elf_files_for_the_given_target() {
     done
 }
 
-__config_build_variables() {
-    step "config build variables"
+__export_relevant_environment_variables() {
+    step "export relevant environment variables"
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         unset DEVELOPER_DIR
@@ -3943,9 +3908,15 @@ __config_build_variables() {
                 cpp) TOOLPATH="$CC -E" ;;
                 *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
             esac
-        else
-            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not exist."
-            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}=$TOOLPATH is not executable."
+        fi
+
+        if [ -z "$TOOLPATH" ] ; then
+            die "$TOOLNAME is not found."
+        fi
+
+        if [ "$TOOLNAME" != cpp ] ; then
+            [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
+            [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
         fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
@@ -3969,11 +3940,11 @@ EOF
 
     ##################################################################################
 
-    export WRAPPED_CC="$CC"
-    export WRAPPED_CXX="$CXX"
+    export PROXIED_CC="$CC"
+    export PROXIED_CXX="$CXX"
 
-     CC="$MY_HOME_DIR/core/bin/wrapper-cc"
-    CXX="$MY_HOME_DIR/core/bin/wrapper-c++"
+     CC="$MY_HOME_DIR/core/bin/proxy-cc"
+    CXX="$MY_HOME_DIR/core/bin/proxy-c++"
 
     cat > "$CC.c" <<EOF
 #include <stdio.h>
@@ -3982,20 +3953,20 @@ EOF
 #include <unistd.h>
 
 int main(int argc, char * argv[]) {
-    char * WRAPPED_PROGRAM = NULL;
+    char * PROXIED_PROGRAM = NULL;
 
     if (argv[0][strlen(argv[0]) - 1] == '+') {
-        WRAPPED_PROGRAM = getenv("WRAPPED_CXX");
+        PROXIED_PROGRAM = getenv("PROXIED_CXX");
 
-        if (WRAPPED_PROGRAM == NULL) {
-            fprintf(stderr, "WRAPPED_CXX environment variable is not set.\n");
+        if (PROXIED_PROGRAM == NULL) {
+            fprintf(stderr, "PROXIED_CXX environment variable is not set.\n");
             return 2;
         }
     } else {
-        WRAPPED_PROGRAM = getenv("WRAPPED_CC");
+        PROXIED_PROGRAM = getenv("PROXIED_CC");
 
-        if (WRAPPED_PROGRAM == NULL) {
-            fprintf(stderr, "WRAPPED_CC environment variable is not set.\n");
+        if (PROXIED_PROGRAM == NULL) {
+            fprintf(stderr, "PROXIED_CC environment variable is not set.\n");
             return 2;
         }
     }
@@ -4065,21 +4036,21 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    argv[0] = WRAPPED_PROGRAM;
+    argv[0] = PROXIED_PROGRAM;
 
     // for (int i = 0; argv[i] != NULL; i++) {
     //     printf("%s ", argv[i]);
     // }
     // printf("\n");
 
-    if (WRAPPED_PROGRAM[0] == '/') {
-        if (execv(WRAPPED_PROGRAM, argv) == -1) {
-            perror(WRAPPED_PROGRAM);
+    if (PROXIED_PROGRAM[0] == '/') {
+        if (execv(PROXIED_PROGRAM, argv) == -1) {
+            perror(PROXIED_PROGRAM);
             return 1;
         }
     } else {
-        if (execvp(WRAPPED_PROGRAM, argv) == -1) {
-            fprintf(stderr, "command not found: %s\b", WRAPPED_PROGRAM);
+        if (execvp(PROXIED_PROGRAM, argv) == -1) {
+            fprintf(stderr, "command not found: %s\b", PROXIED_PROGRAM);
             return 1;
         }
     }
@@ -4088,7 +4059,7 @@ int main(int argc, char * argv[]) {
 }
 EOF
 
-    run "$WRAPPED_CC" -std=c99 -o "$CC" "$CC.c"
+    run "$PROXIED_CC" -std=c99 -o "$CC" "$CC.c"
     run ln -sf "$CC" "$CXX"
 
     ##################################################################################
@@ -4448,12 +4419,40 @@ EOF
         #     x86_64)  export GOARCH=amd64 ;;
         # esac
     fi
+
+    export       CC_FOR_BUILD="$CC"
+    export      CPP_FOR_BUILD="$CPP"
+    export   CFLAGS_FOR_BUILD="$CFLAGS"
+    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
+    export  LDFLAGS_FOR_BUILD="$LDFLAGS"
+
+    unset PKG_CONFIG
+
+    PKG_CONFIG=$(command -v pkg-config || true)
+
+    export PKG_CONFIG
+
+    unset M4
+
+    M4=$(command -v m4 || true)
+
+    export M4
 }
 
-__printf_build_variables() {
-    step "printf build variables"
+__printf_relevant_environment_variables() {
+    step "printf relevant environment variables"
 
     printf '%s\n' "
+PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
+PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
+PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
+PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
+
+PACKAGE_INSTALL_DIR        = $PACKAGE_INSTALL_DIR
+
+STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
+SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
+
         BUILD_NJOBS = $BUILD_NJOBS
         BUILD_TYPE  = $BUILD_TYPE
 
@@ -4468,8 +4467,8 @@ __printf_build_variables() {
      NATIVE_OS_LIBC = $NATIVE_OS_LIBC
      NATIVE_OS_SUBS = $NATIVE_OS_SUBS
 
-        WRAPPED_CC  = $WRAPPED_CC
-        WRAPPED_CXX = $WRAPPED_CXX
+        PROXIED_CC  = $PROXIED_CC
+        PROXIED_CXX = $PROXIED_CXX
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
@@ -4498,21 +4497,22 @@ __printf_build_variables() {
 
     printf '%s\n'
 
-    printf '  PKG_CONFIG        = %s\n' "$PKG_CONFIG"
+    printf 'PKG_CONFIG          = %s\n' "$PKG_CONFIG"
 
-    printf '  PKG_CONFIG_PATH   = '
+    printf 'PKG_CONFIG_PATH     = '
     __printf_colon_separated_list "$PKG_CONFIG_PATH"
 
     printf '%s\n'
 
-    printf '  PKG_CONFIG_LIBDIR = '
+    printf 'PKG_CONFIG_LIBDIR   = '
     __printf_colon_separated_list "$PKG_CONFIG_LIBDIR"
 
     printf '%s\n'
 
-    printf '  PKG_CONFIG_DEBUG_SPEW = %s\n' "$PKG_CONFIG_DEBUG_SPEW"
+    printf 'PKG_CONFIG_DEBUG_SPEW= %s\n\n' "$PKG_CONFIG_DEBUG_SPEW"
 
-    printf '%s\n'
+    printf '    LD_LIBRARY_PATH = '
+    __printf_colon_separated_list "$LD_LIBRARY_PATH"
 
     printf "\n%19s = " PATH
     __printf_colon_separated_list "$PATH"
@@ -4521,33 +4521,6 @@ __printf_build_variables() {
         printf '%s\n'
         env | sed -n '/^CMAKE_/p'
     fi
-
-    printf '%s\n' "
-
-PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
-PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
-PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
-PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
-
-STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
-SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
-
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-"
-
-    printf '    LD_LIBRARY_PATH = '
-    __printf_colon_separated_list "$LD_LIBRARY_PATH"
-
-    printf '%s\n'
-
-    step "list PATH"
-    IFS_OLD=$IFS
-    IFS=':'
-    for item in $PATH
-    do
-        printf '%s\n' "$item"
-    done
-    IFS=$IFS_OLD
 
     if [ "$VERBOSE" = yes ] ; then
         step "show export variables"
