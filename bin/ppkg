@@ -5999,6 +5999,12 @@ __setup() {
         NATIVE_OS_ARCH=arm64
     fi
 
+    if [ "$(id -u)" -ne 0 ] ; then
+        sudo=sudo
+    else
+        unset sudo
+    fi
+
     #################################################################################
 
     if [ "$1" = '--use-system-package-manager' ] ; then
@@ -6036,7 +6042,6 @@ __setup() {
 
         ln -s /usr/bin/true "$MY_HOME_DIR/core/bin/uppm"
     else
-        [ "$(id -u)" -ne 0 ] && sudo=sudo
         __setup_uppm
     fi
 
