@@ -6088,7 +6088,7 @@ __setup_freebsd() {
 
 __setup_openbsd() {
     run $sudo pkg_add update
-    run $sudo pkg_add -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip gtar gzip lzip patch patchelf pkgconf go yq git curl cmake gcc ninja gmake libtool
 }
 
 __setup__netbsd() {
