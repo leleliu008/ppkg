@@ -6088,12 +6088,12 @@ __setup_freebsd() {
 
 __setup_openbsd() {
     run $sudo pkg_add update
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip gtar gzip lzip patch patchelf pkgconf go yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip gtar gzip lzip gpatch patchelf pkgconf go git curl cmake gcc ninja gmake libtool
 }
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install -y bash findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake gcc ninja gmake libtool
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkgconf go git curl cmake llvm ninja-build gmake libtool
 }
 
 __setup_uppm() {
