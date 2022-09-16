@@ -6040,7 +6040,9 @@ __setup() {
             *) die "$(uname -s) is not supported yet."
         esac
 
-        ln -s /usr/bin/true "$MY_HOME_DIR/core/bin/uppm"
+        ln -sf /usr/bin/true "$MY_HOME_DIR/core/bin/uppm"
+
+        __setup_yq
     else
         __setup_uppm
     fi
@@ -6058,8 +6060,6 @@ EOF
 }
 
 __setup_ubuntu() {
-    run $sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
-    run $sudo add-apt-repository ppa:rmescandon/yq
     run $sudo apt -y update
     run $sudo apt -y install bash findutils gawk sed grep tree unzip tar gzip lzip patch patchelf pkg-config golang git curl cmake g++ ninja-build make libtool yq
 }
@@ -6096,6 +6096,41 @@ __setup__netbsd() {
     run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkgconf go git curl cmake llvm ninja-build gmake libtool
 }
 
+__setup_yq() {
+    # https://github.com/mikefarah/yq/releases
+
+    unset YQ_URL
+    unset YQ_SHA
+
+    case $NATIVE_OS_KIND in
+        linux)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
+            YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+            ;;
+        macos)
+            ;;
+        freebsd)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
+            YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
+            ;;
+        openbsd)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_openbsd_amd64'
+            YQ_SHA='2c3c42137b7bff40b7f592d13923f5d3fcd8f91e8f54131c3c4059bd6890283c'
+            ;;
+        netbsd)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
+            YQ_SHA='cad6dcd7449e11868eadb122bca6be5ec8a0918f822528e1e7c845d4ca637492'
+            ;;
+        *)  die "$(uname -s) is not supported yet."
+    esac
+
+    if [ -n "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
+        fetch $YQ_URL --sha256=$YQ_SHA --output-dir="$MY_HOME_DIR/core/bin"
+        run chmod +x "$FETCH_OUTPUT_PATH"
+        run mv "$FETCH_OUTPUT_PATH" "$MY_HOME_DIR/core/bin/yq"
+    fi
+}
+
 __setup_uppm() {
     unset FETCH_TOOL
 
@@ -6126,6 +6161,7 @@ __setup_uppm() {
 
     CORE_TOOL_BASE_URL="https://github.com/leleliu008/ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH/releases/download/$CORE_TOOL_VERSION"
 
+    unset SETUP_WORKING_DIR
     SETUP_WORKING_DIR=$(mktemp -d)
 
     # https://curl.se/docs/caextract.html
