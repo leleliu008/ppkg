@@ -6338,27 +6338,26 @@ __setup_PATH_env() {
         .   "$HOME/.cargo/env"
     fi
 
-    for dir in "$HOME/.uppm/installed"
-    do
-        if [ -d "$dir" ] ; then
-            for item in $(ls "$dir")
-            do
-                if [ -d "$dir/$item" ] && [ -f "$dir/$item/installed-metadata-uppm" ] ; then
-                    if [ -d "$dir/$item/bin" ] ; then
-                        bppend_to_PATH "$dir/$item/bin"
-                    fi
+    UPPM_INSTALLED_PACKAGES_DIR="$HOME/.uppm/installed"
 
-                    # if [ -d "$dir/$item/lib" ] ; then
-                    #     bppend_to_LD_LIBRARY_PATH "$dir/$item/lib"
-                    # fi
-
-                    if [ -d "$dir/$item/share/aclocal" ] ; then
-                        bppend_to_ACLOCAL_PATH "$dir/$item/share/aclocal"
-                    fi
+    if [ -d "$UPPM_INSTALLED_PACKAGES_DIR" ] ; then
+        for item in $(ls "$UPPM_INSTALLED_PACKAGES_DIR")
+        do
+            if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item" ] && [ -f "$UPPM_INSTALLED_PACKAGES_DIR/$item/installed-metadata-uppm" ] ; then
+                if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin" ] ; then
+                    bppend_to_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin"
                 fi
-            done
-        fi
-    done
+
+                # if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/lib" ] ; then
+                #     bppend_to_LD_LIBRARY_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/lib"
+                # fi
+
+                if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal" ] ; then
+                    bppend_to_ACLOCAL_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal"
+                fi
+            fi
+        done
+    fi
 
     bppend_to_PATH "$MY_HOME_DIR/core/bin"
 }
@@ -6548,7 +6547,7 @@ main() {
     done
 
     case $1 in
-        ''|--help|-h) 
+        ''|--help|-h)
             help
             return 0
             ;;
