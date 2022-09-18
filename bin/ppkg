@@ -4444,6 +4444,12 @@ EOF
     M4=$(command -v m4 || true)
 
     export M4
+
+    # https://github.com/mesonbuild/meson/issues/5390
+    if [ "$NATIVE_OS_KIND" = openbsd ] ; then
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
+    fi
 }
 
 __printf_relevant_environment_variables() {
@@ -6087,8 +6093,7 @@ __setup_freebsd() {
 }
 
 __setup_openbsd() {
-    run $sudo pkg_add update
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip gtar gzip lzip gpatch patchelf pkgconf go git curl cmake gcc ninja gmake libtool
+    run $sudo pkg_add -u bash coreutils findutils gawk gsed ggrep tree unzip gtar gzip xz bzip2 lzip gpatch patchelf pkgconf go git curl cmake gcc ninja gmake libtool
 }
 
 __setup__netbsd() {
