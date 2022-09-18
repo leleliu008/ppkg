@@ -3836,6 +3836,8 @@ __adjust_elf_files_for_the_given_target() {
 __export_relevant_environment_variables() {
     step "export relevant environment variables"
 
+    CCFLAGS="$CFLAGS -fPIC -fno-common"
+
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         unset DEVELOPER_DIR
 
@@ -3862,16 +3864,16 @@ __export_relevant_environment_variables() {
             SYSROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
         fi
 
-         CCFLAGS="-isysroot $SYSROOT -Qunused-arguments"
-        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
-         LDFLAGS="-isysroot $SYSROOT"
+        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments $CPPFLAGS"
+         CCFLAGS="-isysroot $SYSROOT -Qunused-arguments  $CCFLAGS"
+         LDFLAGS="-isysroot $SYSROOT $LDFLAGS"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
             if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
                 CMAKE_EXE_LINKER_FLAGS=-static
 
-                export  CFLAGS="$(printf '%s\n'  "$CFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-                export LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+                CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+                LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
             else
                 CCFLAGS="$CCFLAGS -static --static"
                 LDFLAGS="$LDFLAGS -static --static"
@@ -3882,8 +3884,6 @@ __export_relevant_environment_variables() {
 
         LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
-
-    CCFLAGS="$CFLAGS -fPIC -fno-common"
 
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
