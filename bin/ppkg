@@ -3875,7 +3875,7 @@ __export_relevant_environment_variables() {
                 CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
                 LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
             else
-                CCFLAGS="$CCFLAGS -static --static"
+                # CCFLAGS="$CCFLAGS -static --static"
                 LDFLAGS="$LDFLAGS -static --static"
             fi
         fi
@@ -3886,12 +3886,13 @@ __export_relevant_environment_variables() {
     fi
 
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        CCFLAGS="$CCFLAGS -v -Wl,-v"
-        LDFLAGS="$LDFLAGS -v -Wl,-v"
+        CCFLAGS="$CCFLAGS -v"
+        LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
-        CCFLAGS="$CCFLAGS -Os -DNDEBUG"
+       CPPFLAGS="$CPPFLAGS -DNDEBUG"
+        CCFLAGS="$CCFLAGS -Os"
         LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
@@ -4449,6 +4450,7 @@ EOF
     if [ "$NATIVE_OS_KIND" = openbsd ] ; then
         printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
         printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
 
         LDFLAGS="$LDFLAGS -pthread"
     fi
