@@ -3720,7 +3720,7 @@ EOF
     step "install logs"
     __install_logs "$1"
 
-    if [ "$NATIVE_OS_KIND" = linux ] ; then
+    if [ "$NATIVE_OS_KIND" != darwin ] ; then
         step2 "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_elf_files_for_the_given_target $@
     fi
@@ -3759,6 +3759,8 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
+    unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
+
     BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
 
     for x in bin sbin lib libexec
@@ -3793,10 +3795,14 @@ __adjust_elf_files_for_the_given_target() {
                     unset DT_NEEDED
                     DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
 
-                    if [ -n "$DT_NEEDED" ] ; then
-                        unset DT_RUNPATH
-                        DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
+                    unset DT_RUNPATH
+                    DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
 
+                    if [ -z "$DT_NEEDED" ] ; then
+                        if [ -n "$DT_RUNPATH" ] ; then
+                            run patchelf --remove-rpath "$FILEPATH"
+                        fi
+                    else
                         for NEEDED in $DT_NEEDED
                         do
                             case $NEEDED in
@@ -3836,17 +3842,49 @@ __adjust_elf_files_for_the_given_target() {
 __export_relevant_environment_variables() {
     step "export relevant environment variables"
 
-    CCFLAGS="$CFLAGS -fPIC -fno-common"
+    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE_NAME"
+
+    STATIC_LIBRARY_SUFFIX=.a
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        unset DEVELOPER_DIR
+        SHARED_LIBRARY_SUFFIX=.dylib
+    else
+        SHARED_LIBRARY_SUFFIX=.so
+    fi
 
-        DEVELOPER_DIR="$(xcode-select -p)"
+    CCFLAGS="$CFLAGS"
+    XXFLAGS="$CXXFLAGS"
 
-        if [ -d         "$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin" ] ; then
-            export PATH="$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+    for item in $PACKAGE_CDEFINE
+    do
+        CPPFLAGS="$CPPFLAGS -D$item"
+    done
+
+    if [ -n "$PACKAGE_CCFLAGS" ] ; then
+        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS -fPIC -fno-common"
+    fi
+
+    if [ -n "$PACKAGE_XXFLAGS" ] ; then
+        XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS -fPIC -fno-common"
+    fi
+
+    if [ -n "$PACKAGE_LDFLAGS" ] ; then
+        LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+    fi
+
+    CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+    XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+    LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+
+    ##################################################################################
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        unset DEVELOPER_DIR; DEVELOPER_DIR="$(xcode-select -p)"
+
+        if [ -d  "$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin" ] ; then
+            PATH="$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
         else
-            export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+            PATH="$DEVELOPER_DIR/usr/bin:$PATH"
         fi
 
         # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
@@ -3866,33 +3904,26 @@ __export_relevant_environment_variables() {
 
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments $CPPFLAGS"
          CCFLAGS="-isysroot $SYSROOT -Qunused-arguments  $CCFLAGS"
+         XXFLAGS="-isysroot $SYSROOT -Qunused-arguments  $CCFLAGS"
          LDFLAGS="-isysroot $SYSROOT $LDFLAGS"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
-            if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
-                CMAKE_EXE_LINKER_FLAGS=-static
-
-                CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-                LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-            else
-                # CCFLAGS="$CCFLAGS -static --static"
-                LDFLAGS="$LDFLAGS -static --static"
-            fi
+            LDFLAGS="-static --static $LDFLAGS"
         fi
-
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-
         LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         CCFLAGS="$CCFLAGS -v"
+        XXFLAGS="$XXFLAGS -v"
         LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
        CPPFLAGS="$CPPFLAGS -DNDEBUG"
         CCFLAGS="$CCFLAGS -Os"
+        XXFLAGS="$XXFLAGS -Os"
         LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
@@ -3936,9 +3967,18 @@ int main() {
     return 0;
 }
 EOF
+    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.cc" <<EOF
+int main() {
+    return 0;
+}
+EOF
 
-    if "$CC" -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+    if "$CC"  -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
+    fi
+
+    if "$CXX" -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
+        XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
     fi
 
     ##################################################################################
@@ -4067,23 +4107,6 @@ EOF
 
     ##################################################################################
 
-    for item in $PACKAGE_CDEFINE
-    do
-        CPPFLAGS="$CPPFLAGS -D$item"
-    done
-
-    if [ -n "$PACKAGE_CCFLAGS" ] ; then
-        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
-    fi
-
-    if [ -n "$PACKAGE_LDFLAGS" ] ; then
-        LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
-    fi
-
-    if [ "$VERBOSE" = yes ] ; then
-        export PKG_CONFIG_DEBUG_SPEW=set
-    fi
-
     LD_LIBRARY_PATH="$LD_LIBRARY_PATH_OLD"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
@@ -4190,39 +4213,52 @@ EOF
         fi
     done
 
+    CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
+     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+
+    export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
     export PKG_CONFIG_PATH
     export LD_LIBRARY_PATH
-    export PATH
 
     # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
     export XDG_DATA_DIRS
 
-    if [ "$VERBOSE" = yes ] ; then
-        CCFLAGS="$CCFLAGS -v"
+    # https://github.com/mesonbuild/meson/issues/5390
+    if [ "$NATIVE_OS_KIND" = openbsd ] ; then
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
+        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
+
+        LDFLAGS="$LDFLAGS -pthread"
     fi
 
-      CFLAGS="$CCFLAGS"
-    CXXFLAGS="$CCFLAGS"
+    export   CFLAGS="$CCFLAGS"
+    export CXXFLAGS="$XXFLAGS"
+    export CPPFLAGS="$CPPFLAGS"
+    export  LDFLAGS="$LDFLAGS"
 
-    if [ -n "$PACKAGE_XXFLAGS" ] ; then
-        CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
-    fi
+    export       CC_FOR_BUILD="$CC"
+    export      CXX_FOR_BUILD="$CXX"
+    export      CPP_FOR_BUILD="$CPP"
+    export   CFLAGS_FOR_BUILD="$CFLAGS"
+    export CXXFLAGS_FOR_BUILD="$CXXFLAGS"
+    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
+    export  LDFLAGS_FOR_BUILD="$LDFLAGS"
 
-    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE_NAME"
+    unset PKG_CONFIG
 
-    STATIC_LIBRARY_SUFFIX=.a
+    PKG_CONFIG=$(command -v pkg-config || true)
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        SHARED_LIBRARY_SUFFIX=.dylib
-    else
-        SHARED_LIBRARY_SUFFIX=.so
-    fi
+    export PKG_CONFIG
 
-    CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
-     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
-    export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+    unset M4
+
+    M4=$(command -v m4 || true)
+
+    export M4
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
@@ -4428,31 +4464,8 @@ EOF
         # esac
     fi
 
-    export       CC_FOR_BUILD="$CC"
-    export      CPP_FOR_BUILD="$CPP"
-    export   CFLAGS_FOR_BUILD="$CFLAGS"
-    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
-    export  LDFLAGS_FOR_BUILD="$LDFLAGS"
-
-    unset PKG_CONFIG
-
-    PKG_CONFIG=$(command -v pkg-config || true)
-
-    export PKG_CONFIG
-
-    unset M4
-
-    M4=$(command -v m4 || true)
-
-    export M4
-
-    # https://github.com/mesonbuild/meson/issues/5390
-    if [ "$NATIVE_OS_KIND" = openbsd ] ; then
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
-
-        LDFLAGS="$LDFLAGS -pthread"
+    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+        export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
 
@@ -4539,7 +4552,7 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
         env | sed -n '/^CMAKE_/p'
     fi
 
-    if [ "$VERBOSE" = yes ] ; then
+    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         step "show export variables"
         run export -p
         echo
@@ -5338,8 +5351,8 @@ gow() {
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
-    if [ "$NATIVE_OS_KIND" = linux ] ; then
-        if [ "$LINKE_TYPE" = static-only ] ; then
+    if [ "$NATIVE_OS_KIND" != darwin ] ; then
+        if [ "$LINK_TYPE" = static-only ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
     fi
@@ -5584,13 +5597,21 @@ endif()
 set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
 
 set(CMAKE_C_COMPILER "$CC")
-set(CMAKE_C_FLAGS "$CFLAGS $CPPFLAGS $LDFLAGS")
-set(CMAKE_EXE_LINKER_FLAGS $CMAKE_EXE_LINKER_FLAGS)
+set(CMAKE_C_FLAGS "$CPPFLAGS $CFLAGS")
 
 set(CMAKE_CXX_COMPILER "$CXX")
-set(CMAKE_CXX_FLAGS "$CXXFLAGS $CPPFLAGS $LDFLAGS")
+set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
 
 set(CMAKE_ASM_COMPILER "$CC")
+
+set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
+
+set(CMAKE_C_COMPILER_AR     "$AR")
+set(CMAKE_C_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_CXX_COMPILER_AR     "$AR")
+set(CMAKE_CXX_COMPILER_RANLIB "$RANLIB")
 
 set(CMAKE_AR      "$AR")
 set(CMAKE_RANLIB  "$RANLIB")
@@ -6057,7 +6078,12 @@ __setup() {
     cat > "$MY_CORE_BIN_DIR/base64-encode-string" <<EOF
 #!/bin/sh
 set -e
-printf '%s\n' "\$@" | base64 -w 0
+
+if [ -z "\$BASE64_COMMAND" ] ; then
+    BASE64_COMMAND=base64
+fi
+
+printf '%s\n' "\$@" | "\$BASE64_COMMAND" -w 0
 printf '\n'
 EOF
 
@@ -6097,11 +6123,13 @@ __setup_openbsd() {
     # https://man.openbsd.org/pkg_add
     run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip-- gtar-- xz bzip2 lzip gpatch patchelf pkgconf go git curl cmake gcc%11 ninja gmake libtool
 
-    run ln -sf /usr/local/bin/gtar  "$MY_CORE_BIN_DIR/tar"
-    run ln -sf /usr/local/bin/gsed  "$MY_CORE_BIN_DIR/sed"
-    run ln -sf /usr/local/bin/gawk  "$MY_CORE_BIN_DIR/awk"
-    run ln -sf /usr/local/bin/ggrep "$MY_CORE_BIN_DIR/grep"
-    run ln -sf /usr/local/bin/gmake "$MY_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
+    run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
+    run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
+    run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
 }
 
 __setup__netbsd() {
