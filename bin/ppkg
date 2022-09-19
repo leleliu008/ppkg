@@ -3852,8 +3852,8 @@ __export_relevant_environment_variables() {
         SHARED_LIBRARY_SUFFIX=.so
     fi
 
-    CCFLAGS="$CFLAGS"
-    XXFLAGS="$CXXFLAGS"
+    CCFLAGS="-fPIC -fno-common $CFLAGS"
+    XXFLAGS="-fPIC -fno-common $CXXFLAGS"
 
     for item in $PACKAGE_CDEFINE
     do
@@ -3861,11 +3861,11 @@ __export_relevant_environment_variables() {
     done
 
     if [ -n "$PACKAGE_CCFLAGS" ] ; then
-        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS -fPIC -fno-common"
+        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     fi
 
     if [ -n "$PACKAGE_XXFLAGS" ] ; then
-        XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS -fPIC -fno-common"
+        XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
     fi
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
