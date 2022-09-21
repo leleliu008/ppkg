@@ -3725,7 +3725,7 @@ EOF
         __adjust_elf_files_for_the_given_target $@
     fi
 
-    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+    if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
         step2 "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_la_files_for_the_given_target $@
 
@@ -3973,11 +3973,11 @@ int main() {
 }
 EOF
 
-    if "$CC"  -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+    if "$CC"  -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
     fi
 
-    if "$CXX" -Wno-error=unused-command-line-argument "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
+    if "$CXX" -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
         XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
     fi
 
@@ -4250,7 +4250,7 @@ EOF
 
     unset PKG_CONFIG
 
-    PKG_CONFIG=$(command -v pkg-config || true)
+    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf || true)
 
     export PKG_CONFIG
 
@@ -4637,6 +4637,13 @@ __adjust_pc_files_for_the_given_target() {
             else
                 sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
             fi
+        fi
+
+        # https://github.com/mesonbuild/meson/issues/5390
+        if [ "$NATIVE_OS_KIND" = openbsd ] ; then
+            sed_in_place '/Libs:/s|-ldl||g'    "$pcfile"
+            sed_in_place '/Libs:/s|-lrt||g'    "$pcfile"
+            sed_in_place '/Libs:/s|-lcrypt||g' "$pcfile"
         fi
     done
 }
@@ -6121,7 +6128,10 @@ __setup_freebsd() {
 
 __setup_openbsd() {
     # https://man.openbsd.org/pkg_add
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep tree unzip-- gtar-- xz bzip2 lzip gpatch patchelf pkgconf go git curl cmake gcc%11 ninja gmake libtool
+    case $(uname -r) in
+        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc ;;
+        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf
+    esac
 
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
