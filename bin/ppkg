@@ -4226,14 +4226,21 @@ EOF
     # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
     export XDG_DATA_DIRS
 
-    # https://github.com/mesonbuild/meson/issues/5390
-    if [ "$NATIVE_OS_KIND" = openbsd ] ; then
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
-        printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
+    case $NATIVE_OS_KIND in
+        netbsd)
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
 
-        LDFLAGS="$LDFLAGS -pthread"
-    fi
+            LDFLAGS="$LDFLAGS -pthread"
+            ;;
+        openbsd)
+            # https://github.com/mesonbuild/meson/issues/5390
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
+
+            LDFLAGS="$LDFLAGS -pthread"
+            ;;
+    esac
 
     export   CFLAGS="$CCFLAGS"
     export CXXFLAGS="$XXFLAGS"
