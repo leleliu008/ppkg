@@ -3787,7 +3787,7 @@ __adjust_elf_files_for_the_given_target() {
             FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
 
             case $FILE_HEADER_ACTUAL in
-                7F454C460[12]01010000000000000000000[23])
+                7F454C460[12]01010[09]00000000000000000[23])
                     # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                     # unset PT_INTERP
                     # PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
@@ -4380,9 +4380,11 @@ EOF
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
-        if [ "$LINK_TYPE" = static-only ] && [ "$NATIVE_OS_LIBC" = musl ] ; then
-            echo 'INPUT(-lc)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
-            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+        if [ "$LINK_TYPE" = 'static-only' ] ; then
+            if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+                echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+            fi
         fi
 
         # https://libraries.io/cargo/cc
@@ -4390,18 +4392,18 @@ EOF
         # https://docs.rs/cc/latest/cc/
         # https://github.com/alexcrichton/cc-rs
         export HOST_CC="$CC"
-        export HOST_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
+        export HOST_CFLAGS="$CFLAGS $CPPFLAGS"
 
         export HOST_CXX="$CXX"
-        export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
+        export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
 
         export HOST_AR="$AR"
 
         export TARGET_CC="$CC"
-        export TARGET_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
+        export TARGET_CFLAGS="$CFLAGS $CPPFLAGS"
 
         export TARGET_CXX="$CXX"
-        export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
+        export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
 
         export TARGET_AR="$AR"
 

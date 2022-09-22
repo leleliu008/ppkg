@@ -23,19 +23,17 @@ int main(int argc, char * argv[]) {
     }
 
     if (argc > 1) {
-        const char * options[4] = { "-shared", "-static", "--static", "-Wl,-Bdynamic" };
-              int    indexes[4] = {    -1,         -1,        -1,            -1       };
-
-        int lastIndex = argc - 1;
+        const char * options[5] = { "-shared", "-static", "--static", "-Wl,-Bdynamic", "-pie" };
+              int    indexes[5] = {    -1,         -1,        -1,            -1,         -1   };
 
         for (int i = 1; i < argc; i++) {
-            for (int j = 0; j < 4; j++) {
+            for (int j = 0; j < 5; j++) {
                 if (strcmp(argv[i], options[j]) == 0) {
                     indexes[j] = i;
                 }
 
                 if (indexes[0] > 0) {
-                    if ((indexes[1] > 0) && (indexes[2] > 0)) {
+                    if ((indexes[1] > 0) && (indexes[2] > 0) && (indexes[4] > 0)) {
                         goto lable;
                     }
                 }
@@ -43,45 +41,31 @@ int main(int argc, char * argv[]) {
         }
 
         lable:
-        // printf("      -shared = %d\n", indexes[0]);
-        // printf("      -static = %d\n", indexes[1]);
-        // printf("     --static = %d\n", indexes[2]);
-        // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
+         printf("      -shared = %d\n", indexes[0]);
+         printf("      -static = %d\n", indexes[1]);
+         printf("     --static = %d\n", indexes[2]);
+         printf("-Wl,-Bdynamic = %d\n", indexes[3]);
+         printf("         -pie = %d\n", indexes[4]);
 
-        // if -shared option is passed, then remove -static and --static options if they also are passed
+        // if -shared option is passed, then remove -static , --static , -pie options if they also are passed
         if (indexes[0] > 0) {
             if (indexes[1] > 0) {
-                for (int i = indexes[1]; i < lastIndex; i++) {
-                    argv[i] = argv[i + 1];
-                }
-
-                argv[lastIndex] = NULL;
-                lastIndex -= 1;
-
-                if (indexes[2] > indexes[1]) {
-                    indexes[2] -= 1;
-                }
+                argv[indexes[1]] = (char*)"-shared";
             }
-
             if (indexes[2] > 0) {
-                for (int i = indexes[2]; i < lastIndex; i++) {
-                    argv[i] = argv[i + 1];
-                }
-                argv[lastIndex] = NULL;
+                argv[indexes[2]] = (char*)"-shared";
+            }
+            if (indexes[4] > 0) {
+                argv[indexes[4]] = (char*)"-shared";
             }
         } else {
-            // if -shared option is not passed, but -static or --static option is passed, then remove -Wl,-Bdynamic option if it also is passed
-            if (indexes[3] > 0) {
-                if (indexes[1] > 0) {
-                    for (int i = indexes[3]; i < lastIndex; i++) {
-                        argv[i] = argv[i + 1];
-                    }
-                    argv[lastIndex] = NULL;
-                } else if (indexes[2] > 0) {
-                    for (int i = indexes[3]; i < lastIndex; i++) {
-                        argv[i] = argv[i + 1];
-                    }
-                    argv[lastIndex] = NULL;
+            // if -shared option is not passed, but -static or --static option is passed, then remove -pie , -Wl,-Bdynamic option if it also is passed
+            if ((indexes[1] > 0) || (indexes[2] > 0)) {
+                if (indexes[3] > 0) {
+                    argv[indexes[3]] = (char*)"-static";
+                }
+                if (indexes[4] > 0) {
+                    argv[indexes[4]] = (char*)"-static";
                 }
             }
         }
@@ -89,10 +73,10 @@ int main(int argc, char * argv[]) {
 
     argv[0] = PROXIED_PROGRAM;
 
-    // for (int i = 0; argv[i] != NULL; i++) {
-    //     printf("%s ", argv[i]);
-    // }
-    // printf("\n");
+     for (int i = 0; argv[i] != NULL; i++) {
+         printf("%s ", argv[i]);
+     }
+     printf("\n");
 
     if (PROXIED_PROGRAM[0] == '/') {
         if (execv(PROXIED_PROGRAM, argv) == -1) {
