@@ -41,11 +41,11 @@ int main(int argc, char * argv[]) {
         }
 
         lable:
-         printf("      -shared = %d\n", indexes[0]);
-         printf("      -static = %d\n", indexes[1]);
-         printf("     --static = %d\n", indexes[2]);
-         printf("-Wl,-Bdynamic = %d\n", indexes[3]);
-         printf("         -pie = %d\n", indexes[4]);
+        // printf("      -shared = %d\n", indexes[0]);
+        // printf("      -static = %d\n", indexes[1]);
+        // printf("     --static = %d\n", indexes[2]);
+        // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
+        // printf("         -pie = %d\n", indexes[4]);
 
         // if -shared option is passed, then remove -static , --static , -pie options if they also are passed
         if (indexes[0] > 0) {
@@ -73,10 +73,10 @@ int main(int argc, char * argv[]) {
 
     argv[0] = PROXIED_PROGRAM;
 
-     for (int i = 0; argv[i] != NULL; i++) {
-         printf("%s ", argv[i]);
-     }
-     printf("\n");
+    // for (int i = 0; argv[i] != NULL; i++) {
+    //     printf("%s ", argv[i]);
+    // }
+    // printf("\n");
 
     if (PROXIED_PROGRAM[0] == '/') {
         if (execv(PROXIED_PROGRAM, argv) == -1) {
