@@ -390,10 +390,10 @@ sha256sum() {
             return 1
         }
 
-        if command -v openssl > /dev/null ; then
-             openssl sha256    "$1" | cut -d ' ' -f2
-        elif echo | command sha256sum > /dev/null 2>&1 ; then
+        if echo | command sha256sum > /dev/null 2>&1 ; then
              command sha256sum "$1" | cut -d ' ' -f1
+        elif command -v openssl > /dev/null ; then
+             openssl sha256    "$1" | cut -d ' ' -f2
         else
             error "sha256sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
             return 1
@@ -4368,7 +4368,7 @@ EOF
 
             freebsd-amd64)  RUST_TARGET=x86_64-unknown-freebsd ;;
 
-            netbsd-x86_64)  RUST_TARGET=x86_64-unknown-netbsd  ;;
+            netbsd-amd64)   RUST_TARGET=x86_64-unknown-netbsd  ;;
         esac
 
         
@@ -5368,7 +5368,7 @@ gow() {
     fi
 
     if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        if [ "$LINK_TYPE" = static-only ] ; then
+        if [ "$LINK_TYPE" = static-only ] && [ "$CGO_ENABLED" -eq 1 ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
     fi
@@ -6170,6 +6170,7 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/gmake    "$MY_CORE_BIN_DIR/make"
     run ln -sf /usr/pkg/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
     run ln -sf /usr/pkg/bin/ginstall "$MY_CORE_BIN_DIR/install"
+    run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
 }
 
 __setup_yq() {
