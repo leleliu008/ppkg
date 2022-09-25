@@ -4084,7 +4084,7 @@ int main(int argc, char * argv[]) {
 }
 EOF
 
-    run "$PROXIED_CC" -std=c99 -o "$CC" "$CC.c"
+    run $PROXIED_CC $CPPFLAGS -std=c99 -o "$CC" "$CC.c"
     run ln -sf "$CC" "$CXX"
 
     ##################################################################################
