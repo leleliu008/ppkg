@@ -3971,11 +3971,11 @@ int main() {
 }
 EOF
 
-    if "$CC"  -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+    if $CC  $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
     fi
 
-    if "$CXX" -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
+    if $CXX $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
         XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
     fi
 
@@ -6105,7 +6105,7 @@ __setup_macos() {
         XX="$MY_HOME_DIR/homebrew-install.sh"
         run rm -f   "$XX"
         run curl -o "$XX" -L 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh'
-        run bash    "$XX"
+        run "yes | bash $XX"
     }
 
     run brew update
