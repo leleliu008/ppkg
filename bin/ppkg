@@ -2675,8 +2675,6 @@ __compare_versions_with_brew() {
             freetype2)printf '%s\n' 'freetype'  ;;
             freetype2-with-harfbuzz)
                       printf '%s\n' 'freetype'  ;;
-            gnu-coreutils)
-                      printf '%s\n' 'coreutils' ;;
             libmediainfo|mediainfo)
                       printf '%s\n' 'media-info';;
             tcl-core) printf '%s\n' 'tcl-tk'    ;;
@@ -5973,7 +5971,7 @@ inspect_install_arguments() {
 __is_core_tools_installed() {
     [ -e "$MY_CORE_BIN_DIR/uppm" ] || return 1
 
-    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         "$MY_CORE_BIN_DIR/uppm" is-package-installed "$item" || return 1
     done
@@ -6273,7 +6271,7 @@ __setup_uppm() {
 EOF
     fi
 
-    for item in bash gnu-coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         run "$MY_CORE_BIN_DIR/uppm install $item"
     done
