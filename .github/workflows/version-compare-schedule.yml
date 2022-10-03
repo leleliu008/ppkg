@@ -15,6 +15,7 @@ jobs:
 
     steps:
       - run: brew update
+      - run: brew unlink go@1.17
 
       - uses: actions/checkout@v3
 
