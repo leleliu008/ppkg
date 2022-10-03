@@ -3718,7 +3718,10 @@ EOF
     step "install logs"
     __install_logs "$1"
 
-    if [ "$NATIVE_OS_KIND" != darwin ] ; then
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        step2 "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_mach_o_files_for_the_given_target $@
+    else
         step2 "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_elf_files_for_the_given_target $@
     fi
@@ -3779,7 +3782,6 @@ __adjust_elf_files_for_the_given_target() {
             [ -d "$FILEPATH" ] && continue
             [ -L "$FILEPATH" ] && continue
 
-            unset FILE_HEADER_EXPACT
             unset FILE_HEADER_ACTUAL
 
             FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
@@ -3833,6 +3835,75 @@ __adjust_elf_files_for_the_given_target() {
                         fi
                     fi
             esac
+        done
+    done
+}
+
+__adjust_mach_o_files_for_the_given_target() {
+    unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
+
+    BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
+
+    for x in bin sbin lib libexec
+    do
+        [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
+
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
+        do
+            unset BASE64_DECODED_RELATIVE_FILEPATH
+            BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
+
+            if [ "$BASE64_DECODED_RELATIVE_FILEPATH" = '.' ] ; then
+                continue
+            fi
+
+            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+            [ -d "$FILEPATH" ] && continue
+            [ -L "$FILEPATH" ] && continue
+
+            unset FILE_HEADER_ACTUAL
+
+            FILE_HEADER_ACTUAL="$(hexdump -n 16 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+
+            # https://github.com/aidansteele/osx-abi-macho-file-format-reference
+            case $FILE_HEADER_ACTUAL in
+                CFFAEDFE0C000001000000000[26]000000)
+                    # arm64
+                    ;;
+                CFFAEDFE07000001030000000[26]000000)
+                    # x86_64
+                    ;;
+                *)  continue
+            esac
+
+            unset DT_NEEDED
+            DT_NEEDED=$(otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+
+            unset DT_RUNPATH
+            DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+
+            if [ -z "$DT_NEEDED" ] ; then
+                die "-----------------"
+            fi
+
+            echo "DT_NEEDED=\n$DT_NEEDED"
+            echo "DT_RUNPATH=\n$DT_RUNPATH"
+
+            # for NEEDED in $DT_NEEDED
+            # do
+            #     case $NEEDED in
+            #         /System/Library/Frameworks/*) ;;
+            #         /usr/lib/lib*.dylib) ;;
+            #         *)
+            #     esac
+            # done
+
+            if [ "$BUILD_TYPE" = release ] ; then
+                if [ "$x" != lib ] ; then
+                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                fi
+            fi
         done
     done
 }
@@ -4370,9 +4441,11 @@ EOF
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
         if [ "$LINK_TYPE" = 'static-only' ] ; then
-            if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-                echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
-                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+            if [ "$NATIVE_OS_KIND" != darwin ] ; then
+                if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+                    echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+                fi
             fi
         fi
 
@@ -5525,10 +5598,10 @@ configure() {
         PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
         PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'"
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
-    else
+    if [ "$BUILD_TYPE" = release ] ; then
         CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
+    else
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
     fi
 
     case $INSTALL_LIB in
@@ -5537,6 +5610,10 @@ configure() {
         both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
+
+    if [ "$VERBOSE_LEVEL" -eq 4 ] ; then
+        sed_in_place '1a set -x' "$PACKAGE_INSTALLING_BST_DIR/configure"
+    fi
 
     if run $PACKAGE_INSTALLING_BST_DIR/configure $CONFIGURE_ARGS $@ ; then
         echo
@@ -5702,7 +5779,7 @@ xmakew() {
         esac
     done
 
-    if [ "$LOG_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+    if [ "$VERBOSE_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -6066,7 +6143,8 @@ __setup() {
             *) die "$(uname -s) is not supported yet."
         esac
 
-        run ln -sf /usr/bin/true "$MY_CORE_BIN_DIR/uppm"
+        printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/uppm"
+        chmod +x                    "$MY_CORE_BIN_DIR/uppm"
 
         __setup_yq
     else
@@ -6092,12 +6170,14 @@ EOF
 
 __setup_ubuntu() {
     run $sudo apt -y update
-    run $sudo apt -y install bash findutils gawk sed grep tree unzip tar gzip lzip patch patchelf pkg-config golang git curl cmake g++ ninja-build make libtool yq
+    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++
 }
 
 __setup_alpine() {
-    run $sudo apt update
-    run $sudo apt add bash findutils gawk sed grep tree unzip tar gzip lzip patch patchelf pkgconf go yq git curl cmake g++ ninja make libtool
+    run $sudo apk update
+    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++
+
+    run ln -s /usr/bin/make /opt/ppkg/core/bin/gmake
 }
 
 __setup_macos() {
@@ -6109,7 +6189,15 @@ __setup_macos() {
     }
 
     run brew update
-    run brew install bash coreutils findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config yq git curl cmake ninja make libtool
+    run brew install bash coreutils findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake ninja make libtool
+
+    run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
+    run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
+    run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
+    run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
 }
 
 __setup_freebsd() {
