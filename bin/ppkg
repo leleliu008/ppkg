@@ -4160,8 +4160,6 @@ EOF
 
     ##################################################################################
 
-    LD_LIBRARY_PATH="$LD_LIBRARY_PATH_OLD"
-
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
 
@@ -4200,12 +4198,6 @@ EOF
             SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST="$SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST $DEP_PKG_LIBRARY_DIR"
 
             LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath-link,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
-
-            if [ -z "$LD_LIBRARY_PATH" ] ; then
-                LD_LIBRARY_PATH="$DEP_PKG_LIBRARY_DIR"
-            else
-                LD_LIBRARY_PATH="$DEP_PKG_LIBRARY_DIR:$LD_LIBRARY_PATH"
-            fi
         fi
 
         if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
@@ -4274,7 +4266,6 @@ EOF
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH
     export PKG_CONFIG_PATH
-    export LD_LIBRARY_PATH
 
     # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
     export XDG_DATA_DIRS
@@ -6041,8 +6032,6 @@ inspect_install_arguments() {
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
-
-    LD_LIBRARY_PATH_OLD="$LD_LIBRARY_PATH"
 }
 
 __is_core_tools_installed() {
@@ -6371,13 +6360,6 @@ init() {
         return 1
     }
 
-    # https://man7.org/linux/man-pages/man8/ld.so.8.html
-    if [ -z "$LD_LIBRARY_PATH" ] ; then
-        export LD_LIBRARY_PATH="$MY_HOME_DIR/core/lib"
-    else
-        export LD_LIBRARY_PATH="$MY_HOME_DIR/core/lib:$LD_LIBRARY_PATH"
-    fi
-
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
         export ACLOCAL_PATH="$MY_HOME_DIR/core/share/aclocal"
@@ -6467,13 +6449,6 @@ bppend_to_ACLOCAL_PATH() {
     esac
 }
 
-bppend_to_LD_LIBRARY_PATH() {
-    case ":${LD_LIBRARY_PATH}:" in
-        *:"$1":*) ;;
-        *) export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH" ;;
-    esac
-}
-
 __setup_PATH_env() {
     # pip install --user <PKG>
     bppend_to_PATH "$HOME/.local/bin"
@@ -6494,10 +6469,6 @@ __setup_PATH_env() {
                 if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin" ] ; then
                     bppend_to_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin"
                 fi
-
-                # if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/lib" ] ; then
-                #     bppend_to_LD_LIBRARY_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/lib"
-                # fi
 
                 if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal" ] ; then
                     bppend_to_ACLOCAL_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal"
