@@ -3781,6 +3781,7 @@ __adjust_elf_files_for_the_given_target() {
 
             [ -d "$FILEPATH" ] && continue
             [ -L "$FILEPATH" ] && continue
+            [ -w "$FILEPATH" ] || continue
 
             unset FILE_HEADER_ACTUAL
 
@@ -3798,35 +3799,51 @@ __adjust_elf_files_for_the_given_target() {
                     unset DT_RUNPATH
                     DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
 
-                    if [ -z "$DT_NEEDED" ] ; then
-                        if [ -n "$DT_RUNPATH" ] ; then
-                            run patchelf --remove-rpath "$FILEPATH"
-                        fi
-                    else
+                    if [ -n "$DT_RUNPATH" ] ; then
+                        run patchelf --remove-rpath "$FILEPATH"
+                    fi
+
+                    unset RUNPATH
+
+                    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+
+                    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
                         for NEEDED in $DT_NEEDED
                         do
-                            case $NEEDED in
-                                libc.so.6) ;;
-                                libm.so.6) ;;
-                                libgcc_s.so.1) ;;
-                                ld-linux-x86-64.so.2) ;;
-                                *)  for LIBDIR in "$PACKAGE_INSTALL_DIR/lib" $SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
-                                    do
-                                        if [ -e "$LIBDIR/$NEEDED" ] ; then
-                                            for RUNPATH in $DT_RUNPATH
-                                            do
-                                                if [ "$LIBDIR" = "$RUNPATH" ] ; then
-                                                    break 2
-                                                fi
-                                            done
-
-                                            run patchelf --add-rpath "$LIBDIR" "$FILEPATH"
-                                            DT_RUNPATH="$DT_RUNPATH $LIBDIR"
-                                            break
-                                        fi
-                                    done
-                            esac
+                            if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
+                                RUNPATH="$PACKAGE_LIBRARY_DIR"
+                                break
+                            fi
                         done
+                    fi
+
+                    for NEEDED in $DT_NEEDED
+                    do
+                        case $NEEDED in
+                            libc.so.6) ;;
+                            libm.so.6) ;;
+                            libgcc_s.so.1) ;;
+                            ld-linux-x86-64.so.2) ;;
+                            *)  for LIBDIR in $DT_RUNPATH
+                                do
+                                    if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
+                                        continue
+                                    fi
+
+                                    if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                        if [ -z "$RUNPATH" ] ; then
+                                            RUNPATH="$LIBDIR"
+                                        else
+                                            RUNPATH="$RUNPATH:$LIBDIR"
+                                        fi
+                                        break
+                                    fi
+                                done
+                        esac
+                    done
+
+                    if [ -n "$RUNPATH" ] ; then
+                        run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
                     fi
 
                     if [ "$BUILD_TYPE" = release ] ; then
@@ -4163,8 +4180,6 @@ EOF
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
 
-    unset SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST
-
     for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
         DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '+-.' '_')
@@ -4195,9 +4210,7 @@ EOF
         fi
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST="$SPACE_SEPARATED_DEPENDENT_LIBRARY_DIR_LIST $DEP_PKG_LIBRARY_DIR"
-
-            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath-link,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
         fi
 
         if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
