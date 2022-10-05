@@ -4180,6 +4180,9 @@ EOF
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
 
+    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+    unset RUSTFLAGS
+
     for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
         DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '+-.' '_')
@@ -4211,6 +4214,7 @@ EOF
 
         if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
             LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
+            RUSTFLAGS="-Clink-arg=-L$DEP_PKG_LIBRARY_DIR -Clink-arg=-Wl,-rpath,$DEP_PKG_LIBRARY_DIR $RUSTFLAGS"
         fi
 
         if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
@@ -4273,6 +4277,9 @@ EOF
 
     CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
      LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+
+    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib $RUSTFLAGS"
 
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
 
@@ -4440,9 +4447,6 @@ EOF
         export RUST_TARGET
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
-
-        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
         if [ "$LINK_TYPE" = 'static-only' ] ; then
             if [ "$NATIVE_OS_KIND" != darwin ] ; then
@@ -4618,6 +4622,20 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
         printf '%s\n'
         env | sed -n '/^CMAKE_/p'
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        printf "\n%19s = " RUSTFLAGS
+        FIRST=yes
+        for item in $RUSTFLAGS
+        do
+            if [ "$FIRST" = yes ] ; then
+                FIRST=no
+                printf '%s\n' "$item"
+            else
+                printf '%s\n' "                      $item"
+            fi
+        done
     fi
 
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
