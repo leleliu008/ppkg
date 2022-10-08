@@ -3785,73 +3785,91 @@ __adjust_elf_files_for_the_given_target() {
 
             unset FILE_HEADER_ACTUAL
 
-            FILE_HEADER_ACTUAL="$(hexdump -n 17 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+            FILE_HEADER_ACTUAL="$(hexdump -n 18 -v -e '1/1 "%02X" ""' "$FILEPATH")"
 
+            ELF_EXECUTABLE=no
+            ELF_SHAREDABLE=no
+
+            # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
             case $FILE_HEADER_ACTUAL in
-                7F454C460[12]01010[09]00000000000000000[23])
-                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                    # unset PT_INTERP
-                    # PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                7F454C460[12]01010[09]00000000000000000200)
+                    # little-endian mode
+                    ELF_EXECUTABLE=yes
+                    ;;
+                7F454C460[12]01010[09]00000000000000000300)
+                    # little-endian mode
+                    ELF_SHAREDABLE=yes
+                    ;;
+                7F454C460[12]02010[09]00000000000000000002)
+                    # big-endian mode
+                    ELF_EXECUTABLE=yes
+                    ;;
+                7F454C460[12]02010[09]00000000000000000003)
+                    # big-endian mode
+                    ELF_SHAREDABLE=yes
+                    ;;
+            esac
 
-                    unset DT_NEEDED
-                    DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
+            if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
+                unset DT_NEEDED
+                DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
 
-                    unset DT_RUNPATH
-                    DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
+                unset DT_RUNPATH
+                DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
 
-                    if [ -n "$DT_RUNPATH" ] ; then
-                        run patchelf --remove-rpath "$FILEPATH"
-                    fi
+                if [ -n "$DT_RUNPATH" ] ; then
+                    run patchelf --remove-rpath "$FILEPATH"
+                fi
 
-                    unset RUNPATH
+                unset RUNPATH
 
-                    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+                PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
 
-                    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-                        for NEEDED in $DT_NEEDED
-                        do
-                            if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
-                                RUNPATH="$PACKAGE_LIBRARY_DIR"
-                                break
-                            fi
-                        done
-                    fi
-
+                if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
                     for NEEDED in $DT_NEEDED
                     do
-                        case $NEEDED in
-                            libc.so.6) ;;
-                            libm.so.6) ;;
-                            libgcc_s.so.1) ;;
-                            ld-linux-x86-64.so.2) ;;
-                            *)  for LIBDIR in $DT_RUNPATH
-                                do
-                                    if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
-                                        continue
-                                    fi
-
-                                    if [ -e "$LIBDIR/$NEEDED" ] ; then
-                                        if [ -z "$RUNPATH" ] ; then
-                                            RUNPATH="$LIBDIR"
-                                        else
-                                            RUNPATH="$RUNPATH:$LIBDIR"
-                                        fi
-                                        break
-                                    fi
-                                done
-                        esac
-                    done
-
-                    if [ -n "$RUNPATH" ] ; then
-                        run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
-                    fi
-
-                    if [ "$BUILD_TYPE" = release ] ; then
-                        if [ "$x" != lib ] ; then
-                            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                        if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
+                            RUNPATH="$PACKAGE_LIBRARY_DIR"
+                            break
                         fi
+                    done
+                fi
+
+                for NEEDED in $DT_NEEDED
+                do
+                    case $NEEDED in
+                        libc.so.6) ;;
+                        libm.so.6) ;;
+                        libgcc_s.so.1) ;;
+                        ld-linux-x86-64.so.2) ;;
+                        *)  for LIBDIR in $DT_RUNPATH
+                            do
+                                if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
+                                    continue
+                                fi
+
+                                if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                    if [ -z "$RUNPATH" ] ; then
+                                        RUNPATH="$LIBDIR"
+                                    else
+                                        RUNPATH="$RUNPATH:$LIBDIR"
+                                    fi
+                                    break
+                                fi
+                            done
+                    esac
+                done
+
+                if [ -n "$RUNPATH" ] ; then
+                    run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
+                fi
+
+                if [ "$BUILD_TYPE" = release ] ; then
+                    if [ "$x" != lib ] ; then
+                        run "$STRIP" $STRIP_ARG "$FILEPATH" || true
                     fi
-            esac
+                fi
+            fi
         done
     done
 }
@@ -5666,7 +5684,7 @@ configure() {
 gmakew() {
     run gmake --version
 
-    if [ "$DEBUG" = yes ] ; then
+    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         run gmake "-j$BUILD_NJOBS --debug $*"
     else
         run gmake "-j$BUILD_NJOBS $*"
@@ -6190,12 +6208,12 @@ EOF
 
 __setup_ubuntu() {
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++
+    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic
 }
 
 __setup_alpine() {
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++
+    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers
 
     run ln -s /usr/bin/make /opt/ppkg/core/bin/gmake
 }
