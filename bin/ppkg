@@ -6211,6 +6211,11 @@ __setup_ubuntu() {
     run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic
 }
 
+__setup_fedora() {
+    run $sudo dnf -y update
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++
+}
+
 __setup_alpine() {
     run $sudo apk update
     run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers
