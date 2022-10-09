@@ -3760,6 +3760,9 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
+    run patchelf --version
+    run command -v patchelf
+
     unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
 
     BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
@@ -6130,16 +6133,6 @@ __setup() {
     NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
     NATIVE_OS_ARCH="$(uname -m)"
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        NATIVE_OS_KIND=macos
-    fi
-
-    if [ "$NATIVE_OS_ARCH" = 'amd64' ] ; then
-        NATIVE_OS_ARCH=x86_64
-    elif [ "$NATIVE_OS_ARCH" = 'aarch64' ] ; then
-        NATIVE_OS_ARCH=arm64
-    fi
-
     if [ "$(id -u)" -ne 0 ] ; then
         sudo=sudo
     else
@@ -6174,11 +6167,11 @@ __setup() {
                     )
                 fi
                 ;;
-            macos)   __setup_macos   ;;
+            darwin)  __setup_macos   ;;
             freebsd) __setup_freebsd ;;
             openbsd) __setup_openbsd ;;
             netbsd)  __setup__netbsd ;;
-            *) die "$(uname -s) is not supported yet."
+            *) die "$NATIVE_OS_KIND is not supported yet."
         esac
 
         printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/uppm"
@@ -6297,7 +6290,7 @@ __setup_yq() {
             YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
             YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
             ;;
-        macos)
+        darwin)
             ;;
         freebsd)
             YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
@@ -6321,6 +6314,7 @@ __setup_yq() {
     fi
 }
 
+# use commands: uname curl tar gzip xz jq grep
 __setup_uppm() {
     unset FETCH_TOOL
 
@@ -6334,54 +6328,54 @@ __setup_uppm() {
     done
 
     if [ -z "$FETCH_TOOL" ] ; then
-        error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found, you could download curl from $CORE_TOOL_BASE_URL/curl, then try again."
+        error "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found."
         return 1
     else
         unset FETCH_TOOL
     fi
 
-    case $NATIVE_OS_KIND in
-        linux)   CORE_TOOL_VERSION='2022.08.16' ;;
-        macos)   CORE_TOOL_VERSION='2022.08.16' ;;
-        freebsd) CORE_TOOL_VERSION='2022.08.16' ;;
-        openbsd) CORE_TOOL_VERSION='2022.08.16' ;;
-         netbsd) CORE_TOOL_VERSION='2022.08.16' ;;
-              *) die "$(uname -s) has not been supported yet."
-    esac
-
-    CORE_TOOL_BASE_URL="https://github.com/leleliu008/ppkg-core-$NATIVE_OS_KIND-$NATIVE_OS_ARCH/releases/download/$CORE_TOOL_VERSION"
+    ##################################################################################
 
     unset SETUP_WORKING_DIR
     SETUP_WORKING_DIR=$(mktemp -d)
 
-    # https://curl.se/docs/caextract.html
-    fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        linux-x86_64)   TUPLE=linux-x86_64  ;;
+        linux-aarch64)  TUPLE=linux-aarch64 ;;
+        linux-s390x)    TUPLE=linux-s390x   ;;
+        darwin-x86_64)  TUPLE=macos-x86_64  ;;
+        darwin-arm64)   TUPLE=macos-arm64   ;;
+        freebsd-amd64)  TUPLE=freebsd-amd64 ;;
+        openbsd-amd64)  TUPLE=openbsd-amd64 ;;
+         netbsd-amd64)  TUPLE=netbsd-amd64  ;;
+        *) die "$NATIVE_OS_KIND-$NATIVE_OS_ARCH has not been supported yet."
+    esac
 
-    command -v tar > /dev/null || {
-        fetch "$CORE_TOOL_BASE_URL/tar" --output-dir="$SETUP_WORKING_DIR"
-        run chmod +x "$SETUP_WORKING_DIR/tar"
-    }
+    JSON_FILEPATH="$SETUP_WORKING_DIR/latest.json"
 
-    command -v xz > /dev/null || {
-        fetch "$CORE_TOOL_BASE_URL/xz" --output-dir="$SETUP_WORKING_DIR"
-        run chmod +x "$SETUP_WORKING_DIR/xz"
-    }
+    fetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
 
-    export PATH="$SETUP_WORKING_DIR:$PATH"
+    unset UPPM_ARCHIVE_FILENAME
 
-    run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
-    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
-
-    UPPM_ARCHIVE_FILENAME='uppm-2022.08.31-linux-x86_64.tar.xz'
+    UPPM_ARCHIVE_FILENAME=$(jq -r '.assets[].name' "$JSON_FILEPATH" | grep '^uppm-')
     UPPM_ARCHIVE_FILEPATH="$SETUP_WORKING_DIR/$UPPM_ARCHIVE_FILENAME"
-    UPPM_INSTALL_URL="https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/$UPPM_ARCHIVE_FILENAME"
 
-    fetch "$UPPM_INSTALL_URL" --output-path="$UPPM_ARCHIVE_FILEPATH"
+    fetch "https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(jq -r '.tag_name' "$JSON_FILEPATH")/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
     rm "$MY_HOME_DIR/core/installed-files"
     rm "$MY_HOME_DIR/core/installed-metadata-ppkg"
+
+    ##################################################################################
+
+    # https://curl.se/docs/caextract.html
+    fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+
+    run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
+    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
+
+    ##################################################################################
 
     export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
 
