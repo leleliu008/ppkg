@@ -3813,6 +3813,10 @@ __adjust_elf_files_for_the_given_target() {
                     ;;
             esac
 
+            if [ "$ELF_EXECUTABLE" = yes ] && [ "$BUILD_TYPE" = release ] ; then
+                run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+            fi
+
             if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
                 unset DT_NEEDED
                 DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
@@ -3865,12 +3869,6 @@ __adjust_elf_files_for_the_given_target() {
 
                 if [ -n "$RUNPATH" ] ; then
                     run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
-                fi
-
-                if [ "$BUILD_TYPE" = release ] ; then
-                    if [ "$x" != lib ] ; then
-                        run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                    fi
                 fi
             fi
         done
