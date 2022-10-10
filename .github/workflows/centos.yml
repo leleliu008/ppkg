@@ -21,13 +21,13 @@ jobs:
       - run: |
           if [ ${{ matrix.tag }} = '7.5.1804' ] ; then
             yum -y update
-            yum -y install curl jq gcc-c++
+            yum -y install curl jq xz gcc-c++
           else
             sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
 
             dnf -y update
-            dnf -y install curl jq gcc-c++
+            dnf -y install curl jq xz gcc-c++
           fi
 
       - uses: actions/checkout@v3

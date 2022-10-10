@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: dnf -y update
-      - run: dnf -y install curl jq gcc-c++
+      - run: dnf -y install curl jq xz gcc-c++
 
       - uses: actions/checkout@v3
 
