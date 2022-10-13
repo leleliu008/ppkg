@@ -6375,12 +6375,12 @@ __setup_uppm() {
 
     fetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
 
-    FETCH_BASE_URL="https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(sed -n '/"tag_name":/p' lastest.json | sed 's|  "tag_name": "\(.*\)",|\1|')"
+    FETCH_BASE_URL="https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(sed -n '/"tag_name":/p' "$JSON_FILEPATH" | sed 's|  "tag_name": "\(.*\)",|\1|')"
 
     ##################################################################################
 
     unset UPPM_ARCHIVE_FILENAME
-    UPPM_ARCHIVE_FILENAME=$(sed -n '/"name":/p' lastest.json | sed -e 's|[[:space:]]||g' -e 's|"name":"\(.*\)",|\1|' | sed -n '/^uppm-/p')
+    UPPM_ARCHIVE_FILENAME=$(sed -n '/"name":/p' "$JSON_FILEPATH" | sed -e 's|[[:space:]]||g' -e 's|"name":"\(.*\)",|\1|' | sed -n '/^uppm-/p')
     UPPM_ARCHIVE_FILEPATH="$SETUP_WORKING_DIR/$UPPM_ARCHIVE_FILENAME"
 
     fetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
