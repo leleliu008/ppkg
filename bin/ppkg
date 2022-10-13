@@ -3045,12 +3045,6 @@ $LINE"
         NATIVE_OS_KIND=macos
     fi
 
-    if [ "$NATIVE_OS_ARCH" = 'amd64' ] ; then
-        NATIVE_OS_ARCH=x86_64
-    elif [ "$NATIVE_OS_ARCH" = 'aarch64' ] ; then
-        NATIVE_OS_ARCH=arm64
-    fi
-
     PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
@@ -5697,7 +5691,7 @@ configure_only() {
 
 # run in a subshell
 configure() {
-    configure_only &&
+    configure_only "$@" &&
     gmakew clean &&
     gmakew V=1   &&
     gmakew install
