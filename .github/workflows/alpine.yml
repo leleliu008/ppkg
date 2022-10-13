@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: apk update
-      - run: apk add curl jq g++ libc-dev linux-headers
+      - run: apk add curl g++ libc-dev linux-headers
 
       - uses: actions/checkout@v3
 

@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: apt -y update
-      - run: apt -y install curl jq g++
+      - run: apt -y install curl g++
 
       - uses: actions/checkout@v3
 

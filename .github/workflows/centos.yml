@@ -23,13 +23,13 @@ jobs:
             yum -y update
             yum -y install epel-release
             yum -y --enablerepo=epel update
-            yum -y --enablerepo=epel install curl jq xz gcc-c++
+            yum -y --enablerepo=epel install curl xz gcc-c++
           else
             sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
 
             dnf -y update
-            dnf -y install curl jq xz gcc-c++
+            dnf -y install curl xz gcc-c++
           fi
 
       - uses: actions/checkout@v3

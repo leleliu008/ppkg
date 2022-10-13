@@ -13,7 +13,7 @@ jobs:
     container: madhacking/gentoo
 
     steps:
-      - run: emerge net-misc/curl app-misc/jq sys-devel/gcc
+      - run: emerge net-misc/curl sys-devel/gcc
 
       - uses: actions/checkout@v3
 
