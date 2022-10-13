@@ -1636,6 +1636,8 @@ __load_formula_of_the_given_package() {
 
     unset PACKAGE_BSYSTEM
 
+    unset PACKAGE_SYMLINK
+
     unset PACKAGE_BUILD_SYSTEM
     unset PACKAGE_BUILD_SYSTEM_GO
     unset PACKAGE_BUILD_SYSTEM_RAKE
@@ -1687,7 +1689,7 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -1729,6 +1731,10 @@ __load_formula_of_the_given_package() {
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
+
+    if [ -z "$PACKAGE_SYMLINK" ] ; then
+        PACKAGE_SYMLINK=yes
+    fi
 
     if [ -z "$PACKAGE_PARALLEL" ] ; then
         PACKAGE_PARALLEL=yes
@@ -2354,9 +2360,9 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
-    [ -f "$MY_INSTALL_DIR/$1/installed-metadata-ppkg" ] || return 11
-    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 12
+    [ -d "$MY_INSTALLED_DIR/$1" ]                    || return 10
+    [ -f "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg" ] || return 11
+    [ -f "$MY_INSTALLED_DIR/$1/installed-files" ]    || return 12
 }
 
 # is_package__outdated <PACKAGE-NAME>
@@ -2488,8 +2494,8 @@ __list_available_packages() {
 }
 
 __list_installed_packages() {
-    if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" > /dev/null || return 1
+    if [ -d "$MY_INSTALLED_DIR" ] ; then
+         cd "$MY_INSTALLED_DIR" > /dev/null || return 1
     else
         return 0
     fi
@@ -2503,8 +2509,8 @@ __list_installed_packages() {
 }
 
 __list__outdated_packages() {
-    if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" > /dev/null || return 1
+    if [ -d "$MY_INSTALLED_DIR" ] ; then
+         cd "$MY_INSTALLED_DIR" > /dev/null || return 1
     else
         return 0
     fi
@@ -2530,7 +2536,7 @@ __list__outdated_packages() {
         return 1
     }
 
-    run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
+    run tree $(shiftn 1 $@) "$MY_INSTALLED_DIR/$1"
 }
 
 # __uninstall_the_given_packages <PACKAGE-NAME>...
@@ -2556,7 +2562,15 @@ __list__outdated_packages() {
     for packageName in $USER_SPECIFIED_PACKAGES
     do
         if is_package_installed "$packageName" ; then
-            run rm -rf "$MY_INSTALL_DIR/$packageName"
+            if [ -f "$MY_INSTALLED_DIR/$packageName/symlinked-files" ] ; then
+                for item in $(cat "$MY_INSTALLED_DIR/$packageName/symlinked-files")
+                do
+                    run unlink "$MY_HOME_DIR/symlinked/$item"
+                done
+            fi
+            run rm -rf "$MY_INSTALLED_DIR/$packageName"
+        else
+            warn "$packageName is not installed."
         fi
     done
 }
@@ -2587,7 +2601,7 @@ __reinstall_the_given_packages() {
             install -d "$MY_BACKUP_DIR" || return 1
         }
 
-        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$MY_INSTALLED_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
 
         (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
 
@@ -2620,7 +2634,7 @@ __upgrade_packages() {
             install -d "$MY_BACKUP_DIR" || return 1
         }
 
-        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$MY_INSTALLED_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
 
         (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
 
@@ -2979,8 +2993,8 @@ $LINE"
         done
     }
 
-    __logs_the_given_dir "$MY_INSTALL_DIR/$1"
-    __logs_the_given_dir "$MY_INSTALL_DIR/$1/$2/share/log"
+    __logs_the_given_dir "$MY_INSTALLED_DIR/$1"
+    __logs_the_given_dir "$MY_INSTALLED_DIR/$1/$2/share/log"
 
     if [ "$VIEWER" != 'bat' ] ; then
         prompt_user_to_install_bat
@@ -3040,8 +3054,8 @@ $LINE"
     PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        if [ -d "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/lib" ] ; then
-            for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/lib" \( -type f -o -type l \))
+        if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" ] ; then
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" \( -type f -o -type l \))
             do
                 case $FILEPATH in
                     */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
@@ -3052,8 +3066,8 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            if [ -d "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/bin" ] ; then
-                for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME/bin" \( -type f -o -type l \))
+            if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" ] ; then
+                for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" \( -type f -o -type l \))
                 do
                     unset FILE_MAGIC
 
@@ -3074,7 +3088,7 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" \( -type f -o -type l \) -a -name "*.a")
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" \( -type f -o -type l \) -a -name "*.a")
             do
                 PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
@@ -3097,7 +3111,7 @@ $LINE"
     run cd $PACKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
+    run ln -s "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILETYPE in
@@ -3621,7 +3635,7 @@ EOF
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
         do
-            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/$DEPENDENT_PACKAGE_NAME/lib"
+            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$MY_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
             if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
                 for item in $(find "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
                 do
@@ -3740,6 +3754,11 @@ EOF
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
+    if [ "$PACKAGE_SYMLINK" = yes ] ; then
+        step "symlink installed files to $MY_HOME_DIR/symlinked"
+        __symlink_installed_files_of_the_given_package "$1"
+    fi
+
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
         note "Before Build:"
@@ -3811,10 +3830,15 @@ __adjust_elf_files_for_the_given_target() {
                     # big-endian mode
                     ELF_SHAREDABLE=yes
                     ;;
+                *)  continue
             esac
 
-            if [ "$ELF_EXECUTABLE" = yes ] && [ "$BUILD_TYPE" = release ] ; then
-                run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+            # https://github.com/NixOS/patchelf/issues/371
+
+            if [ "$BUILD_TYPE" = release ] ; then
+                if [ "$x" != lib ] ; then
+                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                fi
             fi
 
             if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
@@ -3947,7 +3971,7 @@ __adjust_mach_o_files_for_the_given_target() {
 __export_relevant_environment_variables() {
     step "export relevant environment variables"
 
-    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE_NAME"
+    PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$PACKAGE_NAME"
 
     STATIC_LIBRARY_SUFFIX=.a
 
@@ -4212,7 +4236,7 @@ EOF
         unset DEP_PKG_LIBRARY_DIR
         unset DEP_PKG_PKGCONF_DIR
 
-        DEP_PKG_INSTALL_DIR="$MY_INSTALL_DIR/$DEP_PKG_NAME"
+        DEP_PKG_INSTALL_DIR="$MY_INSTALLED_DIR/$DEP_PKG_NAME"
         DEP_PKG_BINARY__DIR="$DEP_PKG_INSTALL_DIR/bin"
         DEP_PKG_INCLUDE_DIR="$DEP_PKG_INSTALL_DIR/include"
         DEP_PKG_LIBRARY_DIR="$DEP_PKG_INSTALL_DIR/lib"
@@ -5000,45 +5024,7 @@ __show_infomation_as_shell_of_all_available_packages() {
 
 # __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
   __show_infomation_as_yaml__of_the_given_package() {
-    __load_formula_of_the_given_package "$1"
-
-    cat <<EOF
-name: $PACKAGE_NAME
-version: $PACKAGE_VERSION
-summary: $PACKAGE_SUMMARY
-webpage: $PACKAGE_WEBPAGE
-license: $PACKAGE_LICENSE
-
-git:
-    url: $PACKAGE_GIT_URL
-    sha: $PACKAGE_GIT_SHA
-    tag: $PACKAGE_GIT_REF
-
-src:
-    url: $PACKAGE_SRC_URL
-    sha: $PACKAGE_SRC_SHA
-
-fix:
-    url: $PACKAGE_FIX_URL
-    sha: $PACKAGE_FIX_SHA
-
-res:
-    url: $PACKAGE_RES_URL
-    sha: $PACKAGE_RES_SHA
-
-dep: $PACKAGE_DEP_PKG
-
-build:
-    system: $PACKAGE_BUILD_SYSTEM
-    binsrcd: $PACKAGE_BUILD_IN_BSCRIPT_DIR
-    cdefine: $PACKAGE_CDEFINE
-    ccflags: $PACKAGE_CCFLAGS
-    xxflags: $PACKAGE_XXFLAGS
-    ldflags: $PACKAGE_LDFLAGS
-    parallel: $PARALLEL
-
-developer: $PACKAGE_DEVELOPER
-EOF
+    __view_formula_of_the_given_package "$1" --paging=never
 }
 
 # __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
@@ -5154,7 +5140,7 @@ EOF
             ;;
         installed-dir)
             if is_package_installed "$1" ; then
-                printf '%s\n' "$MY_INSTALL_DIR/$1"
+                printf '%s\n' "$MY_INSTALLED_DIR/$1"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5162,7 +5148,7 @@ EOF
             ;;
         installed-metadata-raw)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-metadata-ppkg"
+                cat "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5170,7 +5156,7 @@ EOF
             ;;
         installed-metadata-json)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-metadata-ppkg"
+                cat "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5178,7 +5164,7 @@ EOF
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-files"
+                cat "$MY_INSTALLED_DIR/$1/installed-files"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5234,29 +5220,59 @@ mark_is_package_installed_or_not() {
 
 __record_installed_files_of_the_given_package() {
     if [ -z "$2" ] ; then
-        INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
+        INSTALLED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/installed-files"
         echo "-- Installing: $INSTALLED_FILES_FILEPATH"
 
         exec 7> "$INSTALLED_FILES_FILEPATH"
 
-        __record_installed_files_of_the_given_package "$1" "$MY_INSTALL_DIR/$1"
+        __record_installed_files_of_the_given_package "$1" "$MY_INSTALLED_DIR/$1"
 
         exec 7>&-
 
-        sed_in_place "s|$MY_INSTALL_DIR/$1/||" "$INSTALLED_FILES_FILEPATH"
+        sed_in_place "s|$MY_INSTALLED_DIR/$1/||"    "$INSTALLED_FILES_FILEPATH"
+        sed_in_place '/f:installed-files/d'         "$INSTALLED_FILES_FILEPATH"
+        sed_in_place '/f:installed-metadata-ppkg/d' "$INSTALLED_FILES_FILEPATH"
     else
         for FILENAME in $(ls "$2")
         do
             FILEPATH="$2/$FILENAME"
 
             if [ -d "$FILEPATH" ] ; then
-                printf 'd %s %s\n' "$FILEPATH/" >&7
+                printf 'd:%s\n' "$FILEPATH/" >&7
                 __record_installed_files_of_the_given_package "$1" "$FILEPATH"
             else
-                printf 'f %s %s\n' "$FILEPATH"  >&7
+                printf 'f:%s\n' "$FILEPATH"  >&7
             fi
         done
     fi
+}
+
+__symlink_installed_files_of_the_given_package() {
+    LINKED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/symlinked-files"
+
+    exec 8> "$LINKED_FILES_FILEPATH"
+
+    for item in $(cat "$INSTALLED_FILES_FILEPATH")
+    do
+        X=$(printf '%s\n' "$item" | cut -d: -f1)
+        Y=$(printf '%s\n' "$item" | cut -d: -f2)
+
+        case $X in
+            d)  if [ !      -d "$MY_HOME_DIR/symlinked/$Y" ] ; then
+                    install -d "$MY_HOME_DIR/symlinked/$Y"
+                fi
+                ;;
+            f)  case $Y in
+                    share/log/*) ;;
+                    *)  run ln -sr "$MY_INSTALLED_DIR/$1/$Y" "$MY_HOME_DIR/symlinked/$Y"
+                        printf '%s\n' "$Y" >&8
+                esac
+                ;;
+            *)  die "unrecognized type: $X"
+        esac
+    done
+
+    exec 8>&-
 }
 
 # __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
@@ -5337,16 +5353,18 @@ EOF
 
     unset INSTALLED_PACKAGE_BSYSTEM
 
+    unset INSTALLED_PACKAGE_SYMLINK
+
     unset INSTALLED_PACKAGE_PPKGVERS
 
     unset INSTALLED_PACKAGE_DATETIME
 
 
-    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
+    PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -5617,7 +5635,7 @@ cargow() {
 }
 
 # run in a subshell
-configure() {
+configure_only() {
     export FORCE_UNSAFE_CONFIGURE=1
 
     CONFIGURE_ARGS="
@@ -5675,7 +5693,11 @@ configure() {
         done
         unset Makefile
     fi
+}
 
+# run in a subshell
+configure() {
+    configure_only &&
     gmakew clean &&
     gmakew V=1   &&
     gmakew install
@@ -5896,8 +5918,8 @@ to_meson_array() {
 ########################################################################
 
 list_all_installed_libs() {
-    if [ -d "$MY_INSTALL_DIR" ] ; then
-        cd  "$MY_INSTALL_DIR" || return 1
+    if [ -d "$MY_INSTALLED_DIR" ] ; then
+        cd  "$MY_INSTALLED_DIR" || return 1
     else
         return 0
     fi
@@ -5905,8 +5927,8 @@ list_all_installed_libs() {
     for item in *
     do
         if is_package_installed "$item" ; then
-            if [ -d "$MY_INSTALL_DIR/$item/libs" ] ; then
-                find "$MY_INSTALL_DIR/$item/libs" -name "lib*\.a"
+            if [ -d "$MY_INSTALLED_DIR/$item/libs" ] ; then
+                find "$MY_INSTALLED_DIR/$item/libs" -name "lib*\.a"
             fi
         fi
     done
@@ -5942,7 +5964,7 @@ __ldd() {
         [ -z "$3" ] && die "type is not specified."
         [ -z "$4" ] && die "name is not specified."
 
-        FILE_PATH="$MY_INSTALL_DIR/$1/$2/$3/$4"
+        FILE_PATH="$MY_INSTALLED_DIR/$1/$2/$3/$4"
         [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
         echo "$FILE_PATH"
 
@@ -6312,7 +6334,7 @@ __setup_yq() {
     fi
 }
 
-# use commands: uname curl tar gzip xz jq grep
+# use commands: uname curl tar gzip xz sed
 __setup_uppm() {
     unset FETCH_TOOL
 
@@ -6353,12 +6375,15 @@ __setup_uppm() {
 
     fetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
 
-    unset UPPM_ARCHIVE_FILENAME
+    FETCH_BASE_URL="https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(sed -n '/"tag_name":/p' lastest.json | sed 's|  "tag_name": "\(.*\)",|\1|')"
 
-    UPPM_ARCHIVE_FILENAME=$(jq -r '.assets[].name' "$JSON_FILEPATH" | grep '^uppm-')
+    ##################################################################################
+
+    unset UPPM_ARCHIVE_FILENAME
+    UPPM_ARCHIVE_FILENAME=$(sed -n '/"name":/p' lastest.json | sed -e 's|[[:space:]]||g' -e 's|"name":"\(.*\)",|\1|' | sed -n '/^uppm-/p')
     UPPM_ARCHIVE_FILEPATH="$SETUP_WORKING_DIR/$UPPM_ARCHIVE_FILENAME"
 
-    fetch "https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(jq -r '.tag_name' "$JSON_FILEPATH")/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
+    fetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
@@ -6688,7 +6713,8 @@ main() {
     MY_HOME_DIR="/opt/ppkg"
 
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
-    MY_INSTALL_DIR="$MY_HOME_DIR/installed"
+    MY_INSTALLED_DIR="$MY_HOME_DIR/installed"
+    MY_SYMLINKED_DIR="$MY_HOME_DIR/symlinked"
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_CACHE_DIR="$MY_HOME_DIR/cache.d"
 
