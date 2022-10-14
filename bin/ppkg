@@ -3830,7 +3830,10 @@ __adjust_elf_files_for_the_given_target() {
                     # big-endian mode
                     ELF_SHAREDABLE=yes
                     ;;
-                *)  die "mismached ELF header: $FILEPATH"
+                7F454C46*)
+                    die "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                    ;;
+                *)  continue
             esac
 
             # https://github.com/NixOS/patchelf/issues/371
