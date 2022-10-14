@@ -5149,7 +5149,7 @@ EOF
                 return 1
             fi
             ;;
-        installed-metadata-raw)
+        installed-metadata-yaml)
             if is_package_installed "$1" ; then
                 cat "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg"
             else
@@ -5398,7 +5398,7 @@ EOF
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink installer timestamp
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
