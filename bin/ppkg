@@ -5276,7 +5276,7 @@ __symlink_installed_files_of_the_given_package() {
     for item in $(cat "$INSTALLED_FILES_FILEPATH")
     do
         X=$(printf '%s\n' "$item" | cut -d: -f1)
-        Y=$(printf '%s\n' "$item" | cut -d: -f2)
+        Y=${item#$X:}
 
         case $X in
             d)  if [ !      -d "$MY_HOME_DIR/symlinked/$Y" ] ; then
