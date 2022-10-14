@@ -2563,10 +2563,16 @@ __list__outdated_packages() {
     do
         if is_package_installed "$packageName" ; then
             if [ -f "$MY_INSTALLED_DIR/$packageName/symlinked-files" ] ; then
+                # fuck, filename contains spaces sometimes.
+                IFS_SAVED="$IFS"
+                IFS='
+'
                 for item in $(cat "$MY_INSTALLED_DIR/$packageName/symlinked-files")
                 do
-                    run unlink "$MY_HOME_DIR/symlinked/$item"
+                    echo "${COLOR_GREEN}unlink \"$MY_HOME_DIR/symlinked/$item\"${COLOR_OFF}"
+                    unlink "$MY_HOME_DIR/symlinked/$item"
                 done
+                IFS="$IFS_SAVED"
             fi
             run rm -rf "$MY_INSTALLED_DIR/$packageName"
         else
@@ -3038,7 +3044,7 @@ $LINE"
     fi
 
     if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
-        INSTALLED_PACKAGE_VERSION="$INSTALLED_PACKAGE_DATETIME"
+        INSTALLED_PACKAGE_VERSION="$INSTALLED_PACKAGE_TIMESTAMP"
     fi
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
@@ -3808,23 +3814,23 @@ __adjust_elf_files_for_the_given_target() {
 
             # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
             case $FILE_HEADER_ACTUAL in
-                7F454C460[12]01010[09]00000000000000000200)
+                7F454C460[12]01010[039]00000000000000000200)
                     # little-endian mode
                     ELF_EXECUTABLE=yes
                     ;;
-                7F454C460[12]01010[09]00000000000000000300)
+                7F454C460[12]01010[039]00000000000000000300)
                     # little-endian mode
                     ELF_SHAREDABLE=yes
                     ;;
-                7F454C460[12]02010[09]00000000000000000002)
+                7F454C460[12]02010[039]00000000000000000002)
                     # big-endian mode
                     ELF_EXECUTABLE=yes
                     ;;
-                7F454C460[12]02010[09]00000000000000000003)
+                7F454C460[12]02010[039]00000000000000000003)
                     # big-endian mode
                     ELF_SHAREDABLE=yes
                     ;;
-                *)  continue
+                *)  die "mismached ELF header: $FILEPATH"
             esac
 
             # https://github.com/NixOS/patchelf/issues/371
@@ -5166,11 +5172,11 @@ EOF
             ;;
         installed-datetime-unix)
             __load_installed_metadata_of_the_given_package "$1"
-            printf '%s\n' "$INSTALLED_PACKAGE_DATETIME"
+            printf '%s\n' "$INSTALLED_PACKAGE_TIMESTAMP"
             ;;
         installed-datetime-formatted)
             __load_installed_metadata_of_the_given_package "$1"
-            format_unix_timestamp "$INSTALLED_PACKAGE_DATETIME" '+%Y-%m-%d %H:%M:%S'
+            format_unix_timestamp "$INSTALLED_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S'
             ;;
         installed-pkg-version)
             __load_installed_metadata_of_the_given_package "$1"
@@ -5201,7 +5207,7 @@ dep-pkg : $PACKAGE_DEP_PKG"
 
     __load_installed_metadata_of_the_given_package "$1"
 
-    printf '%b\n' "${COLOR_GREEN}installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_DATETIME '+%Y-%m-%d %H:%M:%S') CST${COLOR_OFF}"
+    printf '%b\n' "${COLOR_GREEN}installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_TIMESTAMP '+%Y-%m-%d %H:%M:%S') CST${COLOR_OFF}"
 }
 
 mark_is_package_installed_or_not() {
@@ -5217,11 +5223,18 @@ __record_installed_files_of_the_given_package() {
         INSTALLED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/installed-files"
         echo "-- Installing: $INSTALLED_FILES_FILEPATH"
 
+        # fuck, filename contains spaces sometimes.
+        IFS_SAVED="$IFS"
+        IFS='
+'
+
         exec 7> "$INSTALLED_FILES_FILEPATH"
 
         __record_installed_files_of_the_given_package "$1" "$MY_INSTALLED_DIR/$1"
 
         exec 7>&-
+
+        IFS="$IFS_SAVED"
 
         sed_in_place "s|$MY_INSTALLED_DIR/$1/||"    "$INSTALLED_FILES_FILEPATH"
         sed_in_place '/f:installed-files/d'         "$INSTALLED_FILES_FILEPATH"
@@ -5244,6 +5257,11 @@ __record_installed_files_of_the_given_package() {
 __symlink_installed_files_of_the_given_package() {
     LINKED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/symlinked-files"
 
+    # fuck, filename contains spaces sometimes.
+    IFS_SAVED="$IFS"
+    IFS='
+'
+
     exec 8> "$LINKED_FILES_FILEPATH"
 
     for item in $(cat "$INSTALLED_FILES_FILEPATH")
@@ -5258,7 +5276,11 @@ __symlink_installed_files_of_the_given_package() {
                 ;;
             f)  case $Y in
                     share/log/*) ;;
-                    *)  run ln -sr "'$MY_INSTALLED_DIR/$1/$Y'" "'$MY_HOME_DIR/symlinked/$Y'"
+                    share/info/dir) ;;
+                    *)  if [ "$VERBOSE_LEVEL" -ge 1 ] ; then
+                            echo "${COLOR_GREEN}ln -sr \"$MY_INSTALLED_DIR/$1/$Y\" \"$MY_HOME_DIR/symlinked/$Y\"${COLOR_OFF}"
+                        fi
+                        ln -sr "$MY_INSTALLED_DIR/$1/$Y" "$MY_HOME_DIR/symlinked/$Y"
                         printf '%s\n' "$Y" >&8
                 esac
                 ;;
@@ -5267,6 +5289,8 @@ __symlink_installed_files_of_the_given_package() {
     done
 
     exec 8>&-
+
+    IFS="$IFS_SAVED"
 }
 
 # __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
@@ -5298,12 +5322,25 @@ __symlink_installed_files_of_the_given_package() {
         fi
     fi
 
+    if ! grep -q '^bsystem: ' "$INSTALLED_METADATA_FILEPATH" ; then
+        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$INSTALLED_METADATA_FILEPATH"
+    fi
+
     sed_in_place '/^#src-url: dir:/d' "$INSTALLED_METADATA_FILEPATH"
 
     cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
 
-ppkgvers: $MY_VERSION
-datetime: $TIMESTAMP_UNIX
+buildon:
+    os-kind: $NATIVE_OS_KIND
+    os-type: $NATIVE_OS_TYPE
+    os-name: $NATIVE_OS_NAME
+    os-arch: $NATIVE_OS_ARCH
+    os-vers: $NATIVE_OS_VERS
+    os-ncpu: $NATIVE_OS_NCPU
+    os-libc: $NATIVE_OS_LIBC
+
+installer: ppkg-$MY_VERSION
+timestamp: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -5349,9 +5386,9 @@ EOF
 
     unset INSTALLED_PACKAGE_SYMLINK
 
-    unset INSTALLED_PACKAGE_PPKGVERS
+    unset INSTALLED_PACKAGE_INSTALLER
 
-    unset INSTALLED_PACKAGE_DATETIME
+    unset INSTALLED_PACKAGE_TIMESTAMP
 
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
@@ -5373,13 +5410,13 @@ EOF
         eval "INSTALLED_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
 
-    if [ -z "$INSTALLED_PACKAGE_PPKGVERS" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_PPKGVERS must not be empty."
+    if [ -z "$INSTALLED_PACKAGE_INSTALLER" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_INSTALLER must not be empty."
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_DATETIME" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_DATETIME must not be empty."
+    if [ -z "$INSTALLED_PACKAGE_TIMESTAMP" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_TIMESTAMP must not be empty."
         return 1
     fi
 
@@ -5398,8 +5435,8 @@ EOF
         return 1
     fi
 
-    if [ "${#INSTALLED_PACKAGE_DATETIME}" -ne 10 ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_DATETIME must be 10."
+    if [ "${#INSTALLED_PACKAGE_TIMESTAMP}" -ne 10 ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_TIMESTAMP must be 10."
         return 1
     fi
 }
