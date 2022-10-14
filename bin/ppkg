@@ -5258,7 +5258,7 @@ __symlink_installed_files_of_the_given_package() {
                 ;;
             f)  case $Y in
                     share/log/*) ;;
-                    *)  run ln -sr "$MY_INSTALLED_DIR/$1/$Y" "$MY_HOME_DIR/symlinked/$Y"
+                    *)  run ln -sr "'$MY_INSTALLED_DIR/$1/$Y'" "'$MY_HOME_DIR/symlinked/$Y'"
                         printf '%s\n' "$Y" >&8
                 esac
                 ;;
