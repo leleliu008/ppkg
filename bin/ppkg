@@ -3814,6 +3814,9 @@ __adjust_elf_files_for_the_given_target() {
 
             # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
             case $FILE_HEADER_ACTUAL in
+                7F454C460[12]01010[039]00000000000000000100)
+                    continue
+                    ;;
                 7F454C460[12]01010[039]00000000000000000200)
                     # little-endian mode
                     ELF_EXECUTABLE=yes
@@ -3821,6 +3824,9 @@ __adjust_elf_files_for_the_given_target() {
                 7F454C460[12]01010[039]00000000000000000300)
                     # little-endian mode
                     ELF_SHAREDABLE=yes
+                    ;;
+                7F454C460[12]02010[039]00000000000000000001)
+                    continue
                     ;;
                 7F454C460[12]02010[039]00000000000000000002)
                     # big-endian mode
