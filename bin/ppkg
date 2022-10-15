@@ -2563,16 +2563,10 @@ __list__outdated_packages() {
     do
         if is_package_installed "$packageName" ; then
             if [ -f "$MY_INSTALLED_DIR/$packageName/symlinked-files" ] ; then
-                # fuck, filename contains spaces sometimes.
-                IFS_SAVED="$IFS"
-                IFS='
-'
-                for item in $(cat "$MY_INSTALLED_DIR/$packageName/symlinked-files")
+                while read -r item
                 do
-                    echo "${COLOR_GREEN}unlink \"$MY_HOME_DIR/symlinked/$item\"${COLOR_OFF}"
-                    unlink "$MY_HOME_DIR/symlinked/$item"
-                done
-                IFS="$IFS_SAVED"
+                    run unlink "'$MY_HOME_DIR/symlinked/$item'"
+                done < "$MY_INSTALLED_DIR/$packageName/symlinked-files"
             fi
             run rm -rf "$MY_INSTALLED_DIR/$packageName"
         else
@@ -2979,28 +2973,25 @@ $LINE"
         VIEWER=less
     fi
 
-    __logs_the_given_dir() {
-        for item in $(ls "$1")
-        do
-            item="$1/$item"
-            if [ -d "$item" ] ; then
-                continue
-            fi
-            if [ "$VIEWER" = 'bat' ] ; then
-                case $item in
-                    *.png) ;;
-                    */installed-metadata-ppkg)
-                        bat -l yaml "$item" ;;
-                    *)  bat "$item"
-                esac
-            else
-                "$VIEWER" "$item"
-            fi
-        done
-    }
+    for item in $(ls "$MY_INSTALLED_DIR/$1")
+    do
+        item="$MY_INSTALLED_DIR/$1/$item"
 
-    __logs_the_given_dir "$MY_INSTALLED_DIR/$1"
-    __logs_the_given_dir "$MY_INSTALLED_DIR/$1/$2/share/log"
+        if [ -d "$item" ] ; then
+            continue
+        fi
+
+        if [ "$VIEWER" = 'bat' ] ; then
+            case $item in
+                *.png) ;;
+                */installed-metadata-ppkg)
+                    bat -l yaml "$item" ;;
+                *)  bat "$item"
+            esac
+        else
+            "$VIEWER" "$item"
+        fi
+    done
 
     if [ "$VIEWER" != 'bat' ] ; then
         prompt_user_to_install_bat
@@ -3724,35 +3715,43 @@ EOF
         esac
     fi
 
-    [ -d "$PACKAGE_INSTALL_DIR" ] || {
-        error "installed nothing."
-        return 1
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        [ -f "$PACKAGE_INSTALL_DIR/.crates.toml"  ] && rm "$PACKAGE_INSTALL_DIR/.crates.toml"
+        [ -f "$PACKAGE_INSTALL_DIR/.crates2.json" ] && rm "$PACKAGE_INSTALL_DIR/.crates2.json"
+    fi
+
+    cd "$PACKAGE_INSTALL_DIR" || die "nothing is installed."
+
+    INSTALLED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/installed-files"
+
+    find -not -name . -not -name installed-files -printf "%y:%P\n" > "$INSTALLED_FILES_FILEPATH"
+
+    [ $(wc -l "$INSTALLED_FILES_FILEPATH" | cut -d ' ' -f1) -eq 0 ] && {
+        rm    "$INSTALLED_FILES_FILEPATH"
+        die "nothing is installed."
     }
 
-    step "install logs"
-    __install_logs "$1"
-
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        step2 "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_mach_o_files_for_the_given_target $@
     else
-        step2 "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        step "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_elf_files_for_the_given_target $@
     fi
 
     if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
-        step2 "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        step "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_la_files_for_the_given_target $@
 
-        step2 "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        step "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_pc_files_for_the_given_target $@
     fi
 
+    step "install logs"
+    __install_logs_for_the_given_target "$1"
+
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
-
-    step "record installed files"
-    __record_installed_files_of_the_given_package "$1"
 
     if [ "$PACKAGE_SYMLINK" = yes ] ; then
         step "symlink installed files to $MY_HOME_DIR/symlinked"
@@ -3768,10 +3767,11 @@ EOF
     fi
 
     if [ "$KEEP_INSTALLING_DIR" != yes ] ; then
-        step "delete the installing directory."
+        step "delete the installing directory"
         run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
 
+    step "show installed files in tree-like format"
     __tree_the_given_installed_package "$1" $TREE_ARGS
 
     echo
@@ -4786,20 +4786,22 @@ __adjust_pc_files_for_the_given_target() {
     done
 }
 
-__install_logs() {
-    PACKAGE_LOG_DIR="$PACKAGE_INSTALL_DIR/share/log"
+__install_logs_for_the_given_target() {
     for item in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
     do
-        for item2 in 'config.log' 'compile_commands.json'
+        for item2 in config.log compile_commands.json
         do
             if [ -f "$item/$item2" ] ; then
-                if [ ! -d "$PACKAGE_LOG_DIR" ] ; then
-                    install -d "$PACKAGE_LOG_DIR"
-                fi
-                echo "-- Installing: $PACKAGE_LOG_DIR/$item2"
-                install -m 644 "$item/$item2" "$PACKAGE_LOG_DIR" || return 1
+                install -v -m 644 "$item/$item2" "$PACKAGE_INSTALL_DIR"
             fi
         done
+    done
+
+    for item in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
+    do
+        if [ -f "$item" ] ; then
+            install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR"
+        fi
     done
 }
 
@@ -5227,53 +5229,31 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-__record_installed_files_of_the_given_package() {
-    if [ -z "$2" ] ; then
-        INSTALLED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/installed-files"
-        echo "-- Installing: $INSTALLED_FILES_FILEPATH"
-
-        # fuck, filename contains spaces sometimes.
-        IFS_SAVED="$IFS"
-        IFS='
-'
-
-        exec 7> "$INSTALLED_FILES_FILEPATH"
-
-        __record_installed_files_of_the_given_package "$1" "$MY_INSTALLED_DIR/$1"
-
-        exec 7>&-
-
-        IFS="$IFS_SAVED"
-
-        sed_in_place "s|$MY_INSTALLED_DIR/$1/||"    "$INSTALLED_FILES_FILEPATH"
-        sed_in_place '/f:installed-files/d'         "$INSTALLED_FILES_FILEPATH"
-        sed_in_place '/f:installed-metadata-ppkg/d' "$INSTALLED_FILES_FILEPATH"
-    else
-        for FILENAME in $(ls "$2")
-        do
-            FILEPATH="$2/$FILENAME"
-
-            if [ -d "$FILEPATH" ] ; then
-                printf 'd:%s\n' "$FILEPATH/" >&7
-                __record_installed_files_of_the_given_package "$1" "$FILEPATH"
-            else
-                printf 'f:%s\n' "$FILEPATH"  >&7
-            fi
-        done
-    fi
-}
-
 __symlink_installed_files_of_the_given_package() {
-    LINKED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/symlinked-files"
+    while read -r item
+    do
+        X=$(printf '%s\n' "$item" | cut -d: -f1)
+        Y=${item#$X:}
 
-    # fuck, filename contains spaces sometimes.
-    IFS_SAVED="$IFS"
-    IFS='
-'
+        case $X in
+            f|l)
+                case $Y in
+                    share/info/dir) ;;
+                    *)  if [ -L "$MY_HOME_DIR/symlinked/$Y" ] || [ -e "$MY_HOME_DIR/symlinked/$Y" ] ; then
+                            die "$MY_HOME_DIR/symlinked/$Y already exists."
+                        fi
+                esac
+                ;;
+            d)  ;;
+            *)  die "unrecognized type: $X"
+        esac
+    done < "$INSTALLED_FILES_FILEPATH"
 
-    exec 8> "$LINKED_FILES_FILEPATH"
+    ############################################################################
 
-    for item in $(cat "$INSTALLED_FILES_FILEPATH")
+    exec 7> "$MY_INSTALLED_DIR/$1/symlinked-files"
+
+    while read -r item
     do
         X=$(printf '%s\n' "$item" | cut -d: -f1)
         Y=${item#$X:}
@@ -5283,23 +5263,17 @@ __symlink_installed_files_of_the_given_package() {
                     install -d "$MY_HOME_DIR/symlinked/$Y"
                 fi
                 ;;
-            f)  case $Y in
-                    share/log/*) ;;
+            f|l) case $Y in
                     share/info/dir) ;;
-                    *)  if [ "$VERBOSE_LEVEL" -ge 1 ] ; then
-                            echo "${COLOR_GREEN}ln -sr \"$MY_INSTALLED_DIR/$1/$Y\" \"$MY_HOME_DIR/symlinked/$Y\"${COLOR_OFF}"
-                        fi
-                        ln -sr "$MY_INSTALLED_DIR/$1/$Y" "$MY_HOME_DIR/symlinked/$Y"
-                        printf '%s\n' "$Y" >&8
+                    *)  run ln -sr "'$MY_INSTALLED_DIR/$1/$Y'" "'$MY_HOME_DIR/symlinked/$Y'"
+                        printf '%s\n' "$Y" >&7
                 esac
                 ;;
             *)  die "unrecognized type: $X"
         esac
-    done
+    done < "$INSTALLED_FILES_FILEPATH"
 
-    exec 8>&-
-
-    IFS="$IFS_SAVED"
+    exec 7>&-
 }
 
 # __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
@@ -5310,8 +5284,6 @@ __symlink_installed_files_of_the_given_package() {
     }
 
     INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata-ppkg"
-
-    printf '%b\n' "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
     run cp "$PACKAGE_FORMULA_FILEPATH" "$INSTALLED_METADATA_FILEPATH"
 
