@@ -17,8 +17,8 @@ jobs:
     runs-on: macos-${{ matrix.version }}
 
     steps:
-      - run: brew update
-      - run: brew install curl clang
+      #- run: brew update
+      #- run: brew install curl clang
 
       - uses: actions/checkout@v3
 
