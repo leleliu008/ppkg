@@ -1,4 +1,4 @@
-name: VoidLinux-musl
+name: VoidLinux-glibc
 
 on:
   push:
@@ -10,17 +10,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    container: voidlinux/voidlinux-musl
+    container: voidlinux/voidlinux
 
     steps:
-      - run: xbps-install -Sy curl git g++
+      - run: xbps-install -Sy curl g++
 
-      - run: git init
-      - run: git remote add origin https://github.com/${{github.repository}}
-      - run: git config --local gc.auto 0
-      - run: git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin +${{github.sha}}:refs/remotes/origin/master
-      - run: git checkout --progress --force -B master refs/remotes/origin/master
-      - run: ls
+      - uses: actions/checkout@v3
 
       - run: bin/ppkg --help
       - run: bin/ppkg --version
@@ -37,9 +32,9 @@ jobs:
       - run: bin/ppkg search libzip
 
       - run: bin/ppkg info libzip
-      - run: bin/ppkg info libzip version
+      - run: bin/ppkg info libzip summary
       - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip
+      - run: bin/ppkg info libzip version
 
       - run: bin/ppkg depends libzip
 
