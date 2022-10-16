@@ -5990,6 +5990,19 @@ __setup() {
         printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/uppm"
         chmod +x                    "$MY_CORE_BIN_DIR/uppm"
 
+        export PATH="$MY_CORE_BIN_DIR:$PATH"
+
+        unset SETUP_WORKING_DIR
+        SETUP_WORKING_DIR=$(mktemp -d)
+
+        # https://curl.se/docs/caextract.html
+        fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+
+        run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
+        run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
+
+        export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+
         __setup_yq
     else
         __setup_uppm
@@ -6053,6 +6066,7 @@ __setup_freebsd() {
     run $sudo pkg update
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc
 
+    run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
@@ -6071,6 +6085,7 @@ __setup_openbsd() {
         7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf
     esac
 
+    run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
@@ -6084,8 +6099,9 @@ __setup_openbsd() {
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkgconf go git curl cmake ninja-build gmake libtool llvm
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkgconf go git curl cmake ninja-build gmake libtool llvm mozilla-rootcerts
 
+    run ln -sf /usr/pkg/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/pkg/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/pkg/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/pkg/bin/gawk     "$MY_CORE_BIN_DIR/awk"
@@ -6096,6 +6112,8 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/pkg/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
+
+    run sudo mozilla-rootcerts install
 }
 
 __setup_yq() {
