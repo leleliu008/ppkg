@@ -6188,8 +6188,8 @@ __setup_uppm() {
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
-    rm "$MY_HOME_DIR/core/MANIFEST.txt"
-    rm "$MY_HOME_DIR/core/METADATA.yml"
+    # rm "$MY_HOME_DIR/core/MANIFEST.txt"
+    # rm "$MY_HOME_DIR/core/METADATA.yml"
 
     ##################################################################################
 
