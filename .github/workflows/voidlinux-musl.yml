@@ -13,7 +13,9 @@ jobs:
     container: voidlinux/voidlinux-musl
 
     steps:
-      - run: xbps-install -Sy curl git g++
+      - run: xbps-install -u xbps
+      - run: xbps-install -S
+      - run: xbps-install -Syu curl git g++
 
       - run: git init
       - run: git remote add origin https://github.com/${{github.repository}}
