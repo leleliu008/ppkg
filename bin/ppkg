@@ -6095,6 +6095,10 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
+
+    # tree package in system's package manager is too old
+    printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/tree"
+    chmod +x                    "$MY_CORE_BIN_DIR/tree"
 }
 
 __setup__netbsd() {

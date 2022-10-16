@@ -15,7 +15,7 @@ jobs:
     steps:
       - run: xbps-install -Syu xbps
       - run: xbps-install -S
-      - run: xbps-install -Syu curl git gcc
+      - run: xbps-install -Syu curl xz git gcc
 
       - run: git init
       - run: git remote add origin https://github.com/${{github.repository}}
