@@ -6178,7 +6178,7 @@ __setup_uppm() {
 
     fetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
-    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
     # rm "$MY_HOME_DIR/core/MANIFEST.txt"
     # rm "$MY_HOME_DIR/core/METADATA.yml"
