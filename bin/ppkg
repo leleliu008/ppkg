@@ -260,12 +260,7 @@ is_elf_file() {
     }
 
     # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-
-    if command -v hexdump > /dev/null ; then
-        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
-    else
-        [ "$(head -c 4 "$1")" = "$(printf '\177ELF')" ]
-    fi
+    [ "$(head -c 4 "$1")" = "$(printf '\177ELF')" ]
 }
 
 # format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
@@ -331,76 +326,6 @@ lolcat_awk() {
     '
 }
 
-# }}}
-##############################################################################
-# {{{ md5sum
-
-#examples:
-# printf ss | md5sum
-# cat FILE  | md5sum
-# md5sum < FILE
-md5sum() {
-    if [ $# -eq 0 ] ; then
-        if echo | command md5sum > /dev/null 2>&1 ; then
-             command md5sum | cut -d ' ' -f1
-        elif command -v openssl > /dev/null ; then
-             openssl md5 | rev | cut -d ' ' -f1 | rev
-        else
-            error "md5sum, neither openssl nor GNU CoreUtils Found."
-            return 1
-        fi
-    else
-        [ -e "$1" ] || {
-            error "md5sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
-            return 1
-        }
-
-        if command -v openssl > /dev/null ; then
-             openssl md5    "$1" | cut -d ' ' -f2
-        elif echo | command md5sum > /dev/null 2>&1 ; then
-             command md5sum "$1" | cut -d ' ' -f1
-        else
-            error "md5sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
-            return 1
-        fi
-    fi
-}
-
-# }}}
-##############################################################################
-# {{{ sha256sum
-
-#examples:
-# printf ss | sha256sum
-# cat FILE  | sha256sum
-# sha256sum < FILE
-sha256sum() {
-    if [ $# -eq 0 ] ; then
-        if echo | command sha256sum > /dev/null 2>&1 ; then
-             command sha256sum | cut -d ' ' -f1
-        elif command -v openssl > /dev/null ; then
-             openssl sha256 | rev | cut -d ' ' -f1 | rev
-        else
-            error "sha256sum, neither openssl nor GNU CoreUtils Found."
-            return 1
-        fi
-    else
-        [ -e "$1" ] || {
-            error "sha256sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
-            return 1
-        }
-
-        if echo | command sha256sum > /dev/null 2>&1 ; then
-             command sha256sum "$1" | cut -d ' ' -f1
-        elif command -v openssl > /dev/null ; then
-             openssl sha256    "$1" | cut -d ' ' -f2
-        else
-            error "sha256sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
-            return 1
-        fi
-    fi
-}
-
 # file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>
   file_exists_and_sha256sum_matched() {
     [ -z "$1" ] && {
@@ -418,168 +343,7 @@ sha256sum() {
         return 1
     }
 
-    [ "$(sha256sum $1)" = "$2" ]
-}
-
-# }}}
-##############################################################################
-# {{{ map
-
-# 40   map name is not given.
-# 41   map key  is not given.
-
-# __map_name_ref <MAP-NAME>
-  __map_name_ref() {
-    if [ -z "$1" ] ; then
-        error "__map_name_ref <MAP-NAME>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    printf "map_%s\n" "$(printf '%s\n' "$1" | md5sum)"
-}
-
-# __map_key_ref <MAP-NAME> <MAP-KEY>
-  __map_key_ref() {
-    if [ -z "$1" ] ; then
-        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    if [ -z "$2" ] ; then
-        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
-        return 41
-    fi
-
-    printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s\n' "$2" | md5sum)"
-}
-
-# map_contains <MAP-NAME> <MAP-KEY>
-  map_contains() {
-    if [ -z "$1" ] ; then
-        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    if [ -z "$2" ] ; then
-        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
-        return 41
-    fi
-
-    for item in $(eval echo \$$(__map_name_ref "$1"))
-    do
-        if [ "$item" = "$2" ] ; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>
-  map_set() {
-    if [ -z "$1" ] ; then
-        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    if [ -z "$2" ] ; then
-        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-KEY> is not given."
-        return 41
-    fi
-
-    map_contains "$1" "$2" || {
-        unset __MAP_NAME_REF__
-        __MAP_NAME_REF__="$(__map_name_ref "$1")"
-        __MAP_NAME_REF_VALUE__="$(eval echo \$$__MAP_NAME_REF__)"
-        eval "$__MAP_NAME_REF__=\"$__MAP_NAME_REF_VALUE__ $2\""
-    }
-
-    eval "$(__map_key_ref "$1" "$2")=$3"
-}
-
-# map_get <MAP-NAME> <MAP-KEY>
-  map_get() {
-    if [ -z "$1" ] ; then
-        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    if [ -z "$2" ] ; then
-        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
-        return 41
-    fi
-
-    eval echo "\$$(__map_key_ref "$1" "$2")"
-}
-
-# map_remove <MAP-NAME> <MAP-KEY>
-  map_remove() {
-    if [ -z "$1" ] ; then
-        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    if [ -z "$2" ] ; then
-        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
-        return 41
-    fi
-
-    unset __MAP_NAME_REF__
-    __MAP_NAME_REF__="$(__map_name_ref "$1")"
-
-    unset __MAP_KEYS__
-    __MAP_KEYS__="$(map_keys "$1")"
-
-    unset $__MAP_NAME_REF__
-
-    for item in $__MAP_KEYS__
-    do
-        if [ "$item" = "$2" ] ; then
-            continue
-        else
-            eval "$__MAP_NAME_REF__='$(eval echo \$$__MAP_NAME_REF__) $item'"
-        fi
-    done
-
-    eval "unset $(__map_key_ref "$1" "$2")"
-}
-
-# map_remove <MAP-NAME>
-  map_clear() {
-    if [ -z "$1" ] ; then
-        error "map_clear <MAP-NAME>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    unset __MAP_NAME_REF__
-    __MAP_NAME_REF__="$(__map_name_ref "$1")"
-
-    for item in $(eval echo "\$$__MAP_NAME_REF__")
-    do
-        eval "unset $(__map_key_ref "$1" "$item")"
-    done
-
-    eval "unset $__MAP_NAME_REF__"
-}
-
-# map_keys <MAP-NAME>
-  map_keys() {
-    if [ -z "$1" ] ; then
-        error "map_keys <MAP-NAME>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    eval echo "\$$(__map_name_ref "$1")"
-}
-
-# map_size <MAP-NAME>
-  map_size() {
-    if [ -z "$1" ] ; then
-        error "map_size <MAP-NAME>, <MAP-NAME> is not given."
-        return 40
-    fi
-
-    list_length $(map_keys "$1")
+    [ "$(sha256sum $1 | cut -d ' ' -f1)" = "$2" ]
 }
 
 # }}}
@@ -789,23 +553,11 @@ fetch() {
 
             if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
                 file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" || {
-                    error "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum $FETCH_OUTPUT_PATH)"
+                    error "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum $FETCH_OUTPUT_PATH | cut -d ' ' -f1)"
                     return 1
                 }
             fi
     esac
-}
-
-install_ca_certificates_on_netbsd() {
-    # https://www.cambus.net/installing-ca-certificates-on-netbsd/
-    if [ "$(uname)" = NetBSD ] ; then
-        command -v mozilla-rootcerts > /dev/null || {
-            if command -v pkgin > /dev/null ; then
-                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts
-            fi
-        }
-        run mozilla-rootcerts install || true
-    fi
 }
 
 # }}}
@@ -819,7 +571,8 @@ get_china_mirror_url() {
             printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
             ;;
         *github.com/*)
-            printf "%s\n" "$1" | sed 's@github.com/@hub.fastgit.org/@'
+            # https://ghproxy.com/
+            printf "https://ghproxy.com/%s\n" "$1"
             ;;
         *)  printf '%s\n' "$1"
     esac
@@ -830,7 +583,7 @@ get_china_mirror_url() {
 # {{{ __upgrade_self
 
 # __upgrade_self <URL> [--china] [-x]
-__upgrade_self() {
+  __upgrade_self() {
     set -e
 
     if [ -z "$1" ] ; then
@@ -899,7 +652,7 @@ __upgrade_self() {
 # {{{ __integrate_zsh_completions
 
 # __integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x]
-__integrate_zsh_completions() {
+  __integrate_zsh_completions() {
     set -e
 
     if [ -z "$1" ] ; then
@@ -2360,9 +2113,9 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
-    [ -d "$MY_INSTALLED_DIR/$1" ]                    || return 10
-    [ -f "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg" ] || return 11
-    [ -f "$MY_INSTALLED_DIR/$1/installed-files" ]    || return 12
+    [ -d "$MY_INSTALLED_DIR/$1" ]              || return 10
+    [ -f "$MY_INSTALLED_DIR/$1/MANIFEST.txt" ] || return 11
+    [ -f "$MY_INSTALLED_DIR/$1/METADATA.yml" ] || return 12
 }
 
 # is_package__outdated <PACKAGE-NAME>
@@ -2562,12 +2315,15 @@ __list__outdated_packages() {
     for packageName in $USER_SPECIFIED_PACKAGES
     do
         if is_package_installed "$packageName" ; then
-            if [ -f "$MY_INSTALLED_DIR/$packageName/symlinked-files" ] ; then
+            PACKAGE_SYMLINK_REGISTER_FILEPATH="$MY_SYMLINKED_DIR/.registry/$packageName"
+
+            if [ -f "$PACKAGE_SYMLINK_REGISTER_FILEPATH" ] ; then
                 while read -r item
                 do
-                    run unlink "'$MY_HOME_DIR/symlinked/$item'"
-                done < "$MY_INSTALLED_DIR/$packageName/symlinked-files"
+                    run unlink "\"$MY_SYMLINKED_DIR/$item\""
+                done < "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
             fi
+            run rm "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
             run rm -rf "$MY_INSTALLED_DIR/$packageName"
         else
             warn "$packageName is not installed."
@@ -2984,7 +2740,7 @@ $LINE"
         if [ "$VIEWER" = 'bat' ] ; then
             case $item in
                 *.png) ;;
-                */installed-metadata-ppkg)
+                */METADATA.yml)
                     bat -l yaml "$item" ;;
                 *)  bat "$item"
             esac
@@ -3414,6 +3170,8 @@ __install_the_given_package() {
     install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
     unset PACKAGE_INSTALL_DIR
+    unset PACKAGE_MANIFEST_FILEPATH
+    unset PACKAGE_METADATA_FILEPATH
 
     #########################################################################################
 
@@ -3722,14 +3480,7 @@ EOF
 
     cd "$PACKAGE_INSTALL_DIR" || die "nothing is installed."
 
-    INSTALLED_FILES_FILEPATH="$MY_INSTALLED_DIR/$1/installed-files"
-
-    find -not -name . -not -name installed-files -printf "%y:%P\n" > "$INSTALLED_FILES_FILEPATH"
-
-    [ $(wc -l "$INSTALLED_FILES_FILEPATH" | cut -d ' ' -f1) -eq 0 ] && {
-        rm    "$INSTALLED_FILES_FILEPATH"
-        die "nothing is installed."
-    }
+    [ -z "$(ls)" ]            && die "nothing is installed."
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
@@ -3750,11 +3501,14 @@ EOF
     step "install logs"
     __install_logs_for_the_given_target "$1"
 
-    step "record installed metadata"
-    __record_installed_metadata_of_the_given_package "$1"
+    step "generate MANIFEST.txt"
+    __generate_installed_manifest_of_the_given_package "$1"
+
+    step "generate METADATA.yml"
+    __generate_installed_metadata_of_the_given_package "$1"
 
     if [ "$PACKAGE_SYMLINK" = yes ] ; then
-        step "symlink installed files to $MY_HOME_DIR/symlinked"
+        step "symlink installed files to $MY_SYMLINKED_DIR"
         __symlink_installed_files_of_the_given_package "$1"
     fi
 
@@ -3779,10 +3533,11 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
-    run patchelf --version
-    run command -v patchelf
+    # run patchelf --version
+    # run command -v patchelf
 
-    unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
+    unset  BASE64_COMMAND
+    export BASE64_COMMAND="$(command -v base64)"
 
     BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
 
@@ -3790,19 +3545,13 @@ __adjust_elf_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $BASE64_ENCODE_STRING_COMMAND '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
             BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
 
-            if [ "$BASE64_DECODED_RELATIVE_FILEPATH" = '.' ] ; then
-                continue
-            fi
-
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
-            [ -d "$FILEPATH" ] && continue
-            [ -L "$FILEPATH" ] && continue
             [ -w "$FILEPATH" ] || continue
 
             unset FILE_HEADER_ACTUAL
@@ -5157,9 +4906,25 @@ EOF
                 return 1
             fi
             ;;
+        installed-files)
+            if is_package_installed "$1" ; then
+                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/MANIFEST.txt"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-manifest)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALLED_DIR/$1/MANIFEST.txt"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
         installed-metadata-yaml)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg"
+                cat "$MY_INSTALLED_DIR/$1/METADATA.yml"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5167,15 +4932,7 @@ EOF
             ;;
         installed-metadata-json)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/installed-metadata-ppkg"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
-            ;;
-        installed-files)
-            if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/installed-files"
+                cat "$MY_INSTALLED_DIR/$1/METADATA.yml"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -5187,7 +4944,7 @@ EOF
             ;;
         installed-datetime-formatted)
             __load_installed_metadata_of_the_given_package "$1"
-            format_unix_timestamp "$INSTALLED_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S'
+            format_unix_timestamp "$INSTALLED_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S %z CST'
             ;;
         installed-pkg-version)
             __load_installed_metadata_of_the_given_package "$1"
@@ -5203,22 +4960,15 @@ EOF
 
 # __show_infomation_as_mixed_of_the_given_package <PACKAGE-NAME>
   __show_infomation_as_mixed_of_the_given_package() {
-    __load_formula_of_the_given_package "$1"
+    export BAT_STYLE=plain
 
-    printf '%b\n' \
-"pkgname : $(mark_is_package_installed_or_not $1)
-version : $PACKAGE_VERSION
-summary : $PACKAGE_SUMMARY
-webpage : $PACKAGE_WEBPAGE
-src-url : $PACKAGE_SRC_URL
-src-loc : $PACKAGE_SRC_PATH
-dep-pkg : $PACKAGE_DEP_PKG"
+    main formula view "$1"
 
-    is_package_installed "$1" || return 0
-
-    __load_installed_metadata_of_the_given_package "$1"
-
-    printf '%b\n' "${COLOR_GREEN}installed version $INSTALLED_PACKAGE_VERSION at $(format_unix_timestamp $INSTALLED_PACKAGE_TIMESTAMP '+%Y-%m-%d %H:%M:%S') CST${COLOR_OFF}"
+    # if is_package_installed "$1" ; then
+    #     printf '\n'
+    #     printf 'status:  installed\n' | bat --language yaml
+    #     grep '^history:' "$MY_INSTALLED_DIR/$1/METADATA.yml" | bat --language yaml
+    # fi
 }
 
 mark_is_package_installed_or_not() {
@@ -5229,87 +4979,117 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-__symlink_installed_files_of_the_given_package() {
+# __symlink_installed_files_of_the_given_package <PACKAGE-NAME>
+  __symlink_installed_files_of_the_given_package() {
     while read -r item
     do
         X=$(printf '%s\n' "$item" | cut -d: -f1)
-        Y=${item#$X:}
+        Y=$(printf '%s\n' "$item" | cut -d: -f3)
 
         case $X in
-            f|l)
-                case $Y in
+            d)  ;;
+            *)  case $Y in
                     share/info/dir) ;;
-                    *)  if [ -L "$MY_HOME_DIR/symlinked/$Y" ] || [ -e "$MY_HOME_DIR/symlinked/$Y" ] ; then
-                            die "$MY_HOME_DIR/symlinked/$Y already exists."
+                    *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
+                            die "$MY_SYMLINKED_DIR/$Y already exists."
                         fi
                 esac
-                ;;
-            d)  ;;
-            *)  die "unrecognized type: $X"
         esac
-    done < "$INSTALLED_FILES_FILEPATH"
+    done < "$PACKAGE_MANIFEST_FILEPATH"
 
     ############################################################################
 
-    exec 7> "$MY_INSTALLED_DIR/$1/symlinked-files"
+    if [ !      -d "$MY_SYMLINKED_DIR/.registry" ] ; then
+        install -d "$MY_SYMLINKED_DIR/.registry"
+    fi
+
+    exec 7> "$MY_SYMLINKED_DIR/.registry/$1"
 
     while read -r item
     do
-        X=$(printf '%s\n' "$item" | cut -d: -f1)
-        Y=${item#$X:}
+        X=$(printf '%s\n' "$item" | cut -d '|' -f1)
+        Y=$(printf '%s\n' "$item" | cut -d '|' -f3)
 
         case $X in
-            d)  if [ !      -d "$MY_HOME_DIR/symlinked/$Y" ] ; then
-                    install -d "$MY_HOME_DIR/symlinked/$Y"
+            d)  if [ !      -d "$MY_SYMLINKED_DIR/$Y" ] ; then
+                    install -d "$MY_SYMLINKED_DIR/$Y"
                 fi
                 ;;
-            f|l) case $Y in
+            *)  case $Y in
                     share/info/dir) ;;
-                    *)  run ln -sr "'$MY_INSTALLED_DIR/$1/$Y'" "'$MY_HOME_DIR/symlinked/$Y'"
+                    *)  run ln -sr "\"$MY_INSTALLED_DIR/$1/$Y\"" "\"$MY_SYMLINKED_DIR/$Y\""
                         printf '%s\n' "$Y" >&7
                 esac
-                ;;
-            *)  die "unrecognized type: $X"
         esac
-    done < "$INSTALLED_FILES_FILEPATH"
+    done < "$PACKAGE_MANIFEST_FILEPATH"
 
     exec 7>&-
 }
 
-# __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
-  __record_installed_metadata_of_the_given_package() {
+# __generate_installed_manifest_of_the_given_package <PACKAGE-NAME>
+  __generate_installed_manifest_of_the_given_package() {
+    PACKAGE_MANIFEST_FILEPATH="$MY_INSTALLED_DIR/$1/MANIFEST.txt"
+
+    # fuck, some package's filename has space
+    IFS_SAVED="$IFS"
+    IFS='
+'
+
+    exec 7> "$PACKAGE_MANIFEST_FILEPATH"
+
+    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -printf '%P\n')
+    do
+        for item in $(find "$dirname" -printf '%y:%p\n')
+        do
+            X=$(printf '%s\n' "$item" | cut -c1)
+            Y=${item#$X:}
+
+            case $X in
+                d) printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
+                *) printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
+            esac
+        done
+    done
+
+    exec 7>&-
+
+    IFS="$IFS_SAVED"
+}
+
+# __generate_installed_metadata_of_the_given_package <PACKAGE-NAME>
+  __generate_installed_metadata_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__record_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__generate_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata-ppkg"
+    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/METADATA.yml"
 
-    run cp "$PACKAGE_FORMULA_FILEPATH" "$INSTALLED_METADATA_FILEPATH"
+    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_METADATA_FILEPATH"
 
-    sed_in_place "1i pkgname: $PACKAGE_NAME" "$INSTALLED_METADATA_FILEPATH"
+    sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_METADATA_FILEPATH"
 
-    if ! grep -q '^version: ' "$INSTALLED_METADATA_FILEPATH" ; then
-        sed_in_place "2i version: $PACKAGE_VERSION" "$INSTALLED_METADATA_FILEPATH"
+    if ! grep -q '^version: ' "$PACKAGE_METADATA_FILEPATH" ; then
+        sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_METADATA_FILEPATH"
     fi
 
     if [ "$PACKAGE_SRC_TYPE" = git ] || [ "$PACKAGE_SRC_TYPE" = dir ] ; then
-        if ! grep -q '^git-sha: ' "$INSTALLED_METADATA_FILEPATH" ; then
-            if grep -q '^git-url: ' "$INSTALLED_METADATA_FILEPATH" ; then
-                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$INSTALLED_METADATA_FILEPATH"
+        if ! grep -q '^git-sha: ' "$PACKAGE_METADATA_FILEPATH" ; then
+            if grep -q '^git-url: ' "$PACKAGE_METADATA_FILEPATH" ; then
+                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_METADATA_FILEPATH"
             else
-                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$INSTALLED_METADATA_FILEPATH"
+                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_METADATA_FILEPATH"
             fi
         fi
     fi
 
-    if ! grep -q '^bsystem: ' "$INSTALLED_METADATA_FILEPATH" ; then
-        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$INSTALLED_METADATA_FILEPATH"
+    if ! grep -q '^bsystem: ' "$PACKAGE_METADATA_FILEPATH" ; then
+        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_METADATA_FILEPATH"
     fi
 
-    sed_in_place '/^#src-url: dir:/d' "$INSTALLED_METADATA_FILEPATH"
+    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_METADATA_FILEPATH"
 
-    cat >> "$INSTALLED_METADATA_FILEPATH" <<EOF
+    cat >> "$PACKAGE_METADATA_FILEPATH" <<EOF
 
 buildon:
     os-kind: $NATIVE_OS_KIND
@@ -5320,8 +5100,7 @@ buildon:
     os-ncpu: $NATIVE_OS_NCPU
     os-libc: $NATIVE_OS_LIBC
 
-installer: ppkg-$MY_VERSION
-timestamp: $TIMESTAMP_UNIX
+history: ppkg-$MY_VERSION-$TIMESTAMP_UNIX
 EOF
 }
 
@@ -5367,6 +5146,8 @@ EOF
 
     unset INSTALLED_PACKAGE_SYMLINK
 
+    unset INSTALLED_PACKAGE_HISTORY
+
     unset INSTALLED_PACKAGE_INSTALLER
 
     unset INSTALLED_PACKAGE_TIMESTAMP
@@ -5374,15 +5155,15 @@ EOF
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
 
-    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata-ppkg"
+    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/METADATA.yml"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink installer timestamp
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink history
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
 
         __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$INSTALLED_METADATA_FILEPATH")"
+        __VALUE__="$(yq ".$key" "$PACKAGE_METADATA_FILEPATH")"
 
         if [ "$__VALUE__" = null ] ; then
                 __VALUE__=
@@ -5391,33 +5172,41 @@ EOF
         eval "INSTALLED_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
 
+    if [ -z "$INSTALLED_PACKAGE_HISTORY" ] ; then
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_HISTORY must not be empty."
+        return 1
+    fi
+
+    INSTALLED_PACKAGE_INSTALLER="$(printf '%s\n' "$INSTALLED_PACKAGE_HISTORY" | tr ' ' '\n' | head -n 1 | cut -d- -f1)"
+    INSTALLED_PACKAGE_TIMESTAMP="$(printf '%s\n' "$INSTALLED_PACKAGE_HISTORY" | tr ' ' '\n' | head -n 1 | cut -d- -f3)"
+
     if [ -z "$INSTALLED_PACKAGE_INSTALLER" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_INSTALLER must not be empty."
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_INSTALLER must not be empty."
         return 1
     fi
 
     if [ -z "$INSTALLED_PACKAGE_TIMESTAMP" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_TIMESTAMP must not be empty."
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_TIMESTAMP must not be empty."
         return 1
     fi
 
     if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_VERSION must not be empty."
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_VERSION must not be empty."
         return 1
     fi
 
     if [ -z "$INSTALLED_PACKAGE_SUMMARY" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SUMMARY must not be empty."
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SUMMARY must not be empty."
         return 1
     fi
 
     if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] && [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
+        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
         return 1
     fi
 
     if [ "${#INSTALLED_PACKAGE_TIMESTAMP}" -ne 10 ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_TIMESTAMP must be 10."
+        error "$PACKAGE_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_TIMESTAMP must be 10."
         return 1
     fi
 }
@@ -6399,8 +6188,8 @@ __setup_uppm() {
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --overwrite --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
-    rm "$MY_HOME_DIR/core/installed-files"
-    rm "$MY_HOME_DIR/core/installed-metadata-ppkg"
+    rm "$MY_HOME_DIR/core/MANIFEST.txt"
+    rm "$MY_HOME_DIR/core/METADATA.yml"
 
     ##################################################################################
 
