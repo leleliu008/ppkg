@@ -13,7 +13,7 @@ jobs:
     container: voidlinux/voidlinux-musl
 
     steps:
-      - run: xbps-install -u xbps
+      - run: xbps-install -Syu xbps
       - run: xbps-install -S
       - run: xbps-install -Syu curl git g++
 
