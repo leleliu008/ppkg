@@ -1,4 +1,4 @@
-name: ArchLinux
+name: macOS
 
 on:
   push:
@@ -8,13 +8,17 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    
-    container: archlinux
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [12, 11]
+
+    runs-on: macos-${{ matrix.version }}
 
     steps:
-      - run: pacman -Syy --noconfirm
-      - run: pacman -S   --noconfirm curl gcc
+      - run: brew update
+      - run: brew install curl clang
 
       - uses: actions/checkout@v3
 
@@ -33,15 +37,18 @@ jobs:
       - run: bin/ppkg search libzip
 
       - run: bin/ppkg info libzip
-      - run: bin/ppkg info libzip version
+      - run: bin/ppkg info libzip summary
       - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip src-url
+      - run: bin/ppkg info libzip version
 
       - run: bin/ppkg depends libzip
 
+
       - run: bin/ppkg install libzip
 
+
       - run: bin/ppkg tree libzip
+
       - run: bin/ppkg pack libzip --type=tar.xz
 
       - run: bin/ppkg formula-repo list
@@ -53,7 +60,14 @@ jobs:
 
       - run: bin/ppkg is-available libzip
       - run: bin/ppkg is-installed libzip
-      - run: bin/ppkg is-outdated  libzip || echo "not outdated"
+      - run: bin/ppkg is-outdated libzip || echo "not outdated"
+
+      - run: bin/ppkg info libzip installed-dir
+      - run: bin/ppkg info libzip installed-files
+      - run: bin/ppkg info libzip installed-manifest
+      - run: bin/ppkg info libzip installed-metadata
+      - run: bin/ppkg info libzip installed-datetime-unix
+      - run: bin/ppkg info libzip installed-datetime-formatted
 
       - run: bin/ppkg uninstall libzip
 

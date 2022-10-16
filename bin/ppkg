@@ -2756,7 +2756,7 @@ $LINE"
 
 # examples:
 # __pack_the_given_installed_package <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir]
-# __pack_the_given_installed_package    autoconf       tar.xz
+# __pack_the_given_installed_package    autoconf     --type=tar.xz
   __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1"
 
@@ -4922,15 +4922,7 @@ EOF
                 return 1
             fi
             ;;
-        installed-metadata-yaml)
-            if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/METADATA.yml"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
-            ;;
-        installed-metadata-json)
+        installed-metadata)
             if is_package_installed "$1" ; then
                 cat "$MY_INSTALLED_DIR/$1/METADATA.yml"
             else
@@ -4946,7 +4938,7 @@ EOF
             __load_installed_metadata_of_the_given_package "$1"
             format_unix_timestamp "$INSTALLED_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S %z CST'
             ;;
-        installed-pkg-version)
+        installed-version)
             __load_installed_metadata_of_the_given_package "$1"
             printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
             ;;

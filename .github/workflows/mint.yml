@@ -40,7 +40,7 @@ jobs:
       - run: bin/ppkg info libzip
       - run: bin/ppkg info libzip version
       - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip src.url
+      - run: bin/ppkg info libzip src-url
 
       - run: bin/ppkg depends libzip
 
