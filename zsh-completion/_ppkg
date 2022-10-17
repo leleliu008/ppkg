@@ -29,10 +29,8 @@ _commands=(
     'integrate:integrate zsh completions.'
     'env:show current machine os and environment variables.'
     'depends:show the depends of the given package.'
-    'prefix:show the installation direcotory of the given package or the home dir of this project.'
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
-    'nproc:print the number of processing units available'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
 )
@@ -115,11 +113,11 @@ function _ppkg() {
                             installed-*)
                                 _arguments \
                                     '1:package-name:()' \
-                                    '2:key:(installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version)'
+                                    '2:key:(installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-version)'
                                 ;;
                             *)  _arguments \
                                     '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                    '2:key:(formula summary webpage version license git-url git-sha src-url src-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binsrcd bsystem installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version --json --yaml --shell)'
+                                    '2:key:(formula summary webpage version license git-url git-sha src-url src-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binsrcd bsystem installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-version --json --yaml --shell)'
                         esac
                     fi
                     ;;
@@ -148,6 +146,8 @@ function _ppkg() {
                 tree)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
+                        '-a[show all files, including hidden ones]' \
+                        '--dirsfirst[list directories before files]' \
                         '-L[level]:level:(3)'
                     ;;
                 logs)
@@ -169,7 +169,7 @@ function _ppkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                         '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
                         '-x[trace execution of commands]' \
@@ -192,7 +192,7 @@ function _ppkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                         '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
                         '-x[trace execution of commands]' \
@@ -227,7 +227,7 @@ function _ppkg() {
                                     '--install-man[install manpages]' \
                                     '--export-compile-commands-json[generates compile_commands.json]' \
                                     '--disable-ccache[do not use ccache]' \
-                                    '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                                    '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                                     '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                                     + '(verbose_level)' \
                                     '-x[trace execution of commands]' \

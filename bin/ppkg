@@ -2113,9 +2113,11 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
-    [ -d "$MY_INSTALLED_DIR/$1" ]              || return 10
-    [ -f "$MY_INSTALLED_DIR/$1/MANIFEST.txt" ] || return 11
-    [ -f "$MY_INSTALLED_DIR/$1/METADATA.yml" ] || return 12
+    [ -d "$MY_INSTALLED_DIR/$1" ]                    || return 10
+    [ -d "$MY_INSTALLED_DIR/$1/.ppkg" ]              || return 11
+    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt" ] || return 12
+    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/METADATA.yml" ] || return 13
+    [ -f "$MY_INSTALLED_DIR/$1/.installed" ]         || return 14
 }
 
 # is_package__outdated <PACKAGE-NAME>
@@ -2729,9 +2731,9 @@ $LINE"
         VIEWER=less
     fi
 
-    for item in $(ls "$MY_INSTALLED_DIR/$1")
+    for item in $(ls "$MY_INSTALLED_DIR/$1/.ppkg")
     do
-        item="$MY_INSTALLED_DIR/$1/$item"
+        item="$MY_INSTALLED_DIR/$1/.ppkg/$item"
 
         if [ -d "$item" ] ; then
             continue
@@ -2776,7 +2778,7 @@ $LINE"
             --type=*)
                 PACKED_FILETYPE=$(getvalue "$1")
                 case $PACKED_FILETYPE in
-                    zip|tar.gz|tar.xz|tar.bz2) ;;
+                    7z|zip|tar.gz|tar.xz|tar.bz2) ;;
                     '')die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], <TYPE> must not be empty." ;;
                     *) die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], unsupported <TYPE>: $PACKED_FILETYPE, the supported types are zip tar.gz tar.xz tar.bz2."
                 esac
@@ -2802,7 +2804,7 @@ $LINE"
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
         if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" \( -type f -o -type l \))
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" -type f)
             do
                 case $FILEPATH in
                     */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
@@ -2814,7 +2816,7 @@ $LINE"
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
             if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" ] ; then
-                for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" \( -type f -o -type l \))
+                for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" -type f)
                 do
                     unset FILE_MAGIC
 
@@ -2835,7 +2837,7 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" \( -type f -o -type l \) -a -name "*.a")
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" -type f -a -name "*.a")
             do
                 PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
@@ -2862,11 +2864,11 @@ $LINE"
 
     step "packing"
     case $PACKED_FILETYPE in
-        7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
-        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME"   ;;
-        tar.gz)  run tar zvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
-        tar.xz)  run tar Jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
-        tar.bz2) run tar jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" ;;
+        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME"  --exclude "$PACKED_DIR_NAME/.installed" ;;
+        7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
     esac
 
     step "check integrity of packed file"
@@ -3169,9 +3171,13 @@ __install_the_given_package() {
     install -d "$PACKAGE_INSTALLING_LIB_DIR"
     install -d "$PACKAGE_INSTALLING_TMP_DIR"
 
-    unset PACKAGE_INSTALL_DIR
-    unset PACKAGE_MANIFEST_FILEPATH
-    unset PACKAGE_METADATA_FILEPATH
+    #########################################################################################
+
+    PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$1"
+    PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
+
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/MANIFEST.txt"
+    PACKAGE_METADATA_FILEPATH="$PACKAGE_METAINF_DIR/METADATA.yml"
 
     #########################################################################################
 
@@ -3482,6 +3488,38 @@ EOF
 
     [ -z "$(ls)" ]            && die "nothing is installed."
 
+    install -d "$PACKAGE_METAINF_DIR"
+
+    step "install config.log"
+    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
+    do
+        if [ -f "$dir/config.log" ] ; then
+            install -v -m 644 "$dir/config.log" "$PACKAGE_METAINF_DIR"
+        fi
+    done
+
+    step "install compile_commands.json"
+    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
+    do
+        if [ -f "$dir/compile_commands.json" ] ; then
+            install -v -m 644 "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
+        fi
+    done
+
+    step "install dependencies.dot and dependencies.txt"
+    for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
+    do
+        if [ -f "$file" ] ; then
+            install -v -m 644 "$file" "$PACKAGE_METAINF_DIR"
+        fi
+    done
+
+    step "generate METADATA.yml"
+    __generate_installed_metadata_of_the_given_package "$1"
+
+    step "generate MANIFEST.txt"
+    __generate_installed_manifest_of_the_given_package "$1"
+
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_mach_o_files_for_the_given_target $@
@@ -3498,19 +3536,12 @@ EOF
         __adjust_pc_files_for_the_given_target $@
     fi
 
-    step "install logs"
-    __install_logs_for_the_given_target "$1"
-
-    step "generate MANIFEST.txt"
-    __generate_installed_manifest_of_the_given_package "$1"
-
-    step "generate METADATA.yml"
-    __generate_installed_metadata_of_the_given_package "$1"
-
     if [ "$PACKAGE_SYMLINK" = yes ] ; then
         step "symlink installed files to $MY_SYMLINKED_DIR"
         __symlink_installed_files_of_the_given_package "$1"
     fi
+
+    touch "$PACKAGE_INSTALL_DIR/.installed"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
@@ -3728,8 +3759,6 @@ __adjust_mach_o_files_for_the_given_target() {
 
 __export_relevant_environment_variables() {
     step "export relevant environment variables"
-
-    PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$PACKAGE_NAME"
 
     STATIC_LIBRARY_SUFFIX=.a
 
@@ -4535,25 +4564,6 @@ __adjust_pc_files_for_the_given_target() {
     done
 }
 
-__install_logs_for_the_given_target() {
-    for item in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
-    do
-        for item2 in config.log compile_commands.json
-        do
-            if [ -f "$item/$item2" ] ; then
-                install -v -m 644 "$item/$item2" "$PACKAGE_INSTALL_DIR"
-            fi
-        done
-    done
-
-    for item in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
-    do
-        if [ -f "$item" ] ; then
-            install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR"
-        fi
-    done
-}
-
 install_incs() {
     while [ -n "$1" ]
     do
@@ -4908,7 +4918,7 @@ EOF
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/MANIFEST.txt"
+                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4916,7 +4926,7 @@ EOF
             ;;
         installed-manifest)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/MANIFEST.txt"
+                cat "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4924,7 +4934,7 @@ EOF
             ;;
         installed-metadata)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/METADATA.yml"
+                cat "$MY_INSTALLED_DIR/$1/.ppkg/METADATA.yml"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4980,6 +4990,7 @@ mark_is_package_installed_or_not() {
 
         case $X in
             d)  ;;
+            D)  ;;
             *)  case $Y in
                     share/info/dir) ;;
                     *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
@@ -5003,7 +5014,8 @@ mark_is_package_installed_or_not() {
         Y=$(printf '%s\n' "$item" | cut -d '|' -f3)
 
         case $X in
-            d)  if [ !      -d "$MY_SYMLINKED_DIR/$Y" ] ; then
+            d|D)
+                if [ !      -d "$MY_SYMLINKED_DIR/$Y" ] ; then
                     install -d "$MY_SYMLINKED_DIR/$Y"
                 fi
                 ;;
@@ -5020,8 +5032,6 @@ mark_is_package_installed_or_not() {
 
 # __generate_installed_manifest_of_the_given_package <PACKAGE-NAME>
   __generate_installed_manifest_of_the_given_package() {
-    PACKAGE_MANIFEST_FILEPATH="$MY_INSTALLED_DIR/$1/MANIFEST.txt"
-
     # fuck, some package's filename has space
     IFS_SAVED="$IFS"
     IFS='
@@ -5029,7 +5039,7 @@ mark_is_package_installed_or_not() {
 
     exec 7> "$PACKAGE_MANIFEST_FILEPATH"
 
-    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -printf '%P\n')
+    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -not -name .ppkg -printf '%P\n')
     do
         for item in $(find "$dirname" -printf '%y:%p\n')
         do
@@ -5037,8 +5047,14 @@ mark_is_package_installed_or_not() {
             Y=${item#$X:}
 
             case $X in
-                d) printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
-                *) printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
+                l)  if [ -d "$Y" ] ; then
+                        printf 'D|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7
+                    else
+                        printf 'l|%s|%s\n' "$(sha256sum "$Y" | cut -d ' ' -f1)"                           "$Y" >&7
+                    fi
+                    ;;
+                d)  printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
+                *)  printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
             esac
         done
     done
@@ -5054,8 +5070,6 @@ mark_is_package_installed_or_not() {
         error "__generate_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
-
-    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/METADATA.yml"
 
     run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_METADATA_FILEPATH"
 
@@ -5092,7 +5106,8 @@ buildon:
     os-ncpu: $NATIVE_OS_NCPU
     os-libc: $NATIVE_OS_LIBC
 
-history: ppkg-$MY_VERSION-$TIMESTAMP_UNIX
+installer: $MY_VERSION
+timestamp: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -5138,8 +5153,6 @@ EOF
 
     unset INSTALLED_PACKAGE_SYMLINK
 
-    unset INSTALLED_PACKAGE_HISTORY
-
     unset INSTALLED_PACKAGE_INSTALLER
 
     unset INSTALLED_PACKAGE_TIMESTAMP
@@ -5147,9 +5160,9 @@ EOF
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
 
-    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/METADATA.yml"
+    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/METADATA.yml"
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink history
+    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink installer timestamp
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -5163,14 +5176,6 @@ EOF
 
         eval "INSTALLED_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
-
-    if [ -z "$INSTALLED_PACKAGE_HISTORY" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_HISTORY must not be empty."
-        return 1
-    fi
-
-    INSTALLED_PACKAGE_INSTALLER="$(printf '%s\n' "$INSTALLED_PACKAGE_HISTORY" | tr ' ' '\n' | head -n 1 | cut -d- -f1)"
-    INSTALLED_PACKAGE_TIMESTAMP="$(printf '%s\n' "$INSTALLED_PACKAGE_HISTORY" | tr ' ' '\n' | head -n 1 | cut -d- -f3)"
 
     if [ -z "$INSTALLED_PACKAGE_INSTALLER" ] ; then
         error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_INSTALLER must not be empty."
@@ -5811,7 +5816,7 @@ inspect_install_arguments() {
 
     KEEP_INSTALLING_DIR=no
 
-    TREE_ARGS='--dirsfirst'
+    TREE_ARGS='--dirsfirst -a'
 
     while [ -n "$1" ]
     do
