@@ -11,6 +11,7 @@ jobs:
     runs-on: macos-12
     
     strategy:
+      fail-fast: false
       matrix:
         version: [8, 9]
 

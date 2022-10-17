@@ -17,13 +17,13 @@ jobs:
       - run: xbps-install -S
       - run: xbps-install -Syu curl xz git gcc
 
-        #- run: git init
-        #- run: git remote add origin https://github.com/${{github.repository}}
-        #- run: git config --local gc.auto 0
-        #- run: git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin +${{github.sha}}:refs/remotes/origin/master
-        #- run: git checkout --progress --force -B master refs/remotes/origin/master
-        #- run: ls
-      - uses: actions/checkout@v3
+      - run: git config --global --add safe.directory ${{github.workspace}}
+      - run: git init
+      - run: git remote add origin https://github.com/${{github.repository}}
+      - run: git config --local gc.auto 0
+      - run: git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin +${{github.sha}}:refs/remotes/origin/master
+      - run: git checkout --progress --force -B master refs/remotes/origin/master
+      - run: ls
 
       - run: bin/ppkg --help
       - run: bin/ppkg --version

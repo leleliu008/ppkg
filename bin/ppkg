@@ -6059,6 +6059,7 @@ __setup_macos() {
     run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
     run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
     run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
 }
 
@@ -6074,6 +6075,7 @@ __setup_freebsd() {
     run ln -sf /usr/local/bin/gfind    "$MY_CORE_BIN_DIR/find"
     run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
     run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
 }
@@ -6093,6 +6095,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gfind    "$MY_CORE_BIN_DIR/find"
     run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
     run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
 
@@ -6113,6 +6116,7 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/gfind    "$MY_CORE_BIN_DIR/find"
     run ln -sf /usr/pkg/bin/gmake    "$MY_CORE_BIN_DIR/make"
     run ln -sf /usr/pkg/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
+    run ln -sf /usr/pkg/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/pkg/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/pkg/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
