@@ -6032,17 +6032,17 @@ EOF
 
 __setup_ubuntu() {
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic
+    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic flex bison m4
 }
 
 __setup_fedora() {
     run $sudo dnf -y update
-    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ flex bison m4
 }
 
 __setup_alpine() {
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers
+    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
 
     run ln -s /usr/bin/make /opt/ppkg/core/bin/gmake
 }
@@ -6056,7 +6056,7 @@ __setup_macos() {
     }
 
     run brew update
-    run brew install bash coreutils findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake ninja make libtool
+    run brew install bash coreutils findutils gawk gsed grep tree unzip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake ninja make libtool flex bison m4
 
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
@@ -6070,7 +6070,7 @@ __setup_macos() {
 
 __setup_freebsd() {
     run $sudo pkg update
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
@@ -6088,8 +6088,8 @@ __setup_freebsd() {
 __setup_openbsd() {
     # https://man.openbsd.org/pkg_add
     case $(uname -r) in
-        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc ;;
-        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf
+        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc flex bison m4 ;;
+        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf flex bison m4
     esac
 
     run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
@@ -6111,7 +6111,7 @@ __setup_openbsd() {
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm mozilla-rootcerts
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4 mozilla-rootcerts
 
     run ln -sf /usr/pkg/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/pkg/bin/gtar     "$MY_CORE_BIN_DIR/tar"
