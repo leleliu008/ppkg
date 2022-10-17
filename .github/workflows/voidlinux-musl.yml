@@ -17,7 +17,7 @@ jobs:
       - run: xbps-install -S
       - run: xbps-install -Syu curl xz git gcc
 
-      - run: git config --global --add safe.directory ${{github.workspace}}
+      - run: git config --global --add safe.directory /__w/ppkg/ppkg
       - run: git init
       - run: git remote add origin https://github.com/${{github.repository}}
       - run: git config --local gc.auto 0
