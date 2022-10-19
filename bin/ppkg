@@ -4983,24 +4983,26 @@ mark_is_package_installed_or_not() {
 
 # __symlink_installed_files_of_the_given_package <PACKAGE-NAME>
   __symlink_installed_files_of_the_given_package() {
-    while read -r item
-    do
-        X=$(printf '%s\n' "$item" | cut -d: -f1)
-        Y=$(printf '%s\n' "$item" | cut -d: -f3)
+    # while read -r item
+    # do
+    #     X=$(printf '%s\n' "$item" | cut -d '|' -f1)
+    #     Y=$(printf '%s\n' "$item" | cut -d '|' -f3)
 
-        case $X in
-            d)  ;;
-            D)  ;;
-            *)  case $Y in
-                    share/info/dir) ;;
-                    *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
-                            die "$MY_SYMLINKED_DIR/$Y already exists."
-                        fi
-                esac
-        esac
-    done < "$PACKAGE_MANIFEST_FILEPATH"
+    #     case $X in
+    #         d)  ;;
+    #         D)  ;;
+    #         *)  case $Y in
+    #                 share/info/dir) ;;
+    #                 *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
+    #                         die "$MY_SYMLINKED_DIR/$Y already exists."
+    #                     # else
+    #                     #     echo "$MY_SYMLINKED_DIR/$Y"
+    #                     fi
+    #             esac
+    #     esac
+    # done < "$PACKAGE_MANIFEST_FILEPATH"
 
-    ############################################################################
+    # ############################################################################
 
     if [ !      -d "$MY_SYMLINKED_DIR/.registry" ] ; then
         install -d "$MY_SYMLINKED_DIR/.registry"
@@ -5021,7 +5023,7 @@ mark_is_package_installed_or_not() {
                 ;;
             *)  case $Y in
                     share/info/dir) ;;
-                    *)  run ln -sr "\"$MY_INSTALLED_DIR/$1/$Y\"" "\"$MY_SYMLINKED_DIR/$Y\""
+                    *)  run ln -sfr "\"$MY_INSTALLED_DIR/$1/$Y\"" "\"$MY_SYMLINKED_DIR/$Y\""
                         printf '%s\n' "$Y" >&7
                 esac
         esac
