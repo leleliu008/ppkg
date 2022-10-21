@@ -59,12 +59,17 @@ rm -rf /opt/ppkg
         ppkg info curl version
         ppkg info curl summary
         ppkg info curl webpage
-        ppkg info curl src.git
+        ppkg info curl git-url
+        ppkg info curl src-url
+
         ppkg info curl installed-dir
-        ppkg info curl installed-metadata
-        ppkg info curl installed-datetime-unix
-        ppkg info curl installed-datetime-formatted
-        ppkg info curl installed-pkg-version
+        ppkg info curl installed-files
+        ppkg info curl installed-receipt
+        ppkg info curl installed-timestamp-unix
+        ppkg info curl installed-timestamp-rfc-3339
+        ppkg info curl installed-timestamp-iso-8601
+        ppkg info curl installed-version
+
         ppkg info curl --json
         ppkg info curl --json | jq .
         ppkg info @all
@@ -82,7 +87,7 @@ rm -rf /opt/ppkg
         ppkg install curl bzip2 --jobs=4 -v
         ppkg install curl bzip2 --jobs=4 -v -x
         ppkg install curl bzip2 --jobs=4 -v -x --dry-run
-        ppkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-working-dir
+        ppkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-installing-dir
         
 *   reinstall packages
         
@@ -152,7 +157,7 @@ rm -rf /opt/ppkg
         
         ppkg ls-outdated
         
-*   is the given package available ?
+*   check if the given package is available
         
         ppkg is-available curl
         ppkg is-available curl ge 7.50.0
@@ -162,20 +167,21 @@ rm -rf /opt/ppkg
         ppkg is-available curl eq 7.50.0
         ppkg is-available curl ne 7.50.0
         
-*   is the given package installed ?
+*   check if the given package is installed
         
         ppkg is-installed curl
         
-*   is the given package outdated ?
+*   check if the given package is outdated
         
         ppkg is-outdated curl
         
-*   list files of the given installed package in a tree-like format.
+*   list the installed files of the given package in tree-like format
         
         ppkg tree curl
-        ppkg tree curl -L 3
+        ppkg tree curl -a
+        ppkg tree curl -a -L 3
         
-*   download formula resources of the given package to the cache
+*   download resources of the given package to the local cache
         
         ppkg fetch curl
         
@@ -186,20 +192,13 @@ rm -rf /opt/ppkg
 *   pack the given installed package
         
         ppkg pack curl
+        ppkg pack curl --type=tar.xz
+        ppkg pack curl --type=tar.gz
+        ppkg pack curl --type=tar.bz2
+        ppkg pack curl --type=zip
+        ppkg pack curl --type=7z
         
-*   show or open the homepage of the given package or this project
-        
-        ppkg homepage
-        ppkg homepage --open
-        ppkg homepage --open curl
-        ppkg homepage curl --open
-        
-*   show the installation direcotory of the given package or this software
-        
-        ppkg prefix
-        ppkg prefix curl
-        
-*   show the depended packages of the given package
+*   show the packages that are depended by the given package
         
         ppkg depends curl
         

@@ -113,11 +113,11 @@ function _ppkg() {
                             installed-*)
                                 _arguments \
                                     '1:package-name:()' \
-                                    '2:key:(installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-version)'
+                                    '2:key:(installed-dir installed-files installed-manifest installed-receipt installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version)'
                                 ;;
                             *)  _arguments \
                                     '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                    '2:key:(formula summary webpage version license git-url git-sha src-url src-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binsrcd bsystem installed-dir installed-files installed-manifest installed-metadata installed-datetime-unix installed-datetime-formatted installed-version --json --yaml --shell)'
+                                    '2:key:(formula summary webpage version license git-url git-sha src-url src-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binsrcd bsystem installed-dir installed-files installed-manifest installed-receipt installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version symlinked-files --json --yaml --shell)'
                         esac
                     fi
                     ;;

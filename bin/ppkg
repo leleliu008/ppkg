@@ -2115,16 +2115,21 @@ __fetch_resources_of_the_given_package() {
 
     [ -d "$MY_INSTALLED_DIR/$1" ]                    || return 10
     [ -d "$MY_INSTALLED_DIR/$1/.ppkg" ]              || return 11
-    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt" ] || return 12
-    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/METADATA.yml" ] || return 13
-    [ -f "$MY_INSTALLED_DIR/$1/.installed" ]         || return 14
+    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/buildon.yml" ]  || return 12
+    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt" ] || return 13
+    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/receipt.yml" ]  || return 14
 }
 
 # is_package__outdated <PACKAGE-NAME>
   is_package__outdated() {
     __load_formula_of_the_given_package "$1"
-    __load_installed_metadata_of_the_given_package "$1"
-    version_match "$PACKAGE_VERSION" gt "$INSTALLED_PACKAGE_VERSION"
+    __load_receipt_of_the_given_package "$1"
+    version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
+}
+
+# is_package_symlinked <PACKAGE-NAME>
+  is_package_symlinked() {
+    is_package_installed "$1" && [ -f "$MY_SYMLINKED_DIR/.registry/$1" ]
 }
 
 __gen_github_workflows() {
@@ -2261,6 +2266,16 @@ __list_installed_packages() {
             printf '%s\n' "$packageName"
         fi
     done
+}
+
+__list_symlinked_packages() {
+    if [ -d "$MY_SYMLINKED_DIR/.registry" ] ; then
+         cd "$MY_SYMLINKED_DIR/.registry" || return 1
+    else
+        return 0
+    fi
+
+    ls -1
 }
 
 __list__outdated_packages() {
@@ -2742,7 +2757,7 @@ $LINE"
         if [ "$VIEWER" = 'bat' ] ; then
             case $item in
                 *.png) ;;
-                */METADATA.yml)
+                */receipt.yml)
                     bat -l yaml "$item" ;;
                 *)  bat "$item"
             esac
@@ -2760,9 +2775,9 @@ $LINE"
 # __pack_the_given_installed_package <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir]
 # __pack_the_given_installed_package    autoconf     --type=tar.xz
   __pack_the_given_installed_package() {
-    __load_installed_metadata_of_the_given_package "$1"
+    __load_receipt_of_the_given_package "$1"
 
-    INSTALLED_PACKAGE_NAME="$1"
+    RECEIPT_PACKAGE_NAME="$1"
 
     unset PACKED_FILETYPE
 
@@ -2792,10 +2807,6 @@ $LINE"
         PACKED_FILETYPE='tar.xz'
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
-        INSTALLED_PACKAGE_VERSION="$INSTALLED_PACKAGE_TIMESTAMP"
-    fi
-
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         NATIVE_OS_KIND=macos
     fi
@@ -2803,8 +2814,8 @@ $LINE"
     PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/lib" -type f)
+        if [ -d "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" ] ; then
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" -type f)
             do
                 case $FILEPATH in
                     */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
@@ -2815,8 +2826,8 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            if [ -d "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" ] ; then
-                for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME/bin" -type f)
+            if [ -d "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" ] ; then
+                for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" -type f)
                 do
                     unset FILE_MAGIC
 
@@ -2837,7 +2848,7 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" -type f -a -name "*.a")
+            for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
             do
                 PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
@@ -2845,9 +2856,9 @@ $LINE"
     fi
 
     if [ "$PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
-        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
     else
-        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     fi
 
     PACKED_FILENAME="$PACKED_DIR_NAME.$PACKED_FILETYPE"
@@ -2860,11 +2871,11 @@ $LINE"
     run cd $PACKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALLED_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
+    run ln -s "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILETYPE in
-        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME"  --exclude "$PACKED_DIR_NAME/.installed" ;;
+        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME" ;;
         7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
         tar.gz)  run tar zvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
         tar.xz)  run tar Jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
@@ -3176,8 +3187,8 @@ __install_the_given_package() {
     PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$1"
     PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
 
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/MANIFEST.txt"
-    PACKAGE_METADATA_FILEPATH="$PACKAGE_METAINF_DIR/METADATA.yml"
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/manifest.txt"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/receipt.yml"
 
     #########################################################################################
 
@@ -3514,12 +3525,6 @@ EOF
         fi
     done
 
-    step "generate METADATA.yml"
-    __generate_installed_metadata_of_the_given_package "$1"
-
-    step "generate MANIFEST.txt"
-    __generate_installed_manifest_of_the_given_package "$1"
-
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_mach_o_files_for_the_given_target $@
@@ -3536,12 +3541,27 @@ EOF
         __adjust_pc_files_for_the_given_target $@
     fi
 
+    step "generate buildon.yml"
+    cat > "$PACKAGE_METAINF_DIR/buildon.yml" <<EOF
+os-kind: $NATIVE_OS_KIND
+os-type: $NATIVE_OS_TYPE
+os-name: $NATIVE_OS_NAME
+os-arch: $NATIVE_OS_ARCH
+os-vers: $NATIVE_OS_VERS
+os-ncpu: $NATIVE_OS_NCPU
+os-libc: $NATIVE_OS_LIBC
+EOF
+
+    step "generate manifest.txt"
+    __generate_installed_manifest_of_the_given_package "$1"
+
+    step "generate receipt.yml"
+    __generate_receipt_of_the_given_package "$1"
+
     if [ "$PACKAGE_SYMLINK" = yes ] ; then
         step "symlink installed files to $MY_SYMLINKED_DIR"
         __symlink_installed_files_of_the_given_package "$1"
     fi
-
-    touch "$PACKAGE_INSTALL_DIR/.installed"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
@@ -4908,6 +4928,11 @@ EOF
         formula)
             __path_of_formula_of_the_given_package "$1"
             ;;
+        symlinked-files)
+            if [ -f "$MY_SYMLINKED_DIR/.registry/$1" ] ; then
+                cat "$MY_SYMLINKED_DIR/.registry/$1"
+            fi
+            ;;
         installed-dir)
             if is_package_installed "$1" ; then
                 printf '%s\n' "$MY_INSTALLED_DIR/$1"
@@ -4918,7 +4943,7 @@ EOF
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt"
+                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4926,31 +4951,35 @@ EOF
             ;;
         installed-manifest)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/.ppkg/MANIFEST.txt"
+                cat "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
-        installed-metadata)
+        installed-receipt)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/.ppkg/METADATA.yml"
+                cat "$MY_INSTALLED_DIR/$1/.ppkg/receipt.yml"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
-        installed-datetime-unix)
-            __load_installed_metadata_of_the_given_package "$1"
-            printf '%s\n' "$INSTALLED_PACKAGE_TIMESTAMP"
+        installed-timestamp-unix)
+            __load_receipt_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_RECEIPT_TIMESTAMP"
             ;;
-        installed-datetime-formatted)
-            __load_installed_metadata_of_the_given_package "$1"
-            format_unix_timestamp "$INSTALLED_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S %z CST'
+        installed-timestamp-rfc-3339)
+            __load_receipt_of_the_given_package "$1"
+            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
+            ;;
+        installed-timestamp-iso-8601)
+            __load_receipt_of_the_given_package "$1"
+            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
             ;;
         installed-version)
-            __load_installed_metadata_of_the_given_package "$1"
-            printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
+            __load_receipt_of_the_given_package "$1"
+            printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
             ;;
         '') __show_infomation_as_mixed_of_the_given_package $@
             ;;
@@ -4969,7 +4998,7 @@ EOF
     # if is_package_installed "$1" ; then
     #     printf '\n'
     #     printf 'status:  installed\n' | bat --language yaml
-    #     grep '^history:' "$MY_INSTALLED_DIR/$1/METADATA.yml" | bat --language yaml
+    #     grep '^history:' "$MY_INSTALLED_DIR/$1/receipt.yml" | bat --language yaml
     # fi
 }
 
@@ -5066,57 +5095,48 @@ mark_is_package_installed_or_not() {
     IFS="$IFS_SAVED"
 }
 
-# __generate_installed_metadata_of_the_given_package <PACKAGE-NAME>
-  __generate_installed_metadata_of_the_given_package() {
+# __generate_receipt_of_the_given_package <PACKAGE-NAME>
+  __generate_receipt_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__generate_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_METADATA_FILEPATH"
+    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
 
-    sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_METADATA_FILEPATH"
+    sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
-    if ! grep -q '^version: ' "$PACKAGE_METADATA_FILEPATH" ; then
-        sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_METADATA_FILEPATH"
+    if ! grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+        sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
     fi
 
     if [ "$PACKAGE_SRC_TYPE" = git ] || [ "$PACKAGE_SRC_TYPE" = dir ] ; then
-        if ! grep -q '^git-sha: ' "$PACKAGE_METADATA_FILEPATH" ; then
-            if grep -q '^git-url: ' "$PACKAGE_METADATA_FILEPATH" ; then
-                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_METADATA_FILEPATH"
+        if ! grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+            if grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
             else
-                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_METADATA_FILEPATH"
+                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
             fi
         fi
     fi
 
-    if ! grep -q '^bsystem: ' "$PACKAGE_METADATA_FILEPATH" ; then
-        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_METADATA_FILEPATH"
+    if ! grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
     fi
 
-    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_METADATA_FILEPATH"
+    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
 
-    cat >> "$PACKAGE_METADATA_FILEPATH" <<EOF
+    cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
 
-buildon:
-    os-kind: $NATIVE_OS_KIND
-    os-type: $NATIVE_OS_TYPE
-    os-name: $NATIVE_OS_NAME
-    os-arch: $NATIVE_OS_ARCH
-    os-vers: $NATIVE_OS_VERS
-    os-ncpu: $NATIVE_OS_NCPU
-    os-libc: $NATIVE_OS_LIBC
-
-installer: $MY_VERSION
+signature: $MY_VERSION
 timestamp: $TIMESTAMP_UNIX
 EOF
 }
 
-# __load_installed_metadata_of_the_given_package <PACKAGE-NAME>
-  __load_installed_metadata_of_the_given_package() {
+# __load_receipt_of_the_given_package <PACKAGE-NAME>
+  __load_receipt_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__load_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -5125,87 +5145,91 @@ EOF
         return 1
     }
 
-    unset INSTALLED_PACKAGE_VERSION
-    unset INSTALLED_PACKAGE_SUMMARY
-    unset INSTALLED_PACKAGE_WEBPAGE
-    unset INSTALLED_PACKAGE_LICENSE
+    unset RECEIPT_PACKAGE_VERSION
+    unset RECEIPT_PACKAGE_SUMMARY
+    unset RECEIPT_PACKAGE_WEBPAGE
+    unset RECEIPT_PACKAGE_LICENSE
 
-    unset INSTALLED_PACKAGE_GIT_URL
-    unset INSTALLED_PACKAGE_GIT_SHA
-    unset INSTALLED_PACKAGE_GIT_REF
+    unset RECEIPT_PACKAGE_GIT_URL
+    unset RECEIPT_PACKAGE_GIT_SHA
+    unset RECEIPT_PACKAGE_GIT_REF
 
-    unset INSTALLED_PACKAGE_SVN_URL
+    unset RECEIPT_PACKAGE_SVN_URL
 
-    unset INSTALLED_PACKAGE_SRC_URL
-    unset INSTALLED_PACKAGE_SRC_URI
-    unset INSTALLED_PACKAGE_SRC_SHA
+    unset RECEIPT_PACKAGE_SRC_URL
+    unset RECEIPT_PACKAGE_SRC_URI
+    unset RECEIPT_PACKAGE_SRC_SHA
 
-    unset INSTALLED_PACKAGE_FIX_URL
-    unset INSTALLED_PACKAGE_FIX_SHA
+    unset RECEIPT_PACKAGE_FIX_URL
+    unset RECEIPT_PACKAGE_FIX_SHA
 
-    unset INSTALLED_PACKAGE_RES_URL
-    unset INSTALLED_PACKAGE_RES_SHA
+    unset RECEIPT_PACKAGE_RES_URL
+    unset RECEIPT_PACKAGE_RES_SHA
 
-    unset INSTALLED_PACKAGE_DEP_PKG
-    unset INSTALLED_PACKAGE_DEP_UPP
-    unset INSTALLED_PACKAGE_DEP_PYM
-    unset INSTALLED_PACKAGE_DEP_PLM
+    unset RECEIPT_PACKAGE_DEP_PKG
+    unset RECEIPT_PACKAGE_DEP_UPP
+    unset RECEIPT_PACKAGE_DEP_PYM
+    unset RECEIPT_PACKAGE_DEP_PLM
 
-    unset INSTALLED_PACKAGE_BSYSTEM
+    unset RECEIPT_PACKAGE_BSYSTEM
 
-    unset INSTALLED_PACKAGE_SYMLINK
+    unset RECEIPT_PACKAGE_SYMLINK
 
-    unset INSTALLED_PACKAGE_INSTALLER
-
-    unset INSTALLED_PACKAGE_TIMESTAMP
-
+    #######################################################################################################
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/receipt.yml"
 
-    PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/METADATA.yml"
+    unset PACKAGE_RECEIPT_SIGNATURE
+    unset PACKAGE_RECEIPT_TIMESTAMP
 
-    for key in ppkgvers datetime summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink installer timestamp
+    PACKAGE_RECEIPT_SIGNATURE="$(yq .signature "$PACKAGE_RECEIPT_FILEPATH")"
+    PACKAGE_RECEIPT_TIMESTAMP="$(yq .timestamp "$PACKAGE_RECEIPT_FILEPATH")"
+
+    if [ -z "$PACKAGE_RECEIPT_SIGNATURE" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must not be empty."
+        return 1
+    fi
+
+    if [ -z "$PACKAGE_RECEIPT_TIMESTAMP" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must not be empty."
+        return 1
+    fi
+
+    #######################################################################################################
+
+    for key in summary webpage git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel exetype symlink
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
 
         __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$PACKAGE_METADATA_FILEPATH")"
+        __VALUE__="$(yq ".$key" "$PACKAGE_RECEIPT_FILEPATH")"
 
         if [ "$__VALUE__" = null ] ; then
                 __VALUE__=
         fi
 
-        eval "INSTALLED_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+        eval "RECEIPT_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
 
-    if [ -z "$INSTALLED_PACKAGE_INSTALLER" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_INSTALLER must not be empty."
+    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_VERSION must not be empty."
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_TIMESTAMP" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_TIMESTAMP must not be empty."
+    if [ -z "$RECEIPT_PACKAGE_SUMMARY" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_SUMMARY must not be empty."
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_VERSION must not be empty."
+    if [ -z "$RECEIPT_PACKAGE_WEBPAGE" ] && [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_WEBPAGE must not be empty."
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_SUMMARY" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SUMMARY must not be empty."
-        return 1
-    fi
-
-    if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] && [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
-        return 1
-    fi
-
-    if [ "${#INSTALLED_PACKAGE_TIMESTAMP}" -ne 10 ] ; then
-        error "$PACKAGE_METADATA_FILEPATH is broken. length of \$INSTALLED_PACKAGE_TIMESTAMP must be 10."
+    if [ "${#PACKAGE_RECEIPT_TIMESTAMP}" -ne 10 ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. length of \$PACKAGE_RECEIPT_TIMESTAMP must be 10."
         return 1
     fi
 }
@@ -6219,8 +6243,8 @@ __setup_uppm() {
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
 
-    # rm "$MY_HOME_DIR/core/MANIFEST.txt"
-    # rm "$MY_HOME_DIR/core/METADATA.yml"
+    # rm "$MY_HOME_DIR/core/manifest.txt"
+    # rm "$MY_HOME_DIR/core/receipt.yml"
 
     ##################################################################################
 
@@ -6608,10 +6632,12 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
     case $1 in
         ls-available) shift; __list_available_packages ;;
         ls-installed) shift; __list_installed_packages ;;
+        ls-symlinked) shift; __list_symlinked_packages ;;
         ls-outdated)  shift; __list__outdated_packages ;;
 
         is-available) shift; is_package_available $@ ;;
         is-installed) shift; is_package_installed $@ ;;
+        is-symlinked) shift; is_package_symlinked $@ ;;
         is-outdated)  shift; is_package__outdated $@ ;;
 
         formula-repo)
