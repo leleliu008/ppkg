@@ -229,8 +229,8 @@ tolower() {
 }
 
 git() {
-    if [ -f "$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" $*
+    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+        command git -c http.sslCAInfo="$MY_CORE_DIR/etc/ssl/certs/cacert.pem" $*
     else
         command git $*
     fi
@@ -517,8 +517,8 @@ fetch() {
                         FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
                     fi
 
-                    if [ -f "$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" ] ; then
-                        FETCH_TOOL_CURL_OPTIONS="--cacert $MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+                    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+                        FETCH_TOOL_CURL_OPTIONS="--cacert $MY_CORE_DIR/etc/ssl/certs/cacert.pem"
                     fi
 
                     run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
@@ -5934,7 +5934,7 @@ inspect_install_arguments() {
 __is_core_tools_installed() {
     [ -e "$MY_CORE_BIN_DIR/uppm" ] || return 1
 
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         "$MY_CORE_BIN_DIR/uppm" is-package-installed "$item" || return 1
     done
@@ -6030,10 +6030,10 @@ __setup() {
         # https://curl.se/docs/caextract.html
         fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-        run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
-        run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
+        run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
+        run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
 
-        export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+        export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
 
         __setup_yq
     else
@@ -6242,22 +6242,21 @@ __setup_uppm() {
 
     fetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
-    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_HOME_DIR/core"
+    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_CORE_DIR"
 
-    # rm "$MY_HOME_DIR/core/manifest.txt"
-    # rm "$MY_HOME_DIR/core/receipt.yml"
+    rm -rf "$MY_CORE_DIR/.ppkg"
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
     fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-    run install -d                         "$MY_HOME_DIR/core/etc/ssl/certs"
-    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_HOME_DIR/core/etc/ssl/certs"
+    run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
+    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+    export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
 
     if [ -f ~/.uppm/repos.d/offical/.git/config ] ; then
         CLONE=no
@@ -6276,7 +6275,7 @@ __setup_uppm() {
 EOF
     fi
 
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         run "$MY_CORE_BIN_DIR/uppm install $item"
     done
@@ -6290,9 +6289,9 @@ init() {
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
-        export ACLOCAL_PATH="$MY_HOME_DIR/core/share/aclocal"
+        export ACLOCAL_PATH="$MY_CORE_DIR/share/aclocal"
     else
-        export ACLOCAL_PATH="$MY_HOME_DIR/core/share/aclocal:$ACLOCAL_PATH"
+        export ACLOCAL_PATH="$MY_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
     fi
 
     # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
@@ -6302,8 +6301,8 @@ init() {
     fi
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
+    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
     fi
 
     if [ -f "$MY_INIT_RC" ] ; then
@@ -6575,7 +6574,8 @@ main() {
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_CACHE_DIR="$MY_HOME_DIR/cache.d"
 
-    MY_CORE_BIN_DIR="$MY_HOME_DIR/core/bin"
+    MY_CORE_DIR="$MY_HOME_DIR/core"
+    MY_CORE_BIN_DIR="$MY_CORE_DIR/bin"
 
     MY_INIT_RC="$MY_HOME_DIR/init.rc"
 
