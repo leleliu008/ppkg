@@ -6259,7 +6259,7 @@ __setup_uppm() {
 
     export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
 
-    if [ -f ~/.uppm/repos.d/offical-core/.git/config ] ; then
+    if [ -f ~/.uppm/repos.d/offical/.git/config ] ; then
         CLONE=no
     else
         CLONE=yes
@@ -6269,7 +6269,7 @@ __setup_uppm() {
     run "$MY_CORE_BIN_DIR/uppm update"
 
     if [ "$CLONE" = yes ] ; then
-        cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
+        cat >> ~/.uppm/repos.d/offical/.git/config <<EOF
 [user]
     email = leleliu008@gmail.com
     name = leleliu008
