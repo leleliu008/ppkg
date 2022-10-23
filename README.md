@@ -46,7 +46,7 @@ rm -rf /opt/ppkg
 
         ppkg update
         
-    **Note:** this software supports multi formula repositories. Offical formula repository is [ppkg-formula-repository](https://github.com/leleliu008/ppkg-formula-repository)
+    **Note:** This software supports multi formula repositories. There is currently only one offical formula repository [ppkg-formula-repository-offical-core](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
 
 *   search packages can be installed
         
@@ -77,7 +77,7 @@ rm -rf /opt/ppkg
         ppkg info @all --json | jq .
         
 
-    For more keys, please see [README.md](https://github.com/leleliu008/ppkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
+    For more keys, please see [README.md](https://github.com/leleliu008/ppkg-formula-repository-offical-core/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
 
 *   install packages
         
@@ -119,7 +119,7 @@ rm -rf /opt/ppkg
 
 *   add a new formula repo
 
-        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository.git
+        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-my_repo.git
 
 *   delete a existing formula repo
 

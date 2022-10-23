@@ -570,7 +570,7 @@ get_china_mirror_url() {
         *githubusercontent.com/*)
             printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
             ;;
-        *github.com/*)
+        https://github.com/*)
             # https://ghproxy.com/
             printf "https://ghproxy.com/%s\n" "$1"
             ;;
@@ -1779,7 +1779,7 @@ __load_formula_of_the_given_package() {
     }
 
     unset REPO_NAME
-    REPO_NAME=offical
+    REPO_NAME=offical-core
 
     if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" ] ; then
         die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml formula already exists."
@@ -1888,8 +1888,8 @@ __add_a_formula_repo() {
         die "please specify a repo name."
     fi
 
-    if [ "$1" = 'offical' ] ; then
-        die "offical formula repo can not be deleted."
+    if [ "$1" = 'offical-core' ] ; then
+        die "offical-core formula repo can not be deleted."
     fi
 
     unset REPO_EXISTS
@@ -1949,7 +1949,7 @@ __list_formula_repositories() {
         cat "$MY_HOME_DIR/repos"
     else
         install -d "$MY_HOME_DIR"
-        printf 'offical=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
+        printf 'offical-core=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
     fi
 }
 
@@ -2164,10 +2164,10 @@ __gen_github_workflows() {
     fi
 
     if [ -z "$OUTPUT_DIR" ] ; then
-        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical/.github/workflows"
+        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical-core/.github/workflows"
     fi
 
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical/.github/workflows/template"
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical-core/.github/workflows/template"
 
     if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
         __update_formula_repositories
@@ -2475,7 +2475,7 @@ __compare_versions_with_brew() {
 
     set -e
 
-    cd "$MY_HOME_DIR/repos.d/offical/formula"
+    cd "$MY_HOME_DIR/repos.d/offical-core/formula"
 
     for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort)
     do
@@ -6259,7 +6259,7 @@ __setup_uppm() {
 
     export SSL_CERT_FILE="$MY_HOME_DIR/core/etc/ssl/certs/cacert.pem"
 
-    if [ -f ~/.uppm/repos.d/offical/.git/config ] ; then
+    if [ -f ~/.uppm/repos.d/offical-core/.git/config ] ; then
         CLONE=no
     else
         CLONE=yes
@@ -6269,7 +6269,7 @@ __setup_uppm() {
     run "$MY_CORE_BIN_DIR/uppm update"
 
     if [ "$CLONE" = yes ] ; then
-        cat >> ~/.uppm/repos.d/offical/.git/config <<EOF
+        cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
 [user]
     email = leleliu008@gmail.com
     name = leleliu008
@@ -6339,7 +6339,7 @@ EOF
     fi
 
     [ -e "$MY_HOME_DIR/repos" ] || {
-        printf '%s\n' "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
+        printf '%s\n' "offical-core=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     }
 
     unset NATIVE_OS_KIND
@@ -6564,7 +6564,7 @@ main() {
     MY_VERSION=0.1.2
 
     MY_HOME_PAGE="https://github.com/leleliu008/ppkg"
-    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository.git"
+    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
 
     MY_HOME_DIR="/opt/ppkg"
