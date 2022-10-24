@@ -3833,15 +3833,19 @@ __export_relevant_environment_variables() {
         export MACOSX_DEPLOYMENT_TARGET
 
         if [ -d     "$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ] ; then
-            SYSROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+            SDKROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
         else
-            SYSROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
+            SDKROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
         fi
 
-        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments $CPPFLAGS"
-         CCFLAGS="-isysroot $SYSROOT -Qunused-arguments  $CCFLAGS"
-         XXFLAGS="-isysroot $SYSROOT -Qunused-arguments  $CCFLAGS"
-         LDFLAGS="-isysroot $SYSROOT $LDFLAGS"
+        # https://keith.github.io/xcode-man-pages/xcrun.1.html
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
+        export SDKROOT
+
+        CPPFLAGS="-isysroot $SDKROOT -Qunused-arguments $CPPFLAGS"
+         CCFLAGS="-isysroot $SDKROOT -Qunused-arguments  $CCFLAGS"
+         XXFLAGS="-isysroot $SDKROOT -Qunused-arguments  $CCFLAGS"
+         LDFLAGS="-isysroot $SDKROOT $LDFLAGS"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
             LDFLAGS="-static --static $LDFLAGS"
