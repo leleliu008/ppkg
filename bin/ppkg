@@ -2132,8 +2132,6 @@ __fetch_resources_of_the_given_package() {
 }
 
 __gen_github_workflows() {
-    set -e
-
     unset GROUP_SIZE
     unset OUTPUT_DIR
 
@@ -6100,6 +6098,15 @@ __setup_macos() {
     run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
+
+    run ln -sf /usr/local/opt/m4/bin/m4        "$MY_CORE_BIN_DIR/m4"
+
+    run ln -sf /usr/local/opt/flex/bin/lex     "$MY_CORE_BIN_DIR/lex"
+    run ln -sf /usr/local/opt/flex/bin/flex    "$MY_CORE_BIN_DIR/flex"
+    run ln -sf /usr/local/opt/flex/bin/flex++  "$MY_CORE_BIN_DIR/flex++"
+
+    run ln -sf /usr/local/opt/bison/bin/bison  "$MY_CORE_BIN_DIR/bison"
+    run ln -sf /usr/local/opt/bison/bin/yacc   "$MY_CORE_BIN_DIR/yacc"
 }
 
 __setup_freebsd() {

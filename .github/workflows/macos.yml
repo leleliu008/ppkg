@@ -17,6 +17,8 @@ jobs:
     runs-on: macos-${{ matrix.version }}
 
     steps:
+      - run: brew uninstall go@1.17
+
       - uses: actions/checkout@v3
 
       - run: bin/ppkg --help
@@ -24,7 +26,7 @@ jobs:
 
       - run: bin/ppkg env
 
-      - run: bin/ppkg setup
+      - run: bin/ppkg setup --use-system-package-manager
 
       - run: bin/ppkg integrate zsh
 
