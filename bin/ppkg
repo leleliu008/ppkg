@@ -1964,10 +1964,12 @@ __update_formula_repositories() {
 
         printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-        if [ -d        "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" ] ; then
-            run git -C "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" pull origin master:master
-            if [ "$(git branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then
-                run git -C "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" checkout master
+        FORMULA_REPO_PATH="$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
+
+        if [ -d        "$FORMULA_REPO_PATH" ] ; then
+            run git -C "$FORMULA_REPO_PATH" pull origin master:master
+            if [ "$(git -C "$FORMULA_REPO_PATH" branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then
+                run git -C "$FORMULA_REPO_PATH" checkout master
             fi
         else
             run install -d "$MY_FORMULA_REPO_DIR"
