@@ -745,379 +745,6 @@ get_china_mirror_url() {
 
 # }}}
 ##############################################################################
-# {{{ os
-
-__get_os_kind_from_uname() {
-    case $1 in
-        msys*)    printf '%s\n' 'windows' ;;
-        mingw32*) printf '%s\n' 'windows' ;;
-        mingw64*) printf '%s\n' 'windows' ;;
-        cygwin*)  printf '%s\n' 'windows' ;;
-        *)        printf '%s\n' "$1"
-    esac
-}
-
-__get_os_type_from_uname_a() {
-    if [ $# -eq 0 ] ; then
-        if command -v uname > /dev/null ; then
-            __get_os_type_from_uname_a "$(uname -a | cut -d ' ' -f2)"
-        else
-            return 1
-        fi
-    else
-        case $1 in
-            opensuse*) return 1 ;;
-            *-*) printf '%s\n' "$1" | cut -d- -f1 | tr A-Z a-z ;;
-            *)   return 1
-        esac
-    fi
-}
-
-__get_os_version_from_uname_a() {
-    if [ $# -eq 0 ] ; then
-        if command -v uname > /dev/null ; then
-            __get_os_version_from_uname_a "$(uname -a | cut -d ' ' -f2)"
-        else
-            return 1
-        fi
-    else
-        case $1 in
-            opensuse*) return 1 ;;
-            *-*) printf '%s\n' "$1" | cut -d- -f2 ;;
-            *)   return 1
-        esac
-    fi
-}
-
-# https://www.freedesktop.org/software/systemd/man/os-release.html
-__get_os_type_from_etc_os_release() {
-    if [ -e /etc/os-release ] ; then
-        (
-            . /etc/os-release || return 20
-            if [ -z "$ID" ] ; then
-                return 1
-            else
-                printf '%s\n' "$ID" | tr A-Z a-z
-            fi
-        )
-    else
-        return 1
-    fi
-}
-
-__get_os_version_from_etc_os_release() {
-    if [ -f /etc/os-release ] ; then
-        (
-            . /etc/os-release || return 20
-            if [ -z "$VERSION_ID" ] ; then
-                printf '%s\n' 'rolling'
-            else
-                printf '%s\n' "$VERSION_ID"
-            fi
-        )
-    else
-        return 1
-    fi
-}
-
-# https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/lsbrelease.html
-__get_os_type_from_lsb_release() {
-    if command -v lsb_release > /dev/null ; then
-        lsb_release --id | cut -f2 | tr A-Z a-z
-    else
-        return 1
-    fi
-}
-
-__get_os_version_from_lsb_release() {
-    if command -v lsb_release > /dev/null ; then
-        lsb_release --release | cut -f2
-    else
-        return 1
-    fi
-}
-
-__get_os_type_from_etc_redhat_release() {
-    if [ $# -eq 0 ] ; then
-        if [ -e /etc/redhat-release ] ; then
-            __get_os_type_from_etc_redhat_release "$(cat /etc/redhat-release)"
-        else
-            return 1
-        fi
-    else
-        case $1 in
-            'Red Hat Enterprise Linux release'*)
-                printf '%s\n' rhel
-                ;;
-            'Fedora release'*)
-                printf '%s\n' fedora
-                ;;
-            'CentOS release'*)
-                printf '%s\n' centos
-                ;;
-            'CentOS Linux release'*)
-                printf '%s\n' centos
-                ;;
-            *)  printf '%s\n' "$1" | cut -d ' ' -f1 | tr A-Z a-z
-        esac
-    fi
-}
-
-__get_os_version_from_etc_redhat_release() {
-    if [ $# -eq 0 ] ; then
-        if [ -e /etc/redhat-release ] ; then
-            __get_os_version_from_etc_redhat_release $(cat /etc/redhat-release)
-        else
-            return 1
-        fi
-    else
-        while [ -n "$1" ]
-        do
-            case $1 in
-                [1-9]*) printf '%s\n' "$1"; return 0
-            esac
-            shift
-        done
-        return 1
-    fi
-}
-
-__get_os_version_from_getprop() {
-    if command -v getprop > /dev/null ; then
-        getprop ro.build.version.release
-    else
-        return 1
-    fi
-}
-
-__get_os_arch_from_uname() {
-    if command -v uname > /dev/null ; then
-        uname -m 2> /dev/null
-    else
-        return 1
-    fi
-}
-
-__get_os_arch_from_arch() {
-    if command -v arch > /dev/null ; then
-        arch
-    else
-        return 1
-    fi
-}
-
-__get_os_type_from_os_kind() {
-    case $1 in
-        darwin)  printf '%s\n' macos ;;
-        linux)
-            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
-                printf '%s\n' android
-            else
-                __get_os_type_from_etc_redhat_release ||
-                __get_os_type_from_etc_os_release ||
-                __get_os_type_from_lsb_release ||
-                __get_os_type_from_uname_a
-            fi
-            ;;
-        *) printf '%s\n' "$1"
-    esac
-}
-
-__get_os_name_from_os_type() {
-    case $1 in
-        debian)  printf '%s\n' 'Debian' ;;
-        ubuntu)  printf '%s\n' 'Ubuntu' ;;
-        linuxmint) printf '%s\n' 'LinuxMint' ;;
-        centos)  printf '%s\n' 'CentOS' ;;
-        fedora)  printf '%s\n' 'Fedora' ;;
-        rhel)    printf '%s\n' 'RHEL' ;;
-        opensuse-leap)
-                 printf '%s\n' 'openSUSE-Leap' ;;
-        gentoo)  printf '%s\n' 'Gentoo' ;;
-        manjaro) printf '%s\n' 'Manjaro' ;;
-        alpine)  printf '%s\n' 'AlpineLinux' ;;
-        arch)    printf '%s\n' 'ArchLinux' ;;
-        void)    printf '%s\n' 'VoidLinux' ;;
-        freebsd) printf '%s\n' 'FreeBSD' ;;
-        netbsd)  printf '%s\n' 'NetBSD' ;;
-        openbsd) printf '%s\n' 'OpenBSD' ;;
-        macos)   printf '%s\n' 'macOS' ;;
-        android) printf '%s\n' 'Android' ;;
-        windows)
-            systeminfo | sed -n '/OS Name:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//'
-            ;;
-        *) printf '%s\n' "$1"
-    esac
-}
-
-__get_os_version_from_os_kind() {
-    case $1 in
-        freebsd) freebsd-version ;;
-        openbsd) uname -r ;;
-        netbsd)  uname -r ;;
-        darwin)  sw_vers -productVersion ;;
-        linux)
-            __get_os_version_from_etc_redhat_release ||
-            __get_os_version_from_etc_os_release ||
-            __get_os_version_from_lsb_release ||
-            __get_os_version_from_getprop ||
-            __get_os_version_from_uname_a
-            ;;
-        windows)
-            systeminfo | sed -n '/OS Version:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1
-            ;;
-    esac
-}
-
-__get_os_sub_system() {
-    case $(uname | tr A-Z a-z) in
-        msys*)    printf '%s\n' "msys"    ;;
-        mingw32*) printf '%s\n' "mingw32" ;;
-        mingw64*) printf '%s\n' "mingw64" ;;
-        cygwin*)  printf '%s\n' 'cygwin'  ;;
-        *)
-            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
-                if [ -n "$TERMUX_VERSION" ] ; then
-                    printf '%s\n' termux
-                fi
-            fi
-    esac
-}
-
-__get_os_arch() {
-    __get_os_arch_from_uname ||
-    __get_os_arch_from_arch
-}
-
-__get_os_libc_from_os_kind() {
-    if [ "$1" = linux ] ; then
-        if [ "$(uname -o 2>/dev/null)" = Android ] ; then
-            printf '%s\n' bionic
-            return 0
-        fi
-
-        # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
-        if command -v getconf > /dev/null ; then
-            if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
-                printf '%s\n' glibc
-                return 0
-            fi
-        fi
-
-        if command -v ldd > /dev/null ; then
-            if command -v grep > /dev/null ; then
-                if ldd --version 2>&1 | head -n 1 | grep -q GLIBC ; then
-                    printf '%s\n' glibc
-                    return 0
-                fi
-                if ldd --version 2>&1 | head -n 1 | grep -q musl ; then
-                    printf '%s\n' musl
-                    return 0
-                fi
-            elif command -v sed > /dev/null ; then
-                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/GLIBC/p')" ] ; then
-                    printf '%s\n' glibc
-                    return 0
-                fi
-                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/musl/p')"  ] ; then
-                    printf '%s\n' musl
-                    return 0
-                fi
-            fi
-        fi
-
-        return 1
-    fi
-}
-
-# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
-__get_os_ncpu() {
-    case "$(uname)" in
-        Darwin) sysctl -n machdep.cpu.thread_count ;;
-        *BSD)   sysctl -n hw.ncpu ;;
-        *)  if command nproc --version > /dev/null 2>&1 ; then
-                command nproc
-            elif test -f /proc/cpuinfo ; then
-                if command -v grep > /dev/null ; then
-                    grep -c processor /proc/cpuinfo
-                elif command -v sed > /dev/null && command -v wc > /dev/null ; then
-                    sed -n '/^processor/p' /proc/cpuinfo | wc -l
-                else
-                    printf '%s\n' 4
-                fi
-            else
-                printf '%s\n' 4
-            fi
-    esac
-}
-
-os() {
-    if [ $# -eq 0 ] ; then
-        printf "current-machine-os-kind : %s\n" "$(os kind)"
-        printf "current-machine-os-type : %s\n" "$(os type)"
-        printf "current-machine-os-name : %s\n" "$(os name)"
-        printf "current-machine-os-vers : %s\n" "$(os vers)"
-        printf "current-machine-os-arch : %s\n" "$(os arch)"
-        printf "current-machine-os-ncpu : %s\n" "$(os ncpu)"
-        printf "current-machine-os-euid : %s\n" "$(os euid)"
-        printf "current-machine-os-libc : %s\n" "$(os libc)"
-        printf "current-machine-os-subs : %s\n" "$(os subs)"
-    elif [ $# -eq 1 ] ; then
-        case $1 in
-            -h|--help)
-                cat <<'EOF'
-os -h | --help
-os -V | --version
-os kind
-os type
-os name
-os vers
-os arch
-os ncpu
-os euid
-os libc
-os subs
-EOF
-                ;;
-            -V|--version)
-                printf "%s\n" '2021.10.01.03'
-                ;;
-            kind)
-                __get_os_kind_from_uname $(uname | tr A-Z a-z)
-                ;;
-            type)
-                __get_os_type_from_os_kind $(os kind)
-                ;;
-            name)
-                __get_os_name_from_os_type $(os type)
-                ;;
-            vers)
-                __get_os_version_from_os_kind $(os kind)
-                ;;
-            subs)
-                __get_os_sub_system
-                ;;
-            arch)
-                __get_os_arch
-                ;;
-            ncpu)
-                __get_os_ncpu
-                ;;
-            euid)
-                id -u
-                ;;
-            libc)
-                __get_os_libc_from_os_kind $(os kind)
-                ;;
-            *)  printf '%s\n' "unrecognized argument: $1" >&2; return 1
-        esac
-    else
-        printf '%s\n' "os command only support one argument." >&2; return 1
-    fi
-}
-
-# }}}
-##############################################################################
 # {{{ version
 
 version_of_python_module() {
@@ -5993,6 +5620,9 @@ __setup() {
         unset sudo
     fi
 
+    unset SETUP_WORKING_DIR
+    SETUP_WORKING_DIR=$(mktemp -d)
+
     #################################################################################
 
     if [ "$1" = '--use-system-package-manager' ] ; then
@@ -6033,9 +5663,6 @@ __setup() {
 
         export PATH="$MY_CORE_BIN_DIR:$PATH"
 
-        unset SETUP_WORKING_DIR
-        SETUP_WORKING_DIR=$(mktemp -d)
-
         # https://curl.se/docs/caextract.html
         fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
@@ -6048,6 +5675,14 @@ __setup() {
     else
         __setup_uppm
     fi
+
+    #################################################################################
+
+    fetch 'https://raw.githubusercontent.com/leleliu008/os/master/bin/os' --output-path="$SETUP_WORKING_DIR/os"
+    run chmod +x "$SETUP_WORKING_DIR/os"
+    run mv "$SETUP_WORKING_DIR/os" "$MY_CORE_BIN_DIR/os"
+
+    #################################################################################
 
     cat > "$MY_CORE_BIN_DIR/base64-encode-string" <<EOF
 #!/bin/sh
@@ -6234,9 +5869,6 @@ __setup_uppm() {
 
     ##################################################################################
 
-    unset SETUP_WORKING_DIR
-    SETUP_WORKING_DIR=$(mktemp -d)
-
     case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
         linux-x86_64)   TUPLE=linux-x86_64  ;;
         linux-aarch64)  TUPLE=linux-aarch64 ;;
@@ -6371,15 +6003,17 @@ EOF
     unset NATIVE_OS_LIBC
     unset NATIVE_OS_SUBS
 
-    NATIVE_OS_KIND=$(os kind)
-    NATIVE_OS_TYPE=$(os type)
-    NATIVE_OS_NAME=$(os name)
-    NATIVE_OS_VERS=$(os vers)
-    NATIVE_OS_ARCH=$(os arch)
-    NATIVE_OS_NCPU=$(os ncpu)
-    NATIVE_OS_LIBC=$(os libc)
-    NATIVE_OS_SUBS=$(os subs)
-    NATIVE_OS_EUID=$(os euid)
+    OS_COMMAND_PATH="$MY_CORE_BIN_DIR/os"
+
+    NATIVE_OS_KIND=$($OS_COMMAND_PATH kind)
+    NATIVE_OS_TYPE=$($OS_COMMAND_PATH type)
+    NATIVE_OS_NAME=$($OS_COMMAND_PATH name)
+    NATIVE_OS_VERS=$($OS_COMMAND_PATH vers)
+    NATIVE_OS_ARCH=$($OS_COMMAND_PATH arch)
+    NATIVE_OS_NCPU=$($OS_COMMAND_PATH ncpu)
+    NATIVE_OS_LIBC=$($OS_COMMAND_PATH libc)
+    NATIVE_OS_SUBS=$($OS_COMMAND_PATH subs)
+    NATIVE_OS_EUID=$(id -u)
 
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
@@ -6639,7 +6273,7 @@ main() {
 ${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
 
 ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
-            os
+            "$MY_CORE_BIN_DIR/os"
             return 0
             ;;
         setup)
