@@ -6267,15 +6267,6 @@ main() {
             printf '%s\n' "$MY_HOME_PAGE"
             return 0
             ;;
-        env)
-            printf '%b\n' "${COLOR_GREEN}ppkg $MY_VERSION${COLOR_OFF}
-
-${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
-
-${COLOR_GREEN}current-machine-os${COLOR_OFF}"
-            "$MY_CORE_BIN_DIR/os"
-            return 0
-            ;;
         setup)
             shift
             __setup $@
@@ -6286,6 +6277,15 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
     init
 
     case $1 in
+        env)
+            printf '%b\n' "${COLOR_GREEN}ppkg $MY_VERSION${COLOR_OFF}
+
+${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
+
+${COLOR_GREEN}current-machine-os${COLOR_OFF}"
+            "$MY_CORE_BIN_DIR/os"
+            return 0
+            ;;
         ls-available) shift; __list_available_packages ;;
         ls-installed) shift; __list_installed_packages ;;
         ls-symlinked) shift; __list_symlinked_packages ;;

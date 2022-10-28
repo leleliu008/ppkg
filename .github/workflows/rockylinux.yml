@@ -28,9 +28,9 @@ jobs:
       - run: bin/ppkg --homedir
       - run: bin/ppkg --homepage
 
-      - run: bin/ppkg env
-
       - run: bin/ppkg setup
+
+      - run: bin/ppkg env
 
       - run: bin/ppkg integrate zsh
 
