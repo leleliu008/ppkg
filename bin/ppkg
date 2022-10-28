@@ -2114,7 +2114,7 @@ __compare_versions_with_brew() {
 
     cd "$MY_HOME_DIR/repos.d/offical-core/formula"
 
-    for item in $(find . -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
+    for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
     do
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
