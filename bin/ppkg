@@ -1470,15 +1470,6 @@ __rename_formula_of_the_given_package() {
     fi
 }
 
-__list_formulas() {
-    for repoName in $(cut -d= -f1 "$MY_HOME_DIR/repos")
-    do
-        if [ -d  "$MY_FORMULA_REPO_DIR/$repoName/formula" ] ; then
-            find "$MY_FORMULA_REPO_DIR/$repoName/formula" -maxdepth 1 -type f -name '*.yml'
-        fi
-    done
-}
-
 # __add_a_formula_repo <REPO-NAME> <REPO-URL>
 __add_a_formula_repo() {
     if [ -z "$1" ] ; then
@@ -1499,7 +1490,7 @@ __add_a_formula_repo() {
         *)  die "$2: repo url must end with .git"
     esac
 
-    for repoName in $(__list_formula_repositories | cut -d= -f1)
+    for repoName in $(__list_formula_repository_names)
     do
         if [ "$repoName" = "$1" ] ; then
             die "$1 formula repo already exists."
@@ -1520,7 +1511,7 @@ __add_a_formula_repo() {
     fi
 
     unset REPO_EXISTS
-    for repoName in $(__list_formula_repositories | cut -d= -f1)
+    for repoName in $(__list_formula_repository_names)
     do
         if [ "$repoName" = "$1" ] ; then
             REPO_EXISTS=yes
@@ -1540,8 +1531,12 @@ __repo_of_formula_of_the_given_package() {
         return 1
     }
 
-    for repoName in $(__list_formula_repositories | cut -d= -f1)
+    for repoName in $(__list_formula_repository_names)
     do
+        if [ -e "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
+            printf '%s\n' "$repoName"
+            return 0
+        fi
         if [ -e "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
             printf '%s\n' "$repoName"
             return 0
@@ -1559,8 +1554,12 @@ __repo_of_formula_of_the_given_package() {
         return 1
     }
 
-    for repoName in $(cut -d= -f1 "$MY_HOME_DIR/repos")
+    for repoName in $(__list_formula_repository_names)
     do
+        if [ -e           "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
+            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml"
+            return 0
+        fi
         if [ -e           "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
             printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml"
             return 0
@@ -1571,17 +1570,24 @@ __repo_of_formula_of_the_given_package() {
     return 1
 }
 
-__list_formula_repositories() {
-    if [ -e "$MY_HOME_DIR/repos" ] ; then
+__list_formula_repository_items() {
+    if [ -f "$MY_HOME_DIR/repos" ] ; then
         cat "$MY_HOME_DIR/repos"
     else
-        install -d "$MY_HOME_DIR"
-        printf 'offical-core=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
+        printf 'offical-core=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL"
+    fi
+}
+
+__list_formula_repository_names() {
+    if [ -f         "$MY_HOME_DIR/repos" ] ; then
+        cut -d= -f1 "$MY_HOME_DIR/repos"
+    else
+        printf 'offical-core=%s\n'
     fi
 }
 
 __update_formula_repositories() {
-    for item in $(__list_formula_repositories)
+    for item in $(__list_formula_repository_items)
     do
         unset FORMULA_REPO_NAME
         unset FORMULA_REPO_URL_
@@ -1603,6 +1609,27 @@ __update_formula_repositories() {
             run git -C "$MY_FORMULA_REPO_DIR" clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
         fi
     done
+}
+
+# __list_formula_search_dirs
+  __list_formula_search_dirs() {
+    for repoName in $(__list_formula_repository_names)
+    do
+        if [ -d           "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE" ] ; then
+            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE"
+        fi
+
+        printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula"
+    done
+}
+
+__list_formula_filepath() {
+    {
+        for FORMULA_SEARCH_DIR in $(__list_formula_search_dirs)
+        do
+            find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' || return 1
+        done
+    } | sort | uniq
 }
 
 # }}}
@@ -1873,10 +1900,12 @@ __gen_github_workflows() {
 }
 
 __list_available_packages() {
-    for FORMULA_REPO_NAME in $(__list_formula_repositories | cut -d= -f1)
-    do
-        find "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" -maxdepth 1 -type f -name '*.yml' -exec basename {} \; | sed -e 's|\.yml$||' | sort | uniq || return 1
-    done
+    {
+        for FORMULA_SEARCH_DIR in $(__list_formula_search_dirs)
+        do
+            find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+        done
+    } | sort | uniq
 }
 
 __list_installed_packages() {
@@ -2042,20 +2071,6 @@ __upgrade_packages() {
 }
 
 __cleanup() {
-    [ -d "$MY_CACHE_DIR/src" ] || return 0
-    for repo in $(__list_formula_repositories | cut -d= -f1)
-    do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
-        for item in $(ls)
-        do
-            if [ -f "$item" ] ; then
-                case $item in
-                    *.yml)
-                        __load_formula_of_the_given_package $(printf '%s\n' "$item" | sed 's/\.yml//g')
-                esac
-            fi
-        done
-    done
     success "Done."
 }
 
@@ -2065,10 +2080,7 @@ __search_packages() {
         return 1
     }
 
-    for repo in $(__list_formula_repositories | cut -d= -f1)
-    do
-        find "$MY_FORMULA_REPO_DIR/$repo/formula" -maxdepth 1 -type f -name '*.yml' -exec basename {} \; | sed -e 's|\.yml$||' | grep "$*"
-    done
+    __list_available_packages | grep "$*"
 }
 
 __compare_versions_with_brew() {
@@ -2100,11 +2112,9 @@ __compare_versions_with_brew() {
         esac
     }
 
-    set -e
-
     cd "$MY_HOME_DIR/repos.d/offical-core/formula"
 
-    for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort)
+    for item in $(find . -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
     do
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
@@ -6299,7 +6309,7 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
         formula-repo)
             shift
             case $1 in
-                list) shift; __list_formula_repositories ;;
+                list) shift; __list_formula_repository_items ;;
                 add)  shift; __add_a_formula_repo $@ ;;
                 del)  shift; __del_a_formula_repo $@ ;;
                 *) help 1
@@ -6313,7 +6323,7 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
                 rename) shift; __rename_formula_of_the_given_package $@ ;;
                 view)   shift;   __view_formula_of_the_given_package $@ ;;
                 edit)   shift;   __edit_formula_of_the_given_package $@ ;;
-                list)   shift; __list_formulas ;;
+                list)   shift; __list_formula_filepath ;;
                    *)   help 1
             esac
             ;;
