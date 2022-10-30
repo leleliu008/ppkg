@@ -4840,7 +4840,7 @@ gow() {
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
-        if [ -f "$PACKAGE_INSTALLING_BST_DIR/go.mod" ] && grep -q 'golang\.org/x/sys' ; then
+        if [ -f "$PACKAGE_INSTALLING_BST_DIR/go.mod" ] && grep -q 'golang\.org/x/sys' "$PACKAGE_INSTALLING_BST_DIR/go.mod" ; then
             run go get -u golang.org/x/sys
 
             if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
