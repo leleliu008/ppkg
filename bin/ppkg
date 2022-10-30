@@ -4838,13 +4838,22 @@ gow() {
 
     printf '\n'
 
+    # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
-        if [ -f "$PACKAGE_INSTALLING_BST_DIR/go.mod" ] && grep -q 'golang\.org/x/sys' "$PACKAGE_INSTALLING_BST_DIR/go.mod" ; then
+        GOMOD="$PACKAGE_INSTALLING_BST_DIR/go.mod"
+
+        if [ -f "$GOMOD" ] && grep -q 'golang\.org/x/sys' "$GOMOD" ; then
             run go get -u golang.org/x/sys
 
             if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
-                run rm -rf "$PACKAGE_INSTALLING_BST_DIR/vendor"
+                unset GO_VERSION_MAJOR
+                unset GO_VERSION_MINOR
+
+                GO_VERSION_MAJOR=$(go env GOVERSION | cut -c3- | cut -d. -f1)
+                GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
+
+                sed_in_place "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+
                 run go mod vendor
             fi
         fi
