@@ -98,10 +98,7 @@ function _ppkg() {
                     esac
                     ;;
                 integrate)
-                    _arguments \
-                        '1:what:(zsh)' \
-                        '-x[trace execution of commands]' \
-                        '--china[use china mirror url]'
+                    _arguments '1:what:(zsh)'
                     ;;
                 info)
                     if [ "$words[2]" = '@all' ] ; then
@@ -135,8 +132,7 @@ function _ppkg() {
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
                         '--type=-[set output type]:output-type:(7z zip tar.gz tar.xz tar.bz2)' \
-                        '--keep-packing-dir[do not delete packing dir even if packed success]' \
-                        '-x[trace execution of commands]'
+                        '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 homepage)
                     _arguments \
@@ -172,7 +168,6 @@ function _ppkg() {
                         '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                         '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
-                        '-x[trace execution of commands]' \
                         '-vv[debug mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
@@ -195,7 +190,6 @@ function _ppkg() {
                         '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                         '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
-                        '-x[trace execution of commands]' \
                         '-vv[debug mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
@@ -208,14 +202,10 @@ function _ppkg() {
                         upgrade-subcommand)
                             case $words[1] in
                                 @self)
-                                    _arguments \
-                                        '-x[trace execution of commands]' \
-                                        '--china[use china mirror url]'
                                     ;;
                                 *)
                                 _arguments \
                                     ':package-name:_ppkg_outdated_packages' \
-                                    '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
                                     '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                                     '--dry-run[dry-run]' \
                                     '--keep-installing-dir[do not delete installing dir even if installed success]' \
@@ -230,7 +220,6 @@ function _ppkg() {
                                     '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
                                     '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                                     + '(verbose_level)' \
-                                    '-x[trace execution of commands]' \
                                     '-vv[debug mode. many many messages will be output to terminal]' \
                                     '-v[verbose mode. many messages will be output to terminal]' \
                                     '-q[silent mode. no any messages will be output to terminal]'

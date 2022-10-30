@@ -33,9 +33,6 @@ rm -rf /opt/ppkg
 *   integrate `zsh-completion` script
 
         ppkg integrate zsh
-        ppkg integrate zsh -x
-        ppkg integrate zsh --china
-        ppkg integrate zsh --china -x
         
     I have provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, it will auto complete the rest for you.
 
@@ -85,9 +82,9 @@ rm -rf /opt/ppkg
         ppkg install curl bzip2
         ppkg install curl bzip2 --jobs=4
         ppkg install curl bzip2 --jobs=4 -v
-        ppkg install curl bzip2 --jobs=4 -v -x
-        ppkg install curl bzip2 --jobs=4 -v -x --dry-run
-        ppkg install curl bzip2 --jobs=4 -v -x --dry-run --keep-installing-dir
+        ppkg install curl bzip2 --jobs=4 -v -q
+        ppkg install curl bzip2 --jobs=4 -v -q --dry-run
+        ppkg install curl bzip2 --jobs=4 -v -q --dry-run --keep-installing-dir
         
 *   reinstall packages
         
@@ -108,9 +105,6 @@ rm -rf /opt/ppkg
 *   upgrade this software
 
         ppkg upgrade @self
-        ppkg upgrade @self -x
-        ppkg upgrade @self --china
-        ppkg upgrade @self --china -x
         
 
 *   list the avaliable formula repos
@@ -206,3 +200,22 @@ rm -rf /opt/ppkg
         
         ppkg cleanup
         
+
+## influential environment variables
+*   PPKG_XTRACE
+
+    `PPKG_XTRACE=1` wiil apply `set -x` to this shell script.
+
+*   WFETCH_REQUEST_INTERCEPTER
+
+    point to `wfetch-request-intercepter` command.
+
+
+## wfetch-request-intercepter
+This is a request intercepter for `wfetch`
+
+This command will be invoked as `wfetch-request-intercepter <URL>`
+
+This command must output a `<URL>`
+
+There is a sample locate at `/opt/ppkg/core/wfetch-request-intercepter.sample`

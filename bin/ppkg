@@ -348,13 +348,16 @@ lolcat_awk() {
 
 # }}}
 ##############################################################################
-# {{{ fetch
+# {{{ wfetch
 
-# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-path=PATH>
-# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-# fetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
-fetch() {
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-path=PATH>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+
+# influential environment variable:
+# WFETCH_REQUEST_INTERCEPTER
+wfetch() {
     unset FETCH_URL
     unset FETCH_URI
     unset FETCH_SHA256
@@ -364,14 +367,18 @@ fetch() {
     unset FETCH_SILENT
 
     if [ -z "$1" ] ; then
-        error "fetch <URL> [OPTION]... , <URL> must not be empty."
+        error "wfetch <URL> [OPTION]... , <URL> must not be empty."
         return 1
+    fi
+
+    if [ -z "$WFETCH_REQUEST_INTERCEPTER" ] ; then
+        WFETCH_REQUEST_INTERCEPTER=$(command -v wfetch-request-intercepter || true)
+    fi
+
+    if [ -z "$WFETCH_REQUEST_INTERCEPTER" ] ; then
+        FETCH_URL="$1"
     else
-        if [ "$COUNTRY" = 'china' ] ; then
-            FETCH_URL="$(get_china_mirror_url "$1")"
-        else
-            FETCH_URL="$1"
-        fi
+        FETCH_URL="$("$WFETCH_REQUEST_INTERCEPTER" "$1")"
     fi
 
     shift
@@ -389,43 +396,42 @@ fetch() {
             --uri=*)
                 FETCH_URI=$(getvalue "$1")
                 if [ -z "$FETCH_URI" ] ; then
-                    error "fetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
+                    error "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
                     return 1
-                else
-                    if [ "$COUNTRY" = 'china' ] ; then
-                        FETCH_URI="$(get_china_mirror_url "$FETCH_URI")"
-                    fi
+                fi
+                if [ -n "$WFETCH_REQUEST_INTERCEPTER" ] ; then
+                    FETCH_URI="$("$WFETCH_REQUEST_INTERCEPTER" "$FETCH_URI")"
                 fi
                 ;;
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    error "fetch <URL> --output-dir=<DIR> , <DIR> must not be empty."
+                    error "wfetch <URL> --output-dir=<DIR> , <DIR> must not be empty."
                     return 1
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    error "fetch <URL> --output-name=<NAME> , <NAME> must not be empty."
+                    error "wfetch <URL> --output-name=<NAME> , <NAME> must not be empty."
                     return 1
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    error "fetch <URL> --output-path=<FILEPATH> , <FILEPATH> must not be empty."
+                    error "wfetch <URL> --output-path=<FILEPATH> , <FILEPATH> must not be empty."
                     return 1
                 fi
                 ;;
-            *)  error "fetch <URL> [OPTION]..., unrecognized option: $1
+            *)  error "wfetch <URL> [OPTION]..., unrecognized option: $1
 
-    fetch command usage:
+    wfetch command usage:
 
-    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-path=PATH>
-    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-    fetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-path=PATH>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
                 return 1
         esac
         shift
@@ -544,7 +550,7 @@ fetch() {
                     run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
                     run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
                     ;;
-                *)  error "fetch() unimplementation: $FETCH_TOOL"
+                *)  error "wfetch() unimplementation: $FETCH_TOOL"
                     return 1
                     ;;
             esac
@@ -562,54 +568,14 @@ fetch() {
 
 # }}}
 ##############################################################################
-# {{{ get_china_mirror_url
-
-# get_china_mirror_url <ORIGIN_URL>
-get_china_mirror_url() {
-    case $1 in
-        *githubusercontent.com/*)
-            printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
-            ;;
-        https://github.com/*)
-            # https://ghproxy.com/
-            printf "https://ghproxy.com/%s\n" "$1"
-            ;;
-        *)  printf '%s\n' "$1"
-    esac
-}
-
-# }}}
-##############################################################################
 # {{{ __upgrade_self
 
-# __upgrade_self <URL> [--china] [-x]
+# __upgrade_self <URL>
   __upgrade_self() {
-    set -e
-
     if [ -z "$1" ] ; then
-        error "__upgrade_self <URL> [--china] [-x] , <URL> must not be empty."
+        error "__upgrade_self <URL> , <URL> must not be empty."
         return 1
-    else
-        UPGRADE_SELF_URL="$1"
     fi
-
-    shift
-
-    unset XTRACE
-    unset COUNTRY
-
-    for arg in $@
-    do
-        case $arg in
-            -x) XTRACE=yes
-                set -x
-                ;;
-            --china)
-                COUNTRY=china
-                ;;
-            *)  error "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg" ; return 1
-        esac
-    done
 
     unset CURRENT_SCRIPT_REALPATH
 
@@ -632,7 +598,7 @@ get_china_mirror_url() {
 
     run cd $WORKING_DIR
 
-    fetch "$UPGRADE_SELF_URL" --output-path="$WORKING_DIR/self"
+    wfetch "$1" --output-path="$WORKING_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -651,12 +617,10 @@ get_china_mirror_url() {
 ##############################################################################
 # {{{ __integrate_zsh_completions
 
-# __integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x]
+# __integrate_zsh_completions <URL> [--output-dir=<DIR>]
   __integrate_zsh_completions() {
-    set -e
-
     if [ -z "$1" ] ; then
-        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , <URL> must not be empty."
+        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must not be empty."
         return 1
     else
         ZSH_COMPLETIONS_SCRIPT_URL="$1"
@@ -664,19 +628,11 @@ get_china_mirror_url() {
 
     shift
 
-    unset XTRACE
-    unset COUNTRY
     unset OUTPUT_DIR
 
     for arg in $@
     do
         case $arg in
-            -x) XTRACE=yes
-                set -x
-                ;;
-            --china)
-                COUNTRY=china
-                ;;
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$OUTPUT_DIR" ] ; then
@@ -685,7 +641,7 @@ get_china_mirror_url() {
                 fi
                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
                 ;;
-            *)  error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
+            *)  error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , unrecognized argument: $arg"
                 return 1
         esac
     done
@@ -717,7 +673,7 @@ get_china_mirror_url() {
 
     run cd $WORKING_DIR
 
-    fetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -1685,20 +1641,20 @@ __fetch_sources_of_the_given_package() {
             run git -C "$PACKAGE_SRC_PATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
             run git -C "$PACKAGE_SRC_PATH" submodule update --init || return 1
             ;;
-        *)  if [ -z   "$PACKAGE_SRC_URI" ] ; then
-                fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
+        *)  if [ -z    "$PACKAGE_SRC_URI" ] ; then
+                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
             else
-                fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH" --uri="$PACKAGE_SRC_URI"
+                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH" --uri="$PACKAGE_SRC_URI"
             fi
     esac
 }
 
 __fetch_patches_of_the_given_package() {
-    if [ -n   "$PACKAGE_FIX_URL" ] ; then
-        fetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --output-path="$PACKAGE_FIX_PATH"
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --output-path="$PACKAGE_FIX_PATH"
     fi
-    if [ -n   "$PACKAGE_RES_URL" ] ; then
-        fetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --output-path="$PACKAGE_RES_PATH"
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --output-path="$PACKAGE_RES_PATH"
     fi
 }
 
@@ -1971,7 +1927,6 @@ __list__outdated_packages() {
     while [ -n "$1" ]
     do
         case "$1" in
-            -x) ;;
             -*) die "__uninstall_the_given_packages <PACKAGE-NAME>..., unrecognized option: $1"
                 ;;
             *)  USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
@@ -2229,7 +2184,6 @@ __show_packages_depended_by_the_given_package() {
                 OUTPUT_BRIEF=yes
                 ;;
             -r) RECURSIVE=yes ;;
-            -x) set -x ;;
             -o)
                 if [ -z "$2" ] ; then
                     die "-o <OUTPUT-FILE-PATH>, <OUTPUT-FILE-PATH> must not be empty."
@@ -2426,7 +2380,6 @@ $LINE"
             --keep-packing-dir)
                 KEEP_PACKING_DIR=yes
                 ;;
-            -x) ;;
             --type=*)
                 PACKED_FILETYPE=$(getvalue "$1")
                 case $PACKED_FILETYPE in
@@ -2702,7 +2655,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             if command -v fc-match > /dev/null ; then
                 # Error: fontconfig: Couldn't find font.
                 if [ -z "$(fc-match)" ] ; then
-                    fetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
+                    wfetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
                 fi
             fi
 
@@ -2904,7 +2857,7 @@ __install_the_given_package() {
                 run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
             fi
 
-            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+            wfetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
 
             run bash "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y || return 1
 
@@ -4549,7 +4502,6 @@ EOF
         case $arg in
             "$1")
                 ;;
-            -x) ;;
             *)  if [ -z "$SHOW_INFOMATION_ARGS" ] ; then
                     SHOW_INFOMATION_ARGS="$arg"
                 else
@@ -4885,6 +4837,17 @@ gow() {
     fi
 
     printf '\n'
+
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
+        if [ -f "$PACKAGE_INSTALLING_BST_DIR/go.mod" ] && grep -q 'golang\.org/x/sys' ; then
+            run go get -u golang.org/x/sys
+
+            if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
+                run go mod vendor
+            fi
+        fi
+    fi
 
     # https://pkg.go.dev/cmd/go
     # https://pkg.go.dev/cmd/link
@@ -5494,12 +5457,9 @@ inspect_install_arguments() {
     while [ -n "$1" ]
     do
         case "$1" in
-            -x) VERBOSE_LEVEL=4 ;;
             -vv)VERBOSE_LEVEL=3 ;;
             -v) VERBOSE_LEVEL=2 ;;
             -q) VERBOSE_LEVEL=0 ;;
-            --china)
-                ;;
             --dry-run)
                 DRYRUN=yes
                 ;;
@@ -5674,7 +5634,7 @@ __setup() {
         export PATH="$MY_CORE_BIN_DIR:$PATH"
 
         # https://curl.se/docs/caextract.html
-        fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+        wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
         run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
         run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
@@ -5688,7 +5648,7 @@ __setup() {
 
     #################################################################################
 
-    fetch 'https://raw.githubusercontent.com/leleliu008/os/master/bin/os' --output-path="$SETUP_WORKING_DIR/os"
+    wfetch 'https://raw.githubusercontent.com/leleliu008/os/master/bin/os' --output-path="$SETUP_WORKING_DIR/os"
     run chmod +x "$SETUP_WORKING_DIR/os"
     run mv "$SETUP_WORKING_DIR/os" "$MY_CORE_BIN_DIR/os"
 
@@ -5707,6 +5667,22 @@ printf '\n'
 EOF
 
     chmod +x "$MY_CORE_BIN_DIR/base64-encode-string"
+
+    #################################################################################
+
+    cat > "$MY_CORE_BIN_DIR/wfetch-request-intercepter.sample" <<EOF
+# https://ghproxy.com/
+case \$1 in
+    *githubusercontent.com/*)
+        printf 'https://ghproxy.com/%s\n' "\$1"
+        ;;
+    https://github.com/*)
+        printf 'https://ghproxy.com/%s\n' "\$1"
+        ;;
+    '') printf '%s\n' 'wfetch-request-intercepter <URL>, <URL> is not given.' >&2 ;;
+    *)  printf '%s\n' "\$1"
+esac
+EOF
 
     success "ppkg have been succefully setup."
 }
@@ -5850,8 +5826,8 @@ __setup_yq() {
         *)  die "$(uname -s) is not supported yet."
     esac
 
-    if [ -n "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-        fetch $YQ_URL --sha256=$YQ_SHA --output-dir="$MY_CORE_BIN_DIR"
+    if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
+        wfetch "$YQ_URL" --sha256=$YQ_SHA --output-dir="$MY_CORE_BIN_DIR"
         run chmod +x "$FETCH_OUTPUT_PATH"
         run mv "$FETCH_OUTPUT_PATH" "$MY_CORE_BIN_DIR/yq"
     fi
@@ -5893,7 +5869,7 @@ __setup_uppm() {
 
     JSON_FILEPATH="$SETUP_WORKING_DIR/latest.json"
 
-    fetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
+    wfetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
 
     FETCH_BASE_URL="https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(sed -n '/"tag_name":/p' "$JSON_FILEPATH" | sed 's|  "tag_name": "\(.*\)",|\1|')"
 
@@ -5903,7 +5879,7 @@ __setup_uppm() {
     UPPM_ARCHIVE_FILENAME=$(sed -n '/"name":/p' "$JSON_FILEPATH" | sed -e 's|[[:space:]]||g' -e 's|"name":"\(.*\)",|\1|' | sed -n '/^uppm-/p')
     UPPM_ARCHIVE_FILEPATH="$SETUP_WORKING_DIR/$UPPM_ARCHIVE_FILENAME"
 
-    fetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
+    wfetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_CORE_DIR"
 
@@ -5912,7 +5888,7 @@ __setup_uppm() {
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    fetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+    wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
     run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
@@ -6109,7 +6085,7 @@ ${COLOR_GREEN}ppkg --homepage${COLOR_OFF}
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
     show current machine os info.
 
-${COLOR_GREEN}ppkg integrate zsh   [--output-dir=<DIR>] [-x | --china]${COLOR_OFF}
+${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
 ${COLOR_GREEN}ppkg update${COLOR_OFF}
@@ -6128,13 +6104,13 @@ ${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
     list the outdated  packages.
 
 ${COLOR_GREEN}ppkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
-    is PACKAGE available?
+    check if the given package is available
 
 ${COLOR_GREEN}ppkg is-installed <PACKAGE-NAME>${COLOR_OFF}
-    is PACKAGE installed?
+    check if the given package is installed
 
 ${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
-    is PACKAGE outdated?
+    check if the given package is outdated
 
 ${COLOR_GREEN}ppkg search <KEYWORD>${COLOR_OFF}
     search available packages.
@@ -6169,7 +6145,7 @@ ${COLOR_GREEN}ppkg formula-repo del <FORMULA-REPO-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> <7z|zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
@@ -6182,27 +6158,24 @@ ${COLOR_GREEN}ppkg info @all [--json|--yaml|--shell]${COLOR_OFF}
     show information of all the available packages.
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
-    download formula resources of the given package to the cache.
+    download resources of the given package to the local cache.
 
 ${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
-    download formula resources of all available packages to the cache.
+    download resources of all available packages to the local cache.
 
 ${COLOR_GREEN}ppkg depends <PACKAGE-NAME>${COLOR_OFF}
-    show the depends of the given package.
+    show the packages that are depended by the given package.
 
-${COLOR_GREEN}ppkg homepage [--open] [PACKAGE-NAME]${COLOR_OFF}
-    show or open the homepage of the given package or this project in web browser.
-
-${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v -d -x --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
     install the given packages.
 
-${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v -d -x --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v -d -x --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
-${COLOR_GREEN}ppkg upgrade @self  [-x | --china]${COLOR_OFF}
+${COLOR_GREEN}ppkg upgrade @self${COLOR_OFF}
     upgrade this software.
 
 ${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
@@ -6218,6 +6191,10 @@ ${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
 
 main() {
     set -e
+
+    if [ -n "$PPKG_XTRACE" ] ; then
+        set -x
+    fi
 
     # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
     #IFS_DEFAULT=$(printf ' \t\n')
@@ -6243,22 +6220,6 @@ main() {
     MY_CORE_BIN_DIR="$MY_CORE_DIR/bin"
 
     MY_INIT_RC="$MY_HOME_DIR/init.rc"
-
-    unset XTRACE
-    unset COUNTRY
-
-    for arg in $@
-    do
-        case $arg in
-            -x) XTRACE=yes
-                set -x
-                ;;
-            --china)
-                COUNTRY=china
-                ;;
-            *)  [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
-        esac
-    done
 
     case $1 in
         ''|--help|-h)
