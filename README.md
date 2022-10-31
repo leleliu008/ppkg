@@ -206,16 +206,16 @@ rm -rf /opt/ppkg
 
     `PPKG_XTRACE=1` wiil apply `set -x` to this shell script.
 
-*   WFETCH_REQUEST_INTERCEPTER
+*   WFETCH_URL_TRANSFORM
 
-    point to `wfetch-request-intercepter` command.
+    point to `wfetch-url-transform` command.
 
 
-## wfetch-request-intercepter
-This is a request intercepter for `wfetch`
+## wfetch-url-transform
+This is a hook for `wfetch`
 
-This command will be invoked as `wfetch-request-intercepter <URL>`
+This command will be invoked as `wfetch-url-transform <URL>`
 
 This command must output a `<URL>`
 
-There is a sample locate at `/opt/ppkg/core/wfetch-request-intercepter.sample`
+There is a sample locate at `/opt/ppkg/core/bin/wfetch-url-transform.sample`

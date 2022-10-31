@@ -356,7 +356,7 @@ lolcat_awk() {
 # wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
 
 # influential environment variable:
-# WFETCH_REQUEST_INTERCEPTER
+# WFETCH_URL_TRANSFORM
 wfetch() {
     unset FETCH_URL
     unset FETCH_URI
@@ -371,14 +371,14 @@ wfetch() {
         return 1
     fi
 
-    if [ -z "$WFETCH_REQUEST_INTERCEPTER" ] ; then
-        WFETCH_REQUEST_INTERCEPTER=$(command -v wfetch-request-intercepter || true)
+    if [ -z "$WFETCH_URL_TRANSFORM" ] ; then
+        WFETCH_URL_TRANSFORM=$(command -v wfetch-url-transform || true)
     fi
 
-    if [ -z "$WFETCH_REQUEST_INTERCEPTER" ] ; then
+    if [ -z "$WFETCH_URL_TRANSFORM" ] ; then
         FETCH_URL="$1"
     else
-        FETCH_URL="$("$WFETCH_REQUEST_INTERCEPTER" "$1")"
+        FETCH_URL="$("$WFETCH_URL_TRANSFORM" "$1")"
     fi
 
     shift
@@ -399,8 +399,8 @@ wfetch() {
                     error "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
                     return 1
                 fi
-                if [ -n "$WFETCH_REQUEST_INTERCEPTER" ] ; then
-                    FETCH_URI="$("$WFETCH_REQUEST_INTERCEPTER" "$FETCH_URI")"
+                if [ -n "$WFETCH_URL_TRANSFORM" ] ; then
+                    FETCH_URI="$("$WFETCH_URL_TRANSFORM" "$FETCH_URI")"
                 fi
                 ;;
             --output-dir=*)
@@ -5680,7 +5680,7 @@ EOF
 
     #################################################################################
 
-    cat > "$MY_CORE_BIN_DIR/wfetch-request-intercepter.sample" <<EOF
+    cat > "$MY_CORE_BIN_DIR/wfetch-url-transform.sample" <<EOF
 # https://ghproxy.com/
 case \$1 in
     *githubusercontent.com/*)
@@ -5689,7 +5689,7 @@ case \$1 in
     https://github.com/*)
         printf 'https://ghproxy.com/%s\n' "\$1"
         ;;
-    '') printf '%s\n' 'wfetch-request-intercepter <URL>, <URL> is not given.' >&2 ;;
+    '') printf '%s\n' 'wfetch-url-transform <URL>, <URL> is not given.' >&2 ;;
     *)  printf '%s\n' "\$1"
 esac
 EOF
