@@ -113,7 +113,7 @@ rm -rf /opt/ppkg
 
 *   add a new formula repo
 
-        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-my_repo.git
+        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo.git
 
 *   delete a existing formula repo
 
@@ -204,7 +204,7 @@ rm -rf /opt/ppkg
 ## influential environment variables
 *   PPKG_XTRACE
 
-    `PPKG_XTRACE=1` wiil apply `set -x` to this shell script.
+    `PPKG_XTRACE=1` will apply `set -x` to this shell script.
 
 *   WFETCH_URL_TRANSFORM
 
@@ -218,4 +218,4 @@ This command will be invoked as `wfetch-url-transform <URL>`
 
 This command must output a `<URL>`
 
-There is a sample locate at `/opt/ppkg/core/bin/wfetch-url-transform.sample`
+There is a sample locates at `/opt/ppkg/core/bin/wfetch-url-transform.sample`

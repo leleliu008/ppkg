@@ -3413,6 +3413,9 @@ __export_relevant_environment_variables() {
             PATH="$DEVELOPER_DIR/usr/bin:$PATH"
         fi
 
+        # $MY_CORE_BIN_DIR must before DEVELOPER_DIR/bin , because some tools shipped with sdk are too old.
+        PATH="$MY_CORE_BIN_DIR:$PATH"
+
         # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
         # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
         # https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-mmacosx-version-min
