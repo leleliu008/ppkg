@@ -3303,22 +3303,14 @@ __adjust_mach_o_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
             BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
 
-            if [ "$BASE64_DECODED_RELATIVE_FILEPATH" = '.' ] ; then
-                continue
-            fi
-
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
-            [ -d "$FILEPATH" ] && continue
-            [ -L "$FILEPATH" ] && continue
-
             unset FILE_HEADER_ACTUAL
-
             FILE_HEADER_ACTUAL="$(hexdump -n 16 -v -e '1/1 "%02X" ""' "$FILEPATH")"
 
             # https://github.com/aidansteele/osx-abi-macho-file-format-reference
@@ -3333,10 +3325,10 @@ __adjust_mach_o_files_for_the_given_target() {
             esac
 
             unset DT_NEEDED
-            DT_NEEDED=$(otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+            DT_NEEDED=$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
             unset DT_RUNPATH
-            DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+            DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
             if [ -z "$DT_NEEDED" ] ; then
                 die "-----------------"
@@ -3434,7 +3426,7 @@ __export_relevant_environment_variables() {
         CPPFLAGS="-isysroot $SDKROOT -Qunused-arguments $CPPFLAGS"
          CCFLAGS="-isysroot $SDKROOT -Qunused-arguments  $CCFLAGS"
          XXFLAGS="-isysroot $SDKROOT -Qunused-arguments  $XXFLAGS"
-         LDFLAGS="-isysroot $SDKROOT -Wl,-search_paths_first -Wl,-undefined -Wl,dynamic_lookup $LDFLAGS"
+         LDFLAGS="-isysroot $SDKROOT -Wl,-search_paths_first $LDFLAGS"
     else
         if [ "$LINK_TYPE" = static-only ] ; then
             LDFLAGS="-static --static $LDFLAGS"
