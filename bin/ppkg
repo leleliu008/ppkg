@@ -4853,6 +4853,7 @@ gow() {
 
                 sed_in_place "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
 
+                run go mod tidy
                 run go mod vendor
             fi
         fi
