@@ -4833,7 +4833,7 @@ gow() {
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         GOMOD="$PACKAGE_INSTALLING_BST_DIR/go.mod"
 
-        if [ -f "$GOMOD" ] && grep -q 'golang\.org/x/sys' "$GOMOD" ; then
+        if [ -f "$GOMOD" ] && go mod graph | grep -q 'golang\.org/x/sys' ; then
             run go get -u golang.org/x/sys
 
             if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
