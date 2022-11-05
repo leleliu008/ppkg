@@ -5715,7 +5715,7 @@ __setup_macos() {
     }
 
     run brew update
-    run brew install bash coreutils findutils gawk gsed grep tree unzip zip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake xmake ninja make libtool nasm flex bison m4
+    run brew install bash coreutils findutils gawk gsed grep tree unzip zip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake xmake ninja make libtool nasm yasm flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
