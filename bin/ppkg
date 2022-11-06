@@ -326,26 +326,6 @@ lolcat_awk() {
     '
 }
 
-# file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>
-  file_exists_and_sha256sum_matched() {
-    [ -z "$1" ] && {
-        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <PATH-OF-FILE> is not given."
-        return 1
-    }
-
-    [ -z "$2" ] && {
-        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <EXPECTED-SHA256SUM-OF-FILE> is not given."
-        return 1
-    }
-
-    [ -e "$1" ] || {
-        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, PATH-OF-FILE[$1] is not exist."
-        return 1
-    }
-
-    [ "$(sha256sum $1 | cut -d ' ' -f1)" = "$2" ]
-}
-
 # }}}
 ##############################################################################
 # {{{ wfetch
@@ -489,7 +469,7 @@ wfetch() {
         *)
             if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
                 if [ -n "$FETCH_SHA256" ] ; then
-                    if file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" ; then
+                    if [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] ; then
                         success "$FETCH_OUTPUT_PATH already have been fetched."
                         return 0
                     fi
@@ -554,7 +534,7 @@ wfetch() {
             [ $? -eq 0 ] || return 1
 
             if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
-                file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" || {
+                [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] || {
                     error "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum $FETCH_OUTPUT_PATH | cut -d ' ' -f1)"
                     return 1
                 }
@@ -3331,20 +3311,19 @@ __adjust_mach_o_files_for_the_given_target() {
             DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
             if [ -z "$DT_NEEDED" ] ; then
-                die "-----------------"
+                die "no dependent shared libraries found in $FILEPATH"
             fi
 
             echo "DT_NEEDED=\n$DT_NEEDED"
             echo "DT_RUNPATH=\n$DT_RUNPATH"
 
-            # for NEEDED in $DT_NEEDED
-            # do
-            #     case $NEEDED in
-            #         /System/Library/Frameworks/*) ;;
-            #         /usr/lib/lib*.dylib) ;;
-            #         *)
-            #     esac
-            # done
+            for NEEDED in $DT_NEEDED
+            do
+                case $NEEDED in
+                    lib*.dylib)
+                        run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
+                esac
+            done
 
             if [ "$BUILD_TYPE" = release ] ; then
                 if [ "$x" != lib ] ; then
