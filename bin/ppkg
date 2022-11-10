@@ -6014,7 +6014,7 @@ __setup_PATH_env() {
     if [ -d "$UPPM_INSTALLED_PACKAGES_DIR" ] ; then
         for item in $(ls "$UPPM_INSTALLED_PACKAGES_DIR")
         do
-            if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item" ] && [ -f "$UPPM_INSTALLED_PACKAGES_DIR/$item/installed-metadata-uppm" ] ; then
+            if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item" ] && [ -f "$UPPM_INSTALLED_PACKAGES_DIR/$item/.uppm/receipt.yml" ] ; then
                 if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin" ] ; then
                     bppend_to_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin"
                 fi
