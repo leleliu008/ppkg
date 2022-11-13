@@ -1514,7 +1514,7 @@ __list_formula_repository_names() {
     if [ -f         "$MY_HOME_DIR/repos" ] ; then
         cut -d= -f1 "$MY_HOME_DIR/repos"
     else
-        printf 'offical-core=%s\n'
+        printf 'offical-core\n'
     fi
 }
 
