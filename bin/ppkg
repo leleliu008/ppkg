@@ -1216,7 +1216,7 @@ __load_formula_of_the_given_package() {
     done
 
     if [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] ; then
-        PACKAGE_DEP_PYM=meson
+        PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
     fi
 
     if [ -n "$PACKAGE_DEP_PYM" ] ; then
