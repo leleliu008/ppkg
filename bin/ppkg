@@ -181,10 +181,10 @@ getvalue() {
 
 trim() {
     if [ $# -eq 0 ] ; then
-        sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
     else
         if [ -n "$*" ] ; then
-            printf '%s\n' "$*" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+            printf '%s\n' "$*" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
         fi
     fi
 }
@@ -1113,7 +1113,7 @@ __load_formula_of_the_given_package() {
             fi
 
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                 case $PACKAGE_VERSION in
                     '') die "version is not configed in $PACKAGE_FORMULA_FILEPATH" ;;
                     v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
