@@ -3308,6 +3308,9 @@ __adjust_mach_o_files_for_the_given_target() {
                 *)  continue
             esac
 
+            unset DT_SONAME
+            DT_SONAME=$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+
             unset DT_NEEDED
             DT_NEEDED=$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
@@ -3318,8 +3321,16 @@ __adjust_mach_o_files_for_the_given_target() {
                 die "no dependent shared libraries found in $FILEPATH"
             fi
 
+            echo "DT_SONAME=\n$DT_SONAME"
             echo "DT_NEEDED=\n$DT_NEEDED"
             echo "DT_RUNPATH=\n$DT_RUNPATH"
+
+            case $DT_SONAME in
+                '') ;;
+                @*) ;;
+                /*) ;;
+                lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
+            esac
 
             for NEEDED in $DT_NEEDED
             do
