@@ -5913,7 +5913,11 @@ EOF
 
     for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
-        run "$MY_CORE_BIN_DIR/uppm install $item"
+        if [ "$NATIVE_OS_KIND" = darwin ] && [ "$item" = git ] ; then
+            run "$MY_CORE_BIN_DIR/uppm install $item -v"
+        else
+            run "$MY_CORE_BIN_DIR/uppm install $item"
+        fi
     done
 }
 
