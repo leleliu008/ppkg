@@ -54,10 +54,13 @@ rm -rf /opt/ppkg
         
         ppkg info curl
         ppkg info curl version
+        ppkg info curl license
         ppkg info curl summary
-        ppkg info curl webpage
+        ppkg info curl web-url
         ppkg info curl git-url
+        ppkg info curl git-sha
         ppkg info curl src-url
+        ppkg info curl src-sha
 
         ppkg info curl installed-dir
         ppkg info curl installed-files
