@@ -3459,14 +3459,14 @@ __export_relevant_environment_variables() {
             esac
         fi
 
-        # if [ -z "$TOOLPATH" ] ; then
-        #     die "$TOOLNAME is not found."
-        # fi
+        if [ -z "$TOOLPATH" ] ; then
+            die "$TOOLNAME is not found."
+        fi
 
-        # if [ "$TOOLNAME" != cpp ] ; then
-        #     [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
-        #     [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
-        # fi
+        if [ "$TOOLNAME" != cpp ] ; then
+            [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
+            [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
+        fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
     done
@@ -5894,7 +5894,7 @@ __setup_uppm() {
 
     export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
 
-    if [ -f ~/.uppm/repos.d/offical/.git/config ] ; then
+    if [ -f ~/.uppm/repos.d/offical-core/.git/config ] ; then
         CLONE=no
     else
         CLONE=yes
@@ -5904,7 +5904,7 @@ __setup_uppm() {
     run "$MY_CORE_BIN_DIR/uppm update"
 
     if [ "$CLONE" = yes ] ; then
-        cat >> ~/.uppm/repos.d/offical/.git/config <<EOF
+        cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
 [user]
     email = leleliu008@gmail.com
     name = leleliu008
