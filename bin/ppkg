@@ -2705,7 +2705,7 @@ __install_the_given_package() {
 
         for item in $PACKAGE_DEP_UPP
         do
-            if uppm is-package-installed "$item" ; then
+            if uppm is-installed "$item" ; then
                 note "package [$item] already has been installed."
             else
                 if [ "$UPPM_NEED_UPDATE" = yes ] ; then
@@ -3459,14 +3459,14 @@ __export_relevant_environment_variables() {
             esac
         fi
 
-        if [ -z "$TOOLPATH" ] ; then
-            die "$TOOLNAME is not found."
-        fi
+        # if [ -z "$TOOLPATH" ] ; then
+        #     die "$TOOLNAME is not found."
+        # fi
 
-        if [ "$TOOLNAME" != cpp ] ; then
-            [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
-            [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
-        fi
+        # if [ "$TOOLNAME" != cpp ] ; then
+        #     [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
+        #     [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
+        # fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
     done
@@ -5539,7 +5539,7 @@ __is_core_tools_installed() {
 
     for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
-        "$MY_CORE_BIN_DIR/uppm" is-package-installed "$item" || return 1
+        "$MY_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
     done
 
     return 0
