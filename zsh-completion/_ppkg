@@ -3,10 +3,8 @@
 _commands=(
     '-h:show help of this command.'
     '--help:show help of this command.'
-    '-V:show version of this.'
+    '-V:show version of this command.'
     '--version:show version of this command.'
-    '--homedir:show home directory of this command.'
-    '--homepage:show home webpage of this command.'
     'ls-available:list the available packages.'
     'ls-installed:list the installed packages.'
     'ls-outdated:list the installed packages which can be upgraded.'
@@ -16,23 +14,22 @@ _commands=(
     'search:search packages can be installed.'
     'tree:list files of the given installed package in a tree-like format.'
     'info:show infomation of the given package or all available packages.'
-    'formula:create, delete, rename, view, edit the formula of the given package.'
-    'formula-repo:add, delete, list the formula-repos.'
+    'formula-repo-add:add a new formula-repo.'
+    'formula-repo-del:delete a existing formula-repo.'
+    'formula-repo-list: list all the registed formula-repos.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
     'cleanup:cleanup the unused cache.'
     'update:update the formula repository.'
-    'upgrade:upgrade the outdated packages or this software.'
+    'upgrade:upgrade the outdated packages.'
+    'upgrade-self:upgrade this software.'
     'fetch:download formula resources of the given package to the cache.'
-    'homepage:show or open the homepage of the given package or the this project.'
     'integrate:integrate zsh completions.'
     'env:show current machine os and environment variables.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
-    'ldd:list dynamic dependencies.'
-    'gen-github-workflows:generate github workflows.'
 )
 
 function _ppkg_commands() {
@@ -68,34 +65,8 @@ function _ppkg() {
     case $state in
         option)
             case $words[1] in
-                formula-repo)
-                    _arguments \
-                        ':action:(add del list)' \
-                        '*:: :->action'
-                    case $state in
-                        action)
-                            case $words[1] in
-                                del) _arguments '1:repo-name:($(ppkg formula-repo list | cut -d= -f1))' ;;
-                            esac
-                    esac
-                    ;;
-                formula)
-                    _arguments \
-                        ':action:(create delete rename view edit list)' \
-                        '*:: :->action'
-                    case $state in
-                        action)
-                            case $words[1] in
-                                delete|rename|edit)
-                                    _arguments '1:package-name:_ppkg_available_packages'
-                                    ;;
-                                view)
-                                    _arguments \
-                                        '1:package-name:_ppkg_available_packages' \
-                                        '--paging=-[when use pager]:paging:(auto always never)'
-                                    ;;
-                            esac
-                    esac
+                formula-repo-del)
+                    _arguments '1:repo-name:($(ppkg formula-repo-list | cut -d " " -f1))'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh)'
@@ -114,7 +85,7 @@ function _ppkg() {
                                 ;;
                             *)  _arguments \
                                     '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                    '2:key:(formula summary webpage version license git-url git-sha src-url src-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binsrcd bsystem installed-dir installed-files installed-manifest installed-receipt installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version symlinked-files --json --yaml --shell)'
+                                    '2:key:(formula summary version license web-url git-url git-sha src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binbstd bsystem installed-dir installed-files installed-manifest installed-receipt installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version symlinked-files --json --yaml --shell)'
                         esac
                     fi
                     ;;
@@ -124,20 +95,13 @@ function _ppkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '--format=-[set output format]:format:(list json dot txt png)' \
-                        '--brief[output breif]' \
-                        '-o[set output file path]:output-filepath:{_files -/}'
+                        '--format=-[set output format]:format:(dot box svg png)'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
                         '--type=-[set output type]:output-type:(7z zip tar.gz tar.xz tar.bz2)' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
-                    ;;
-                homepage)
-                    _arguments \
-                        ':package-name:_ppkg_available_packages' \
-                        '--open[open in the web browser]'
                     ;;
                 tree)
                     _arguments \
@@ -196,43 +160,30 @@ function _ppkg() {
                     ;;
                 upgrade)
                     _arguments \
-                        '1:package-name:(@self $(ppkg ls-outdated))' \
-                        '*:: :->upgrade-subcommand'
-                    case $state in
-                        upgrade-subcommand)
-                            case $words[1] in
-                                @self)
-                                    ;;
-                                *)
-                                _arguments \
-                                    ':package-name:_ppkg_outdated_packages' \
-                                    '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                                    '--dry-run[dry-run]' \
-                                    '--keep-installing-dir[do not delete installing dir even if installed success]' \
-                                    '--build-type=-[set build type]:build-type:(debug release)' \
-                                    '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
-                                    '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
-                                    '--install-exe[install executable programs]' \
-                                    '--install-doc[install documents]' \
-                                    '--install-man[install manpages]' \
-                                    '--export-compile-commands-json[generates compile_commands.json]' \
-                                    '--disable-ccache[do not use ccache]' \
-                                    '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
-                                    '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
-                                    + '(verbose_level)' \
-                                    '-vv[debug mode. many many messages will be output to terminal]' \
-                                    '-v[verbose mode. many messages will be output to terminal]' \
-                                    '-q[silent mode. no any messages will be output to terminal]'
-                            esac
-                    esac
+                        ':package-name:_ppkg_outdated_packages' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--dry-run[dry-run]' \
+                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                        '--install-exe[install executable programs]' \
+                        '--install-doc[install documents]' \
+                        '--install-man[install manpages]' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--disable-ccache[do not use ccache]' \
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
+                        + '(verbose_level)' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
                     ;;
                 uninstall)
                     _arguments '*:package-name:_ppkg_installed_packages'
                     ;;
                 is-available)
-                    _arguments \
-                        '1:package-name:_ppkg_available_packages' \
-                        '2:condition-operator:(eq ne ge gt le lt)'
+                    _arguments '1:package-name:_ppkg_available_packages'
                     ;;
                 is-installed)
                     _arguments '1:package-name:_ppkg_installed_packages'
@@ -240,17 +191,6 @@ function _ppkg() {
                 is-outdated)
                     _arguments '1:package-name:_ppkg_outdated_packages'
                     ;;
-                ldd)
-                    _arguments \
-                        '1:package-name:_ppkg_installed_packages' \
-                        '2:type:(bin lib)'
-                    ;;
-                gen-github-workflows)
-                    _arguments \
-                        '--group-size=-[set the group size]:group-size:(50 40 30 20)' \
-                        '--output-dir=-[set the output dir]:output-dir:{_files -/}'
-                    ;;
-                *);;
             esac
             ;;
         *);;

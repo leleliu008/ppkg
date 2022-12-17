@@ -1,0 +1,117 @@
+#!/bin/sh
+
+set -e
+
+main() {
+    unset GROUP_SIZE
+    unset OUTPUT_DIR
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --group-size=*)
+                GROUP_SIZE=$(getvalue "$1")
+                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER"
+                ;;
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                case "$OUTPUT_DIR" in
+                    '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
+                    /*) ;;
+                    \~|\~/) OUTPUT_DIR="${HOME}" ;;
+                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
+                    .|./)   OUTPUT_DIR="${PWD}" ;;
+                    *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
+                esac
+                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
+        esac
+        shift
+    done
+
+    if [ -z "$GROUP_SIZE" ] ; then
+        die "please sepecify --group-size=INTEGER argument."
+    fi
+
+    if [ -z "$OUTPUT_DIR" ] ; then
+        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical-core/.github/workflows"
+    fi
+
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical-core/.github/workflows/template"
+
+    if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
+        __update_formula_repositories
+    fi
+
+    unset AVAILABLE_PACKAGES
+    unset YDEPENDED_PACKAGES
+    unset NDEPENDED_PACKAGES
+
+    AVAILABLE_PACKAGES=$(__list_available_packages)
+
+    for item in test v8 webrtc
+    do
+        AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
+    done
+
+    for x in $AVAILABLE_PACKAGES
+    do
+        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $(__get_packages_that_are_directly_depended_by_the_given_package "$x")"
+    done
+
+    YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)
+
+    echo YDEPENDED_PACKAGES=$YDEPENDED_PACKAGES
+
+    unset AVAILABLE_PACKAGES_COUNT
+
+    AVAILABLE_PACKAGES_COUNT="$(list_length $AVAILABLE_PACKAGES)"
+
+    echo $AVAILABLE_PACKAGES_COUNT
+
+    I=0
+    J=0
+    K=0
+
+    for x in $AVAILABLE_PACKAGES
+    do
+        I=$(expr "$I" + 1)
+        K=$(expr "$K" + 1)
+
+        EXIST=n
+
+        for y in $YDEPENDED_PACKAGES
+        do
+            if [ "$x" = "$y" ] ; then
+                EXIST=y
+                break
+            fi
+        done
+
+        if [ "$EXIST" = n ] ; then
+            if [ -z "$NDEPENDED_PACKAGES" ] ; then
+                NDEPENDED_PACKAGES="$x"
+            else
+                NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
+            fi
+        fi
+
+        if [ "$I" -eq "$AVAILABLE_PACKAGES_COUNT" ] || [ "$K" -eq "$GROUP_SIZE" ] ; then
+            unset OUTPUT_FILEPATH
+
+            J=$(expr "$J" + 1)
+            OUTPUT_FILEPATH="$OUTPUT_DIR/ci$J.yml"
+            NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+            echo
+            run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+            sed_in_place "s/INDEX/$J/"                          "$OUTPUT_FILEPATH"
+            sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"       "$OUTPUT_FILEPATH"
+
+            unset NDEPENDED_PACKAGES
+
+            K=0
+        fi
+    done
+}
+
+main "$@"

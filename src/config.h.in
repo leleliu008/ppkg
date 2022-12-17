@@ -1,0 +1,3 @@
+#define PPKG_VERSION "@PROJECT_VERSION@"
+
+#cmakedefine HAVE_LINUX_LIMITS_H
