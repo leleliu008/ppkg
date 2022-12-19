@@ -18,11 +18,13 @@ int ppkg_upgrade_self(bool verbose) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
-    if (strcmp(userHomeDir, "") == 0) {
+    size_t userHomeDirLength = strlen(userHomeDir);
+
+    if (userHomeDirLength == 0) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
+    ////////////////////////////////////////////////////////////////
 
     size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
@@ -36,6 +38,8 @@ int ppkg_upgrade_self(bool verbose) {
         }
     }
 
+    ////////////////////////////////////////////////////////////////
+
     size_t  ppkgTmpDirLength = ppkgHomeDirLength + 5;
     char    ppkgTmpDir[ppkgTmpDirLength];
     memset (ppkgTmpDir, 0, ppkgTmpDirLength);
@@ -47,7 +51,6 @@ int ppkg_upgrade_self(bool verbose) {
             return PPKG_ERROR;
         }
     }
-
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
