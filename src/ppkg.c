@@ -30,6 +30,10 @@ int ppkg_main(int argc, char* argv[]) {
         }
     }
 
+    if (strcmp(argv[1], "setup") == 0) {
+        return PPKG_OK;
+    }
+
     if (strcmp(argv[1], "env") == 0) {
         int resultCode = ppkg_env(verbose);
 
@@ -199,12 +203,14 @@ int ppkg_main(int argc, char* argv[]) {
             return PPKG_ARG_IS_NULL;
         }
 
+        PPKGInstallOptions options = {0};
+
         int packageNameIndexArray[argc];
         int packageNameIndexArraySize = 0;
 
         for (int i = 2; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
-                verbose = true;
+                options.verbose = true;
             } else {
                 int resultCode = ppkg_check_if_the_given_package_is_available(argv[i]);
 
@@ -231,7 +237,7 @@ int ppkg_main(int argc, char* argv[]) {
         for (int i = 0; i < packageNameIndexArraySize; i++) {
             char * packageName = argv[packageNameIndexArray[i]];
 
-            int resultCode = ppkg_install(packageName, verbose);
+            int resultCode = ppkg_install(packageName, options);
 
             if (resultCode == PPKG_ARG_IS_NULL) {
                 fprintf(stderr, "Usage: %s %s <PACKAGE-NAME>, <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);
@@ -331,12 +337,14 @@ int ppkg_main(int argc, char* argv[]) {
             return PPKG_ARG_IS_NULL;
         }
 
+        PPKGInstallOptions options = {0};
+
         int packageNameIndexArray[argc];
         int packageNameIndexArraySize = 0;
 
         for (int i = 2; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
-                verbose = true;
+                options.verbose = true;
             } else {
                 int resultCode = ppkg_check_if_the_given_package_is_available(argv[i]);
 
@@ -375,7 +383,7 @@ int ppkg_main(int argc, char* argv[]) {
         for (int i = 0; i < packageNameIndexArraySize; i++) {
             char * packageName = argv[packageNameIndexArray[i]];
 
-            int resultCode = ppkg_reinstall(packageName, verbose);
+            int resultCode = ppkg_reinstall(packageName, options);
 
             if (resultCode == PPKG_ARG_IS_NULL) {
                 fprintf(stderr, "Usage: %s %s <PACKAGE-NAME>, <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);
@@ -404,12 +412,14 @@ int ppkg_main(int argc, char* argv[]) {
     }
 
     if (strcmp(argv[1], "upgrade") == 0) {
+        PPKGInstallOptions options = {0};
+
         int packageNameIndexArray[argc];
         int packageNameIndexArraySize = 0;
 
         for (int i = 2; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
-                verbose = true;
+                options.verbose = true;
             } else {
                 int resultCode = ppkg_check_if_the_given_package_is_outdated(argv[i]);
 
@@ -435,7 +445,7 @@ int ppkg_main(int argc, char* argv[]) {
         for (int i = 0; i < packageNameIndexArraySize; i++) {
             char * packageName = argv[packageNameIndexArray[i]];
 
-            int resultCode = ppkg_upgrade(packageName, verbose);
+            int resultCode = ppkg_upgrade(packageName, options);
 
             if (resultCode == PPKG_ARG_IS_NULL) {
                 fprintf(stderr, "Usage: %s %s <PACKAGE-NAME>, <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);

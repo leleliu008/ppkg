@@ -73,6 +73,9 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("src_url: %s\n", formula->src_url);
     printf("src_sha: %s\n", formula->src_sha);
 
+    printf("fix_url: %s\n", formula->fix_url);
+    printf("fix_sha: %s\n", formula->fix_sha);
+
     printf("res_url: %s\n", formula->res_url);
     printf("res_sha: %s\n", formula->res_sha);
 
@@ -523,8 +526,6 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
         size_t i = 0;
         char   c;
 
-        bool needCheckSrcSha = true;
-
         for (;;) {
             c = formula->src_url[i];
 
@@ -534,12 +535,12 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
 
             if (i == 5) {
                 if (strncmp(formula->src_url, "dir://", 6) == 0) {
-                    needCheckSrcSha = false;
-
                     if (!exists_and_is_a_directory(&formula->src_url[6])) {
                         fprintf(stderr, "src-url mapping request local dir %s not exist. in formula file: %s.\n", &formula->src_url[6], formulaFilePath);
                         return PPKG_ERROR;
                     }
+
+                    formula->src_is_dir = true;
                 }
 
                 break;
@@ -548,7 +549,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             i++;
         }
 
-        if (needCheckSrcSha) {
+        if (!(formula->src_is_dir)) {
             if (formula->src_sha == NULL) {
                 fprintf(stderr, "scheme error in formula file: %s : src-sha mapping not found.\n", formulaFilePath);
                 return PPKG_FORMULA_SCHEME_ERROR;

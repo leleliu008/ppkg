@@ -6,7 +6,9 @@
 #include <sys/stat.h>
 
 #include "core/fs.h"
+#include "core/git.h"
 #include "core/http.h"
+#include "core/util.h"
 #include "core/sha256sum.h"
 
 #include "ppkg.h"
@@ -81,6 +83,69 @@ int ppkg_fetch_all_available_packages(bool verbose) {
     return PPKG_OK;
 }
 
+static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength) {
+    size_t  gitDirLength = ppkgDownloadsDirLength + 23;
+    char    gitDir[gitDirLength];
+    memset (gitDir, 0, gitDirLength);
+    sprintf(gitDir, "%s/%s.git", ppkgDownloadsDir, packageName);
+
+
+    if (exists_and_is_a_directory(gitDir)) {
+        return do_git_pull(gitDir, NULL, NULL);
+    } else {
+        return do_git_clone(formula->git_url, gitDir);
+    }
+}
+
+static int ppkg_fetch_file(const char * url, const char * sha256sum, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength, bool verbose) {
+    char * fileNameExtension = NULL;
+
+    if (get_file_extension_from_url(&fileNameExtension, url) < 0) {
+        return PPKG_ERROR;
+    }
+
+    printf("==========>> fileNameExtension = %s\n", fileNameExtension);
+
+    size_t  fileNameLength = strlen(sha256sum) + strlen(fileNameExtension) + 1;
+    char    fileName[fileNameLength];
+    memset( fileName, 0, fileNameLength);
+    sprintf(fileName, "%s%s", sha256sum, fileNameExtension);
+
+    free(fileNameExtension);
+
+    size_t  filePathLength = ppkgDownloadsDirLength + fileNameLength + 1;
+    char    filePath[filePathLength];
+    memset (filePath, 0, filePathLength);
+    sprintf(filePath, "%s/%s", ppkgDownloadsDir, fileName);
+
+    if (exists_and_is_a_regular_file(filePath)) {
+        char * actualSHA256SUM = sha256sum_of_file(filePath);
+
+        if (strcmp(actualSHA256SUM, sha256sum) == 0) {
+            free(actualSHA256SUM);
+            fprintf(stderr, "%s already have been fetched.\n", filePath);
+            return PPKG_OK;
+        } else {
+            free(actualSHA256SUM);
+        }
+    }
+
+    if (http_fetch_to_file(url, filePath, verbose, verbose) != 0) {
+        return PPKG_NETWORK_ERROR;
+    }
+
+    char * actualSHA256SUM = sha256sum_of_file(filePath);
+
+    if (strcmp(actualSHA256SUM, sha256sum) == 0) {
+        free(actualSHA256SUM);
+        return PPKG_OK;
+    } else {
+        fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", sha256sum, actualSHA256SUM);
+        free(actualSHA256SUM);
+        return PPKG_SHA256_MISMATCH;
+    }
+}
+
 int ppkg_fetch(const char * packageName, bool verbose) {
     if (packageName == NULL) {
         return PPKG_ARG_IS_NULL;
@@ -94,6 +159,8 @@ int ppkg_fetch(const char * packageName, bool verbose) {
         return ppkg_fetch_all_available_packages(verbose);
     }
 
+    ///////////////////////////////////////////////////////////////
+
     PPKGFormula * formula = NULL;
 
     int resultCode = ppkg_formula_parse(packageName, &formula);
@@ -102,13 +169,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
         return resultCode;
     }
 
-    size_t urlLength = strlen(formula->src_url);
-    size_t urlCopyLength = urlLength + 1;
-    char   urlCopy[urlCopyLength];
-    memset(urlCopy, 0, urlCopyLength);
-    strcpy(urlCopy, formula->src_url);
-
-    const char * archiveFileName = basename(urlCopy);
+    ///////////////////////////////////////////////////////////////
 
     char * userHomeDir = getenv("HOME");
 
@@ -119,51 +180,52 @@ int ppkg_fetch(const char * packageName, bool verbose) {
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
-    size_t  downloadDirLength = userHomeDirLength + 18;
-    char    downloadDir[downloadDirLength];
-    memset (downloadDir, 0, downloadDirLength);
-    sprintf(downloadDir, "%s/.ppkg/downloads", userHomeDir);
+    size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
+    char    ppkgDownloadsDir[ppkgDownloadsDirLength];
+    memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
+    sprintf(ppkgDownloadsDir, "%s/.ppkg/downloads", userHomeDir);
 
-    if (!exists_and_is_a_directory(downloadDir)) {
-        if (mkdir(downloadDir, S_IRWXU) != 0) {
-            perror(downloadDir);
+    if (!exists_and_is_a_directory(ppkgDownloadsDir)) {
+        if (mkdir(ppkgDownloadsDir, S_IRWXU) != 0) {
+            perror(ppkgDownloadsDir);
             ppkg_formula_free(formula);
             return PPKG_ERROR;
         }
     }
 
-    size_t  archiveFilePathLength = downloadDirLength + strlen(archiveFileName) + 2;
-    char    archiveFilePath[archiveFilePathLength];
-    memset (archiveFilePath, 0, archiveFilePathLength);
-    sprintf(archiveFilePath, "%s/%s", downloadDir, archiveFileName);
+    ///////////////////////////////////////////////////////////////
 
-    if (exists_and_is_a_regular_file(archiveFilePath)) {
-        char * actualSHA256SUM = sha256sum_of_file(archiveFilePath);
-        if (strcmp(actualSHA256SUM, formula->src_sha) == 0) {
-            free(actualSHA256SUM);
-            ppkg_formula_free(formula);
-            fprintf(stderr, "%s already have been fetched.\n", archiveFilePath);
-            return PPKG_OK;
+    if (formula->src_url == NULL) {
+        resultCode = ppkg_fetch_git(packageName, formula, ppkgDownloadsDir, ppkgDownloadsDirLength);
+    } else {
+        if (formula->src_is_dir) {
+            fprintf(stderr, "src_url is point to local dir, so no need to fetch.\n");
         } else {
-            free(actualSHA256SUM);
+            resultCode = ppkg_fetch_file(formula->src_url, formula->src_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
         }
     }
 
-    if (http_fetch_to_file(formula->src_url, archiveFilePath, verbose, verbose) != 0) {
-        ppkg_formula_free(formula);
-        return PPKG_NETWORK_ERROR;
+    if (resultCode != PPKG_OK) {
+        goto clean;
     }
 
-    char * actualSHA256SUM = sha256sum_of_file(archiveFilePath);
+    if (formula->fix_url != NULL) {
+        resultCode = ppkg_fetch_file(formula->fix_url, formula->fix_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
 
-    if (strcmp(actualSHA256SUM, formula->src_sha) == 0) {
-        free(actualSHA256SUM);
-        ppkg_formula_free(formula);
-        return PPKG_OK;
-    } else {
-        fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->src_sha, actualSHA256SUM);
-        free(actualSHA256SUM);
-        ppkg_formula_free(formula);
-        return PPKG_SHA256_MISMATCH;
+        if (resultCode != PPKG_OK) {
+            goto clean;
+        }
     }
+
+    if (formula->res_url != NULL) {
+        resultCode = ppkg_fetch_file(formula->res_url, formula->res_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
+
+        if (resultCode != PPKG_OK) {
+            goto clean;
+        }
+    }
+
+clean:
+    ppkg_formula_free(formula);
+    return resultCode;
 }

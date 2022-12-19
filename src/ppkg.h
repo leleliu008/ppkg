@@ -56,6 +56,7 @@ typedef struct {
 
     char * src_url;
     char * src_sha;
+    bool   src_is_dir;
 
     char * fix_url;
     char * fix_sha;
@@ -187,6 +188,62 @@ typedef enum {
 
 //////////////////////////////////////////////////////////////////////
 
+typedef enum {
+    VerboseLevel_silent,
+    VerboseLevel_normal,
+    VerboseLevel_verbose
+} PPKGVerboseLevel;
+
+typedef enum {
+    BuildType_release,
+    BuildType_debug
+} PPKGBuildType;
+
+typedef enum {
+    LinkType_shared_prefered,
+    LinkType_shared_only,
+    LinkType_static_only,
+    LinkType_static_prefered
+} PPKGLinkType;
+
+typedef struct {
+    char * cc;
+    char * cxx;
+    char * cpp;
+    char * as;
+    char * ar;
+    char * ranlib;
+    char * ld;
+    char * nm;
+    char * strip;
+    char * size;
+    char * strings;
+    char * objdump;
+    char * objcopy;
+    char * readelf;
+    char * dlltool;
+    char * addr2line;
+} PPKGToolChain;
+
+typedef struct {
+    bool      exportCompileCommandsJson;
+    bool      keepInstallingDir;
+    bool      enableCcache;
+    bool      enableBear;
+    bool      verbose;
+    bool      dryrun;
+
+    size_t    parallelJobsCount;
+
+    PPKGBuildType buildType;
+    PPKGLinkType  LinkType;
+
+    char *    toolchainConfigFilePath;
+    PPKGToolChain toolchain;
+} PPKGInstallOptions;
+
+//////////////////////////////////////////////////////////////////////
+
 int ppkg_main(int argc, char* argv[]);
 
 int ppkg_help();
@@ -207,13 +264,13 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputFormat outputFormat)
 
 int ppkg_fetch(const char * packageName, bool verbose);
 
-int ppkg_install(const char * packageName, bool verbose);
+int ppkg_install  (const char * packageName, PPKGInstallOptions options);
 
-int ppkg_reinstall(const char * packageName, bool verbose);
+int ppkg_upgrade  (const char * packageName, PPKGInstallOptions options);
+
+int ppkg_reinstall(const char * packageName, PPKGInstallOptions options);
 
 int ppkg_uninstall(const char * packageName, bool verbose);
-
-int ppkg_upgrade(const char * packageName, bool verbose);
 
 int ppkg_upgrade_self(bool verbose);
 

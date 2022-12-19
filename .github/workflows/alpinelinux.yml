@@ -1,0 +1,78 @@
+name: AlpineLinux
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ['3.16','3.15','3.14','3.13']
+
+    container: alpine:${{ matrix.tag }}
+
+    steps:
+      - run: apk update
+      - run: apk add cmake ninja gcc pkgconf libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+
+      - uses: actions/checkout@main
+
+      - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+      - uses: actions/checkout@v3
+
+      - run: ./output/bin/ppkg --help
+      - run: ./output/bin/ppkg --version
+
+      - run: ./output/bin/ppkg setup
+
+      - run: ./output/bin/ppkg env
+
+      - run: ./output/bin/ppkg integrate zsh
+
+      - run: ./output/bin/ppkg update
+
+      - run: ./output/bin/ppkg search lib
+      - run: ./output/bin/ppkg search libzip
+
+      - run: ./output/bin/ppkg info libzip
+      - run: ./output/bin/ppkg info libzip summary
+      - run: ./output/bin/ppkg info libzip version
+      - run: ./output/bin/ppkg info libzip license
+      - run: ./output/bin/ppkg info libzip web-url
+      - run: ./output/bin/ppkg info libzip src-url
+      - run: ./output/bin/ppkg info libzip src-sha
+
+      - run: ./output/bin/ppkg depends libzip
+
+      - run: apk add curl g++ libc-dev linux-headers
+
+      - run: ./output/bin/ppkg install libzip
+
+      - run: ./output/bin/ppkg tree libzip
+      - run: ./output/bin/ppkg pack libzip
+      - run: ./output/bin/ppkg pack libzip --type=tar.xz
+
+      - run: ./output/bin/ppkg formula-repo-list
+
+      - run: ./output/bin/ppkg ls-available
+      - run: ./output/bin/ppkg ls-installed
+      - run: ./output/bin/ppkg ls-outdated
+
+      - run: ./output/bin/ppkg is-available libzip
+      - run: ./output/bin/ppkg is-installed libzip
+      - run: ./output/bin/ppkg is-outdated  libzip || echo "not outdated"
+
+      - run: ./output/bin/ppkg uninstall libzip
+
+      - run: ./output/bin/ppkg fetch curl
+
+      - run: ./output/bin/ppkg upgrade @self

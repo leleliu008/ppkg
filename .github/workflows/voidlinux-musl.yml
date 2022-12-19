@@ -2,9 +2,9 @@ name: VoidLinux-musl
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 jobs:
   test:
@@ -41,7 +41,7 @@ jobs:
 
       - run: bin/ppkg info libzip
       - run: bin/ppkg info libzip summary
-      - run: bin/ppkg info libzip webpage
+      - run: bin/ppkg info libzip web-url
       - run: bin/ppkg info libzip version
 
       - run: bin/ppkg depends libzip

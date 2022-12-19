@@ -15,26 +15,69 @@
 #include <limits.h>
 #endif
 
-int get_file_type_id_from_url(const char * url) {
-    if (regex_matched(url, ".*\\.zip$")) {
-        return 1;
-    } else if (regex_matched(url, ".*\\.tar\\.gz$")) {
-        return 2;
-    } else if (regex_matched(url, ".*\\.tar\\.xz$")) {
-        return 3;
-    } else if (regex_matched(url, ".*\\.tar\\.lz$")) {
-        return 4;
-    } else if (regex_matched(url, ".*\\.tar\\.bz2$")) {
-        return 5;
-    } else if (regex_matched(url, ".*\\.tgz$")) {
-        return 2;
-    } else if (regex_matched(url, ".*\\.txz$")) {
-        return 3;
-    } else if (regex_matched(url, ".*\\.tlz$")) {
-        return 4;
-    } else {
-        return 0;
+int get_file_extension_from_url(char * * out, const char * url) {
+    if (url == NULL) {
+        return -1;
     }
+
+    size_t urlLength = strlen(url);
+
+    if (urlLength < 3) {
+        return -2;
+    }
+
+    size_t lastIndex = urlLength - 1;
+
+    if (url[lastIndex] == '.') {
+        return -3;
+    }
+
+    size_t i = lastIndex;
+
+    char c;
+
+    const char * p;
+
+    for (; i >= 0; i--) {
+        c = url[i];
+
+        if (c == '.') {
+            p = &url[i];
+
+            if (urlLength - i == 3) {
+                if (strcmp(p, ".gz") == 0 || strcmp(p, ".xz") == 0 || strcmp(p, ".lz") == 0) {
+                    if (urlLength > 7) {
+                        const char * p2 = &url[i - 4];
+
+                        if (strncmp(p2, ".tar", 4) == 0) {
+                            (*out) = strdup(p2);
+                            return 0;
+                        }
+                    }
+                }
+            } else if (urlLength - i == 4) {
+                if (strcmp(p, ".bz2") == 0) {
+                    if (urlLength > 8) {
+                        const char * p2 = &url[i - 4];
+
+                        if (strncmp(p2, ".tar", 4) == 0) {
+                            (*out) = strdup(p2);
+                            return 0;
+                        }
+                    }
+                }
+            }
+
+            (*out) = strdup(p);
+            return 0;
+        }
+
+        if (i == 0) {
+            break;
+        }
+    }
+
+    return -3;
 }
 
 int get_current_executable_realpath(char * * out) {

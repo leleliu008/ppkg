@@ -16,7 +16,7 @@
 
 extern int record_installed_files(const char * installedDirPath);
 
-int ppkg_install(const char * packageName, bool verbose) {
+int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     fprintf(stderr, "prepare to install package [%s].\n", packageName);
 
     char * userHomeDir = getenv("HOME");
@@ -74,7 +74,7 @@ int ppkg_install(const char * packageName, bool verbose) {
         }
 
         for (size_t i = 0; i < index; i++) {
-            resultCode = ppkg_install(depPackageNameList[i], verbose);
+            resultCode = ppkg_install(depPackageNameList[i], options);
 
             if (resultCode != PPKG_OK) {
                 ppkg_formula_free(formula);
@@ -121,7 +121,7 @@ int ppkg_install(const char * packageName, bool verbose) {
     }
 
     if (needFetch) {
-        if (http_fetch_to_file(formula->src_url, archiveFilePath, verbose, verbose) != 0) {
+        if (http_fetch_to_file(formula->src_url, archiveFilePath, options.verbose, options.verbose) != 0) {
             ppkg_formula_free(formula);
             return PPKG_NETWORK_ERROR;
         }
@@ -142,7 +142,7 @@ int ppkg_install(const char * packageName, bool verbose) {
     }
 
     if (exists_and_is_a_directory(packageInstalledDir)) {
-        if (rm_r(packageInstalledDir, verbose) != 0) {
+        if (rm_r(packageInstalledDir, options.verbose) != 0) {
             ppkg_formula_free(formula);
             return PPKG_ERROR;
         }
@@ -166,7 +166,7 @@ int ppkg_install(const char * packageName, bool verbose) {
     }
 
     if (formula->install == NULL) {
-        resultCode = untar_extract(packageInstalledDir, archiveFilePath, ARCHIVE_EXTRACT_TIME, verbose, 1);
+        resultCode = untar_extract(packageInstalledDir, archiveFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
 
         if (resultCode != ARCHIVE_OK) {
             ppkg_formula_free(formula);
