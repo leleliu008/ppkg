@@ -1,186 +1,389 @@
 # ppkg
 portable package manager for Unix-like system.
 
-## Install ppkg
+## Install ppkg via [HomeBrew](https://brew.sh/)
 ```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
-chmod a+x ppkg
-mv ppkg /usr/local/bin/
-ppkg setup
+brew tap leleliu008/fpliu
+brew install ppkg
 ```
 
-## Uninstall ppkg
+## Install ppkg via [ppkg](https://github.com/leleliu008/ppkg)
 ```bash
-rm /usr/local/bin/ppkg
-rm -rf /opt/ppkg
+ppkg install ppkg
 ```
+
+## Build from source
+|dependency|required?|purpose|
+|----|---------|-------|
+|[cmake](https://cmake.org/)|required |for generating `build.ninja`|
+|[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
+|[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
+||||
+|[sqlite3](https://www.sqlite.org/)|required|for storing data.|
+|[jansson](https://github.com/akheron/jansson)|required|for parsing and creating JSON.|
+|[libyaml](https://github.com/yaml/libyaml/)|required|for parsing formula files whose format is YAML.|
+|[libgit2](https://libgit2.org/)|required|for updating formula repositories.|
+|[libcurl](https://curl.se/)|required|for http requesting support.|
+|[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
+|[libarchive](https://www.libarchive.org/)|required|for uncompressing .zip and .tar.* files.|
+|[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
+
+
+**[vcpkg](https://github.com/microsoft/vcpkg)**
+```bash
+# install g++ curl zip unzip tar git
+
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+export VCPKG_ROOT="$PWD/vcpkg"
+export PATH="$VCPKG_ROOT:$PATH"
+
+vcpkg install curl openssl libgit2 libarchive libyaml jansson sqlite3
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[Ubuntu](https://ubuntu.com/)**
+
+```bash
+apt -y update
+apt -y install git cmake ninja-build pkg-config gcc libcurl4 libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev libsqlite3-dev
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[Fedora](https://getfedora.org/)**
+
+```bash
+dnf -y update
+dnf -y install git cmake ninja-build pkg-config gcc libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[ArchLinux](https://archlinux.org/)**
+
+```bash
+pacman -Syyuu --noconfirm
+pacman -S     --noconfirm git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson sqlite
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[AlpineLinux](https://www.alpinelinux.org/)**
+
+```bash
+apk add git cmake ninja pkgconf gcc libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[VoidLinux](https://voidlinux.org/)**
+
+```bash
+xbps-install -Suy xbps
+xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[Gentoo Linux](https://www.gentoo.org/)**
+
+```bash
+emerge dev-vcs/git cmake dev-util/ninja gcc pkg-config net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-db/sqlite
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[openSUSE](https://www.opensuse.org/)**
+
+```bash
+zypper update  -y  
+zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel sqlite3-devel
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[macOS](https://www.apple.com/macos/)**
+
+```bash
+brew update
+brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive sqlite
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
+
+CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
+CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive);$(brew --prefix sqlite)"
+
+cmake \
+    -S . \
+    -B build.d \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=./output \
+    -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
+    -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH"
+
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[FreeBSD](https://www.freebsd.org/)**
+
+```bash
+pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson sqlite3
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[OpenBSD](https://www.openbsd.org/)**
+
+```bash
+pkg_add git cmake ninja pkgconf llvm curl libgit2 libarchive libyaml jansson sqlite
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[NetBSD](https://www.netbsd.org/)**
+
+```bash
+pkgin -y install git mozilla-rootcerts cmake ninja-build pkg-config clang curl openssl libgit2 libarchive libyaml jansson sqlite
+
+mozilla-rootcerts install
+
+git clone https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+
+## ~/.ppkg
+all relevant dirs and files are located in `~/.ppkg` directory.
+
 
 ## ppkg command usage
-*   show help of this command
+*   **show help of this command**
         
         ppkg -h
         ppkg --help
         
-*   show version of this command
-        
+*   **show version of this command**
+
         ppkg -V
         ppkg --version
         
-*   show current machine os and environment variables
+*   **show current machine os info**
 
         ppkg env
-
-*   integrate `zsh-completion` script
+        
+*   **integrate `zsh-completion` script**
 
         ppkg integrate zsh
+        ppkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
+        ppkg integrate zsh -v
         
     I have provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, it will auto complete the rest for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
-
-*   update the formula repositories
+*   **update formula repositories**
 
         ppkg update
         
-    **Note:** This software supports multi formula repositories. There is currently only one offical formula repository [ppkg-formula-repository-offical-core](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
-
-*   search packages can be installed
+*   **search packages**
         
         ppkg search curl
         ppkg search lib
         
-*   show infomation of the given package or all available packages
+*   **show infomation of the given package**
         
         ppkg info curl
         ppkg info curl version
-        ppkg info curl license
         ppkg info curl summary
         ppkg info curl web-url
-        ppkg info curl git-url
-        ppkg info curl git-sha
-        ppkg info curl src-url
-        ppkg info curl src-sha
+        ppkg info curl bin-url
+        ppkg info curl bin-sha
+        ppkg info curl install
+        ppkg info curl formula
 
         ppkg info curl installed-dir
         ppkg info curl installed-files
-        ppkg info curl installed-receipt
+        ppkg info curl installed-receipt-path
+        ppkg info curl installed-receipt-json
+        ppkg info curl installed-receipt-yaml
         ppkg info curl installed-timestamp-unix
-        ppkg info curl installed-timestamp-rfc-3339
         ppkg info curl installed-timestamp-iso-8601
+        ppkg info curl installed-timestamp-rfc-3339
         ppkg info curl installed-version
 
         ppkg info curl --json
         ppkg info curl --json | jq .
+
+        ppkg info curl --yaml
+        ppkg info curl --yaml | yq .
+
+        ppkg info curl --shell
+
         ppkg info @all
+
+        ppkg info @all --shell
+
         ppkg info @all --json
         ppkg info @all --json | jq .
+
+        ppkg info @all --yaml
+        ppkg info @all --yaml | yq .
         
+*   **show packages that are depended by the given package**
+        
+        ppkg depends curl
 
-    For more keys, please see [README.md](https://github.com/leleliu008/ppkg-formula-repository-offical-core/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
+        ppkg depends curl --format=dot
+        ppkg depends curl --format=box
+        ppkg depends curl --format=png
+        ppkg depends curl --format=svg
 
-*   install packages
+        ppkg depends curl --format=dot > xx.dot
+        ppkg depends curl --format=box > xx.txt
+        ppkg depends curl --format=png > xx.png
+        ppkg depends curl --format=svg > xx.svg
+        
+*   **download formula resources of the given package to the local cache**
+        
+        ppkg fetch curl
+        ppkg fetch @all
+
+        ppkg fetch curl -v
+        ppkg fetch @all -v
+
+*   **install packages**
         
         ppkg install curl
-        ppkg install curl bzip2
-        ppkg install curl bzip2 --jobs=4
-        ppkg install curl bzip2 --jobs=4 -v
-        ppkg install curl bzip2 --jobs=4 -v -q
-        ppkg install curl bzip2 --jobs=4 -v -q --dry-run
-        ppkg install curl bzip2 --jobs=4 -v -q --dry-run --keep-installing-dir
+        ppkg install curl bzip2 -v
         
-*   reinstall packages
+*   **reinstall packages**
         
         ppkg reinstall curl
         ppkg reinstall curl bzip2 -v
         
-*   uninstall packages
+*   **uninstall packages**
 
         ppkg uninstall curl
-        ppkg uninstall curl bzip2
+        ppkg uninstall curl bzip2 -v
         
-*   upgrade the outdated packages
+*   **upgrade the outdated packages**
 
         ppkg upgrade
         ppkg upgrade curl
         ppkg upgrade curl bzip2 -v
         
-*   upgrade this software
+*   **upgrade this software**
 
-        ppkg upgrade @self
+        ppkg upgrade-self
+        ppkg upgrade-self -v
         
+*   **list the avaliable formula repositories**
 
-*   list the avaliable formula repos
+        ppkg formula-repo-list
 
-        ppkg formula-repo list
+*   **add a new formula repository**
 
-*   add a new formula repo
+        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo master
+        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo main
+        
+    **Note:**
+    - this software supports multiple formula repositories.
+    - offical formula repository is https://github.com/leleliu008/ppkg-formula-repository-offical-core
 
-        ppkg formula-repo add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo.git
+*   **delete a existing formula repository**
 
-*   delete a existing formula repo
+        ppkg formula-repo-del my_repo
 
-        ppkg formula-repo del my_repo
-
-*   view the formula of the given package
-        
-        ppkg formula view curl
-        
-*   edit the formula of the given package
-        
-        ppkg formula edit curl
-        
-*   create the formula of the given package
-        
-        ppkg formula create curl
-        
-*   delete the formula of the given package
-        
-        ppkg formula delete curl
-        
-*   rename the formula of the given package to new name
-        
-        ppkg formula rename curl curl7
-        
-*   list the available packages
+*   **list the available packages**
         
         ppkg ls-available
         
-*   list the installed packages
+*   **list the installed packages**
         
         ppkg ls-installed
         
-*   list the outdated packages
+*   **list the outdated packages**
         
         ppkg ls-outdated
         
-*   check if the given package is available
+*   **is the given package available ?**
         
         ppkg is-available curl
-        ppkg is-available curl ge 7.50.0
-        ppkg is-available curl gt 7.50.0
-        ppkg is-available curl le 7.50.0
-        ppkg is-available curl lt 7.50.0
-        ppkg is-available curl eq 7.50.0
-        ppkg is-available curl ne 7.50.0
         
-*   check if the given package is installed
+*   **is the given package installed ?**
         
         ppkg is-installed curl
         
-*   check if the given package is outdated
+*   **is the given package outdated ?**
         
-        ppkg is-outdated curl
+        ppkg is-outdated  curl
         
-*   list the installed files of the given package in tree-like format
+*   **list files of the given installed package in a tree-like format**
         
         ppkg tree curl
-        ppkg tree curl -a
-        ppkg tree curl -a -L 3
-        
-*   download resources of the given package to the local cache
-        
-        ppkg fetch curl
+        ppkg tree curl -L 3
         
 *   show logs of the given installed package
         
@@ -195,30 +398,53 @@ rm -rf /opt/ppkg
         ppkg pack curl --type=zip
         ppkg pack curl --type=7z
         
-*   show the packages that are depended by the given package
-        
-        ppkg depends curl
-        
-*   cleanup the unused cache
+*   **cleanup the unused cached files**
         
         ppkg cleanup
         
 
 ## influential environment variables
-*   PPKG_XTRACE
 
-    `PPKG_XTRACE=1` will apply `set -x` to this shell script.
+*   **HOME**
 
-*   WFETCH_URL_TRANSFORM
+    this environment variable must be set.
 
-    point to `wfetch-url-transform` command.
+    this environment variable already have been set on most systems, if not set or set a empty string, you should set it manully.
 
+*   **SSL_CERT_FILE**
 
-## wfetch-url-transform
-This is a hook for `wfetch`
+    ```bash
+    curl -LO https://curl.se/ca/cacert.pem
+    export SSL_CERT_FILE="$PWD/cacert.pem"
+    ```
 
-This command will be invoked as `wfetch-url-transform <URL>`
+    In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
-This command must output a `<URL>`
+*   **URL_TRANSFORM**
 
-There is a sample locates at `/opt/ppkg/core/bin/wfetch-url-transform.sample`
+    ```bash
+    export URL_TRANSFORM=/path/of/url-transform
+    ```
+
+    `/path/of/url-transform` command would be invoked as `/path/of/url-transform <URL>`
+
+    `/path/of/url-transform` command must output a `<URL>`
+
+    following is a example of `/path/of/url-transform` command implementation:
+
+    ```bash
+    #!/bin/sh
+
+    case $1 in
+        *githubusercontent.com/*)
+            printf 'https://ghproxy.com/%s\n' "$1"
+            ;;
+        https://github.com/*)
+            printf 'https://ghproxy.com/%s\n' "$1"
+            ;;
+        '') printf '%s\n' 'url-transform <URL>, <URL> is not given.' >&2 ;;
+        *)  printf '%s\n' "$1"
+    esac
+    ```
+
+    If you want change the request url, you can set this environment variable. It is very useful for chinese users.
