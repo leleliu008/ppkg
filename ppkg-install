@@ -232,10 +232,10 @@ __adjust_elf_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $PPKG_COMMAND_PATH util-base64-encode-string '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $PPKG_EXECUTABLE_PATH util-base64-encode-string '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_COMMAND_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -353,10 +353,10 @@ __adjust_mach_o_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $PPKG_COMMAND_PATH $PPKG_COMMAND_PATH util-base64-encode-string '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $PPKG_EXECUTABLE_PATH $PPKG_EXECUTABLE_PATH util-base64-encode-string '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_COMMAND_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -678,7 +678,7 @@ EOF
     # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
     unset RUSTFLAGS
 
-    for DEP_PKG_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+    for DEP_PKG_NAME in $PACKAGE_DEP_PKG_R
     do
         DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '@+-.' '_')
 
@@ -988,7 +988,7 @@ EOF
         # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
 
 
-        for item in $RECURSIVE_DEPENDENT_PACKAGES
+        for item in $PACKAGE_DEP_PKG_R
         do
             case $item in
                 openssl)
@@ -1042,7 +1042,7 @@ __printf_relevant_environment_variables() {
     printf '%s\n' "
 PPKG_VERSION      = $PPKG_VERSION
 PPKG_HOME         = $PPKG_HOME
-PPKG_COMMAND_PATH = $PPKG_COMMAND_PATH
+PPKG_EXECUTABLE_PATH = $PPKG_EXECUTABLE_PATH
 PPKG_INSTALL_ROOT = $PPKG_INSTALL_ROOT
 PPKG_SYMLINK_ROOT = $PPKG_SYMLINK_ROOT
 
@@ -1316,129 +1316,6 @@ install_mans() {
 install_pc_file() {
     install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
     cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
-}
-
-# __symlink_installed_files_of_the_given_package <PACKAGE-NAME>
-  __symlink_installed_files_of_the_given_package() {
-    # while read -r item
-    # do
-    #     X=$(printf '%s\n' "$item" | cut -d '|' -f1)
-    #     Y=$(printf '%s\n' "$item" | cut -d '|' -f3)
-
-    #     case $X in
-    #         d)  ;;
-    #         D)  ;;
-    #         *)  case $Y in
-    #                 share/info/dir) ;;
-    #                 *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
-    #                         die "$MY_SYMLINKED_DIR/$Y already exists."
-    #                     # else
-    #                     #     echo "$MY_SYMLINKED_DIR/$Y"
-    #                     fi
-    #             esac
-    #     esac
-    # done < "$PACKAGE_MANIFEST_FILEPATH"
-
-    # ############################################################################
-
-    if [ !      -d "$MY_SYMLINKED_DIR/.registry" ] ; then
-        install -d "$MY_SYMLINKED_DIR/.registry"
-    fi
-
-    exec 7> "$MY_SYMLINKED_DIR/.registry/$1"
-
-    while read -r item
-    do
-        X=$(printf '%s\n' "$item" | cut -d '|' -f1)
-        Y=$(printf '%s\n' "$item" | cut -d '|' -f3)
-
-        case $X in
-            d|D)
-                if [ !      -d "$MY_SYMLINKED_DIR/$Y" ] ; then
-                    install -d "$MY_SYMLINKED_DIR/$Y"
-                fi
-                ;;
-            *)  case $Y in
-                    share/info/dir) ;;
-                    *)  run ln -sfr "\"$MY_INSTALLED_DIR/$1/$Y\"" "\"$MY_SYMLINKED_DIR/$Y\""
-                        printf '%s\n' "$Y" >&7
-                esac
-        esac
-    done < "$PACKAGE_MANIFEST_FILEPATH"
-
-    exec 7>&-
-}
-
-# __generate_installed_manifest_of_the_given_package <PACKAGE-NAME>
-  __generate_installed_manifest_of_the_given_package() {
-    # fuck, some package's filename has space
-    IFS_SAVED="$IFS"
-    IFS='
-'
-
-    exec 7> "$PACKAGE_MANIFEST_FILEPATH"
-
-    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -not -name .ppkg -printf '%P\n')
-    do
-        for item in $(find "$dirname" -printf '%y:%p\n')
-        do
-            X=$(printf '%s\n' "$item" | cut -c1)
-            Y=${item#$X:}
-
-            case $X in
-                l)  if [ -d "$Y" ] ; then
-                        printf 'D|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7
-                    else
-                        printf 'l|%s|%s\n' "$(sha256sum "$Y" | cut -d ' ' -f1)"                           "$Y" >&7
-                    fi
-                    ;;
-                d)  printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
-                *)  printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
-            esac
-        done
-    done
-
-    exec 7>&-
-
-    IFS="$IFS_SAVED"
-}
-
-# __generate_receipt_of_the_given_package <PACKAGE-NAME>
-  __generate_receipt_of_the_given_package() {
-    [ -z "$1" ] && {
-        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
-        return 1
-    }
-
-    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
-
-    sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
-
-    if ! grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-        sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
-
-    if [ -z "$PACKAGE_SRC_URL" ] || [ "$PACKAGE_SRC_TYPE" = dir ] ; then
-        if ! grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            if grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-            else
-                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-            fi
-        fi
-    fi
-
-    if ! grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
-
-    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
-
-    cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
-
-signature: $PPKG_VERSION
-timestamp: $TIMESTAMP_UNIX
-EOF
 }
 
 gow() {
@@ -2018,7 +1895,6 @@ main() {
     MY_CORE_BIN_DIR="$MY_CORE_DIR/bin"
 
     MY_INSTALLED_DIR="/opt/ppkg/installed"
-    MY_SYMLINKED_DIR="/opt/ppkg/symlinked"
 
     __is_core_tools_installed || {
         return 1
@@ -2045,8 +1921,6 @@ main() {
     if [ "$(id -u)" -ne 0 ] ; then
         sudo=sudo
     fi
-
-    TIMESTAMP_UNIX="$(date +%s)"
 
     #######################################################################################
 
@@ -2092,7 +1966,6 @@ main() {
 
     printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
 
-    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
@@ -2100,10 +1973,28 @@ main() {
 
     PACKAGE_BUILD_IN_BSCRIPT_DIR="$PACKAGE_BINBSTD"
 
+    unset PACKAGE_VERSION_MAJOR
+    unset PACKAGE_VERSION_MINOR
+    unset PACKAGE_VERSION_PATCH
+    unset PACKAGE_VERSION_TWEAK
+
     PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
     PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
     PACKAGE_VERSION_PATCH="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f3)"
     PACKAGE_VERSION_TWEAK="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f4)"
+
+    unset PACKAGE_BUILD_SYSTEM_GO
+    unset PACKAGE_BUILD_SYSTEM_RAKE
+    unset PACKAGE_BUILD_SYSTEM_NINJA
+    unset PACKAGE_BUILD_SYSTEM_GMAKE
+    unset PACKAGE_BUILD_SYSTEM_CMAKE
+    unset PACKAGE_BUILD_SYSTEM_XMAKE
+    unset PACKAGE_BUILD_SYSTEM_MESON
+    unset PACKAGE_BUILD_SYSTEM_CARGO
+    unset PACKAGE_BUILD_SYSTEM_AUTOGENSH
+    unset PACKAGE_BUILD_SYSTEM_AUTOTOOLS
+    unset PACKAGE_BUILD_SYSTEM_CONFIGURE
+    unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
@@ -2250,21 +2141,18 @@ main() {
 
     #########################################################################################
 
-    unset RECURSIVE_DEPENDENT_PACKAGES
-
     if [ -n "$PACKAGE_DEP_PKG" ] ; then
-        step "generating dependency tree of $1"
-        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
+        step "generating dependency graph files for $1"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.svg"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
 
-        ppkg depends --type=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        ppkg depends --type=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
-        ppkg depends --type=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-        ppkg depends --type=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+        "$PPKG_EXECUTABLE_PATH" depends --type=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        "$PPKG_EXECUTABLE_PATH" depends --type=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+        "$PPKG_EXECUTABLE_PATH" depends --type=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
+        "$PPKG_EXECUTABLE_PATH" depends --type=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
 
         if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
@@ -2368,24 +2256,6 @@ main() {
 
     #########################################################################################
 
-    if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
-        cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
-prepare() {
-$PACKAGE_PREPARE_ACTIONS
-}
-EOF
-        . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
-    fi
-
-    if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
-        cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
-build() {
-$PACKAGE_INSTALL_ACTIONS
-}
-EOF
-        . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
-    fi
-
     step "tree files of the installing top directory"
     run tree --dirsfirst -L 2 "$PACKAGE_INSTALLING_TOP_DIR"
 
@@ -2404,14 +2274,14 @@ EOF
         ccache -s > "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
     fi
 
-    [ -n "$RECURSIVE_DEPENDENT_PACKAGES" ] && {
+    [ -n "$PACKAGE_DEP_PKG_R" ] && {
         step2 "create symbolic links for dependency libs"
         case $LINK_TYPE in
             static-only|static-prefered) LINK_LIBRARY_TYPE=a  ;;
             shared-only|shared-prefered) LINK_LIBRARY_TYPE=so ;;
         esac
 
-        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
+        for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG_R
         do
             DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$MY_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
             if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
@@ -2564,17 +2434,6 @@ os-ncpu: $NATIVE_OS_NCPU
 os-libc: $NATIVE_OS_LIBC
 EOF
 
-    step "generate manifest.txt"
-    __generate_installed_manifest_of_the_given_package "$1"
-
-    step "generate receipt.yml"
-    __generate_receipt_of_the_given_package "$1"
-
-    if [ "$PACKAGE_SYMLINK" = yes ] ; then
-        step "symlink installed files to $MY_SYMLINKED_DIR"
-        __symlink_installed_files_of_the_given_package "$1"
-    fi
-
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
         note "Before Build:"
@@ -2582,14 +2441,6 @@ EOF
         note "After  Build:"
         run  ccache -s
     fi
-
-    if [ "$KEEP_INSTALLING_DIR" != yes ] ; then
-        step "delete the installing directory"
-        run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
-    fi
-
-    step "show installed files in tree-like format"
-    __tree_the_given_installed_package "$1" $TREE_ARGS
 
     echo
     success "$1 have been installed successfully."

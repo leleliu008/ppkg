@@ -9,4 +9,6 @@ bool exists_and_is_readable(const char* filepath);
 bool exists_and_is_writable(const char* filepath);
 bool exists_and_is_executable(const char* filepath);
 
+int cp(const char * srcFilePath, const char * dstFilePath);
+
 #endif

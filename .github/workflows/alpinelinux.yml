@@ -28,13 +28,18 @@ jobs:
       - run:  cmake --install build.d
 
       - run: ./output/bin/ppkg --help
+      - run: ./output/bin/ppkg -h
+
       - run: ./output/bin/ppkg --version
+      - run: ./output/bin/ppkg -V
 
       - run: ./output/bin/ppkg setup
 
       - run: ./output/bin/ppkg env
+      - run: ./output/bin/ppkg env -v
 
       - run: ./output/bin/ppkg integrate zsh
+      - run: ./output/bin/ppkg integrate zsh -v
 
       - run: ./output/bin/ppkg update
 
@@ -48,14 +53,18 @@ jobs:
       - run: ./output/bin/ppkg info libzip web-url
       - run: ./output/bin/ppkg info libzip src-url
       - run: ./output/bin/ppkg info libzip src-sha
+      - run: ./output/bin/ppkg info @all
 
       - run: ./output/bin/ppkg depends libzip
+      - run: ./output/bin/ppkg depends libzip --format=dot
+      - run: ./output/bin/ppkg depends libzip --format=box
 
       - run: apk add curl g++ libc-dev linux-headers
 
       - run: ./output/bin/ppkg install libzip
 
       - run: ./output/bin/ppkg tree libzip
+
       - run: ./output/bin/ppkg pack libzip
       - run: ./output/bin/ppkg pack libzip --type=tar.xz
 

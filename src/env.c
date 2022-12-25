@@ -68,6 +68,8 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
 }
 
 int ppkg_env(bool verbose) {
+    printf("compiled.time: %s\n\n", PPKG_COMPILED_TIMESTAMP);
+
     //printf("pcre2   : %d.%d\n", PCRE2_MAJOR, PCRE2_MINOR);
     printf("libyaml : %s\n", yaml_get_version_string());
     printf("libcurl : %s\n", LIBCURL_VERSION);

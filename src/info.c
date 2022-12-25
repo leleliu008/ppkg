@@ -197,10 +197,7 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "exetype", json_string(formula->exetype));
 
         json_object_set_new(root, "prepare", json_string(formula->prepare));
-
-        if ((formula->install != NULL) && (strcmp(formula->install, "") != 0)) {
-            json_object_set_new(root, "install", json_string(formula->install));
-        }
+        json_object_set_new(root, "install", json_string(formula->install));
 
         char * jsonStr = json_dumps(root, 0);
 

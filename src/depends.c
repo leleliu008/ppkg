@@ -5,7 +5,7 @@
 
 #include "ppkg.h"
 
-int ppkg_depends_make_dot_items(const char * packageName, char buff[256]) {
+int ppkg_depends_make_dot_items(const char * packageName, char buff[2048]) {
     PPKGFormula * formula = NULL;
 
     int resultCode = ppkg_formula_parse(packageName, &formula);
@@ -14,7 +14,7 @@ int ppkg_depends_make_dot_items(const char * packageName, char buff[256]) {
         return resultCode;
     }
 
-    if ((formula->dep_pkg == NULL) || (strcmp(formula->dep_pkg, "") == 0)) {
+    if (formula->dep_pkg == NULL) {
         ppkg_formula_free(formula);
         return PPKG_OK;
     }
@@ -30,9 +30,6 @@ int ppkg_depends_make_dot_items(const char * packageName, char buff[256]) {
     memset(depPackageNamesCopy, 0, depPackageNamesCopyLength);
     strcpy(depPackageNamesCopy, formula->dep_pkg);
 
-    size_t index = 0;
-    char * depPackageNameList[10];
-
     char * depPackageName = strtok(depPackageNamesCopy, " ");
 
     while (depPackageName != NULL) {
@@ -40,24 +37,59 @@ int ppkg_depends_make_dot_items(const char * packageName, char buff[256]) {
         strcat(buff, depPackageName);
         strcat(buff, "\" ");
 
-        depPackageNameList[index] = depPackageName;
-        index++;
         depPackageName = strtok (NULL, " ");
     }
 
     strcat(buff, "}\n");
 
-    for (size_t i = 0; i < index; i++) {
-        resultCode = ppkg_depends_make_dot_items(depPackageNameList[i], buff);
+    ////////////////////////////////////////////////////////////////////////////
 
-        if (resultCode != PPKG_OK) {
-            ppkg_formula_free(formula);
-            return resultCode;
+    size_t n = 0;
+
+    char * ptr = NULL;
+
+    char * p = formula->dep_pkg;
+
+    for (;;) {
+        if (p[0] <= 32) {
+            if (n > 0) {
+                size_t  depPackageNameLength = n + 1;
+                char    depPackageName[depPackageNameLength];
+                memset( depPackageName, 0, depPackageNameLength);
+                strncpy(depPackageName, ptr, n);
+
+                //printf("%lu\n", n);
+                //printf("str=%s\n", str);
+
+                resultCode = ppkg_depends_make_dot_items(depPackageName, buff);
+
+                if (resultCode != PPKG_OK) {
+                    goto clean;
+                }
+            }
+
+            if (p[0] == 0) {
+                break;
+            } else {
+                ptr = NULL;
+                n = 0;
+                p++;
+                continue;
+            }
+        } else {
+            if (ptr == NULL) {
+                ptr = p;
+            }
+
+            n++;
+            p++;
         }
     }
 
+clean:
     ppkg_formula_free(formula);
-    return PPKG_OK;
+
+    return resultCode;
 }
 
 static int ppkg_depends_make_box(const char * dotScriptStr) {
@@ -147,7 +179,7 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputFormat outputFormat)
         return resultCode;
     }
 
-    char buff[256] = {0};
+    char buff[2048] = {0};
 
     resultCode = ppkg_depends_make_dot_items(packageName, buff);
 
