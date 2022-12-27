@@ -112,7 +112,7 @@ int ppkg_help() {
         printf("%s\n", str);
     } else {
         const char * str = ""
-        "ppkg (Universal Prebuild Package Manager)\n\n"
+        "ppkg (Portable Package manager for UNIX)\n\n"
         "ppkg <ACTION> [ARGUMENT...]\n\n"
         "ppkg --help\n"
         "ppkg -h\n"

@@ -1,4 +1,4 @@
-name: AlpineLinux
+name: ArchLinux
 
 on:
   push:
@@ -10,19 +10,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ['3.16','3.15','3.14','3.13']
-
-    container: alpine:${{ matrix.tag }}
+    container: archlinux
 
     steps:
-      - run: apk update
-      - run: apk add cmake ninja gcc pkgconf libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm git cmake ninja gcc pkg-config curl openssl libgit2 libarchive libyaml jansson sqlite
 
       - uses: actions/checkout@main
 
+      - run:  cmake --version
       - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
@@ -73,8 +69,6 @@ jobs:
 
       - run: ./output/bin/ppkg fetch gzip
       - run: ./output/bin/ppkg fetch gsed -v
-
-      - run: apk add curl g++ libc-dev linux-headers
 
       - run: ./output/bin/ppkg install libzip
 

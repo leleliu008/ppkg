@@ -1,0 +1,114 @@
+name: valgrind
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  valgrind:
+
+    runs-on: ubuntu-latest
+
+    env:
+      VALGRIND: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --error-exitcode=1
+
+    steps:
+      - uses: actions/checkout@main
+
+      - run:  sudo apt -y update
+      - run:  sudo apt -y install valgrind cmake ninja-build gcc pkg-config libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev libsqlite3-dev
+
+      - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Debug
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+      - run: |
+          cat > ~/.gitconfig <<EOF
+          [user]
+            email = leleliu008@gmail.com
+            name = leleliu008
+          EOF
+
+
+      - run: $VALGRIND ./output/bin/ppkg
+
+      - run: $VALGRIND ./output/bin/ppkg --help
+      - run: $VALGRIND ./output/bin/ppkg -h
+
+      - run: $VALGRIND ./output/bin/ppkg --version
+      - run: $VALGRIND ./output/bin/ppkg -V
+
+      - run: $VALGRIND ./output/bin/ppkg setup
+
+      - run: $VALGRIND ./output/bin/ppkg env
+      - run: $VALGRIND ./output/bin/ppkg env -v
+
+      - run: $VALGRIND ./output/bin/ppkg integrate zsh
+      - run: $VALGRIND ./output/bin/ppkg integrate zsh -v
+
+      - run: $VALGRIND ./output/bin/ppkg update
+
+      - run: $VALGRIND ./output/bin/ppkg search lib
+      - run: $VALGRIND ./output/bin/ppkg search zip
+
+      - run: $VALGRIND ./output/bin/ppkg info @all
+      - run: $VALGRIND ./output/bin/ppkg info libzip
+      - run: $VALGRIND ./output/bin/ppkg info libzip --yaml
+      - run: $VALGRIND ./output/bin/ppkg info libzip --json
+      - run: $VALGRIND ./output/bin/ppkg info libzip summary
+      - run: $VALGRIND ./output/bin/ppkg info libzip version
+      - run: $VALGRIND ./output/bin/ppkg info libzip license
+      - run: $VALGRIND ./output/bin/ppkg info libzip web-url
+      - run: $VALGRIND ./output/bin/ppkg info libzip src-url
+      - run: $VALGRIND ./output/bin/ppkg info libzip src-sha
+
+      - run: $VALGRIND ./output/bin/ppkg depends libzip
+      - run: $VALGRIND ./output/bin/ppkg depends libzip --format=dot
+      - run: $VALGRIND ./output/bin/ppkg depends libzip --format=box
+
+      - run: $VALGRIND ./output/bin/ppkg fetch gzip
+      - run: $VALGRIND ./output/bin/ppkg fetch gsed -v
+
+      - run: sudo apt -y install g++ linux-headers-generic
+
+      - run: $VALGRIND ./output/bin/ppkg install libzip
+
+      - run: $VALGRIND ./output/bin/ppkg tree libzip
+
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-dir
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-files
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-path
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-json
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-yaml
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-unix
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-iso-8601
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
+      - run: $VALGRIND ./output/bin/ppkg info libzip installed-version
+
+        #- run: $VALGRIND ./output/bin/ppkg pack libzip
+        #- run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.xz
+
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+
+      - run: $VALGRIND ./output/bin/ppkg ls-available
+      - run: $VALGRIND ./output/bin/ppkg ls-installed
+      - run: $VALGRIND ./output/bin/ppkg ls-outdated
+
+      - run: $VALGRIND ./output/bin/ppkg is-available libzip
+      - run: $VALGRIND ./output/bin/ppkg is-installed libzip
+      - run: $VALGRIND ./output/bin/ppkg is-outdated  libzip
+
+      - run: $VALGRIND ./output/bin/ppkg upgrade   libzip
+      - run: $VALGRIND ./output/bin/ppkg reinstall libzip
+      - run: $VALGRIND ./output/bin/ppkg uninstall libzip
+
+      - run: $VALGRIND ./output/bin/ppkg formula-repo-list
+      - run: $VALGRIND ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+      - run: $VALGRIND ./output/bin/ppkg formula-repo-del my_repo
+
+      - run: $VALGRIND ./output/bin/ppkg cleanup
+
+        #- run: $VALGRIND ./output/bin/ppkg upgrade-self
