@@ -354,6 +354,14 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
     sprintf(ppkgDownloadsDir, "%s/.ppkg/downloads", userHomeDir);
 
+    if (!exists_and_is_a_directory(ppkgDownloadsDir)) {
+        if (mkdir(ppkgDownloadsDir, S_IRWXU) != 0) {
+            perror(ppkgDownloadsDir);
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->src_url == NULL) {
