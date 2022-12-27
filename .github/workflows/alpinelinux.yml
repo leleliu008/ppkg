@@ -90,7 +90,8 @@ jobs:
         #- run: ./output/bin/ppkg pack libzip
         #- run: ./output/bin/ppkg pack libzip --type=tar.xz
 
-      - run: printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
 
       - run: ./output/bin/ppkg ls-available
       - run: ./output/bin/ppkg ls-installed
