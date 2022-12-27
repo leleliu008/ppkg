@@ -1867,17 +1867,6 @@ echo_path_of_tool_in_the_toolchain() {
     esac
 }
 
-__is_core_tools_installed() {
-    [ -e "$MY_CORE_BIN_DIR/uppm" ] || return 1
-
-    for item in bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
-    do
-        "$MY_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
-    done
-
-    return 0
-}
-
 bppend_to_ACLOCAL_PATH() {
     case ":${ACLOCAL_PATH}:" in
         *:"$1":*) ;;
@@ -1899,9 +1888,9 @@ main() {
 
     MY_INSTALLED_DIR="$MY_HOME_DIR/installed"
 
-    __is_core_tools_installed || {
-        return 1
-    }
+    "$MY_CORE_BIN_DIR/uppm" install bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
+
+    export PATH="$MY_CORE_BIN_DIR:$PATH"
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
