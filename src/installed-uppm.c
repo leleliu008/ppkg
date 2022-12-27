@@ -156,5 +156,34 @@ int ppkg_install_uppm(bool verbose) {
         return resultCode;
     }
 
+    size_t  cacertPemFilePathLength = ppkgTmpDirLength + 12;
+    char    cacertPemFilePath[cacertPemFilePathLength];
+    memset (cacertPemFilePath, 0, cacertPemFilePathLength);
+    sprintf(cacertPemFilePath, "%s/cacert.pem", ppkgTmpDir);
+
+    if (http_fetch_to_file("https://curl.se/ca/cacert.pem", cacertPemFilePath, verbose, verbose) != 0) {
+        return PPKG_NETWORK_ERROR;
+    }
+
+    size_t  cacertPemFilePath2Length = ppkgTmpDirLength + 12;
+    char    cacertPemFilePath2[cacertPemFilePath2Length];
+    memset (cacertPemFilePath2, 0, cacertPemFilePath2Length);
+    sprintf(cacertPemFilePath2, "%s/cacert.pem", ppkgHomeDir);
+
+    if (cp(cacertPemFilePath, cacertPemFilePath2) != 0) {
+        return PPKG_ERROR;
+    }
+
+    setenv("SSL_CERT_FILE", cacertPemFilePath2, 1);
+
+    size_t  cmdLength = ppkgCoreDirLength + 17;
+    char    cmd[cmdLength];
+    memset (cmd, 0, cmdLength);
+    sprintf(cmd, "%s/bin/uppm update", ppkgCoreDir);
+
+    if (system(cmd) != 0) {
+        return PPKG_ERROR;
+    }
+
     return PPKG_OK;
 }

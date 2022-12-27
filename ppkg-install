@@ -133,8 +133,8 @@ getvalue() {
 }
 
 git() {
-    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$MY_CORE_DIR/etc/ssl/certs/cacert.pem" $*
+    if [ -f "$MY_HOME_DIR/cacert.pem" ] ; then
+        command git -c http.sslCAInfo="$MY_HOME_DIR/cacert.pem" $*
     else
         command git $*
     fi
@@ -1890,6 +1890,11 @@ main() {
 
     UPPM_COMMAND="$MY_CORE_BIN_DIR/uppm"
 
+    # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
+    if [ -f "$MY_HOME_DIR/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$MY_HOME_DIR/cacert.pem"
+    fi
+
     "$UPPM_COMMAND" update
     "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
 
@@ -1906,11 +1911,6 @@ main() {
     if [ -d "$HOME/.uppm/installed/git/libexec/git-core" ] ; then
         export GIT_EXEC_PATH="$HOME/.uppm/installed/git/libexec/git-core"
         export GIT_TEMPLATE_DIR="$HOME/.uppm/installed/git/share/git-core/templates"
-    fi
-
-    # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
     fi
 
     if [ "$(id -u)" -ne 0 ] ; then
