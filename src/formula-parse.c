@@ -389,13 +389,37 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_bscript: if (formula->bscript != NULL) free(formula->bscript); formula->bscript = strdup(value); break;
 
         case FORMULA_KEY_CODE_shallow:
-        case FORMULA_KEY_CODE_binbstd:
-        case FORMULA_KEY_CODE_symlink:
-        case FORMULA_KEY_CODE_parallel:
             if (strcmp(value, "yes") == 0) {
                 formula->shallow = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->shallow = false;
+            } else {
+                //TODO
+            }
+            break;
+        case FORMULA_KEY_CODE_binbstd:
+            if (strcmp(value, "yes") == 0) {
+                formula->binbstd = true;
+            } else if (strcmp(value, "no") == 0) {
+                formula->binbstd = false;
+            } else {
+                //TODO
+            }
+            break;
+        case FORMULA_KEY_CODE_symlink:
+            if (strcmp(value, "yes") == 0) {
+                formula->symlink = true;
+            } else if (strcmp(value, "no") == 0) {
+                formula->symlink = false;
+            } else {
+                //TODO
+            }
+            break;
+        case FORMULA_KEY_CODE_parallel:
+            if (strcmp(value, "yes") == 0) {
+                formula->parallel = true;
+            } else if (strcmp(value, "no") == 0) {
+                formula->parallel = false;
             } else {
                 //TODO
             }
@@ -693,7 +717,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                 }
             }
 
-            printf("----------------srcFileName = %s\n", srcFileName);
+            //printf("----------------srcFileName = %s\n", srcFileName);
 
             if (srcFileNameLength > 5) {
                        if (strcmp(&srcFileName[srcFileNameLength - 5], ".orig") == 0) {
@@ -710,7 +734,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                 }
             }
 
-            printf("----------------srcFileName = %s\n", srcFileName);
+            //printf("----------------srcFileName = %s\n", srcFileName);
 
             char * splitedStr = strtok(srcFileName, "-");
 
@@ -834,7 +858,7 @@ clean:
         resultCode = ppkg_formula_check(formula, formulaFilePath);
 
         if (resultCode == PPKG_OK) {
-            ppkg_formula_dump(formula);
+            //ppkg_formula_dump(formula);
 
             (*out) = formula;
             return PPKG_OK;
@@ -844,7 +868,7 @@ clean:
     if (formula == NULL) {
         free(formulaFilePath);
     } else {
-        ppkg_formula_dump(formula);
+        //ppkg_formula_dump(formula);
 
         ppkg_formula_free(formula);
     }

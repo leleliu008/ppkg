@@ -106,7 +106,7 @@ int ppkg_upgrade_self(bool verbose) {
     }
 
     if (strcmp(latestVersion, PPKG_VERSION) == 0) {
-        LOG_SUCCESS("this software is already the latest version.");
+        LOG_SUCCESS1("this software is already the latest version.");
         return PPKG_OK;
     }
 

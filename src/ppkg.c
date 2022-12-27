@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/regex/regex.h"
 #include "core/log.h"
 #include "ppkg.h"
 
@@ -211,6 +212,30 @@ int ppkg_main(int argc, char* argv[]) {
         for (int i = 2; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
                 options.verbose = true;
+            } else if (strcmp(argv[i], "--dry-run") == 0) {
+                options.dryrun = true;
+            } else if (strcmp(argv[i], "--keep-installing-dir") == 0) {
+                options.keepInstallingDir = true;
+            } else if (strcmp(argv[i], "--export-compile-commands-json") == 0) {
+                options.exportCompileCommandsJson = true;
+            } else if (strcmp(argv[i], "--enable-ccache") == 0) {
+                options.enableCcache = true;
+            } else if (strcmp(argv[i], "--enable-bear") == 0) {
+                options.enableBear = true;
+            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
+                options.buildType = PPKGBuildType_debug;
+            } else if (strcmp(argv[i], "--build-type=release") == 0) {
+                options.buildType = PPKGBuildType_release;
+            } else if (strcmp(argv[i], "--link-type=static-only") == 0) {
+                options.linkType = PPKGLinkType_static_only;
+            } else if (strcmp(argv[i], "--link-type=shared-only") == 0) {
+                options.linkType = PPKGLinkType_shared_only;
+            } else if (strcmp(argv[i], "--link-type=static-prefered") == 0) {
+                options.linkType = PPKGLinkType_static_prefered;
+            } else if (strcmp(argv[i], "--link-type=shared-prefered") == 0) {
+                options.linkType = PPKGLinkType_shared_prefered;
+            } else if (regex_matched(argv[i], "^--jobs=[1-9][0-9]?$")) {
+                options.parallelJobsCount = atoi(&argv[i][7]);
             } else {
                 int resultCode = ppkg_check_if_the_given_package_is_available(argv[i]);
 

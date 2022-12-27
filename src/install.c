@@ -7,9 +7,11 @@
 #include <sys/stat.h>
 
 #include "core/fs.h"
+#include "core/log.h"
 #include "core/http.h"
 #include "core/sysinfo.h"
 #include "core/sha256sum.h"
+#include "core/base16.h"
 #include "core/untar.h"
 #include "core/util.h"
 #include "core/rm-r.h"
@@ -77,6 +79,65 @@ static int ppkg_xx(char * packageName, char * * * depPackageNameArrayListP,  PPK
     return PPKG_OK;
 }
 
+static int ppkg_yy(const char * packageName, PPKGFormula * formula, char **out, size_t * capcity) {
+    bool newFormula = false;
+
+    if (formula == NULL) {
+        int resultCode = ppkg_formula_parse(packageName, &formula);
+
+        if (resultCode != PPKG_OK) {
+            return resultCode;
+        }
+
+        newFormula = true;
+    }
+
+    if (formula->dep_pkg != NULL) {
+        if ((*capcity) == 0) {
+            (*capcity) = 256;
+            (*out) = (char*)calloc(*capcity, sizeof(char));
+        }
+
+        size_t depPackageNamesLength = strlen(formula->dep_pkg);
+
+        if (depPackageNamesLength + strlen(*out) >= (*capcity) - 1) {
+            (*capcity) += 256;
+            (*out) = (char*)realloc(*out, *capcity);
+        }
+
+        strcat(*out, " ");
+        strcat(*out, formula->dep_pkg);
+
+        size_t depPackageNamesCopyLength = depPackageNamesLength + 1;
+        char   depPackageNamesCopy[depPackageNamesCopyLength];
+        memset(depPackageNamesCopy, 0, depPackageNamesCopyLength);
+        strcpy(depPackageNamesCopy, formula->dep_pkg);
+
+        char * context;
+
+        char * depPackageName = strtok_r(depPackageNamesCopy, " ", &context);
+
+        while (depPackageName != NULL) {
+            int resultCode = ppkg_yy(depPackageName, NULL, out, capcity);
+
+            if (resultCode != PPKG_OK) {
+                if (newFormula) {
+                    ppkg_formula_free(formula);
+                }
+                return resultCode;
+            }
+
+            depPackageName = strtok_r(NULL, " ", &context);
+        }
+    }
+
+    if (newFormula) {
+        ppkg_formula_free(formula);
+    }
+
+    return PPKG_OK;
+}
+
 int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     PPKGFormula * formula = NULL;
 
@@ -118,12 +179,14 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     char * userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
+        ppkg_formula_free(formula);
         return PPKG_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
     if (userHomeDirLength == 0) {
+        ppkg_formula_free(formula);
         return PPKG_ENV_HOME_NOT_SET;
     }
 
@@ -131,42 +194,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
     sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t  ppkgInstallingDirLength = ppkgHomeDirLength + packageNameLength + 12;
-    char    ppkgInstallingDir[ppkgInstallingDirLength];
-    memset (ppkgInstallingDir, 0, ppkgInstallingDirLength);
-    sprintf(ppkgInstallingDir, "%s/installing", ppkgHomeDir);
-
-    if (!exists_and_is_a_directory(ppkgInstallingDir)) {
-        if (mkdir(ppkgInstallingDir, S_IRWXU) != 0) {
-            perror(ppkgInstallingDir);
-            ppkg_formula_free(formula);
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t  packageInstallingDirLength = ppkgInstallingDirLength + packageNameLength + 2;
-    char    packageInstallingDir[packageInstallingDirLength];
-    memset (packageInstallingDir, 0, packageInstallingDirLength);
-    sprintf(packageInstallingDir, "%s/%s", ppkgInstallingDir, packageName);
-
-    if (exists_and_is_a_directory(packageInstallingDir)) {
-        if (rm_r(packageInstallingDir, options.verbose) != 0) {
-            perror(packageInstallingDir);
-            ppkg_formula_free(formula);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (mkdir(packageInstallingDir, S_IRWXU) != 0) {
-        perror(packageInstallingDir);
-        ppkg_formula_free(formula);
-        return PPKG_ERROR;
-    }
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -187,7 +214,135 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     if (exists_and_is_a_regular_file(receiptFilePath)) {
         fprintf(stderr, "package [%s] already has been installed.\n", packageName);
+        ppkg_formula_free(formula);
         return PPKG_OK;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  ppkgInstallingDirLength = ppkgHomeDirLength + packageNameLength + 12;
+    char    ppkgInstallingDir[ppkgInstallingDirLength];
+    memset (ppkgInstallingDir, 0, ppkgInstallingDirLength);
+    sprintf(ppkgInstallingDir, "%s/installing", ppkgHomeDir);
+
+    if (!exists_and_is_a_directory(ppkgInstallingDir)) {
+        if (mkdir(ppkgInstallingDir, S_IRWXU) != 0) {
+            perror(ppkgInstallingDir);
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingTopDirLength = ppkgInstallingDirLength + packageNameLength + 2;
+    char    packageInstallingTopDir[packageInstallingTopDirLength];
+    memset (packageInstallingTopDir, 0, packageInstallingTopDirLength);
+    sprintf(packageInstallingTopDir, "%s/%s", ppkgInstallingDir, packageName);
+
+    if (exists_and_is_a_directory(packageInstallingTopDir)) {
+        if (rm_r(packageInstallingTopDir, options.verbose) != 0) {
+            perror(packageInstallingTopDir);
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (mkdir(packageInstallingTopDir, S_IRWXU) != 0) {
+        perror(packageInstallingTopDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingSrcDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingSrcDir[packageInstallingSrcDirLength];
+    memset (packageInstallingSrcDir, 0, packageInstallingSrcDirLength);
+    sprintf(packageInstallingSrcDir, "%s/src", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingSrcDir, S_IRWXU) != 0) {
+        perror(packageInstallingSrcDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingFixDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingFixDir[packageInstallingFixDirLength];
+    memset (packageInstallingFixDir, 0, packageInstallingFixDirLength);
+    sprintf(packageInstallingFixDir, "%s/fix", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingFixDir, S_IRWXU) != 0) {
+        perror(packageInstallingFixDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingResDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingResDir[packageInstallingResDirLength];
+    memset (packageInstallingResDir, 0, packageInstallingResDirLength);
+    sprintf(packageInstallingResDir, "%s/res", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingResDir, S_IRWXU) != 0) {
+        perror(packageInstallingResDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingBinDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingBinDir[packageInstallingBinDirLength];
+    memset (packageInstallingBinDir, 0, packageInstallingBinDirLength);
+    sprintf(packageInstallingBinDir, "%s/bin", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingBinDir, S_IRWXU) != 0) {
+        perror(packageInstallingBinDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingIncDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingIncDir[packageInstallingIncDirLength];
+    memset (packageInstallingIncDir, 0, packageInstallingIncDirLength);
+    sprintf(packageInstallingIncDir, "%s/inc", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingIncDir, S_IRWXU) != 0) {
+        perror(packageInstallingIncDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingLibDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingLibDir[packageInstallingLibDirLength];
+    memset (packageInstallingLibDir, 0, packageInstallingLibDirLength);
+    sprintf(packageInstallingLibDir, "%s/lib", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingLibDir, S_IRWXU) != 0) {
+        perror(packageInstallingLibDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  packageInstallingTmpDirLength = packageInstallingTopDirLength + 5;
+    char    packageInstallingTmpDir[packageInstallingTmpDirLength];
+    memset (packageInstallingTmpDir, 0, packageInstallingTmpDirLength);
+    sprintf(packageInstallingTmpDir, "%s/tmp", packageInstallingTopDir);
+
+    if (mkdir(packageInstallingTmpDir, S_IRWXU) != 0) {
+        perror(packageInstallingTmpDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -195,6 +350,168 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     fprintf(stderr, "prepare to install package [%s].\n", packageName);
 
     resultCode = ppkg_fetch(packageName, options.verbose);
+
+    if (resultCode != PPKG_OK) {
+        ppkg_formula_free(formula);
+        return resultCode;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
+    char    ppkgDownloadsDir[ppkgDownloadsDirLength];
+    memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
+    sprintf(ppkgDownloadsDir, "%s/.ppkg/downloads", userHomeDir);
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->src_url == NULL) {
+
+    } else {
+        if (formula->src_is_dir) {
+
+        } else {
+            char * srcFileNameExtension = NULL;
+
+            if (get_file_extension_from_url(&srcFileNameExtension, formula->src_url) < 0) {
+                return PPKG_ERROR;
+            }
+
+            printf("==========>> srcFileNameExtension = %s\n", srcFileNameExtension);
+
+            size_t  srcFileNameLength = strlen(formula->src_sha) + strlen(srcFileNameExtension) + 1;
+            char    srcFileName[srcFileNameLength];
+            memset( srcFileName, 0, srcFileNameLength);
+            sprintf(srcFileName, "%s%s", formula->src_sha, srcFileNameExtension);
+
+            free(srcFileNameExtension);
+
+            size_t  srcFilePathLength = ppkgDownloadsDirLength + srcFileNameLength + 1;
+            char    srcFilePath[srcFilePathLength];
+            memset (srcFilePath, 0, srcFilePathLength);
+            sprintf(srcFilePath, "%s/%s", ppkgDownloadsDir, srcFileName);
+
+            resultCode = untar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+
+            if (resultCode != PPKG_OK) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->fix_url != NULL) {
+        char * fixFileNameExtension = NULL;
+
+        if (get_file_extension_from_url(&fixFileNameExtension, formula->fix_url) < 0) {
+            return PPKG_ERROR;
+        }
+
+        printf("==========>> fixFileNameExtension = %s\n", fixFileNameExtension);
+
+        size_t  fixFileNameLength = strlen(formula->fix_sha) + strlen(fixFileNameExtension) + 1;
+        char    fixFileName[fixFileNameLength];
+        memset( fixFileName, 0, fixFileNameLength);
+        sprintf(fixFileName, "%s%s", formula->fix_sha, fixFileNameExtension);
+
+        size_t  fixFilePathLength = ppkgDownloadsDirLength + fixFileNameLength + 1;
+        char    fixFilePath[fixFilePathLength];
+        memset (fixFilePath, 0, fixFilePathLength);
+        sprintf(fixFilePath, "%s/%s", ppkgDownloadsDir, fixFileName);
+
+        if (strcmp(fixFileNameExtension, ".tar.gz") == 0 ||
+            strcmp(fixFileNameExtension, ".tar.xz") == 0 ||
+            strcmp(fixFileNameExtension, ".tar.lz") == 0 ||
+            strcmp(fixFileNameExtension, ".tar.bz2") == 0 ||
+            strcmp(fixFileNameExtension, ".tgz") == 0 ||
+            strcmp(fixFileNameExtension, ".txz") == 0 ||
+            strcmp(fixFileNameExtension, ".tlz") == 0 ||
+            strcmp(fixFileNameExtension, ".tbz2") == 0 ||
+            strcmp(fixFileNameExtension, ".zip") == 0) {
+            free(fixFileNameExtension);
+
+            resultCode = untar_extract(packageInstallingFixDir, fixFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+
+            if (resultCode != PPKG_OK) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
+        } else {
+            free(fixFileNameExtension);
+
+            size_t  fixFilePath2Length = packageInstallingResDirLength + fixFileNameLength + 1;
+            char    fixFilePath2[fixFilePath2Length];
+            memset (fixFilePath2, 0, fixFilePath2Length);
+            sprintf(fixFilePath2, "%s/%s", packageInstallingResDir, fixFileName);
+
+            if (cp(fixFilePath, fixFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->res_url != NULL) {
+        char * resFileNameExtension = NULL;
+
+        if (get_file_extension_from_url(&resFileNameExtension, formula->res_url) < 0) {
+            return PPKG_ERROR;
+        }
+
+        printf("==========>> resFileNameExtension = %s\n", resFileNameExtension);
+
+        size_t  resFileNameLength = strlen(formula->res_sha) + strlen(resFileNameExtension) + 1;
+        char    resFileName[resFileNameLength];
+        memset( resFileName, 0, resFileNameLength);
+        sprintf(resFileName, "%s%s", formula->fix_sha, resFileNameExtension);
+
+        size_t  resFilePathLength = ppkgDownloadsDirLength + resFileNameLength + 1;
+        char    resFilePath[resFilePathLength];
+        memset (resFilePath, 0, resFilePathLength);
+        sprintf(resFilePath, "%s/%s", ppkgDownloadsDir, resFileName);
+
+        if (strcmp(resFileNameExtension, ".tar.gz") == 0 ||
+            strcmp(resFileNameExtension, ".tar.xz") == 0 ||
+            strcmp(resFileNameExtension, ".tar.lz") == 0 ||
+            strcmp(resFileNameExtension, ".tar.bz2") == 0 ||
+            strcmp(resFileNameExtension, ".tgz") == 0 ||
+            strcmp(resFileNameExtension, ".txz") == 0 ||
+            strcmp(resFileNameExtension, ".tlz") == 0 ||
+            strcmp(resFileNameExtension, ".tbz2") == 0 ||
+            strcmp(resFileNameExtension, ".zip") == 0) {
+            free(resFileNameExtension);
+
+            resultCode = untar_extract(packageInstallingResDir, resFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+
+            if (resultCode != PPKG_OK) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
+        } else {
+            free(resFileNameExtension);
+
+            size_t  resFilePath2Length = packageInstallingResDirLength + resFileNameLength + 1;
+            char    resFilePath2[resFilePath2Length];
+            memset (resFilePath2, 0, resFilePath2Length);
+            sprintf(resFilePath2, "%s/%s", packageInstallingResDir, resFileName);
+
+            if (cp(resFilePath, resFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    char * PACKAGE_DEP_PKG_R = NULL;
+    size_t capcity = 0;
+
+    resultCode = ppkg_yy(packageName, formula, &PACKAGE_DEP_PKG_R, &capcity);
 
     if (resultCode != PPKG_OK) {
         ppkg_formula_free(formula);
@@ -230,10 +547,30 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t  installShellScriptFilePathLength = packageInstallingDirLength + 12;
+    size_t  buildonYmlFilePathLength = packageInstallingTopDirLength + 13;
+    char    buildonYmlFilePath[buildonYmlFilePathLength];
+    memset (buildonYmlFilePath, 0, buildonYmlFilePathLength);
+    sprintf(buildonYmlFilePath, "%s/buildon.yml", packageInstallingTopDir);
+
+    FILE *  buildonYmlFile = fopen(buildonYmlFilePath, "w");
+
+    if (buildonYmlFile == NULL) {
+        perror(buildonYmlFilePath);
+        sysinfo_free(sysinfo);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    fprintf(buildonYmlFile, "os-arch: %s\nos-kind: %s\nos-type: %s\nos-name: %s\nos-vers: %s\nos-ncpu: %lu\nos-libc: %s\n", sysinfo->arch, sysinfo->kind, sysinfo->type, sysinfo->name, sysinfo->vers, sysinfo->ncpu, libcName);
+
+    fclose(buildonYmlFile);
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  installShellScriptFilePathLength = packageInstallingTopDirLength + 12;
     char    installShellScriptFilePath[installShellScriptFilePathLength];
     memset (installShellScriptFilePath, 0, installShellScriptFilePathLength);
-    sprintf(installShellScriptFilePath, "%s/install.sh", packageInstallingDir);
+    sprintf(installShellScriptFilePath, "%s/install.sh", packageInstallingTopDir);
 
     FILE *  installShellScriptFile = fopen(installShellScriptFilePath, "w");
 
@@ -244,7 +581,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         return PPKG_ERROR;
     }
 
-    fprintf(installShellScriptFile, "set -ex\n\n");
+    fprintf(installShellScriptFile, "set -e\n\n");
 
     fprintf(installShellScriptFile, "TIMESTAMP_UNIX='%lu'\n\n", time(NULL));
 
@@ -262,7 +599,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     fprintf(installShellScriptFile, "CCACHE_ENABLED='%s'\n", options.enableCcache ? "yes" : "no");
     fprintf(installShellScriptFile, "EXPORT_COMPILE_COMMANDS_JSON='%s'\n", options.exportCompileCommandsJson ? "yes" : "no");
     fprintf(installShellScriptFile, "VERBOSE_LEVEL='%d'\n", options.verbose ? 1 : 1);
-    fprintf(installShellScriptFile, "BUILD_TYPE='%s'\n", options.buildType == BuildType_release ? "release" : "debug");
+    fprintf(installShellScriptFile, "BUILD_TYPE='%s'\n", options.buildType == PPKGBuildType_release ? "release" : "debug");
 
     size_t njobs;
 
@@ -278,16 +615,16 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fprintf(installShellScriptFile, "BUILD_NJOBS='%lu'\n", njobs);
 
-    switch (options.LinkType) {
-        case LinkType_static_only:     fprintf(installShellScriptFile, "LINK_TYPE='%s'\n", "static-only");
-        case LinkType_shared_only:     fprintf(installShellScriptFile, "LINK_TYPE='%s'\n", "shared-only");
-        case LinkType_static_prefered: fprintf(installShellScriptFile, "LINK_TYPE='%s'\n", "static-prefered");
-        case LinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='%s'\n", "static-prefered");
+    switch (options.linkType) {
+        case PPKGLinkType_static_only:     fprintf(installShellScriptFile, "LINK_TYPE='%s'\n\n", "static-only");
+        case PPKGLinkType_shared_only:     fprintf(installShellScriptFile, "LINK_TYPE='%s'\n\n", "shared-only");
+        case PPKGLinkType_static_prefered: fprintf(installShellScriptFile, "LINK_TYPE='%s'\n\n", "static-prefered");
+        case PPKGLinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='%s'\n\n", "shared-prefered");
     }
 
     fprintf(installShellScriptFile, "PPKG_VERSION='%s'\n", PPKG_VERSION);
     fprintf(installShellScriptFile, "PPKG_HOME='%s'\n", ppkgHomeDir);
-    fprintf(installShellScriptFile, "PPKG_EXECUTABLE_PATH='%s'\n", currentExecutablePath);
+    fprintf(installShellScriptFile, "PPKG_EXECUTABLE='%s'\n\n", currentExecutablePath);
 
     fprintf(installShellScriptFile, "PACKAGE_NAME='%s'\n", packageName);
     fprintf(installShellScriptFile, "PACKAGE_SUMMARY='%s'\n", formula->summary);
@@ -310,7 +647,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     fprintf(installShellScriptFile, "PACKAGE_RES_URL='%s'\n", formula->res_url == NULL ? "" : formula->res_url);
     fprintf(installShellScriptFile, "PACKAGE_RES_SHA='%s'\n", formula->res_sha == NULL ? "" : formula->res_sha);
 
-    fprintf(installShellScriptFile, "PACKAGE_DEP_PKG_R='%s'\n", "");
+    fprintf(installShellScriptFile, "PACKAGE_DEP_PKG_R='%s'\n", PACKAGE_DEP_PKG_R == NULL ? "" : PACKAGE_DEP_PKG_R);
     fprintf(installShellScriptFile, "PACKAGE_DEP_PKG='%s'\n", formula->dep_pkg == NULL ? "" : formula->dep_pkg);
     fprintf(installShellScriptFile, "PACKAGE_DEP_UPP='%s'\n", formula->dep_upp == NULL ? "" : formula->dep_upp);
     fprintf(installShellScriptFile, "PACKAGE_DEP_PYM='%s'\n", formula->dep_pym == NULL ? "" : formula->dep_pym);
@@ -330,27 +667,52 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fprintf(installShellScriptFile, "PACKAGE_FORMULA_FILEPATH='%s'\n\n", formula->path);
 
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_TOP_DIR='%s'\n", packageInstallingTopDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_SRC_DIR='%s'\n", packageInstallingSrcDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_FIX_DIR='%s'\n", packageInstallingFixDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_RES_DIR='%s'\n", packageInstallingResDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_BIN_DIR='%s'\n", packageInstallingBinDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_INC_DIR='%s'\n", packageInstallingIncDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_LIB_DIR='%s'\n", packageInstallingLibDir);
+    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_TMP_DIR='%s'\n", packageInstallingTmpDir);
+
+    fprintf(installShellScriptFile, "PACKAGE_INSTALL_DIR='%s'\n",   packageInstalledDir);
+    fprintf(installShellScriptFile, "PACKAGE_METAINF_DIR='%s'\n\n", packageInstalledMetaInfoDir);
+
     if (formula->prepare == NULL) {
-        fprintf(installShellScriptFile, "unset -f prepare\n");
+        fprintf(installShellScriptFile, "unset -f prepare\n\n");
     } else {
-        fprintf(installShellScriptFile, "prepare(){\n%s\n}\n", formula->prepare);
+        fprintf(installShellScriptFile, "prepare() {\n%s\n}\n\n", formula->prepare);
     }
 
     if (formula->install == NULL) {
-        fprintf(installShellScriptFile, "unset -f install\n");
+        fprintf(installShellScriptFile, "unset -f build\n\n");
     } else {
-        fprintf(installShellScriptFile, "install(){\n%s\n}\n", formula->install);
+        fprintf(installShellScriptFile, "build() {\n%s\n}\n\n", formula->install);
     }
 
 
+    //fprintf(installShellScriptFile, "MY_INSTALLED_DIR='%s'\n\n", ppkgInstallingDir);
 
-    fprintf(installShellScriptFile, "exit 1\n");
-    fprintf(installShellScriptFile, ". /home/leleliu008/ppkg/ppkg-install\n");
+    //fprintf(installShellScriptFile, "exit 1\n");
+    //fprintf(installShellScriptFile, ". /home/leleliu008/ppkg/ppkg-install\n");
+
+    size_t n = strlen(PPKG_INSTALL);
+
+    char ppkgInstallShellScript[(n>>1) + 1];
+
+    base16_decode(ppkgInstallShellScript, PPKG_INSTALL, n);
+
+    fwrite(ppkgInstallShellScript, 1, (n>>1) + 1, installShellScriptFile);
 
     fclose(installShellScriptFile);
 
     sysinfo_free(sysinfo);
     free(currentExecutablePath);
+
+    if (PACKAGE_DEP_PKG_R != NULL) {
+        free(PACKAGE_DEP_PKG_R);
+    }
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -374,8 +736,218 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////
 
+    size_t  cratesTomlFilePathLength = packageInstalledDirLength + 14;
+    char    cratesTomlFilePath[cratesTomlFilePathLength];
+    memset (cratesTomlFilePath, 0, cratesTomlFilePathLength);
+    sprintf(cratesTomlFilePath, "%s/.crates.toml", packageInstalledDir);
+
+    if (exists_and_is_a_regular_file(cratesTomlFilePath)) {
+        if (unlink(cratesTomlFilePath) != 0) {
+            perror(cratesTomlFilePath);
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////
+
+    size_t  crates2JsonFilePathLength = packageInstalledDirLength + 15;
+    char    crates2JsonFilePath[crates2JsonFilePathLength];
+    memset (crates2JsonFilePath, 0, crates2JsonFilePathLength);
+    sprintf(crates2JsonFilePath, "%s/.crates2.json", packageInstalledDir);
+
+    if (exists_and_is_a_regular_file(crates2JsonFilePath)) {
+        if (unlink(crates2JsonFilePath) != 0) {
+            perror(crates2JsonFilePath);
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////
+
     if (mkdir(packageInstalledMetaInfoDir, S_IRWXU) != 0) {
         perror(packageInstalledMetaInfoDir);
+        ppkg_formula_free(formula);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->dep_pkg != NULL) {
+        size_t  dependenciesDotFilePathLength = packageInstallingTopDirLength + 18;
+        char    dependenciesDotFilePath[dependenciesDotFilePathLength];
+        memset (dependenciesDotFilePath, 0, dependenciesDotFilePathLength);
+        sprintf(dependenciesDotFilePath, "%s/dependencies.dot", packageInstallingTopDir);
+
+        size_t  dependenciesDotFilePath2Length = packageInstalledMetaInfoDirLength + 18;
+        char    dependenciesDotFilePath2[dependenciesDotFilePath2Length];
+        memset (dependenciesDotFilePath2, 0, dependenciesDotFilePath2Length);
+        sprintf(dependenciesDotFilePath2, "%s/dependencies.dot", packageInstalledMetaInfoDir);
+
+        if (cp(dependenciesDotFilePath, dependenciesDotFilePath2) != 0) {
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        size_t  dependenciesTxtFilePathLength = packageInstallingTopDirLength + 18;
+        char    dependenciesTxtFilePath[dependenciesTxtFilePathLength];
+        memset (dependenciesTxtFilePath, 0, dependenciesTxtFilePathLength);
+        sprintf(dependenciesTxtFilePath, "%s/dependencies.txt", packageInstallingTopDir);
+
+        if (exists_and_is_a_regular_file(dependenciesTxtFilePath)) {
+            size_t  dependenciesTxtFilePath2Length = packageInstalledMetaInfoDirLength + 18;
+            char    dependenciesTxtFilePath2[dependenciesTxtFilePath2Length];
+            memset (dependenciesTxtFilePath2, 0, dependenciesTxtFilePath2Length);
+            sprintf(dependenciesTxtFilePath2, "%s/dependencies.txt", packageInstalledMetaInfoDir);
+
+            if (cp(dependenciesTxtFilePath, dependenciesTxtFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        size_t  dependenciesSvgFilePathLength = packageInstallingTopDirLength + 18;
+        char    dependenciesSvgFilePath[dependenciesSvgFilePathLength];
+        memset (dependenciesSvgFilePath, 0, dependenciesSvgFilePathLength);
+        sprintf(dependenciesSvgFilePath, "%s/dependencies.svg", packageInstallingTopDir);
+
+        if (exists_and_is_a_regular_file(dependenciesSvgFilePath)) {
+            size_t  dependenciesSvgFilePath2Length = packageInstalledMetaInfoDirLength + 18;
+            char    dependenciesSvgFilePath2[dependenciesSvgFilePath2Length];
+            memset (dependenciesSvgFilePath2, 0, dependenciesSvgFilePath2Length);
+            sprintf(dependenciesSvgFilePath2, "%s/dependencies.svg", packageInstalledMetaInfoDir);
+
+            if (cp(dependenciesSvgFilePath, dependenciesSvgFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        size_t  dependenciesPngFilePathLength = packageInstallingTopDirLength + 18;
+        char    dependenciesPngFilePath[dependenciesPngFilePathLength];
+        memset (dependenciesPngFilePath, 0, dependenciesPngFilePathLength);
+        sprintf(dependenciesPngFilePath, "%s/dependencies.png", packageInstallingTopDir);
+
+        if (exists_and_is_a_regular_file(dependenciesPngFilePath)) {
+            size_t  dependenciesPngFilePath2Length = packageInstalledMetaInfoDirLength + 18;
+            char    dependenciesPngFilePath2[dependenciesPngFilePath2Length];
+            memset (dependenciesPngFilePath2, 0, dependenciesPngFilePath2Length);
+            sprintf(dependenciesPngFilePath2, "%s/dependencies.png", packageInstalledMetaInfoDir);
+
+            if (cp(dependenciesPngFilePath, dependenciesPngFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (options.exportCompileCommandsJson) {
+        size_t  compileCommandsJsonFilePath2Length = packageInstalledMetaInfoDirLength + 23;
+        char    compileCommandsJsonFilePath2[compileCommandsJsonFilePath2Length];
+        memset (compileCommandsJsonFilePath2, 0, compileCommandsJsonFilePath2Length);
+        sprintf(compileCommandsJsonFilePath2, "%s/compile_commands.json", packageInstalledMetaInfoDir);
+
+        size_t  compileCommandsJsonFilePathLength = packageInstallingTmpDirLength + 23;
+        char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
+        memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
+        sprintf(compileCommandsJsonFilePath, "%s/compile_commands.json", packageInstallingTmpDir);
+
+        if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
+            if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+        } else {
+            if (formula->bscript == NULL) {
+                size_t  compileCommandsJsonFilePathLength = packageInstallingSrcDirLength + 23;
+                char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
+                memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
+                sprintf(compileCommandsJsonFilePath, "%s/compile_commands.json", packageInstallingSrcDir);
+
+                if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
+                    if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
+                        ppkg_formula_free(formula);
+                        return PPKG_ERROR;
+                    }
+                }
+            } else {
+                size_t  compileCommandsJsonFilePathLength = packageInstallingSrcDirLength + strlen(formula->bscript) + 24;
+                char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
+                memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
+                sprintf(compileCommandsJsonFilePath, "%s/%s/compile_commands.json", packageInstallingSrcDir, formula->bscript);
+
+                if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
+                    if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
+                        ppkg_formula_free(formula);
+                        return PPKG_ERROR;
+                    }
+                }
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t  buildConfigLogFilePath2Length = packageInstalledMetaInfoDirLength + 12;
+    char    buildConfigLogFilePath2[buildConfigLogFilePath2Length];
+    memset (buildConfigLogFilePath2, 0, buildConfigLogFilePath2Length);
+    sprintf(buildConfigLogFilePath2, "%s/config.log", packageInstalledMetaInfoDir);
+
+    size_t  buildConfigLogFilePathLength = packageInstallingTmpDirLength + 12;
+    char    buildConfigLogFilePath[buildConfigLogFilePathLength];
+    memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
+    sprintf(buildConfigLogFilePath, "%s/config.log", packageInstallingTmpDir);
+
+    if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
+        if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
+            ppkg_formula_free(formula);
+            return PPKG_ERROR;
+        }
+    } else {
+        if (formula->bscript == NULL) {
+            size_t  buildConfigLogFilePathLength = packageInstallingSrcDirLength + 12;
+            char    buildConfigLogFilePath[buildConfigLogFilePathLength];
+            memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
+            sprintf(buildConfigLogFilePath, "%s/config.log", packageInstallingSrcDir);
+
+            if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
+                if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
+                    ppkg_formula_free(formula);
+                    return PPKG_ERROR;
+                }
+            }
+        } else {
+            size_t  buildConfigLogFilePathLength = packageInstallingSrcDirLength + strlen(formula->bscript) + 13;
+            char    buildConfigLogFilePath[buildConfigLogFilePathLength];
+            memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
+            sprintf(buildConfigLogFilePath, "%s/%s/config.log", packageInstallingSrcDir, formula->bscript);
+
+            if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
+                if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
+                    ppkg_formula_free(formula);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////
+
+    size_t  buildonYmlFilePath2Length = packageInstalledMetaInfoDirLength + 13;
+    char    buildonYmlFilePath2[buildonYmlFilePath2Length];
+    memset (buildonYmlFilePath2, 0, buildonYmlFilePath2Length);
+    sprintf(buildonYmlFilePath2, "%s/buildon.yml", packageInstalledMetaInfoDir);
+
+    if (cp(buildonYmlFilePath, buildonYmlFilePath2) != 0) {
         ppkg_formula_free(formula);
         return PPKG_ERROR;
     }
@@ -425,11 +997,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fclose(receiptFile);
 
-    fprintf(stderr, "package [%s] successfully installed.\n", packageName);
+    LOG_SUCCESS3("package [ ", packageName, " ] successfully installed!");
 
+    return PPKG_OK;
     if (!options.keepInstallingDir) {
-        if (rm_r(packageInstallingDir, options.verbose) != 0) {
-            perror(packageInstallingDir);
+        if (rm_r(packageInstallingTopDir, options.verbose) != 0) {
+            perror(packageInstallingTopDir);
             ppkg_formula_free(formula);
             return PPKG_ERROR;
         }

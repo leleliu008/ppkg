@@ -20,7 +20,20 @@ int get_file_extension_from_url(char * * out, const char * url) {
         return -1;
     }
 
-    size_t urlLength = strlen(url);
+    size_t urlLength = 0;
+    char c;
+
+    for (;;) {
+        c = url[urlLength];
+
+        if (c == '?' || c == '\0') {
+            break;
+        } else {
+            urlLength++;
+        }
+    }
+
+    //printf("url=%s\nurlLength=%lu\n", url, urlLength);
 
     if (urlLength < 3) {
         return -2;
@@ -33,8 +46,6 @@ int get_file_extension_from_url(char * * out, const char * url) {
     }
 
     size_t i = lastIndex;
-
-    char c;
 
     const char * p;
 
@@ -50,7 +61,7 @@ int get_file_extension_from_url(char * * out, const char * url) {
                         const char * p2 = &url[i - 4];
 
                         if (strncmp(p2, ".tar", 4) == 0) {
-                            (*out) = strdup(p2);
+                            (*out) = strndup(p2, 7);
                             return 0;
                         }
                     }
@@ -61,14 +72,14 @@ int get_file_extension_from_url(char * * out, const char * url) {
                         const char * p2 = &url[i - 4];
 
                         if (strncmp(p2, ".tar", 4) == 0) {
-                            (*out) = strdup(p2);
+                            (*out) = strndup(p2, 8);
                             return 0;
                         }
                     }
                 }
             }
 
-            (*out) = strdup(p);
+            (*out) = strndup(p, urlLength - i);
             return 0;
         }
 

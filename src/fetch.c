@@ -97,7 +97,7 @@ static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const
     }
 }
 
-static int ppkg_fetch_file(const char * url, const char * sha256sum, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength, bool verbose) {
+static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength, bool verbose) {
     char * fileNameExtension = NULL;
 
     if (get_file_extension_from_url(&fileNameExtension, url) < 0) {
@@ -106,10 +106,10 @@ static int ppkg_fetch_file(const char * url, const char * sha256sum, const char 
 
     printf("==========>> fileNameExtension = %s\n", fileNameExtension);
 
-    size_t  fileNameLength = strlen(sha256sum) + strlen(fileNameExtension) + 1;
+    size_t  fileNameLength = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1;
     char    fileName[fileNameLength];
     memset( fileName, 0, fileNameLength);
-    sprintf(fileName, "%s%s", sha256sum, fileNameExtension);
+    sprintf(fileName, "%s%s", expectedSHA256SUM, fileNameExtension);
 
     free(fileNameExtension);
 
@@ -121,7 +121,7 @@ static int ppkg_fetch_file(const char * url, const char * sha256sum, const char 
     if (exists_and_is_a_regular_file(filePath)) {
         char * actualSHA256SUM = sha256sum_of_file(filePath);
 
-        if (strcmp(actualSHA256SUM, sha256sum) == 0) {
+        if (strcmp(actualSHA256SUM, expectedSHA256SUM) == 0) {
             free(actualSHA256SUM);
             fprintf(stderr, "%s already have been fetched.\n", filePath);
             return PPKG_OK;
@@ -136,11 +136,11 @@ static int ppkg_fetch_file(const char * url, const char * sha256sum, const char 
 
     char * actualSHA256SUM = sha256sum_of_file(filePath);
 
-    if (strcmp(actualSHA256SUM, sha256sum) == 0) {
+    if (strcmp(actualSHA256SUM, expectedSHA256SUM) == 0) {
         free(actualSHA256SUM);
         return PPKG_OK;
     } else {
-        fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", sha256sum, actualSHA256SUM);
+        fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", expectedSHA256SUM, actualSHA256SUM);
         free(actualSHA256SUM);
         return PPKG_SHA256_MISMATCH;
     }

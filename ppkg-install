@@ -232,10 +232,10 @@ __adjust_elf_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $PPKG_EXECUTABLE_PATH util-base64-encode-string '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $PPKG_EXECUTABLE util-base64-encode-of-string '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -353,10 +353,10 @@ __adjust_mach_o_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $PPKG_EXECUTABLE_PATH $PPKG_EXECUTABLE_PATH util-base64-encode-string '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $PPKG_EXECUTABLE $PPKG_EXECUTABLE util-base64-encode-of-string '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE_PATH util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -1042,7 +1042,7 @@ __printf_relevant_environment_variables() {
     printf '%s\n' "
 PPKG_VERSION      = $PPKG_VERSION
 PPKG_HOME         = $PPKG_HOME
-PPKG_EXECUTABLE_PATH = $PPKG_EXECUTABLE_PATH
+PPKG_EXECUTABLE   = $PPKG_EXECUTABLE
 PPKG_INSTALL_ROOT = $PPKG_INSTALL_ROOT
 PPKG_SYMLINK_ROOT = $PPKG_SYMLINK_ROOT
 
@@ -1867,7 +1867,7 @@ echo_path_of_tool_in_the_toolchain() {
 __is_core_tools_installed() {
     [ -e "$MY_CORE_BIN_DIR/uppm" ] || return 1
 
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
     do
         "$MY_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
     done
@@ -1894,7 +1894,7 @@ main() {
     MY_CORE_DIR="$MY_HOME_DIR/core"
     MY_CORE_BIN_DIR="$MY_CORE_DIR/bin"
 
-    MY_INSTALLED_DIR="/opt/ppkg/installed"
+    MY_INSTALLED_DIR="$MY_HOME_DIR/installed"
 
     __is_core_tools_installed || {
         return 1
@@ -2104,40 +2104,11 @@ main() {
 
     #########################################################################################
 
-    step "create relevant directories"
-
-    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing/$1"
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/bin"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_INSTALLING_TOP_DIR/inc"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
-
     if [ -z "$PACKAGE_BSCRIPT" ] ; then
         PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
     else
         PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
     fi
-
-    rm -rf     "$PACKAGE_INSTALLING_TOP_DIR"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_INSTALLING_TMP_DIR"
-
-    #########################################################################################
-
-    PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$1"
-    PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
-
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/manifest.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/receipt.yml"
 
     #########################################################################################
 
@@ -2149,10 +2120,10 @@ main() {
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.svg"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
 
-        "$PPKG_EXECUTABLE_PATH" depends --type=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        "$PPKG_EXECUTABLE_PATH" depends --type=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
-        "$PPKG_EXECUTABLE_PATH" depends --type=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-        "$PPKG_EXECUTABLE_PATH" depends --type=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+        "$PPKG_EXECUTABLE" depends "$1" --format=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        "$PPKG_EXECUTABLE" depends "$1" --format=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+        "$PPKG_EXECUTABLE" depends "$1" --format=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
+        "$PPKG_EXECUTABLE" depends "$1" --format=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
 
         if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
@@ -2372,40 +2343,10 @@ main() {
         esac
     fi
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        [ -f "$PACKAGE_INSTALL_DIR/.crates.toml"  ] && rm "$PACKAGE_INSTALL_DIR/.crates.toml"
-        [ -f "$PACKAGE_INSTALL_DIR/.crates2.json" ] && rm "$PACKAGE_INSTALL_DIR/.crates2.json"
-    fi
-
     cd "$PACKAGE_INSTALL_DIR" || die "nothing is installed."
 
     [ -z "$(ls)" ]            && die "nothing is installed."
 
-    install -d "$PACKAGE_METAINF_DIR"
-
-    step "install config.log"
-    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
-    do
-        if [ -f "$dir/config.log" ] ; then
-            install -v -m 644 "$dir/config.log" "$PACKAGE_METAINF_DIR"
-        fi
-    done
-
-    step "install compile_commands.json"
-    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
-    do
-        if [ -f "$dir/compile_commands.json" ] ; then
-            install -v -m 644 "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
-        fi
-    done
-
-    step "install dependencies.dot and dependencies.txt"
-    for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
-    do
-        if [ -f "$file" ] ; then
-            install -v -m 644 "$file" "$PACKAGE_METAINF_DIR"
-        fi
-    done
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
@@ -2422,28 +2363,6 @@ main() {
         step "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_pc_files_for_the_given_target $@
     fi
-
-    step "generate buildon.yml"
-    cat > "$PACKAGE_METAINF_DIR/buildon.yml" <<EOF
-os-kind: $NATIVE_OS_KIND
-os-type: $NATIVE_OS_TYPE
-os-name: $NATIVE_OS_NAME
-os-arch: $NATIVE_OS_ARCH
-os-vers: $NATIVE_OS_VERS
-os-ncpu: $NATIVE_OS_NCPU
-os-libc: $NATIVE_OS_LIBC
-EOF
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        step "show ccache statistics summary"
-        note "Before Build:"
-        run  cat "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
-        note "After  Build:"
-        run  ccache -s
-    fi
-
-    echo
-    success "$1 have been installed successfully."
 }
 
-main "$@"
+main "$PACKAGE_NAME"

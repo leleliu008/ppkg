@@ -3,7 +3,7 @@
 
 int ppkg_cleanup(bool verbose) {
     if (verbose) {
-        LOG_SUCCESS("Done.");
+        LOG_SUCCESS1("Done.");
     }
 
     return PPKG_OK;

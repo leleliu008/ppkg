@@ -12,7 +12,10 @@
 
 #define LOG_INFO(x)    fprintf(stderr, "%s🔔  %s%s\n", COLOR_YELLOW, x, COLOR_OFF)
 #define LOG_WARN(x)    fprintf(stderr, "%s🔥  %s%s\n", COLOR_YELLOW, x, COLOR_OFF)
-#define LOG_SUCCESS(x) fprintf(stderr, "%s[✔] %s%s\n", COLOR_GREEN,  x, COLOR_OFF)
+
+#define LOG_SUCCESS1(a)     fprintf(stderr, "%s[✔] %s%s\n",     COLOR_GREEN, a,       COLOR_OFF)
+#define LOG_SUCCESS2(a,b)   fprintf(stderr, "%s[✔] %s%s%s\n",   COLOR_GREEN, a, b,    COLOR_OFF)
+#define LOG_SUCCESS3(a,b,c) fprintf(stderr, "%s[✔] %s%s%s%s\n", COLOR_GREEN, a, b, c, COLOR_OFF)
 
 #define LOG_ERROR1(a)           fprintf(stderr, "%s💔  %s%s\n",         COLOR_RED, a,         COLOR_OFF)
 #define LOG_ERROR2(a,b)         fprintf(stderr, "%s💔  %s%s%s\n",       COLOR_RED, a,b,       COLOR_OFF)

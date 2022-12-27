@@ -118,8 +118,8 @@ void ppkg_formula_repo_list_free(PPKGFormulaRepoList   * p);
 int  ppkg_formula_repo_list_printf();
 int  ppkg_formula_repo_list_update();
 
-int   ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName);
-int   ppkg_formula_repo_del(const char * formulaRepoName);
+int  ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName);
+int  ppkg_formula_repo_del(const char * formulaRepoName);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -189,22 +189,38 @@ typedef enum {
 //////////////////////////////////////////////////////////////////////
 
 typedef enum {
-    VerboseLevel_silent,
-    VerboseLevel_normal,
-    VerboseLevel_verbose
+    PPKGVerboseLevel_silent,
+    PPKGVerboseLevel_normal,
+    PPKGVerboseLevel_verbose
 } PPKGVerboseLevel;
 
 typedef enum {
-    BuildType_release,
-    BuildType_debug
+    PPKGBuildType_release,
+    PPKGBuildType_debug
 } PPKGBuildType;
 
 typedef enum {
-    LinkType_shared_prefered,
-    LinkType_shared_only,
-    LinkType_static_only,
-    LinkType_static_prefered
+    PPKGLinkType_shared_prefered,
+    PPKGLinkType_shared_only,
+    PPKGLinkType_static_only,
+    PPKGLinkType_static_prefered
 } PPKGLinkType;
+
+typedef struct {
+    bool    exportCompileCommandsJson;
+    bool    keepInstallingDir;
+    bool    enableCcache;
+    bool    enableBear;
+    bool    verbose;
+    bool    dryrun;
+
+    size_t  parallelJobsCount;
+
+    PPKGBuildType buildType;
+    PPKGLinkType  linkType;
+} PPKGInstallOptions;
+
+//////////////////////////////////////////////////////////////////////
 
 typedef struct {
     char * cc;
@@ -225,22 +241,9 @@ typedef struct {
     char * addr2line;
 } PPKGToolChain;
 
-typedef struct {
-    bool      exportCompileCommandsJson;
-    bool      keepInstallingDir;
-    bool      enableCcache;
-    bool      enableBear;
-    bool      verbose;
-    bool      dryrun;
-
-    size_t    parallelJobsCount;
-
-    PPKGBuildType buildType;
-    PPKGLinkType  LinkType;
-
-    char *    toolchainConfigFilePath;
-    PPKGToolChain toolchain;
-} PPKGInstallOptions;
+int  ppkg_toolchain_find(PPKGToolChain * toolchain);
+void ppkg_toolchain_free(PPKGToolChain * toolchain);
+void ppkg_toolchain_dump(PPKGToolChain * toolchain);
 
 //////////////////////////////////////////////////////////////////////
 
