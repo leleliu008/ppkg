@@ -14,15 +14,31 @@ int ppkg_logs(const char * packageName) {
         return resultCode;
     }
 
-    size_t  packageMetadataDirLength = strlen(packageName) + 27;
+    char * userHomeDir = getenv("HOME");
+
+    if (userHomeDir == NULL) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    size_t userHomeDirLength = strlen(userHomeDir);
+
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    size_t  packageMetadataDirLength = userHomeDirLength + strlen(packageName) + 24;
     char    packageMetadataDir[packageMetadataDirLength];
     memset (packageMetadataDir, 0, packageMetadataDirLength);
-    sprintf(packageMetadataDir, "/opt/ppkg/installed/%s/.ppkg", packageName);
+    sprintf(packageMetadataDir, "%s/.ppkg/installed/%s/.ppkg", userHomeDir, packageName);
 
     size_t  receiptFilePathLength = packageMetadataDirLength + 13;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
     sprintf(receiptFilePath, "%s/receipt.yml", packageMetadataDir);
+
+    if (!exists_and_is_a_regular_file(receiptFilePath)) {
+        return PPKG_PACKAGE_IS_NOT_INSTALLED;
+    }
 
     if (!exists_and_is_a_regular_file(receiptFilePath)) {
         return PPKG_PACKAGE_IS_NOT_INSTALLED;

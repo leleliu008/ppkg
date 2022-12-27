@@ -536,9 +536,21 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return resultCode;
     }
 
-    char * receiptFilePath = (char*)calloc(strlen(packageName) + 40, sizeof(char));
+    char * userHomeDir = getenv("HOME");
 
-    sprintf(receiptFilePath, "/opt/ppkg/installed/%s/.ppkg/receipt.yml", packageName);
+    if (userHomeDir == NULL) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    size_t userHomeDirLength = strlen(userHomeDir);
+
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    char * receiptFilePath = (char*)calloc(userHomeDirLength + strlen(packageName) + 36, sizeof(char));
+
+    sprintf(receiptFilePath, "%s/.ppkg/installed/%s/.ppkg/receipt.yml", userHomeDir, packageName);
 
     FILE * file = fopen(receiptFilePath, "r");
 

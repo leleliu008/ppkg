@@ -1106,10 +1106,11 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         return PPKG_ERROR;
     }
 
+    fprintf(receiptFile, "pkgname: %s\n", packageName);
+    fprintf(receiptFile, "version: %s\n", formula->version);
+
     ppkg_formula_free(formula);
     formula = NULL;
-
-    fprintf(receiptFile, "pkgname: %s\n", packageName);
 
     char   buff[1024];
     size_t size = 0;

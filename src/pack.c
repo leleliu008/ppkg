@@ -44,14 +44,41 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
 
     char * userHomeDir = getenv("HOME");
 
-    if ((userHomeDir == NULL) || (strcmp(userHomeDir, "") == 0)) {
+    if (userHomeDir == NULL) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
-    size_t  ppkgPackingDirLength = strlen(userHomeDir) + 15;
+    size_t userHomeDirLength = strlen(userHomeDir);
+
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    size_t  ppkgHomeDirLength = userHomeDirLength + 7;
+    char    ppkgHomeDir[ppkgHomeDirLength];
+    memset (ppkgHomeDir, 0, ppkgHomeDirLength);
+    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+
+    size_t  packageInstalledDirLength = ppkgHomeDirLength + strlen(packageName) + 12;
+    char    packageInstalledDir[packageInstalledDirLength];
+    memset (packageInstalledDir, 0, packageInstalledDirLength);
+    sprintf(packageInstalledDir, "%s/installed/%s", ppkgHomeDir, packageName);
+
+    size_t  receiptFilePathLength = packageInstalledDirLength + 20;
+    char    receiptFilePath[receiptFilePathLength];
+    memset (receiptFilePath, 0, receiptFilePathLength);
+    sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", packageInstalledDir);
+
+    if (!exists_and_is_a_regular_file(receiptFilePath)) {
+        return PPKG_PACKAGE_IS_NOT_INSTALLED;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+
+    size_t  ppkgPackingDirLength = ppkgHomeDirLength + 9;
     char    ppkgPackingDir[ppkgPackingDirLength];
     memset (ppkgPackingDir, 0, ppkgPackingDirLength);
-    sprintf(ppkgPackingDir, "%s/.ppkg/packing", userHomeDir);
+    sprintf(ppkgPackingDir, "%s/packing", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgPackingDir)) {
         if (mkdir(ppkgPackingDir, S_IRWXU) != 0) {
@@ -64,11 +91,6 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
         perror(ppkgPackingDir);
         return PPKG_ERROR;
     }
-
-    size_t  packageInstalledDirLength = strlen(packageName) + 21;
-    char    packageInstalledDir[packageInstalledDirLength];
-    memset (packageInstalledDir, 0, packageInstalledDirLength);
-    sprintf(packageInstalledDir, "/opt/ppkg/installed/%s", packageName);
 
     if (exists_and_is_a_directory(packingDirName)) {
         if (unlink(packingDirName) != 0) {
