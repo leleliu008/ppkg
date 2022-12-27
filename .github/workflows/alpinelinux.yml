@@ -18,6 +18,13 @@ jobs:
     container: alpine:${{ matrix.tag }}
 
     steps:
+      - run: |
+          cat > ~/.gitconfig <<EOF
+          [user]
+            email = leleliu008@gmail.com
+            name = leleliu008
+          EOF
+
       - run: apk update
       - run: apk add cmake ninja gcc pkgconf libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
 
