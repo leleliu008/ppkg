@@ -1888,7 +1888,10 @@ main() {
 
     MY_INSTALLED_DIR="$MY_HOME_DIR/installed"
 
-    "$MY_CORE_BIN_DIR/uppm" install bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
+    UPPM_COMMAND="$MY_CORE_BIN_DIR/uppm"
+
+    "$UPPM_COMMAND" update
+    "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree patch patchelf pkg-config
 
     export PATH="$MY_CORE_BIN_DIR:$PATH"
 
@@ -2074,23 +2077,21 @@ main() {
     if [ -n "$PACKAGE_DEP_UPP" ] ; then
         step "install depentent tools via uppm"
 
-        # run uppm env
-
         UPPM_NEED_UPDATE=yes
 
         for item in $PACKAGE_DEP_UPP
         do
-            if uppm is-installed "$item" ; then
+            if "$UPPM_COMMAND" is-installed "$item" ; then
                 note "package [$item] already has been installed."
             else
                 if [ "$UPPM_NEED_UPDATE" = yes ] ; then
                     UPPM_NEED_UPDATE=no
-                    run uppm update
+                    run "$UPPM_COMMAND" update
                 fi
 
-                run uppm install "$item"
+                run "$UPPM_COMMAND" install "$item"
             fi
-            # bppend_to_PATH "$("$MY_CORE_BIN_DIR/uppm" info "$item" installed-dir)/bin"
+            # bppend_to_PATH "$("$UPPM_COMMAND" info "$item" installed-dir)/bin"
         done
     fi
 
