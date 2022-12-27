@@ -72,8 +72,8 @@ jobs:
 
       - run: ./output/bin/ppkg tree libzip
 
-      - run: ./output/bin/ppkg pack libzip
-      - run: ./output/bin/ppkg pack libzip --type=tar.xz
+        #- run: ./output/bin/ppkg pack libzip
+        #- run: ./output/bin/ppkg pack libzip --type=tar.xz
 
       - run: ./output/bin/ppkg formula-repo-list
 
@@ -89,4 +89,4 @@ jobs:
 
       - run: ./output/bin/ppkg fetch curl
 
-      - run: ./output/bin/ppkg upgrade @self
+      - run: ./output/bin/ppkg upgrade-self
