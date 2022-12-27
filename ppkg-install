@@ -541,6 +541,9 @@ __export_relevant_environment_variables() {
     unset TOOLNAME
     unset TOOLPATH
 
+    [ -z "$CC" ]  && die "C Compiler not found."
+    [ -z "$CXX" ] && die "C++ Compiler not found."
+
     ##################################################################################
 
     cat > "$PACKAGE_INSTALLING_BIN_DIR/test.c" <<EOF

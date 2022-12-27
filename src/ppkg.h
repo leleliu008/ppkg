@@ -297,4 +297,6 @@ int ppkg_list_the_outdated__packages();
 int ppkg_util_base64_encode_of_string(const char * str);
 int ppkg_util_base64_decode_to_string(const char * base64EncodedStr);
 
+int ppkg_install_uppm(bool verbose);
+
 #endif

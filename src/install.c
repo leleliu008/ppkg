@@ -349,15 +349,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fprintf(stderr, "prepare to install package [%s].\n", packageName);
 
-    resultCode = ppkg_fetch(packageName, options.verbose);
-
-    if (resultCode != PPKG_OK) {
-        ppkg_formula_free(formula);
-        return resultCode;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
     size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
     char    ppkgDownloadsDir[ppkgDownloadsDirLength];
     memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
@@ -374,6 +365,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             char * srcFileNameExtension = NULL;
 
             if (get_file_extension_from_url(&srcFileNameExtension, formula->src_url) < 0) {
+                ppkg_formula_free(formula);
                 return PPKG_ERROR;
             }
 
@@ -384,18 +376,74 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             memset( srcFileName, 0, srcFileNameLength);
             sprintf(srcFileName, "%s%s", formula->src_sha, srcFileNameExtension);
 
-            free(srcFileNameExtension);
-
             size_t  srcFilePathLength = ppkgDownloadsDirLength + srcFileNameLength + 1;
             char    srcFilePath[srcFilePathLength];
             memset (srcFilePath, 0, srcFilePathLength);
             sprintf(srcFilePath, "%s/%s", ppkgDownloadsDir, srcFileName);
 
-            resultCode = untar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+            bool needFetch = true;
 
-            if (resultCode != PPKG_OK) {
-                ppkg_formula_free(formula);
-                return resultCode;
+            if (exists_and_is_a_regular_file(srcFilePath)) {
+                char * actualSHA256SUM = sha256sum_of_file(srcFilePath);
+
+                if (strcmp(actualSHA256SUM, formula->src_sha) == 0) {
+                    needFetch = false;
+
+                    if (options.verbose) {
+                        fprintf(stderr, "%s already have been fetched.\n", srcFilePath);
+                    }
+                }
+
+                free(actualSHA256SUM);
+            }
+
+            if (needFetch) {
+                if (http_fetch_to_file(formula->src_url, srcFilePath, options.verbose, options.verbose) != 0) {
+                    ppkg_formula_free(formula);
+                    return PPKG_NETWORK_ERROR;
+                }
+
+                char * actualSHA256SUM = sha256sum_of_file(srcFilePath);
+
+                if (strcmp(actualSHA256SUM, formula->src_sha) == 0) {
+                    free(actualSHA256SUM);
+                } else {
+                    free(actualSHA256SUM);
+                    ppkg_formula_free(formula);
+                    fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->src_sha, actualSHA256SUM);
+                    return PPKG_SHA256_MISMATCH;
+                }
+            }
+
+            if (strcmp(srcFileNameExtension, ".tar.gz") == 0 ||
+                strcmp(srcFileNameExtension, ".tar.xz") == 0 ||
+                strcmp(srcFileNameExtension, ".tar.lz") == 0 ||
+                strcmp(srcFileNameExtension, ".tar.bz2") == 0 ||
+                strcmp(srcFileNameExtension, ".tgz") == 0 ||
+                strcmp(srcFileNameExtension, ".txz") == 0 ||
+                strcmp(srcFileNameExtension, ".tlz") == 0 ||
+                strcmp(srcFileNameExtension, ".tbz2") == 0 ||
+                strcmp(srcFileNameExtension, ".zip") == 0) {
+                free(srcFileNameExtension);
+
+                resultCode = untar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+
+                if (resultCode != PPKG_OK) {
+                    ppkg_formula_free(formula);
+                    return resultCode;
+                }
+            } else {
+                free(srcFileNameExtension);
+
+                size_t  srcFilePath2Length = packageInstallingSrcDirLength + srcFileNameLength + 1;
+                char    srcFilePath2[srcFilePath2Length];
+                memset (srcFilePath2, 0, srcFilePath2Length);
+                sprintf(srcFilePath2, "%s/%s", packageInstallingSrcDir, srcFileName);
+
+                if (cp(srcFilePath, srcFilePath2) != 0) {
+                    ppkg_formula_free(formula);
+                    return resultCode;
+                }
             }
         }
     }
@@ -406,6 +454,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         char * fixFileNameExtension = NULL;
 
         if (get_file_extension_from_url(&fixFileNameExtension, formula->fix_url) < 0) {
+            ppkg_formula_free(formula);
             return PPKG_ERROR;
         }
 
@@ -420,6 +469,40 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         char    fixFilePath[fixFilePathLength];
         memset (fixFilePath, 0, fixFilePathLength);
         sprintf(fixFilePath, "%s/%s", ppkgDownloadsDir, fixFileName);
+
+        bool needFetch = true;
+
+        if (exists_and_is_a_regular_file(fixFilePath)) {
+            char * actualSHA256SUM = sha256sum_of_file(fixFilePath);
+
+            if (strcmp(actualSHA256SUM, formula->fix_sha) == 0) {
+                needFetch = false;
+
+                if (options.verbose) {
+                    fprintf(stderr, "%s already have been fetched.\n", fixFilePath);
+                }
+            }
+
+            free(actualSHA256SUM);
+        }
+
+        if (needFetch) {
+            if (http_fetch_to_file(formula->fix_url, fixFilePath, options.verbose, options.verbose) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_NETWORK_ERROR;
+            }
+
+            char * actualSHA256SUM = sha256sum_of_file(fixFilePath);
+
+            if (strcmp(actualSHA256SUM, formula->fix_sha) == 0) {
+                free(actualSHA256SUM);
+            } else {
+                free(actualSHA256SUM);
+                ppkg_formula_free(formula);
+                fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->fix_sha, actualSHA256SUM);
+                return PPKG_SHA256_MISMATCH;
+            }
+        }
 
         if (strcmp(fixFileNameExtension, ".tar.gz") == 0 ||
             strcmp(fixFileNameExtension, ".tar.xz") == 0 ||
@@ -441,10 +524,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         } else {
             free(fixFileNameExtension);
 
-            size_t  fixFilePath2Length = packageInstallingResDirLength + fixFileNameLength + 1;
+            size_t  fixFilePath2Length = packageInstallingFixDirLength + fixFileNameLength + 1;
             char    fixFilePath2[fixFilePath2Length];
             memset (fixFilePath2, 0, fixFilePath2Length);
-            sprintf(fixFilePath2, "%s/%s", packageInstallingResDir, fixFileName);
+            sprintf(fixFilePath2, "%s/%s", packageInstallingFixDir, fixFileName);
 
             if (cp(fixFilePath, fixFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -459,6 +542,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         char * resFileNameExtension = NULL;
 
         if (get_file_extension_from_url(&resFileNameExtension, formula->res_url) < 0) {
+            ppkg_formula_free(formula);
             return PPKG_ERROR;
         }
 
@@ -473,6 +557,40 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         char    resFilePath[resFilePathLength];
         memset (resFilePath, 0, resFilePathLength);
         sprintf(resFilePath, "%s/%s", ppkgDownloadsDir, resFileName);
+
+        bool needFetch = true;
+
+        if (exists_and_is_a_regular_file(resFilePath)) {
+            char * actualSHA256SUM = sha256sum_of_file(resFilePath);
+
+            if (strcmp(actualSHA256SUM, formula->res_sha) == 0) {
+                needFetch = false;
+
+                if (options.verbose) {
+                    fprintf(stderr, "%s already have been fetched.\n", resFilePath);
+                }
+            }
+
+            free(actualSHA256SUM);
+        }
+
+        if (needFetch) {
+            if (http_fetch_to_file(formula->res_url, resFilePath, options.verbose, options.verbose) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_NETWORK_ERROR;
+            }
+
+            char * actualSHA256SUM = sha256sum_of_file(resFilePath);
+
+            if (strcmp(actualSHA256SUM, formula->res_sha) == 0) {
+                free(actualSHA256SUM);
+            } else {
+                free(actualSHA256SUM);
+                ppkg_formula_free(formula);
+                fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->res_sha, actualSHA256SUM);
+                return PPKG_SHA256_MISMATCH;
+            }
+        }
 
         if (strcmp(resFileNameExtension, ".tar.gz") == 0 ||
             strcmp(resFileNameExtension, ".tar.xz") == 0 ||

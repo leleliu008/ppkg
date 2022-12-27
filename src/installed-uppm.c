@@ -11,7 +11,7 @@
 #include "core/fs.h"
 #include "ppkg.h"
 
-int ppkg_upgrade_self(bool verbose) {
+int ppkg_install_uppm(bool verbose) {
     char * userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
@@ -54,12 +54,12 @@ int ppkg_upgrade_self(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * githubApiUrl = "https://api.github.com/repos/leleliu008/ppkg/releases/latest";
+    const char * githubApiUrl = "https://api.github.com/repos/leleliu008/uppm/releases/latest";
 
     size_t  githubApiResultJsonFilePathLength = ppkgTmpDirLength + 18;
     char    githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
     memset (githubApiResultJsonFilePath, 0, githubApiResultJsonFilePathLength);
-    sprintf(githubApiResultJsonFilePath, "%s/latest-ppkg.json", ppkgTmpDir);
+    sprintf(githubApiResultJsonFilePath, "%s/latest-uppm.json", ppkgTmpDir);
 
     if (http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;
@@ -101,13 +101,8 @@ int ppkg_upgrade_self(bool verbose) {
     fclose(file);
 
     if (latestVersion == NULL) {
-        fprintf(stderr, "can not get latest version.\n");
+        fprintf(stderr, "can not get latest version of uppm.\n");
         return PPKG_ERROR;
-    }
-
-    if (strcmp(latestVersion, PPKG_VERSION) == 0) {
-        LOG_SUCCESS1("this software is already the latest version.");
-        return PPKG_OK;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,12 +124,12 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  tarballFileNameLength = latestVersionLength + strlen(osType) + strlen(osArch) + 15;
     char    tarballFileName[tarballFileNameLength];
     memset( tarballFileName, 0, tarballFileNameLength);
-    sprintf(tarballFileName, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    sprintf(tarballFileName, "uppm-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
 
     size_t  tarballUrlLength = tarballFileNameLength + latestVersionLength + 55;
     char    tarballUrl[tarballUrlLength];
     memset( tarballUrl, 0, tarballUrlLength);
-    sprintf(tarballUrl, "https://github.com/leleliu008/ppkg/releases/download/%s/%s", latestVersion, tarballFileName);
+    sprintf(tarballUrl, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestVersion, tarballFileName);
 
     size_t  tarballFilePathLength = ppkgTmpDirLength + tarballFileNameLength + 2;
     char    tarballFilePath[tarballFilePathLength];
@@ -150,23 +145,16 @@ int ppkg_upgrade_self(bool verbose) {
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t  tarballExtractDirLength = tarballFilePathLength + 3;
-    char    tarballExtractDir[tarballExtractDirLength];
-    memset (tarballExtractDir, 0, tarballExtractDirLength);
-    sprintf(tarballExtractDir, "%s.d", tarballFilePath);
+    size_t  ppkgCoreDirLength = ppkgHomeDirLength + 6;
+    char    ppkgCoreDir[ppkgCoreDirLength];
+    memset (ppkgCoreDir, 0, ppkgCoreDirLength);
+    sprintf(ppkgCoreDir, "%s/core", ppkgHomeDir);
 
-    int resultCode = untar_extract(tarballExtractDir, tarballFilePath, 0, verbose, 1);
+    int resultCode = untar_extract(ppkgCoreDir, tarballFilePath, 0, verbose, 1);
 
     if (resultCode != ARCHIVE_OK) {
         return resultCode;
     }
-
-    size_t  upgradableExecutableFilePathLength = tarballExtractDirLength + 10;
-    char    upgradableExecutableFilePath[upgradableExecutableFilePathLength];
-    memset (upgradableExecutableFilePath, 0, upgradableExecutableFilePathLength);
-    sprintf(upgradableExecutableFilePath, "%s/bin/ppkg", tarballExtractDir);
-
-    printf("the latest version of executable was downloaded to %s\n", upgradableExecutableFilePath);
 
     return PPKG_OK;
 }

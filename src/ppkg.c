@@ -32,7 +32,7 @@ int ppkg_main(int argc, char* argv[]) {
     }
 
     if (strcmp(argv[1], "setup") == 0) {
-        return PPKG_OK;
+        return ppkg_install_uppm(verbose);
     }
 
     if (strcmp(argv[1], "env") == 0) {
