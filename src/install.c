@@ -12,7 +12,7 @@
 #include "core/sysinfo.h"
 #include "core/sha256sum.h"
 #include "core/base16.h"
-#include "core/untar.h"
+#include "core/tar.h"
 #include "core/util.h"
 #include "core/rm-r.h"
 #include "ppkg.h"
@@ -434,7 +434,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 strcmp(srcFileNameExtension, ".zip") == 0) {
                 free(srcFileNameExtension);
 
-                resultCode = untar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+                resultCode = tar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
 
                 if (resultCode != PPKG_OK) {
                     ppkg_formula_free(formula);
@@ -523,7 +523,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             strcmp(fixFileNameExtension, ".zip") == 0) {
             free(fixFileNameExtension);
 
-            resultCode = untar_extract(packageInstallingFixDir, fixFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+            resultCode = tar_extract(packageInstallingFixDir, fixFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
 
             if (resultCode != PPKG_OK) {
                 ppkg_formula_free(formula);
@@ -611,7 +611,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             strcmp(resFileNameExtension, ".zip") == 0) {
             free(resFileNameExtension);
 
-            resultCode = untar_extract(packageInstallingResDir, resFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
+            resultCode = tar_extract(packageInstallingResDir, resFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
 
             if (resultCode != PPKG_OK) {
                 ppkg_formula_free(formula);
@@ -825,11 +825,14 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     size_t n = strlen(PPKG_INSTALL);
 
-    char ppkgInstallShellScript[(n>>1) + 1];
+    size_t n2 = n >> 1;
+
+    printf("------------n=%lu\nn2=%lu\n", n, n2);
+    char ppkgInstallShellScript[n2];
 
     base16_decode(ppkgInstallShellScript, PPKG_INSTALL, n);
 
-    fwrite(ppkgInstallShellScript, 1, (n>>1) + 1, installShellScriptFile);
+    fwrite(ppkgInstallShellScript, 1, n2, installShellScriptFile);
 
     fclose(installShellScriptFile);
 

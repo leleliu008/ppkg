@@ -4,7 +4,7 @@
 
 #include "core/regex/regex.h"
 #include "core/sysinfo.h"
-#include "core/untar.h"
+#include "core/tar.h"
 #include "core/http.h"
 #include "core/util.h"
 #include "core/log.h"
@@ -150,7 +150,7 @@ int ppkg_install_uppm(bool verbose) {
     memset (ppkgCoreDir, 0, ppkgCoreDirLength);
     sprintf(ppkgCoreDir, "%s/core", ppkgHomeDir);
 
-    int resultCode = untar_extract(ppkgCoreDir, tarballFilePath, 0, verbose, 1);
+    int resultCode = tar_extract(ppkgCoreDir, tarballFilePath, 0, verbose, 1);
 
     if (resultCode != ARCHIVE_OK) {
         return resultCode;

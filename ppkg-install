@@ -71,22 +71,6 @@ list() {
     done
 }
 
-list_length() {
-    printf '%s\n' $#
-}
-
-shiftn() {
-    shift "$1" && shift && printf '%s\n' "$@"
-}
-
-globing() {
-    case $1 in
-        '')   ;;
-        \~/*) printf '%s\n' "$HOME/$(printf '%s\n' "$1" | cut -c3-)" ;;
-        *)    printf '%s\n' "$1"
-    esac
-}
-
 sed_in_place() {
     if command -v gsed > /dev/null ; then
         unset SED_IN_PLACE_ACTION
@@ -124,14 +108,6 @@ sed_in_place() {
     fi
 }
 
-getvalue() {
-    if [ $# -eq 0 ] ; then
-        cut -d= -f2
-    else
-        printf '%s\n' "$1" | cut -d= -f2
-    fi
-}
-
 git() {
     if [ -f "$MY_HOME_DIR/cacert.pem" ] ; then
         command git -c http.sslCAInfo="$MY_HOME_DIR/cacert.pem" $*
@@ -140,22 +116,12 @@ git() {
     fi
 }
 
-own() {
-    ls -ld "$1" | cut -d ' ' -f3,4 | tr ' ' ':'
-}
-
 is_integer() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
         (*)               return 0 ;;
     esac
-}
-
-# format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
-  format_unix_timestamp() {
-   date $3 -jf "%s" "$1" "$2" 2> /dev/null ||
-   date $3 -d      "@$1" "$2"
 }
 
 # }}}

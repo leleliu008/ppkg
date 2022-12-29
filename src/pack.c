@@ -4,7 +4,7 @@
 #include "ppkg.h"
 #include "core/fs.h"
 #include "core/log.h"
-#include "core/untar.h"
+#include "core/tar.h"
 #include "core/sysinfo.h"
 
 int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
@@ -78,7 +78,7 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     size_t  ppkgPackingDirLength = ppkgHomeDirLength + 9;
     char    ppkgPackingDir[ppkgPackingDirLength];
     memset (ppkgPackingDir, 0, ppkgPackingDirLength);
-    sprintf(ppkgPackingDir, "%s/packing", userHomeDir);
+    sprintf(ppkgPackingDir, "%s/packing", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(ppkgPackingDir)) {
         if (mkdir(ppkgPackingDir, S_IRWXU) != 0) {
@@ -119,9 +119,9 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     memset (stageArchiveFilePath, 0, stageArchiveFilePathLength);
     sprintf(stageArchiveFilePath, "%s/%s%s", ppkgPackingDir, packingDirName, archiveFileType);
 
-    resultCode = untar_create(packingDirName, stageArchiveFilePath, 0, type, verbose);
+    resultCode = tar_create(packingDirName, stageArchiveFilePath, type, verbose);
 
-    if (resultCode != PPKG_OK) {
+    if (resultCode != 0) {
         return resultCode;
     }
 
@@ -166,29 +166,5 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     memset (finalArchiveFilePath, 0, finalArchiveFilePathLength);
     sprintf(finalArchiveFilePath, "%s/%s%s", ppkgPackedDir, packingDirName, archiveFileType);
 
-    FILE * finalArchiveFile = fopen(finalArchiveFilePath, "r");
-
-    if (finalArchiveFile == NULL) {
-        perror(finalArchiveFilePath);
-        return PPKG_ERROR;
-    }
-
-    FILE * stageArchiveFile = fopen(stageArchiveFilePath, "r");
-
-    if (stageArchiveFile == NULL) {
-        fclose(finalArchiveFile);
-        perror(stageArchiveFilePath);
-        return PPKG_ERROR;
-    }
-
-    unsigned char buff[1024];
-    int  size = 0;
-    while((size = fread(buff, 1, 1024, stageArchiveFile)) != 0) {
-        fwrite(buff, 1, size, finalArchiveFile);
-    }
-
-    fclose(stageArchiveFile);
-    fclose(finalArchiveFile);
-
-    return resultCode;
+    return cp(stageArchiveFilePath, finalArchiveFilePath);
 }

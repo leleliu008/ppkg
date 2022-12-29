@@ -4,7 +4,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "core/untar.h"
+#include "core/tar.h"
 
 #ifndef PPKG_VERSION
 #define PPKG_VERSION "0.0.0"

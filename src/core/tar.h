@@ -19,11 +19,11 @@
             ArchiveType_zip,
         } ArchiveType;
 
-        int untar_list(const char * inputFilePath, int flags);
+        int tar_list(const char * inputFilePath, int flags);
 
-        int untar_create(const char * inputDir, const char * outputFilePath, int flags, ArchiveType type, bool verbose);
+        int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType type, bool verbose);
 
-        int untar_extract(const char * outputDir, const char * inputFilePath, int flags, bool verbose, size_t stripComponentsNumber);
+        int tar_extract(const char * outputDir, const char * inputFilePath, int flags, bool verbose, size_t stripComponentsNumber);
 
     #ifdef __cplasplas
         }
