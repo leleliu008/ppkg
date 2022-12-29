@@ -87,8 +87,12 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-version
 
-        #- run: $VALGRIND ./output/bin/ppkg pack libzip
-        #- run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.xz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip
+      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.gz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.lz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.xz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.bz2
+      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=zip
 
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
