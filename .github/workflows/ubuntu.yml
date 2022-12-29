@@ -21,6 +21,9 @@ jobs:
     steps:
       - run:  apt -y update
       - run:  apt -y install cmake ninja-build pkg-config gcc libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev libsqlite3-dev
+
+      - uses: actions/checkout@main
+
       - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
       - run:  cmake --build   build.d
       - run:  cmake --install build.d

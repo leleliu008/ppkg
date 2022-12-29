@@ -50,11 +50,8 @@ jobs:
             fi
 
 
-            cat > ~/.gitconfig <<EOF
-            [user]
-              email = leleliu008@gmail.com
-              name = leleliu008
-            EOF
+
+            printf '%s\n' '[user]\n\temail = leleliu008@gmail.com\n\tname = leleliu008\n' > ~/.gitconfig
 
 
             run ./output/bin/ppkg
