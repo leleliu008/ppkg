@@ -765,6 +765,11 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             struct tm *tms = localtime(&tt);
 
             formula->version = (char*)calloc(11, sizeof(char));
+
+            if (formula->version == NULL) {
+                return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+            }
+
             strftime(formula->version, 11, "%Y.%m.%d", tms);
         }
     }
@@ -828,6 +833,12 @@ int ppkg_formula_parse(const char * packageName, PPKGFormula * * out) {
                 } else if (lastTokenType == 2) {
                     if (formula == NULL) {
                         formula = (PPKGFormula*)calloc(1, sizeof(PPKGFormula));
+
+                        if (formula == NULL) {
+                            resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+                            goto clean;
+                        }
+
                         formula->path = formulaFilePath;
                         formula->shallow = true;
                         formula->symlink = true;

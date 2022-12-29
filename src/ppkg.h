@@ -15,6 +15,8 @@
 #define PPKG_OK               0
 #define PPKG_ERROR            1
 
+#define PPKG_ERROR_ALLOCATE_MEMORY_FAILED  2
+
 #define PPKG_ARG_IS_NULL      10
 #define PPKG_ARG_IS_EMPTY     11
 #define PPKG_ARG_IS_INVALID   12

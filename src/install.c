@@ -19,66 +19,6 @@
 
 extern int record_installed_files(const char * installedDirPath);
 
-static int ppkg_xx(char * packageName, char * * * depPackageNameArrayListP,  PPKGFormula * * * formulasP, size_t * sizeP, size_t * capcityP) {
-    PPKGFormula * formula = NULL;
-
-    int resultCode = ppkg_formula_parse(packageName, &formula);
-
-    if (resultCode != PPKG_OK) {
-        return resultCode;
-    }
-
-    if ((*sizeP) == (*capcityP)) {
-        size_t capcity = (*capcityP) + 5;
-
-        char ** depPackageNameArrayList = (char**)realloc(*depPackageNameArrayListP, capcity * sizeof(char*));
-
-        if (depPackageNameArrayList == NULL) {
-            return -1;
-        }
-
-        PPKGFormula ** formulaArrayList = (PPKGFormula**)realloc(*formulasP, capcity * sizeof(PPKGFormula*));
-
-        if (formulaArrayList == NULL) {
-            return -1;
-        }
-
-        (*capcityP) = capcity;
-        (*depPackageNameArrayListP) = depPackageNameArrayList;
-        (*formulasP) = formulaArrayList;
-    }
-
-    (*depPackageNameArrayListP)[*sizeP] = packageName;
-    (*formulasP)[*sizeP] = formula;
-
-    (*sizeP)++;
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->dep_pkg != NULL) {
-        size_t depPackageNamesLength = strlen(formula->dep_pkg);
-        size_t depPackageNamesCopyLength = depPackageNamesLength + 1;
-        char   depPackageNamesCopy[depPackageNamesCopyLength];
-        memset(depPackageNamesCopy, 0, depPackageNamesCopyLength);
-        strcpy(depPackageNamesCopy, formula->dep_pkg);
-
-        char * p;
-        char * depPackageName = strtok_r(depPackageNamesCopy, " ", &p);
-
-        while (depPackageName != NULL) {
-            resultCode = ppkg_xx(depPackageName, depPackageNameArrayListP, formulasP, sizeP, capcityP);
-
-            if (resultCode != PPKG_OK) {
-                return resultCode;
-            }
-
-            depPackageName = strtok_r(NULL, " ", &p);
-        }
-    }
-
-    return PPKG_OK;
-}
-
 static int ppkg_yy(const char * packageName, PPKGFormula * formula, char **out, size_t * capcity) {
     bool newFormula = false;
 

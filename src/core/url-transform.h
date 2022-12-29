@@ -7,6 +7,7 @@
 #define URL_TRANSFORM_ENV_IS_NOT_SET    103
 #define URL_TRANSFORM_ENV_VALUE_IS_EMPTY      104
 #define URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST 105
+#define URL_TRANSFORM_ALLOCATE_MEMORY_FAILED   106
 
 int url_transform(const char * inUrl, char * * outUrlPointer);
 

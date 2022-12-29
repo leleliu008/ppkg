@@ -10,9 +10,19 @@
 
 PPKGFormulaRepo* ppkg_formula_repo_default_new(char * userHomeDir, size_t userHomeDirLength) {
     char *  formulaRepoPath = (char*)calloc(userHomeDirLength + 30, sizeof(char));
+
+    if (formulaRepoPath == NULL) {
+        return NULL;
+    }
+
     sprintf(formulaRepoPath, "%s/.ppkg/repos.d/offical-core", userHomeDir);
 
     PPKGFormulaRepo * formulaRepo = (PPKGFormulaRepo*)calloc(1, sizeof(PPKGFormulaRepo));
+
+    if (formulaRepo == NULL) {
+        return NULL;
+    }
+
     formulaRepo->branch = strdup("master");
     formulaRepo->name   = strdup("offical-core");
     formulaRepo->url    = strdup("https://github.com/leleliu008/ppkg-formula-repository-offical-core");

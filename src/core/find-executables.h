@@ -14,7 +14,8 @@ typedef struct {
 #define FIND_EXECUTABLES_ERROR               2
 #define FIND_EXECUTABLES_ARG_INVALID         3
 #define FIND_EXECUTABLES_ENV_PATH_NO_VALUE   4
+#define FIND_EXECUTABLES_ALLOCATE_MEMORY_FAILED 5
 
-int find_executables(ExecuablePathList ** out, const char * commandName, bool findAll);
+int find_executables(ExecuablePathList * out, const char * commandName, bool findAll);
 
 #endif

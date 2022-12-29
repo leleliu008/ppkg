@@ -61,8 +61,6 @@ string(TIMESTAMP COMPILED_TIMESTAMP "%Y-%m-%d %H:%M:%S UTC" UTC)
 
 file(READ ppkg-install PPKG_INSTALL HEX)
 
-message(STATUS "PPKG_INSTALL = ${PPKG_INSTALL}")
-
 ########################################################################################
 
 message(STATUS "CMAKE_HOST_SYSTEM_NAME = ${CMAKE_HOST_SYSTEM_NAME}")

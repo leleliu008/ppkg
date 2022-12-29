@@ -3,13 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
-
-#define URL_TRANSFORM_OK                0
-#define URL_TRANSFORM_ERROR             101
-#define URL_TRANSFORM_RUN_EMPTY_RESULT  102
-#define URL_TRANSFORM_ENV_IS_NOT_SET    103
-#define URL_TRANSFORM_ENV_VALUE_IS_EMPTY      104
-#define URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST 105
+#include "url-transform.h"
 
 int url_transform(const char * url, char ** out) {
     char * urlTransformCommandPath = getenv("URL_TRANSFORM");
@@ -44,7 +38,7 @@ int url_transform(const char * url, char ** out) {
         return URL_TRANSFORM_ERROR;
     }
 
-    size_t capcity = 256;
+    size_t capcity = 0;
     size_t size    = 0;
     char * result = NULL;
     char   c;
@@ -60,11 +54,22 @@ int url_transform(const char * url, char ** out) {
             break;
         }
 
-        if (size == 0) {
-            result = (char*)calloc(capcity, sizeof(char));
-        } else if (capcity == size) {
-            capcity += capcity;
-            result = (char*)realloc(result, capcity);
+        if (capcity == size) {
+            capcity += 256;
+
+            char * ptr = (char*)calloc(capcity, sizeof(char));
+
+            if (ptr == NULL) {
+                pclose(file);
+                return URL_TRANSFORM_ALLOCATE_MEMORY_FAILED;
+            }
+
+            if (size > 0) {
+                strncpy(ptr, result, size);
+                free(result);
+            }
+
+            result = ptr;
         }
 
         result[size] = c;

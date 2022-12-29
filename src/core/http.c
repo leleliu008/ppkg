@@ -34,6 +34,8 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
             return URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST;
         case URL_TRANSFORM_RUN_EMPTY_RESULT:
             return URL_TRANSFORM_RUN_EMPTY_RESULT;
+        case URL_TRANSFORM_ALLOCATE_MEMORY_FAILED:
+            return URL_TRANSFORM_ALLOCATE_MEMORY_FAILED;
     }
 
     if (outputFile == NULL) {

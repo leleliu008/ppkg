@@ -212,7 +212,7 @@ typedef struct {
 
 int list_files(const char * dirPath, bool verbose, StringArrayList * stringArrayList) {
     if ((dirPath == NULL) || (strcmp(dirPath, "") == 0)) {
-        return 1;
+        return -1;
     }
 
     DIR * dir;
@@ -222,7 +222,7 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
 
     if (dir == NULL) {
         perror(dirPath);
-        return 2;
+        return -2;
     }
 
     int r = 0;
@@ -254,6 +254,11 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
                 if (stringArrayList->size == stringArrayList->capcity) {
                     stringArrayList->capcity += 10;
                     stringArrayList->array = (char**)realloc(stringArrayList->array, (stringArrayList->capcity) * sizeof(char*));
+
+                    if (stringArrayList->array == NULL) {
+                        r = -3;
+                        break;
+                    }
                 }
                 stringArrayList->array[stringArrayList->size] = strdup(filePath);
                 stringArrayList->size += 1;

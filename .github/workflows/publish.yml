@@ -1,0 +1,87 @@
+name: publish
+
+on:
+  workflow_dispatch
+
+jobs:
+  macos:
+    runs-on: macos-latest
+
+    env:
+      ACLOCAL_PATH: /usr/local/share/aclocal
+      MACOSX_DEPLOYMENT_TARGET: 10.15
+
+    steps:
+      - uses: actions/checkout@main
+
+      - run: brew uninstall go@1.17
+
+      - run: brew update
+      - run: brew install --overwrite python@3.10 python@3.11
+
+      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+      - run: chmod a+x ppkg
+      - run: ./ppkg setup --use-system-package-manager
+      - run: ./ppkg update
+
+      - run: |
+          V=$(sed -n '/set(PROJECT_VERSION /p' CMakeLists.txt | sed 's|set(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<EOF
+          git-sha: ${{ github.sha }}
+          src-url: dir://$PWD
+          version: $V
+          EOF
+
+      - run: ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+      - run: ./ppkg pack    ppkg
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ppkg-macos-tar-xz
+          path: /opt/ppkg/cache.d/bin/*.tar.xz
+
+  linux:
+    needs: macos
+    runs-on: ubuntu-latest
+
+    container: alpine:3.16
+
+    env:
+      ACLOCAL_PATH: /usr/share/aclocal
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+    steps:
+      - run: apk update
+      - run: apk add git
+
+      - uses: actions/checkout@main
+
+      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+      - run: chmod a+x ppkg
+      - run: ./ppkg setup --use-system-package-manager
+      - run: ./ppkg update
+
+      - run: |
+          V=$(sed -n '/set(PROJECT_VERSION /p' CMakeLists.txt | sed 's|set(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<EOF
+          git-sha: ${{ github.sha }}
+          src-url: dir://$PWD
+          version: $V
+          EOF
+
+      - run: ./ppkg install ppkg gh --link-type=static-only --install-lib=static
+      - run: ./ppkg pack    ppkg
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ppkg-macos-tar-xz
+          path: /opt/ppkg/cache.d/bin/
+
+      - run: ls -a
+      - run: ls /opt/ppkg/cache.d/bin
+
+      - run: printf '%s\n' "$RELEASE_TOKEN" | /opt/ppkg/installed/gh/bin/gh auth login --with-token
+
+      - run: git config --global --add safe.directory /__w/ppkg/uppm
+
+      - run: /opt/ppkg/installed/gh/bin/gh release create $(./ppkg info ppkg version) /opt/ppkg/cache.d/bin/*

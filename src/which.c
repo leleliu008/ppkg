@@ -24,23 +24,20 @@ int main2(int argc, char* argv[]) {
         }
     }
 
-    ExecuablePathList * pathList = NULL;
+    ExecuablePathList pathList = {0};
 
     int resultCode = find_executables(&pathList, argv[1], findAll);
 
     if (resultCode == 0) {
-        for (size_t i = 0; i < pathList->size; i++) {
-            printf("%s\n", pathList->paths[i]);
+        for (size_t i = 0; i < pathList.size; i++) {
+            printf("%s\n", pathList.paths[i]);
 
-            free(pathList->paths[i]);
-            pathList->paths[i] = NULL;
+            free(pathList.paths[i]);
+            pathList.paths[i] = NULL;
         }
 
-        free(pathList->paths);
-        pathList->paths = NULL;
-
-        free(pathList);
-        pathList = NULL;
+        free(pathList.paths);
+        pathList.paths = NULL;
     }
 
     return resultCode;

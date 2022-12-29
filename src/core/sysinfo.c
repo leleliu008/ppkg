@@ -359,6 +359,10 @@ int sysinfo_ncpu(size_t * out) {
 int sysinfo_make(SysInfo * * out) {
     SysInfo * sysinfo = (SysInfo*)calloc(1, sizeof(SysInfo));
 
+    if (sysinfo == NULL) {
+        return -1;
+    }
+
     char * arch = NULL;
     sysinfo_arch(&arch);
     sysinfo->arch = arch;

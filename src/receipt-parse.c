@@ -550,6 +550,10 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
 
     char * receiptFilePath = (char*)calloc(userHomeDirLength + strlen(packageName) + 36, sizeof(char));
 
+    if (receiptFilePath == NULL) {
+        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+    }
+
     sprintf(receiptFilePath, "%s/.ppkg/installed/%s/.ppkg/receipt.yml", userHomeDir, packageName);
 
     FILE * file = fopen(receiptFilePath, "r");
@@ -599,12 +603,19 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
                 } else if (lastTokenType == 2) {
                     if (receipt == NULL) {
                         receipt = (PPKGReceipt*)calloc(1, sizeof(PPKGReceipt));
+
+                        if (receipt == NULL) {
+                            resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+                            goto clean;
+                        }
+
                         receipt->path = receiptFilePath;
                         receipt->shallow = true;
                         receipt->symlink = true;
                         receipt->binbstd = false;
                         receipt->parallel = true;
                     }
+
                     ppkg_receipt_set_value(receiptKeyCode, (char*)token.data.scalar.value, receipt);
                 }
                 break;
