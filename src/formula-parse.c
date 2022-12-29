@@ -617,7 +617,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (formula->version == NULL) {
-        if (formula->src_url != NULL) {
+        if ((formula->src_url != NULL) && (!formula->src_is_dir)) {
             size_t urlLength = strlen(formula->src_url);
             size_t urlCopyLength = urlLength + 1;
             char   urlCopy[urlCopyLength];

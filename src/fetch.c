@@ -84,7 +84,7 @@ int ppkg_fetch_all_available_packages(bool verbose) {
 }
 
 static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength) {
-    size_t  gitDirLength = ppkgDownloadsDirLength + 23;
+    size_t  gitDirLength = ppkgDownloadsDirLength + strlen(packageName) + 6;
     char    gitDir[gitDirLength];
     memset (gitDir, 0, gitDirLength);
     sprintf(gitDir, "%s/%s.git", ppkgDownloadsDir, packageName);

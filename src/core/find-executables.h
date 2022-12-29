@@ -9,8 +9,7 @@ typedef struct {
     size_t  size;
 } ExecuablePathList;
 
-#define FIND_EXECUTABLES_FOUND               0
-#define FIND_EXECUTABLES_NOT_FOUND           1
+#define FIND_EXECUTABLES_OK                  0
 #define FIND_EXECUTABLES_ERROR               2
 #define FIND_EXECUTABLES_ARG_INVALID         3
 #define FIND_EXECUTABLES_ENV_PATH_NO_VALUE   4

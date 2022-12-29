@@ -1885,26 +1885,26 @@ main() {
 
     #######################################################################################
 
-    CURRENT_USER__NAME="$(id -n -u)"
-    CURRENT_GROUP_NAME="$(id -n -g)"
+    # CURRENT_USER__NAME="$(id -n -u)"
+    # CURRENT_GROUP_NAME="$(id -n -g)"
 
-    if [ -d "$MY_HOME_DIR" ] ; then
-        if [ -r "$MY_HOME_DIR" ] && [ -w "$MY_HOME_DIR" ] && [ -x "$MY_HOME_DIR" ] ; then
-            :
-        else
-            if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-                     chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
-            else
-                sudo chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
-            fi
-        fi
-    else
-        if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-                 install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
-        else
-            sudo install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
-        fi
-    fi
+    # if [ -d "$MY_HOME_DIR" ] ; then
+    #     if [ -r "$MY_HOME_DIR" ] && [ -w "$MY_HOME_DIR" ] && [ -x "$MY_HOME_DIR" ] ; then
+    #         :
+    #     else
+    #         if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
+    #                  chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
+    #         else
+    #             sudo chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
+    #         fi
+    #     fi
+    # else
+    #     if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
+    #              install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
+    #     else
+    #         sudo install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
+    #     fi
+    # fi
 
     #######################################################################################
 
@@ -2043,22 +2043,8 @@ main() {
     if [ -n "$PACKAGE_DEP_UPP" ] ; then
         step "install depentent tools via uppm"
 
-        UPPM_NEED_UPDATE=yes
-
-        for item in $PACKAGE_DEP_UPP
-        do
-            if "$UPPM_COMMAND" is-installed "$item" ; then
-                note "package [$item] already has been installed."
-            else
-                if [ "$UPPM_NEED_UPDATE" = yes ] ; then
-                    UPPM_NEED_UPDATE=no
-                    run "$UPPM_COMMAND" update
-                fi
-
-                run "$UPPM_COMMAND" install "$item"
-            fi
-            # bppend_to_PATH "$("$UPPM_COMMAND" info "$item" installed-dir)/bin"
-        done
+        run "$UPPM_COMMAND" update
+        run "$UPPM_COMMAND" install $PACKAGE_DEP_UPP
     fi
 
     #########################################################################################
@@ -2081,8 +2067,11 @@ main() {
 
         "$PPKG_EXECUTABLE" depends "$1" --format=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
         "$PPKG_EXECUTABLE" depends "$1" --format=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
-        "$PPKG_EXECUTABLE" depends "$1" --format=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-        "$PPKG_EXECUTABLE" depends "$1" --format=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+
+        if command -v dot > /dev/null ; then
+            "$PPKG_EXECUTABLE" depends "$1" --format=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
+            "$PPKG_EXECUTABLE" depends "$1" --format=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+        fi
 
         if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
@@ -2166,38 +2155,20 @@ main() {
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        command -v rustup > /dev/null || {
-            # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
+    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+        step "tree files of the installing top directory"
+        run tree --dirsfirst -L 2 "$PACKAGE_INSTALLING_TOP_DIR"
 
-            if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
-                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
-            fi
+        step "list files of the installing top directory"
+        run ls -l "$PACKAGE_INSTALLING_TOP_DIR"
 
-            wfetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+        step "list files of the installing src directory"
+        run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
 
-            run bash "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y || return 1
-
-            export CARGO_HOME=$HOME/.cargo
-            export PATH="$CARGO_HOME/bin:$PATH"
-        }
-    fi
-
-    #########################################################################################
-
-    step "tree files of the installing top directory"
-    run tree --dirsfirst -L 2 "$PACKAGE_INSTALLING_TOP_DIR"
-
-    step "list files of the installing top directory"
-    run ls -l "$PACKAGE_INSTALLING_TOP_DIR"
-
-    step "list files of the installing src directory"
-    run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
-
-    if [ -n "$PACKAGE_BSCRIPT" ] ; then
-        step "list files of the installing build script directory"
-        run ls -l "$PACKAGE_INSTALLING_BST_DIR"
+        if [ -n "$PACKAGE_BSCRIPT" ] ; then
+            step "list files of the installing build script directory"
+            run ls -l "$PACKAGE_INSTALLING_BST_DIR"
+        fi
     fi
 
     if [ "$CCACHE_ENABLED" = yes ] ; then

@@ -67,9 +67,5 @@ int find_executables(ExecuablePathList * pathList, const char * commandName, boo
         PATHItem = strtok(NULL, ":");
     }
 
-    if (pathList->size == 0) {
-        return FIND_EXECUTABLES_NOT_FOUND;
-    } else {
-        return FIND_EXECUTABLES_FOUND;
-    }
+    return FIND_EXECUTABLES_OK;
 }

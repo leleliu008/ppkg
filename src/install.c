@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include "core/fs.h"
+#include "core/git.h"
 #include "core/log.h"
 #include "core/http.h"
 #include "core/sysinfo.h"
@@ -15,6 +16,7 @@
 #include "core/tar.h"
 #include "core/util.h"
 #include "core/rm-r.h"
+#include "core/find-executables.h"
 #include "ppkg.h"
 
 extern int record_installed_files(const char * installedDirPath);
@@ -289,6 +291,118 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fprintf(stderr, "prepare to install package [%s].\n", packageName);
 
+    bool cargo = false;
+
+    if (formula->bsystem != NULL) {
+        char * bsystem = strtok(formula->bsystem, " ");
+
+        while (bsystem != NULL) {
+            if (strcmp(bsystem, "cargo") == 0) {
+                cargo = true;
+                break;
+            }
+
+            bsystem = strtok(NULL, " ");
+        }
+    }
+
+    if (cargo) {
+        size_t  cargoHomeDirLength = userHomeDirLength + 8;
+        char    cargoHomeDir[cargoHomeDirLength];
+        memset( cargoHomeDir, 0, cargoHomeDirLength);
+        sprintf(cargoHomeDir, "%s/.cargo", userHomeDir);
+
+        char * CARGO_HOME = getenv("CARGO_HOME");
+
+        if (CARGO_HOME == NULL) {
+            if (exists_and_is_a_directory(cargoHomeDir)) {
+                setenv("CARGO_HOME", cargoHomeDir, 1);
+
+                char * PATH = getenv("PATH");
+
+                if (PATH == NULL || strcmp(PATH, "") == 0) {
+                    ppkg_formula_free(formula);
+                    return PPKG_ENV_PATH_NOT_SET;
+                }
+
+                size_t  newPATHLength = cargoHomeDirLength + strlen(PATH) + 2;
+                char    newPATH[newPATHLength];
+                memset( newPATH, 0, newPATHLength);
+                sprintf(newPATH, "%s:%s", cargoHomeDir, PATH);
+
+                setenv("PATH", newPATH, 1);
+            }
+        }
+
+        ExecuablePathList pathList = {0};
+
+        resultCode = find_executables(&pathList, "rustup", false);
+
+        if (resultCode != 0) {
+            ppkg_formula_free(formula);
+            return resultCode;
+        }
+
+        if (pathList.size == 0) {
+            LOG_INFO("rustup command is required, but it is not found on this machine, I will install it via running shell script.");
+
+            size_t  rustupInitScriptFilePathLength = ppkgHomeDirLength + 16;
+            char    rustupInitScriptFilePath[rustupInitScriptFilePathLength];
+            memset( rustupInitScriptFilePath, 0, rustupInitScriptFilePathLength);
+            sprintf(rustupInitScriptFilePath, "%s/rustup-init.sh", ppkgHomeDir);
+
+            if (exists_and_is_a_regular_file(rustupInitScriptFilePath)) {
+                if (unlink(rustupInitScriptFilePath) != 0) {
+                    perror(rustupInitScriptFilePath);
+                    ppkg_formula_free(formula);
+                    return PPKG_ERROR;
+                }
+            }
+
+            if (http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, options.verbose, options.verbose) != 0) {
+                ppkg_formula_free(formula);
+                return PPKG_NETWORK_ERROR;
+            }
+
+            size_t  cmdLength = ppkgHomeDirLength + 9;
+            char    cmd[cmdLength];
+            memset( cmd, 0, cmdLength);
+            sprintf(cmd, "bash %s -y", rustupInitScriptFilePath);
+
+            resultCode = system(cmd);
+
+            if (resultCode != 0) {
+                perror(cmd);
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+
+            setenv("CARGO_HOME", cargoHomeDir, 1);
+
+            char * PATH = getenv("PATH");
+
+            if (PATH == NULL || strcmp(PATH, "") == 0) {
+                ppkg_formula_free(formula);
+                return PPKG_ENV_PATH_NOT_SET;
+            }
+
+            size_t  newPATHLength = cargoHomeDirLength + 2;
+            char    newPATH[newPATHLength];
+            memset( newPATH, 0, newPATHLength);
+            sprintf(newPATH, "%s:%s", cargoHomeDir, PATH);
+
+            setenv("PATH", newPATH, 1);
+        } else {
+            free(pathList.paths[0]);
+            pathList.paths[0] = NULL;
+
+            free(pathList.paths);
+            pathList.paths = NULL;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
     char    ppkgDownloadsDir[ppkgDownloadsDirLength];
     memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
@@ -305,10 +419,48 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->src_url == NULL) {
+        size_t  gitDirLength = ppkgDownloadsDirLength + packageNameLength + 6;
+        char    gitDir[gitDirLength];
+        memset (gitDir, 0, gitDirLength);
+        sprintf(gitDir, "%s/%s.git", ppkgDownloadsDir, packageName);
 
+        if (exists_and_is_a_directory(gitDir)) {
+            resultCode = do_git_pull(gitDir, NULL, NULL);
+        } else {
+            resultCode = do_git_clone(formula->git_url, gitDir);
+        }
+
+        if (resultCode != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return resultCode;
+        }
+
+        size_t  cmdLength = gitDirLength + packageInstallingSrcDirLength + 10;
+        char    cmd[cmdLength];
+        memset (cmd, 0, cmdLength);
+        sprintf(cmd, "cp -r %s/. %s", gitDir, packageInstallingSrcDir);
+
+        printf("%s\n", cmd);
+        resultCode = system(cmd);
+
+        if (resultCode != 0) {
+            ppkg_formula_free(formula);
+            return resultCode;
+        }
     } else {
         if (formula->src_is_dir) {
+            size_t  cmdLength = strlen(formula->src_url) + packageInstallingSrcDirLength + 10 - 6;
+            char    cmd[cmdLength];
+            memset (cmd, 0, cmdLength);
+            sprintf(cmd, "cp -r %s/. %s", &formula->src_url[6], packageInstallingSrcDir);
 
+            printf("%s\n", cmd);
+            resultCode = system(cmd);
+
+            if (resultCode != 0) {
+                ppkg_formula_free(formula);
+                return resultCode;
+            }
         } else {
             char * srcFileNameExtension = NULL;
 
@@ -347,6 +499,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
             if (needFetch) {
                 if (http_fetch_to_file(formula->src_url, srcFilePath, options.verbose, options.verbose) != 0) {
+                    free(srcFileNameExtension);
                     ppkg_formula_free(formula);
                     return PPKG_NETWORK_ERROR;
                 }
@@ -357,6 +510,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                     free(actualSHA256SUM);
                 } else {
                     free(actualSHA256SUM);
+                    free(srcFileNameExtension);
                     ppkg_formula_free(formula);
                     fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->src_sha, actualSHA256SUM);
                     return PPKG_SHA256_MISMATCH;
@@ -436,6 +590,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
         if (needFetch) {
             if (http_fetch_to_file(formula->fix_url, fixFilePath, options.verbose, options.verbose) != 0) {
+                free(fixFileNameExtension);
                 ppkg_formula_free(formula);
                 return PPKG_NETWORK_ERROR;
             }
@@ -446,6 +601,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 free(actualSHA256SUM);
             } else {
                 free(actualSHA256SUM);
+                free(fixFileNameExtension);
                 ppkg_formula_free(formula);
                 fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->fix_sha, actualSHA256SUM);
                 return PPKG_SHA256_MISMATCH;
@@ -524,6 +680,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
         if (needFetch) {
             if (http_fetch_to_file(formula->res_url, resFilePath, options.verbose, options.verbose) != 0) {
+                free(resFileNameExtension);
                 ppkg_formula_free(formula);
                 return PPKG_NETWORK_ERROR;
             }
@@ -534,6 +691,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 free(actualSHA256SUM);
             } else {
                 free(actualSHA256SUM);
+                free(resFileNameExtension);
                 ppkg_formula_free(formula);
                 fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->res_sha, actualSHA256SUM);
                 return PPKG_SHA256_MISMATCH;
@@ -688,6 +846,8 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         case PPKGLinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='%s'\n\n", "shared-prefered");
     }
 
+    fprintf(installShellScriptFile, "INSTALL_LIB=yes\n\n");
+
     fprintf(installShellScriptFile, "PPKG_VERSION='%s'\n", PPKG_VERSION);
     fprintf(installShellScriptFile, "PPKG_HOME='%s'\n", ppkgHomeDir);
     fprintf(installShellScriptFile, "PPKG_EXECUTABLE='%s'\n\n", currentExecutablePath);
@@ -767,7 +927,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     size_t n2 = n >> 1;
 
-    printf("------------n=%lu\nn2=%lu\n", n, n2);
     char ppkgInstallShellScript[n2];
 
     base16_decode(ppkgInstallShellScript, PPKG_INSTALL, n);
