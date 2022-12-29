@@ -1,0 +1,140 @@
+name: NetBSD
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  test:
+    runs-on: macos-12
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [9]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.vagrant.d/boxes
+          key: vagrant-generic-netbsd-${{ matrix.version }}
+          restore-keys: |
+            vagrant-generic-netbsd-${{ matrix.version }}
+
+      - uses: leleliu008/github-actions-vagrant@v1
+        with:
+          mem: 2048
+          box: generic/netbsd${{ matrix.version }}
+          run: |
+            run sudo pkgin -y install cmake ninja-build pkg-config clang curl libgit2 libarchive libyaml jansson sqlite
+
+            run cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+            run cmake --build   build.d
+            run cmake --install build.d
+
+
+            export LD_LIBRARY_PATH=/usr/pkg/lib
+
+            run sudo rm -rf /usr/pkg/etc/openssl
+            run sudo pkgin -y install mozilla-rootcerts
+            run sudo mozilla-rootcerts install
+
+            if [ ${{matrix.version}} -eq 8 ] ; then
+                export SSL_CERT_FILE=/usr/pkg/etc/openssl/certs/ca-certificates.crt
+            else
+                export SSL_CERT_FILE=/etc/openssl/certs/ca-certificates.crt
+            fi
+
+
+            cat > ~/.gitconfig <<EOF
+            [user]
+              email = leleliu008@gmail.com
+              name = leleliu008
+            EOF
+
+
+            run ./output/bin/ppkg
+
+            run ./output/bin/ppkg --help
+            run ./output/bin/ppkg -h
+
+            run ./output/bin/ppkg --version
+            run ./output/bin/ppkg -V
+
+            run ./output/bin/ppkg setup
+
+            run ./output/bin/ppkg env
+            run ./output/bin/ppkg env -v
+
+            run ./output/bin/ppkg integrate zsh
+            run ./output/bin/ppkg integrate zsh -v
+
+            run ./output/bin/ppkg update
+
+            run ./output/bin/ppkg search lib
+            run ./output/bin/ppkg search zip
+
+            run ./output/bin/ppkg info @all
+            run ./output/bin/ppkg info libzip
+            run ./output/bin/ppkg info libzip --yaml
+            run ./output/bin/ppkg info libzip --json
+            run ./output/bin/ppkg info libzip summary
+            run ./output/bin/ppkg info libzip version
+            run ./output/bin/ppkg info libzip license
+            run ./output/bin/ppkg info libzip web-url
+            run ./output/bin/ppkg info libzip src-url
+            run ./output/bin/ppkg info libzip src-sha
+
+            run ./output/bin/ppkg depends libzip
+            run ./output/bin/ppkg depends libzip --format=dot
+            run ./output/bin/ppkg depends libzip --format=box
+
+            run ./output/bin/ppkg fetch gzip
+            run ./output/bin/ppkg fetch gsed -v
+
+            run ./output/bin/ppkg install libzip
+
+            run ./output/bin/ppkg tree libzip
+
+            run  ./output/bin/ppkg info libzip installed-dir
+            run  ./output/bin/ppkg info libzip installed-files
+            run  ./output/bin/ppkg info libzip installed-receipt-path
+            run  ./output/bin/ppkg info libzip installed-receipt-json
+            run  ./output/bin/ppkg info libzip installed-receipt-yaml
+            run  ./output/bin/ppkg info libzip installed-timestamp-unix
+            run  ./output/bin/ppkg info libzip installed-timestamp-iso-8601
+            run  ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
+            run  ./output/bin/ppkg info libzip installed-version
+
+            run ./output/bin/ppkg pack libzip
+            run ./output/bin/ppkg pack libzip --type=tar.gz
+            run ./output/bin/ppkg pack libzip --type=tar.lz
+            run ./output/bin/ppkg pack libzip --type=tar.xz
+            run ./output/bin/ppkg pack libzip --type=tar.bz2
+            run ./output/bin/ppkg pack libzip --type=zip
+
+            printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+
+            run ./output/bin/ppkg ls-available
+            run ./output/bin/ppkg ls-installed
+            run ./output/bin/ppkg ls-outdated
+
+            run ./output/bin/ppkg is-available libzip
+            run ./output/bin/ppkg is-installed libzip
+            run ./output/bin/ppkg is-outdated  libzip
+
+            run ./output/bin/ppkg upgrade   libzip
+            run ./output/bin/ppkg reinstall libzip
+            run ./output/bin/ppkg uninstall libzip
+
+            run ./output/bin/ppkg formula-repo-list
+            run ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+            run ./output/bin/ppkg formula-repo-del my_repo
+
+            run ./output/bin/ppkg cleanup
+
+            #run ./output/bin/ppkg upgrade-self
