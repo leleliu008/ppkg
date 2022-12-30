@@ -40,7 +40,7 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg --version
       - run: $VALGRIND ./output/bin/ppkg -V
 
-      - run: $VALGRIND ./output/bin/ppkg setup
+      - run: $VALGRIND ./output/bin/ppkg setup -v
 
       - run: $VALGRIND ./output/bin/ppkg env
       - run: $VALGRIND ./output/bin/ppkg env -v

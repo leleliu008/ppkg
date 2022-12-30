@@ -39,7 +39,7 @@ jobs:
       - run: ./output/bin/ppkg --version
       - run: ./output/bin/ppkg -V
 
-      - run: ./output/bin/ppkg setup
+      - run: ./output/bin/ppkg setup -v
 
       - run: ./output/bin/ppkg env
       - run: ./output/bin/ppkg env -v

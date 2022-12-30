@@ -20,7 +20,7 @@ jobs:
       - run: bin/ppkg --help
       - run: bin/ppkg --version
 
-      - run: bin/ppkg setup
+      - run: bin/ppkg setup -v
 
       - run: bin/ppkg env
 

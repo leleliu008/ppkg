@@ -28,7 +28,7 @@ jobs:
       - run: bin/ppkg --homedir
       - run: bin/ppkg --homepage
 
-      - run: bin/ppkg setup
+      - run: bin/ppkg setup -v
 
       - run: bin/ppkg env
 
