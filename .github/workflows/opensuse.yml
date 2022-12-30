@@ -1,4 +1,4 @@
-name: AlpineLinux
+name: openSUSE
 
 on:
   push:
@@ -7,19 +7,19 @@ on:
     branches: [ master, dev ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
+  opensuse:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['3.16','3.15','3.14','3.13']
+        flavor: ['tumbleweed', 'leap:15.4']
 
-    container: alpine:${{ matrix.tag }}
+    runs-on: ubuntu-latest
+
+    container: opensuse/${{ matrix.flavor }}
 
     steps:
-      - run: apk update
-      - run: apk add cmake ninja gcc pkgconf libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+      - run: zypper update  -y
+      - run: zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel sqlite3-devel
 
       - uses: actions/checkout@main
 
@@ -75,7 +75,7 @@ jobs:
       - run: ./output/bin/ppkg fetch gzip
       - run: ./output/bin/ppkg fetch gsed -v
 
-      - run: apk add curl g++ libc-dev linux-headers
+      - run: zypper install -y gcc-c++
 
       - run: ./output/bin/ppkg install libzip
 

@@ -2,9 +2,9 @@ name: version-compare
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master ]
   schedule:
     - cron: '* 20 * * *'
 
@@ -16,6 +16,7 @@ jobs:
     steps:
       - run: brew update
       - run: brew uninstall go@1.17
+      - run: brew install --overwrite python@3.10 python@3.11
 
       - uses: actions/checkout@v3
 
