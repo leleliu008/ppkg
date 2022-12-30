@@ -61,48 +61,45 @@ int ppkg_install_uppm(bool verbose) {
     memset (githubApiResultJsonFilePath, 0, githubApiResultJsonFilePathLength);
     sprintf(githubApiResultJsonFilePath, "%s/latest-uppm.json", ppkgTmpDir);
 
-    if (http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose) != 0) {
-        return PPKG_NETWORK_ERROR;
-    }
-
-    FILE * file = fopen(githubApiResultJsonFilePath, "r");
-
-    if (file == NULL) {
-        perror(githubApiResultJsonFilePath);
-        return PPKG_ERROR;
-    }
-
     char * latestVersion = NULL;
 
     char buf[30];
 
-    size_t j = 0;
+    if (http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose) == 0) {
+        FILE * file = fopen(githubApiResultJsonFilePath, "r");
 
-    while ((fgets(buf, 30, file)) != NULL) {
-        if (regex_matched(buf, "^[[:space:]]*\"tag_name\"")) {
-            size_t length = strlen(buf);
-            for (size_t i = 10; i < length; i++) {
-                if (j == 0) {
-                    if (buf[i] >= '0' && buf[i] <= '9') {
-                        j = i;
-                    }
-                } else {
-                    if (buf[i] == '"') {
-                        buf[i] = '\0';
-                        latestVersion = &buf[j];
-                        break;
+        if (file == NULL) {
+            perror(githubApiResultJsonFilePath);
+            return PPKG_ERROR;
+        }
+
+        size_t j = 0;
+
+        while ((fgets(buf, 30, file)) != NULL) {
+            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"")) {
+                size_t length = strlen(buf);
+                for (size_t i = 10; i < length; i++) {
+                    if (j == 0) {
+                        if (buf[i] >= '0' && buf[i] <= '9') {
+                            j = i;
+                        }
+                    } else {
+                        if (buf[i] == '"') {
+                            buf[i] = '\0';
+                            latestVersion = &buf[j];
+                            break;
+                        }
                     }
                 }
+                break;
             }
-            break;
         }
+
+        fclose(file);
     }
 
-    fclose(file);
-
     if (latestVersion == NULL) {
-        fprintf(stderr, "can not get latest version of uppm.\n");
-        return PPKG_ERROR;
+        latestVersion = (char*)"1.0.0";
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////

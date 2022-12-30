@@ -2,6 +2,55 @@
 
 set -e
 
+sed_in_place() {
+    if command -v gsed > /dev/null ; then
+        unset SED_IN_PLACE_ACTION
+        SED_IN_PLACE_ACTION="$1"
+        shift
+        # contains ' but not contains \'
+        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+            run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
+        else
+            run gsed -i "'$SED_IN_PLACE_ACTION'" $@
+        fi
+    elif command -v sed  > /dev/null ; then
+        if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
+            shift
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i "'$SED_IN_PLACE_ACTION'" $@
+            fi
+        else
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
+            shift
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
+                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
+            fi
+        fi
+    else
+        error "please install sed utility."
+        return 1
+    fi
+}
+
+is_integer() {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
+list_length() {
+    printf '%s\n' $#
+}
+
 main() {
     unset GROUP_SIZE
     unset OUTPUT_DIR
@@ -10,11 +59,11 @@ main() {
     do
         case $1 in
             --group-size=*)
-                GROUP_SIZE=$(getvalue "$1")
+                GROUP_SIZE=$(printf '%s\n' "$1" | cut -d= -f2)
                 is_integer "$GROUP_SIZE" || die "--group-size=INTEGER"
                 ;;
             --output-dir=*)
-                OUTPUT_DIR=$(getvalue "$1")
+                OUTPUT_DIR=$(printf '%s\n' "$1" | cut -d= -f2)
                 case "$OUTPUT_DIR" in
                     '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
                     /*) ;;
@@ -33,20 +82,20 @@ main() {
     fi
 
     if [ -z "$OUTPUT_DIR" ] ; then
-        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical-core/.github/workflows"
+        OUTPUT_DIR="$HOME/.ppkg/repos.d/offical-core/.github/workflows"
     fi
 
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical-core/.github/workflows/template"
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$HOME/.ppkg/repos.d/offical-core/.github/workflows/template"
 
     if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
-        __update_formula_repositories
+        ppkg update
     fi
 
     unset AVAILABLE_PACKAGES
     unset YDEPENDED_PACKAGES
     unset NDEPENDED_PACKAGES
 
-    AVAILABLE_PACKAGES=$(__list_available_packages)
+    AVAILABLE_PACKAGES=$(ppkg ls-available)
 
     for item in test v8 webrtc
     do
@@ -55,7 +104,7 @@ main() {
 
     for x in $AVAILABLE_PACKAGES
     do
-        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $(__get_packages_that_are_directly_depended_by_the_given_package "$x")"
+        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $(ppkg info "$x" dep-pkg)"
     done
 
     YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)

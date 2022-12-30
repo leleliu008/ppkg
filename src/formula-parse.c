@@ -514,6 +514,11 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
         i++;
     }
 
+    if (formula->bsystem == NULL) {
+        fprintf(stderr, "scheme error in formula file: %s : bsystem mapping not found.\n", formula->path);
+        return PPKG_FORMULA_SCHEME_ERROR;
+    }
+
     return PPKG_OK;
 }
 
