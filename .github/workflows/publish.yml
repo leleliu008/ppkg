@@ -4,7 +4,116 @@ on:
   workflow_dispatch
 
 jobs:
+  netbsd:
+    runs-on: macos-12
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: leleliu008/github-actions-vagrant@main
+        with:
+          mem: 2048
+          box: generic/netbsd9
+          run: |
+            run sudo pkgin -y install curl
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup --use-system-package-manager
+            run ./ppkg update
+
+
+            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+
+            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+
+            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+            run ./ppkg pack    ppkg
+
+      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-netbsd-amd64.tar.xz .
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ppkg-netbsd-tar-xz
+          path: ${{ github.workspace }}/ppkg-*.tar.xz
+
+  openbsd:
+    needs: netbsd
+    runs-on: macos-12
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: leleliu008/github-actions-vagrant@main
+        with:
+          mem: 2048
+          box: generic/openbsd7
+          run: |
+            run sudo pkg_add curl
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup --use-system-package-manager
+            run ./ppkg update
+
+
+            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+
+            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+
+            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+            run ./ppkg pack    ppkg
+
+      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-openbsd-amd64.tar.xz .
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ppkg-openbsd-tar-xz
+          path: ${{ github.workspace }}/ppkg-*.tar.xz
+
+  freebsd:
+    needs: openbsd
+    runs-on: macos-12
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: leleliu008/github-actions-vagrant@main
+        with:
+          mem: 2048
+          box: generic/freebsd13
+          run: |
+            run pkg install -y curl
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup --use-system-package-manager
+            run ./ppkg update
+
+
+            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+
+            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+
+            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+            run ./ppkg pack    ppkg
+
+      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-freebsd-amd64.tar.xz .
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ppkg-freebsd-tar-xz
+          path: ${{ github.workspace }}/ppkg-*.tar.xz
+
+
   macos:
+    needs: freebsd
     runs-on: macos-latest
 
     env:
@@ -25,12 +134,12 @@ jobs:
       - run: ./ppkg update
 
       - run: |
-          V=$(sed -n '/set(PROJECT_VERSION /p' CMakeLists.txt | sed 's|set(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
-          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<EOF
+          v=$(sed -n '/set(project_version /p' cmakelists.txt | sed 's|set(project_version[[:space:]]*\(.*\))|\1|')
+          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<eof
           git-sha: ${{ github.sha }}
-          src-url: dir://$PWD
-          version: $V
-          EOF
+          src-url: dir://$pwd
+          version: $v
+          eof
 
       - run: ./ppkg install ppkg --link-type=static-prefered --install-lib=static
       - run: ./ppkg pack    ppkg
@@ -71,6 +180,21 @@ jobs:
 
       - run: ./ppkg install ppkg gh --link-type=static-only --install-lib=static
       - run: ./ppkg pack    ppkg
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ppkg-netbsd-tar-xz
+          path: /opt/ppkg/cache.d/bin/
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ppkg-opensbd-tar-xz
+          path: /opt/ppkg/cache.d/bin/
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ppkg-freebsd-tar-xz
+          path: /opt/ppkg/cache.d/bin/
 
       - uses: actions/download-artifact@v2
         with:
