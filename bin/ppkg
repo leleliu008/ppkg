@@ -5797,7 +5797,7 @@ __setup__netbsd() {
 
     unset ETCCERTSDIR
 
-    ETCCERTSDIR=$(sed 's|ETCCERTSDIR=\(.*\)|\1|' /usr/pkg/etc/ca-certificates-dir.conf)
+    ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
 
     if [ -n "$ETCCERTSDIR" ] ; then
         export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
