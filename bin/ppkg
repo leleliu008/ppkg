@@ -5792,7 +5792,7 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
 
-    run sudo sed -i 's|#ETCCERTSDIR=|ETCCERTSDIR=|' /usr/pkg/etc/ca-certificates-dir.conf
+    run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
     run sudo update-ca-certificates
 
     unset ETCCERTSDIR
