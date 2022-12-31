@@ -5777,7 +5777,7 @@ __setup_openbsd() {
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4 mozilla-rootcerts
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4
 
     run ln -sf /usr/pkg/bin/gln      "$MY_CORE_BIN_DIR/ln"
     run ln -sf /usr/pkg/bin/gtar     "$MY_CORE_BIN_DIR/tar"
@@ -5792,7 +5792,16 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
 
-    run sudo mozilla-rootcerts install
+    run sudo sed -i 's|#ETCCERTSDIR=|ETCCERTSDIR=|' /usr/pkg/etc/ca-certificates-dir.conf
+    run sudo update-ca-certificates
+
+    unset ETCCERTSDIR
+
+    ETCCERTSDIR=$(sed 's|ETCCERTSDIR=\(.*\)|\1|' /usr/pkg/etc/ca-certificates-dir.conf)
+
+    if [ -n "$ETCCERTSDIR" ] ; then
+        export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
+    fi
 }
 
 __setup_yq() {
