@@ -2373,10 +2373,6 @@ $LINE"
         PACKED_FILETYPE='tar.xz'
     fi
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        NATIVE_OS_KIND=macos
-    fi
-
     PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
@@ -2422,9 +2418,9 @@ $LINE"
     fi
 
     if [ "$PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
-        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
     else
-        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
     fi
 
     PACKED_FILENAME="$PACKED_DIR_NAME.$PACKED_FILETYPE"
@@ -5769,6 +5765,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
+    run ln -sf /usr/local/bin/pkgconf    "$MY_CORE_BIN_DIR/pkg-config"
 
     # tree package in system's package manager is too old
     printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/tree"
