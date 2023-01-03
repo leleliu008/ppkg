@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    container: zelec/manjarolinux
+    container: manjarolinux/base
 
     steps:
       - run: pacman -Syyuu --noconfirm
