@@ -37,7 +37,11 @@ jobs:
             run cmake --install build.d
 
 
-            printf '%s\n' '[user]\n\temail = leleliu008@gmail.com\n\tname = leleliu008\n' > ~/.gitconfig
+            cat > ~/.gitconfig <<EOF2
+            [user]
+              email = leleliu008@gmail.com
+              name = leleliu008
+            EOF2
 
 
             run ./output/bin/ppkg
