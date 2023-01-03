@@ -108,6 +108,23 @@ int get_current_executable_realpath(char * * out) {
 
     (*out) = strdup(buf);
     return 0;
+#elif defined (__FreeBSD__)
+    const int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+
+    size_t bufLength = 0;
+
+    if (sysctl(mib, 4, NULL, &bufLength, NULL, 0) < 0) {
+        return -1;
+    }
+
+    char * buf = (char*)calloc(bufLength + 1, sizeof(char));
+
+    if (sysctl(mib, 4, buf, &bufLength, NULL, 0) < 0) {
+        return -2;
+    }
+
+    (*out) = buf;
+    return 0;
 #else
     char buf[PATH_MAX + 1] = {0};
 
