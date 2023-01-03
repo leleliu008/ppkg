@@ -2891,54 +2891,46 @@ EOF
             step "copy source files to the installing src directory"
             run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
-        c|cxx)
-            step "copy source files to the installing src directory"
-            run cp    "$PACKAGE_SRC_FILEPATH"   "$PACKAGE_INSTALLING_SRC_DIR"
-            ;;
         zip)
             step "uncompressed source file to the installing src directory"
-            run unzip "$PACKAGE_SRC_FILEPATH" -d "$PACKAGE_INSTALLING_SRC_DIR"
+            run unzip  "$PACKAGE_SRC_FILEPATH" -d "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
-        tar.xz|tar.gz|tar.lz|tar.bz2)
+        txz|tgz|tlz|tbz2)
             step "uncompressed source file to the installing src directory"
             run tar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
             ;;
-        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        *)  step "copy source files to the installing src directory"
+            run cp     "$PACKAGE_SRC_FILEPATH"    "$PACKAGE_INSTALLING_SRC_DIR"
     esac
 
     if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
         case $PACKAGE_FIX_FILETYPE in
-            patch)
-                step "copy patch file to the installing fix directory"
-                run cp    "$PACKAGE_FIX_FILEPATH"   "$PACKAGE_INSTALLING_FIX_DIR"
-                ;;
             zip)
                 step "uncompressed patch file to the installing fix directory"
-                run unzip "$PACKAGE_FIX_FILEPATH" -d "$PACKAGE_INSTALLING_FIX_DIR"
+                run unzip  "$PACKAGE_FIX_FILEPATH" -d "$PACKAGE_INSTALLING_FIX_DIR"
                 ;;
-            tar.xz|tar.gz|tar.lz|tar.bz2)
+            txz|tgz|tlz|tbz2)
                 step "uncompressed patch file to the installing fix directory"
                 run tar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  die "unrecognized fix type : $PACKAGE_FIX_FILETYPE. the supported fix type are zip tar.xz tar.gz tar.lz tar.bz2"
+            *)  step "copy patch file to the installing fix directory"
+                run cp     "$PACKAGE_FIX_FILEPATH"    "$PACKAGE_INSTALLING_FIX_DIR"
         esac
     fi
 
     if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
         case $PACKAGE_RES_FILETYPE in
-            patch)
-                step "copy res file to the installing res directory"
-                run cp    "$PACKAGE_RES_FILEPATH"   "$PACKAGE_INSTALLING_RES_DIR"
-                ;;
             zip)
                 step "uncompressed res file to the installing res directory"
                 run unzip "$PACKAGE_RES_FILEPATH" -d "$PACKAGE_INSTALLING_RES_DIR"
                 ;;
-            tar.xz|tar.gz|tar.lz|tar.bz2)
+            txz|tgz|tlz|tbz2)
                 step "uncompressed res file to the installing res directory"
                 run tar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  die "unrecognized res type : $PACKAGE_RES_FILETYPE. the supported res type are zip tar.xz tar.gz tar.lz tar.bz2"
+            *)
+                step "copy res file to the installing res directory"
+                run cp    "$PACKAGE_RES_FILEPATH"   "$PACKAGE_INSTALLING_RES_DIR"
         esac
     fi
 
