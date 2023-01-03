@@ -1074,7 +1074,7 @@ __load_formula_of_the_given_package() {
         die "src-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
-    case $PACKAGE_SRC_URL in
+    case $(printf '%s\n' "$PACKAGE_SRC_URL" | sed 's|\?.*||') in
         dir://*)   PACKAGE_SRC_FILETYPE=dir ;;
         *.git)     PACKAGE_SRC_FILETYPE=git ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git" ;;
         *.zip)     PACKAGE_SRC_FILETYPE=zip ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip" ;;
@@ -1131,7 +1131,7 @@ __load_formula_of_the_given_package() {
             die "fix-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
-        case $PACKAGE_FIX_URL in
+        case $(printf '%s\n' "$PACKAGE_FIX_URL" | sed 's|\?.*||') in
             *.diff)    PACKAGE_FIX_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.patch)   PACKAGE_FIX_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.zip)     PACKAGE_FIX_FILETYPE=zip   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
@@ -1155,7 +1155,7 @@ __load_formula_of_the_given_package() {
             die "res-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
-        case $PACKAGE_RES_URL in
+        case $(printf '%s\n' "$PACKAGE_RES_URL" | sed 's|\?.*||') in
             *.diff)    PACKAGE_RES_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.patch)   PACKAGE_RES_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
             *.zip)     PACKAGE_RES_FILETYPE=zip   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
