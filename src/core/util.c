@@ -92,19 +92,7 @@ int get_file_extension_from_url(char * * out, const char * url) {
 }
 
 int get_current_executable_realpath(char * * out) {
-#if defined (__linux__)
-    char buf[PATH_MAX + 1] = {0};
-
-    int ret = readlink("/proc/self/exe", buf, PATH_MAX);
-
-    if (ret == -1) {
-        perror("/proc/self/exe");
-        return -1;
-    }
-
-    (*out) = strdup(buf);
-    return 0;
-#elif defined (__APPLE__)
+#if defined (__APPLE__)
     char buf[PATH_MAX + 1] = {0};
 
     uint32_t bufSize = 0U;
@@ -121,7 +109,16 @@ int get_current_executable_realpath(char * * out) {
     (*out) = strdup(buf);
     return 0;
 #else
-    (*out) = NULL;
-    return -1;
+    char buf[PATH_MAX + 1] = {0};
+
+    int ret = readlink("/proc/self/exe", buf, PATH_MAX);
+
+    if (ret == -1) {
+        perror("/proc/self/exe");
+        return -1;
+    }
+
+    (*out) = strdup(buf);
+    return 0;
 #endif
 }
