@@ -170,7 +170,7 @@ int get_current_executable_realpath(char * * out) {
     }
 
     if (isPath) {
-        (*out) = realpath(argv[0], NULL));
+        (*out) = realpath(argv[0], NULL);
         return 0;
     } else {
         char * PATH = getenv("PATH");
@@ -195,7 +195,7 @@ int get_current_executable_realpath(char * * out) {
                 size_t  fullPathLength = strlen(PATHItem) + commandNameLength + 2;
                 char    fullPath[fullPathLength];
                 memset( fullPath, 0, fullPathLength);
-                sprintf(fullPath, "%s/%s", PATHItem, commandName);
+                sprintf(fullPath, "%s/%s", PATHItem, argv[0]);
 
                 if (access(fullPath, X_OK) == 0) {
                     (*out) = strdup(fullPath);
