@@ -1,11 +1,14 @@
 #include <regex.h>
 #include "regex/regex.h"
 #include "util.h"
+#include "find-executables.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <sys/stat.h>
 
 #if defined (__APPLE__)
 #include <sys/syslimits.h>
@@ -15,7 +18,7 @@
 #include <limits.h>
 #endif
 
-#if defined (__FreeBSD__)
+#if defined (__FreeBSD__) || defined (__OpenBSD__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -130,6 +133,81 @@ int get_current_executable_realpath(char * * out) {
 
     (*out) = buf;
     return 0;
+#elif defined (__OpenBSD__)
+    const int mib[4] = { CTL_KERN, KERN_PROC_ARGS, getpid(), KERN_PROC_ARGV };
+    size_t size;
+
+    if (sysctl(mib, 4, NULL, &size, NULL, 0) != 0) {
+        return -1;
+    }
+
+    char** argv = (char**)malloc(size);
+    memset(argv, 0, size);
+
+    if (sysctl(mib, 4, argv, &size, NULL, 0) != 0) {
+        return -2;
+    }
+
+    bool isPath = false;
+
+    char c;
+
+    char * p = argv[0];
+
+    for (;;) {
+        c = p[0];
+
+        if (c == '\0') {
+            break;
+        }
+
+        if (c == '/') {
+            isPath = true;
+            break;
+        }
+
+        p++;
+    }
+
+    if (isPath) {
+        (*out) = realpath(argv[0], NULL));
+        return 0;
+    } else {
+        char * PATH = getenv("PATH");
+
+        if ((PATH == NULL) || (strcmp(PATH, "") == 0)) {
+            return -3;
+        }
+
+        size_t PATH2Length = strlen(PATH) + 1;
+        char   PATH2[PATH2Length];
+        memset(PATH2, 0, PATH2Length);
+        strcpy(PATH2, PATH);
+
+        size_t commandNameLength = strlen(argv[0]);
+
+        char * PATHItem = strtok(PATH2, ":");
+
+        while (PATHItem != NULL) {
+            struct stat st;
+
+            if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
+                size_t  fullPathLength = strlen(PATHItem) + commandNameLength + 2;
+                char    fullPath[fullPathLength];
+                memset( fullPath, 0, fullPathLength);
+                sprintf(fullPath, "%s/%s", PATHItem, commandName);
+
+                if (access(fullPath, X_OK) == 0) {
+                    (*out) = strdup(fullPath);
+                    return 0;
+                }
+            }
+
+            PATHItem = strtok(NULL, ":");
+        }
+
+        return -4;
+    }
 #else
     char buf[PATH_MAX + 1] = {0};
 
