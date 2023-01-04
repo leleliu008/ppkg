@@ -15,6 +15,11 @@
 #include <limits.h>
 #endif
 
+#if defined (__FreeBSD__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 int get_file_extension_from_url(char * * out, const char * url) {
     if (url == NULL) {
         return -1;
