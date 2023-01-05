@@ -24,5 +24,5 @@ jobs:
       - run: bin/ppkg setup --use-system-package-manager
       - run: bin/ppkg env
       - run: bin/ppkg update
-      - run: git -C /opt/ppkg/repos.d/offical-core checkout ${{ github.ref_name }}
+      - run: git -C ~/.ppkg/repos.d/offical-core checkout ${{ github.ref_name }}
       - run: bin/ppkg compare-versions brew

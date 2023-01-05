@@ -229,8 +229,8 @@ tolower() {
 }
 
 git() {
-    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$MY_CORE_DIR/etc/ssl/certs/cacert.pem" $*
+    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
+        command git -c http.sslCAInfo="$PPKG_HOME/cacert.pem" $*
     else
         command git $*
     fi
@@ -499,8 +499,8 @@ wfetch() {
                         FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
                     fi
 
-                    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-                        FETCH_TOOL_CURL_OPTIONS="--cacert $MY_CORE_DIR/etc/ssl/certs/cacert.pem"
+                    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
+                        FETCH_TOOL_CURL_OPTIONS="--cacert $PPKG_HOME/cacert.pem"
                     fi
 
                     run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
@@ -1103,7 +1103,7 @@ __load_formula_of_the_given_package() {
             ;;
         git)
             PACKAGE_SRC_FILENAME="$PACKAGE_NAME.git"
-            PACKAGE_SRC_FILEPATH="$MY_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+            PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
 
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
@@ -1123,7 +1123,7 @@ __load_formula_of_the_given_package() {
             fi
 
             PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA.$PACKAGE_SRC_FILETYPE"
-            PACKAGE_SRC_FILEPATH="$MY_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+            PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
     esac
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
@@ -1147,7 +1147,7 @@ __load_formula_of_the_given_package() {
         esac
 
         PACKAGE_FIX_FILENAME="$PACKAGE_FIX_URL.$PACKAGE_FIX_FILETYPE"
-        PACKAGE_FIX_FILEPATH="$MY_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
+        PACKAGE_FIX_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
     fi
 
     if [ -n "$PACKAGE_RES_URL" ] ; then
@@ -1171,7 +1171,7 @@ __load_formula_of_the_given_package() {
         esac
 
         PACKAGE_RES_FILENAME="$PACKAGE_RES_URL.$PACKAGE_RES_FILETYPE"
-        PACKAGE_RES_FILEPATH="$MY_DOWNLOADS_DIR/$PACKAGE_RES_FILENAME"
+        PACKAGE_RES_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_RES_FILENAME"
     fi
 
     if [ -n "$PACKAGE_VERSION" ] ; then
@@ -1346,11 +1346,11 @@ __load_formula_of_the_given_package() {
     unset REPO_NAME
     REPO_NAME=offical-core
 
-    if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" ] ; then
-        die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml formula already exists."
+    if [ -e "$PPKG_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" ] ; then
+        die "$PPKG_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml formula already exists."
     fi
 
-    cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" <<EOF
+    cat > "$PPKG_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.yml" <<EOF
 summary: Summary of this package
 web-url: https://www.xx.com
 src-url: https://www.xx.com/pkgname-x.y.z.tar.gz
@@ -1394,8 +1394,8 @@ __rename_formula_of_the_given_package() {
     unset PACKAGE_FORMULA_FILEPATH_OLD
     unset PACKAGE_FORMULA_FILEPATH_NEW
 
-    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.yml"
-    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.yml"
+    PACKAGE_FORMULA_FILEPATH_OLD="$PPKG_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.yml"
+    PACKAGE_FORMULA_FILEPATH_NEW="$PPKG_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.yml"
 
     if [ -f "$PACKAGE_FORMULA_FILEPATH_NEW" ] ; then
         die "$2 package is already exist."
@@ -1435,7 +1435,7 @@ __add_a_formula_repo() {
         fi
     done
 
-    printf '%s=%s\n' "$1" "$2" >> "$MY_HOME_DIR/repos"
+    printf '%s=%s\n' "$1" "$2" >> "$PPKG_HOME/repos"
 }
 
 # __del_a_formula_repo <REPO-NAME>
@@ -1457,7 +1457,7 @@ __add_a_formula_repo() {
     done
 
     if [ "$REPO_EXISTS" = yes ] ; then
-        sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
+        sed_in_place "/^$1=/d" "$PPKG_HOME/repos"
     else
         die "$1 formula repo not exists."
     fi
@@ -1471,11 +1471,11 @@ __repo_of_formula_of_the_given_package() {
 
     for repoName in $(__list_formula_repository_names)
     do
-        if [ -e "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
+        if [ -e "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
             printf '%s\n' "$repoName"
             return 0
         fi
-        if [ -e "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
+        if [ -e "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
             printf '%s\n' "$repoName"
             return 0
         fi
@@ -1494,12 +1494,12 @@ __repo_of_formula_of_the_given_package() {
 
     for repoName in $(__list_formula_repository_names)
     do
-        if [ -e           "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
-            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml"
+        if [ -e           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
+            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml"
             return 0
         fi
-        if [ -e           "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
-            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$1.yml"
+        if [ -e           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
+            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$1.yml"
             return 0
         fi
     done
@@ -1509,16 +1509,16 @@ __repo_of_formula_of_the_given_package() {
 }
 
 __list_formula_repository_items() {
-    if [ -f "$MY_HOME_DIR/repos" ] ; then
-        cat "$MY_HOME_DIR/repos"
+    if [ -f "$PPKG_HOME/repos" ] ; then
+        cat "$PPKG_HOME/repos"
     else
-        printf 'offical-core=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL"
+        printf 'offical-core=%s\n' "$PPKG_OFFICAL_FORMULA_REPO_URL"
     fi
 }
 
 __list_formula_repository_names() {
-    if [ -f         "$MY_HOME_DIR/repos" ] ; then
-        cut -d= -f1 "$MY_HOME_DIR/repos"
+    if [ -f         "$PPKG_HOME/repos" ] ; then
+        cut -d= -f1 "$PPKG_HOME/repos"
     else
         printf 'offical-core\n'
     fi
@@ -1535,7 +1535,7 @@ __update_formula_repositories() {
 
         printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-        FORMULA_REPO_PATH="$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
+        FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
 
         if [ -d        "$FORMULA_REPO_PATH" ] ; then
             run git -C "$FORMULA_REPO_PATH" pull origin master:master
@@ -1543,8 +1543,8 @@ __update_formula_repositories() {
                 run git -C "$FORMULA_REPO_PATH" checkout master
             fi
         else
-            run install -d "$MY_FORMULA_REPO_DIR"
-            run git -C "$MY_FORMULA_REPO_DIR" clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
+            run install -d "$PPKG_FORMULA_REPO_DIR"
+            run git -C "$PPKG_FORMULA_REPO_DIR" clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
         fi
     done
 }
@@ -1553,11 +1553,11 @@ __update_formula_repositories() {
   __list_formula_search_dirs() {
     for repoName in $(__list_formula_repository_names)
     do
-        if [ -d           "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE" ] ; then
-            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE"
+        if [ -d           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE" ] ; then
+            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE"
         fi
 
-        printf '%s\n' "$MY_FORMULA_REPO_DIR/$repoName/formula"
+        printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula"
     done
 }
 
@@ -1706,11 +1706,11 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
-    [ -d "$MY_INSTALLED_DIR/$1" ]                    || return 10
-    [ -d "$MY_INSTALLED_DIR/$1/.ppkg" ]              || return 11
-    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/buildon.yml" ]  || return 12
-    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt" ] || return 13
-    [ -f "$MY_INSTALLED_DIR/$1/.ppkg/receipt.yml" ]  || return 14
+    [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$1" ]                    || return 10
+    [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg" ]              || return 11
+    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/buildon.yml" ]  || return 12
+    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt" ] || return 13
+    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml" ]  || return 14
 }
 
 # is_package__outdated <PACKAGE-NAME>
@@ -1722,7 +1722,7 @@ __fetch_resources_of_the_given_package() {
 
 # is_package_symlinked <PACKAGE-NAME>
   is_package_symlinked() {
-    is_package_installed "$1" && [ -f "$MY_SYMLINKED_DIR/.registry/$1" ]
+    is_package_installed "$1" && [ -f "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1" ]
 }
 
 __gen_github_workflows() {
@@ -1756,10 +1756,10 @@ __gen_github_workflows() {
     fi
 
     if [ -z "$OUTPUT_DIR" ] ; then
-        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical-core/.github/workflows"
+        OUTPUT_DIR="$PPKG_HOME/repos.d/offical-core/.github/workflows"
     fi
 
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical-core/.github/workflows/template"
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$PPKG_HOME/repos.d/offical-core/.github/workflows/template"
 
     if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
         __update_formula_repositories
@@ -1847,8 +1847,8 @@ __list_available_packages() {
 }
 
 __list_installed_packages() {
-    if [ -d "$MY_INSTALLED_DIR" ] ; then
-         cd "$MY_INSTALLED_DIR" > /dev/null || return 1
+    if [ -d "$PPKG_PACKAGE_INSTALLED_DIR" ] ; then
+         cd "$PPKG_PACKAGE_INSTALLED_DIR" > /dev/null || return 1
     else
         return 0
     fi
@@ -1862,8 +1862,8 @@ __list_installed_packages() {
 }
 
 __list_symlinked_packages() {
-    if [ -d "$MY_SYMLINKED_DIR/.registry" ] ; then
-         cd "$MY_SYMLINKED_DIR/.registry" || return 1
+    if [ -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" ] ; then
+         cd "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" || return 1
     else
         return 0
     fi
@@ -1872,8 +1872,8 @@ __list_symlinked_packages() {
 }
 
 __list__outdated_packages() {
-    if [ -d "$MY_INSTALLED_DIR" ] ; then
-         cd "$MY_INSTALLED_DIR" > /dev/null || return 1
+    if [ -d "$PPKG_PACKAGE_INSTALLED_DIR" ] ; then
+         cd "$PPKG_PACKAGE_INSTALLED_DIR" > /dev/null || return 1
     else
         return 0
     fi
@@ -1899,7 +1899,7 @@ __list__outdated_packages() {
         return 1
     }
 
-    run tree $(shiftn 1 $@) "$MY_INSTALLED_DIR/$1"
+    run tree $(shiftn 1 $@) "$PPKG_PACKAGE_INSTALLED_DIR/$1"
 }
 
 # __uninstall_the_given_packages <PACKAGE-NAME>...
@@ -1924,16 +1924,16 @@ __list__outdated_packages() {
     for packageName in $USER_SPECIFIED_PACKAGES
     do
         if is_package_installed "$packageName" ; then
-            PACKAGE_SYMLINK_REGISTER_FILEPATH="$MY_SYMLINKED_DIR/.registry/$packageName"
+            PACKAGE_SYMLINK_REGISTER_FILEPATH="$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$packageName"
 
             if [ -f "$PACKAGE_SYMLINK_REGISTER_FILEPATH" ] ; then
                 while read -r item
                 do
-                    run unlink "\"$MY_SYMLINKED_DIR/$item\""
+                    run unlink "\"$PPKG_PACKAGE_SYMLINKED_DIR/$item\""
                 done < "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
             fi
             run rm "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
-            run rm -rf "$MY_INSTALLED_DIR/$packageName"
+            run rm -rf "$PPKG_PACKAGE_INSTALLED_DIR/$packageName"
         else
             warn "$packageName is not installed."
         fi
@@ -1962,15 +1962,15 @@ __reinstall_the_given_packages() {
 
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
     do
-        [ -d "$MY_BACKUP_DIR" ] || {
-            install -d "$MY_BACKUP_DIR" || return 1
+        [ -d "$PPKG_BACKUP_DIR" ] || {
+            install -d "$PPKG_BACKUP_DIR" || return 1
         }
 
-        mv "$MY_INSTALLED_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$PPKG_PACKAGE_INSTALLED_DIR/$INSTALLING_PACKAGE" "$PPKG_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
 
         (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
 
-        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        rm -rf "$PPKG_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
     done
 }
 
@@ -1995,15 +1995,15 @@ __upgrade_packages() {
 
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
     do
-        [ -d "$MY_BACKUP_DIR" ] || {
-            install -d "$MY_BACKUP_DIR" || return 1
+        [ -d "$PPKG_BACKUP_DIR" ] || {
+            install -d "$PPKG_BACKUP_DIR" || return 1
         }
 
-        mv "$MY_INSTALLED_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$PPKG_PACKAGE_INSTALLED_DIR/$INSTALLING_PACKAGE" "$PPKG_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
 
         (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
 
-        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        rm -rf "$PPKG_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
     done
 }
 
@@ -2049,7 +2049,7 @@ __compare_versions_with_brew() {
         esac
     }
 
-    cd "$MY_HOME_DIR/repos.d/offical-core/formula"
+    cd "$PPKG_HOME/repos.d/offical-core/formula"
 
     for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
     do
@@ -2100,7 +2100,7 @@ __show_or_open_homepage_of_the_given_package() {
 
 __show_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
-        PACKAGE_WEB_URL="$MY_HOME_PAGE"
+        PACKAGE_WEB_URL="$PPKG_WEBPAGE_URL"
     else
         __load_formula_of_the_given_package "$1"
     fi
@@ -2110,7 +2110,7 @@ __show_homepage_of_the_given_package() {
 
 __open_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
-        PACKAGE_WEB_URL="$MY_HOME_PAGE"
+        PACKAGE_WEB_URL="$PPKG_WEBPAGE_URL"
     else
         __load_formula_of_the_given_package "$1"
     fi
@@ -2319,9 +2319,9 @@ $LINE"
         VIEWER=less
     fi
 
-    for item in $(ls "$MY_INSTALLED_DIR/$1/.ppkg")
+    for item in $(ls "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg")
     do
-        item="$MY_INSTALLED_DIR/$1/.ppkg/$item"
+        item="$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/$item"
 
         if [ -d "$item" ] ; then
             continue
@@ -2382,8 +2382,8 @@ $LINE"
     PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        if [ -d "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" -type f)
+        if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" ] ; then
+            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" -type f)
             do
                 case $FILEPATH in
                     */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
@@ -2394,8 +2394,8 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            if [ -d "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" ] ; then
-                for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" -type f)
+            if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" ] ; then
+                for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" -type f)
                 do
                     unset FILE_MAGIC
 
@@ -2416,7 +2416,7 @@ $LINE"
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
+            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
             do
                 PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
@@ -2439,7 +2439,7 @@ $LINE"
     run cd $PACKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
+    run ln -s "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILETYPE in
@@ -2460,13 +2460,13 @@ $LINE"
     step "show size of packed file"
     run "du -sh $PACKED_FILENAME | cut -f1"
 
-    if [ ! -d "$MY_HOME_DIR/packed" ] ; then
+    if [ ! -d "$PPKG_HOME/packed" ] ; then
         step "create cached binary dir"
-        run install -d "$MY_HOME_DIR/packed"
+        run install -d "$PPKG_HOME/packed"
     fi
 
     step "copy packed file to cached dir"
-    run cp "$PACKED_FILENAME" "$MY_HOME_DIR/packed/"
+    run cp "$PACKED_FILENAME" "$PPKG_HOME/packed/"
 
     if [ "$KEEP_PACKING_DIR" = yes ] ; then
         echo
@@ -2717,7 +2717,7 @@ __install_the_given_package() {
 
                 run uppm install "$item"
             fi
-            # bppend_to_PATH "$("$MY_CORE_BIN_DIR/uppm" info "$item" installed-dir)/bin"
+            # bppend_to_PATH "$("$PPKG_CORE_BIN_DIR/uppm" info "$item" installed-dir)/bin"
         done
     fi
 
@@ -2725,7 +2725,7 @@ __install_the_given_package() {
 
     step "create relevant directories"
 
-    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing/$1"
+    PACKAGE_INSTALLING_TOP_DIR="$PPKG_HOME/installing/$1"
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
     PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
@@ -2752,7 +2752,7 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    PACKAGE_INSTALL_DIR="$MY_INSTALLED_DIR/$1"
+    PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$1"
     PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
 
     PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/manifest.txt"
@@ -2831,13 +2831,13 @@ __install_the_given_package() {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
-            if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
-                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+            if [ -f    "$PPKG_HOME/tmp.d/rustup-init.sh" ] ; then
+                run rm "$PPKG_HOME/tmp.d/rustup-init.sh" || return 1
             fi
 
-            wfetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
+            wfetch 'https://sh.rustup.rs' --output-path="$PPKG_HOME/tmp.d/rustup-init.sh" || return 1
 
-            run bash "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y || return 1
+            run bash "$PPKG_HOME/tmp.d/rustup-init.sh" -y || return 1
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -2961,7 +2961,7 @@ EOF
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
         do
-            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$MY_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
+            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
             if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
                 for item in $(find "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
                 do
@@ -3119,7 +3119,7 @@ EOF
     __generate_receipt_of_the_given_package "$1"
 
     if [ "$PACKAGE_SYMLINK" = yes ] ; then
-        step "symlink installed files to $MY_SYMLINKED_DIR"
+        step "symlink installed files to $PPKG_PACKAGE_SYMLINKED_DIR"
         __symlink_installed_files_of_the_given_package "$1"
     fi
 
@@ -3150,7 +3150,7 @@ __adjust_elf_files_for_the_given_target() {
     unset  BASE64_COMMAND
     export BASE64_COMMAND="$(command -v base64)"
 
-    BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
+    BASE64_ENCODE_STRING_COMMAND="$PPKG_CORE_BIN_DIR/base64-encode-string"
 
     for x in bin sbin lib libexec
     do
@@ -3275,7 +3275,7 @@ __adjust_elf_files_for_the_given_target() {
 __adjust_mach_o_files_for_the_given_target() {
     unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
 
-    BASE64_ENCODE_STRING_COMMAND="$MY_CORE_BIN_DIR/base64-encode-string"
+    BASE64_ENCODE_STRING_COMMAND="$PPKG_CORE_BIN_DIR/base64-encode-string"
 
     for x in bin sbin lib libexec
     do
@@ -3389,8 +3389,8 @@ __export_relevant_environment_variables() {
             PATH="$DEVELOPER_DIR/usr/bin:$PATH"
         fi
 
-        # $MY_CORE_BIN_DIR must before DEVELOPER_DIR/bin , because some tools shipped with sdk are too old.
-        PATH="$MY_CORE_BIN_DIR:$PATH"
+        # $PPKG_CORE_BIN_DIR must before DEVELOPER_DIR/bin , because some tools shipped with sdk are too old.
+        PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
         # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
         # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
@@ -3495,8 +3495,8 @@ EOF
     export PROXIED_CC="$CC"
     export PROXIED_CXX="$CXX"
 
-     CC="$MY_CORE_BIN_DIR/proxy-cc"
-    CXX="$MY_CORE_BIN_DIR/proxy-c++"
+     CC="$PPKG_CORE_BIN_DIR/proxy-cc"
+    CXX="$PPKG_CORE_BIN_DIR/proxy-c++"
 
     cat > "$CC.c" <<EOF
 #include <stdio.h>
@@ -3616,7 +3616,7 @@ EOF
         unset DEP_PKG_LIBRARY_DIR
         unset DEP_PKG_PKGCONF_DIR
 
-        DEP_PKG_INSTALL_DIR="$MY_INSTALLED_DIR/$DEP_PKG_NAME"
+        DEP_PKG_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEP_PKG_NAME"
         DEP_PKG_BINARY__DIR="$DEP_PKG_INSTALL_DIR/bin"
         DEP_PKG_INCLUDE_DIR="$DEP_PKG_INSTALL_DIR/include"
         DEP_PKG_LIBRARY_DIR="$DEP_PKG_INSTALL_DIR/lib"
@@ -4098,7 +4098,7 @@ __adjust_la_files_for_the_given_target() {
     for lafile in $LA_FILES
     do
         sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
-        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$lafile"
+        sed_in_place "s|-L$PPKG_HOME[^' ]*||g"   "$lafile"
         sed_in_place "s|-R[^' ]*||g"               "$lafile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
         #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
@@ -4123,7 +4123,7 @@ __adjust_pc_files_for_the_given_target() {
     do
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
-        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$pcfile"
+        sed_in_place "s|-L$PPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-R[^' ]*||g"               "$pcfile"
         sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
@@ -4503,13 +4503,13 @@ EOF
             __path_of_formula_of_the_given_package "$1"
             ;;
         symlinked-files)
-            if [ -f "$MY_SYMLINKED_DIR/.registry/$1" ] ; then
-                cat "$MY_SYMLINKED_DIR/.registry/$1"
+            if [ -f "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1" ] ; then
+                cat "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1"
             fi
             ;;
         installed-dir)
             if is_package_installed "$1" ; then
-                printf '%s\n' "$MY_INSTALLED_DIR/$1"
+                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_DIR/$1"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4517,7 +4517,7 @@ EOF
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt"
+                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4525,7 +4525,7 @@ EOF
             ;;
         installed-manifest)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/.ppkg/manifest.txt"
+                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4533,7 +4533,7 @@ EOF
             ;;
         installed-receipt)
             if is_package_installed "$1" ; then
-                cat "$MY_INSTALLED_DIR/$1/.ppkg/receipt.yml"
+                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4572,7 +4572,7 @@ EOF
     # if is_package_installed "$1" ; then
     #     printf '\n'
     #     printf 'status:  installed\n' | bat --language yaml
-    #     grep '^history:' "$MY_INSTALLED_DIR/$1/receipt.yml" | bat --language yaml
+    #     grep '^history:' "$PPKG_PACKAGE_INSTALLED_DIR/$1/receipt.yml" | bat --language yaml
     # fi
 }
 
@@ -4596,10 +4596,10 @@ mark_is_package_installed_or_not() {
     #         D)  ;;
     #         *)  case $Y in
     #                 share/info/dir) ;;
-    #                 *)  if [ -L "$MY_SYMLINKED_DIR/$Y" ] || [ -e "$MY_SYMLINKED_DIR/$Y" ] ; then
-    #                         die "$MY_SYMLINKED_DIR/$Y already exists."
+    #                 *)  if [ -L "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] || [ -e "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] ; then
+    #                         die "$PPKG_PACKAGE_SYMLINKED_DIR/$Y already exists."
     #                     # else
-    #                     #     echo "$MY_SYMLINKED_DIR/$Y"
+    #                     #     echo "$PPKG_PACKAGE_SYMLINKED_DIR/$Y"
     #                     fi
     #             esac
     #     esac
@@ -4607,11 +4607,11 @@ mark_is_package_installed_or_not() {
 
     # ############################################################################
 
-    if [ !      -d "$MY_SYMLINKED_DIR/.registry" ] ; then
-        install -d "$MY_SYMLINKED_DIR/.registry"
+    if [ !      -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" ] ; then
+        install -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry"
     fi
 
-    exec 7> "$MY_SYMLINKED_DIR/.registry/$1"
+    exec 7> "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1"
 
     while read -r item
     do
@@ -4620,13 +4620,13 @@ mark_is_package_installed_or_not() {
 
         case $X in
             d|D)
-                if [ !      -d "$MY_SYMLINKED_DIR/$Y" ] ; then
-                    install -d "$MY_SYMLINKED_DIR/$Y"
+                if [ !      -d "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] ; then
+                    install -d "$PPKG_PACKAGE_SYMLINKED_DIR/$Y"
                 fi
                 ;;
             *)  case $Y in
                     share/info/dir) ;;
-                    *)  run ln -sfr "\"$MY_INSTALLED_DIR/$1/$Y\"" "\"$MY_SYMLINKED_DIR/$Y\""
+                    *)  run ln -sfr "\"$PPKG_PACKAGE_INSTALLED_DIR/$1/$Y\"" "\"$PPKG_PACKAGE_SYMLINKED_DIR/$Y\""
                         printf '%s\n' "$Y" >&7
                 esac
         esac
@@ -4702,7 +4702,7 @@ mark_is_package_installed_or_not() {
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
 
-signature: $MY_VERSION
+signature: $PPKG_VERSION
 timestamp: $TIMESTAMP_UNIX
 EOF
 }
@@ -4751,7 +4751,7 @@ EOF
 
     #######################################################################################################
 
-    PACKAGE_INSTALLED_DIR="$MY_INSTALLED_DIR/$1"
+    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$1"
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/receipt.yml"
 
     unset PACKAGE_RECEIPT_SIGNATURE
@@ -5343,8 +5343,8 @@ to_meson_array() {
 ########################################################################
 
 list_all_installed_libs() {
-    if [ -d "$MY_INSTALLED_DIR" ] ; then
-        cd  "$MY_INSTALLED_DIR" || return 1
+    if [ -d "$PPKG_PACKAGE_INSTALLED_DIR" ] ; then
+        cd  "$PPKG_PACKAGE_INSTALLED_DIR" || return 1
     else
         return 0
     fi
@@ -5352,8 +5352,8 @@ list_all_installed_libs() {
     for item in *
     do
         if is_package_installed "$item" ; then
-            if [ -d "$MY_INSTALLED_DIR/$item/libs" ] ; then
-                find "$MY_INSTALLED_DIR/$item/libs" -name "lib*\.a"
+            if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$item/libs" ] ; then
+                find "$PPKG_PACKAGE_INSTALLED_DIR/$item/libs" -name "lib*\.a"
             fi
         fi
     done
@@ -5389,7 +5389,7 @@ __ldd() {
         [ -z "$3" ] && die "type is not specified."
         [ -z "$4" ] && die "name is not specified."
 
-        FILE_PATH="$MY_INSTALLED_DIR/$1/$2/$3/$4"
+        FILE_PATH="$PPKG_PACKAGE_INSTALLED_DIR/$1/$2/$3/$4"
         [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
         echo "$FILE_PATH"
 
@@ -5529,43 +5529,22 @@ inspect_install_arguments() {
 }
 
 __is_core_tools_installed() {
-    [ -e "$MY_CORE_BIN_DIR/uppm" ] || return 1
+    [ -e "$PPKG_CORE_BIN_DIR/uppm" ] || return 1
 
     for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
-        "$MY_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
+        "$PPKG_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
     done
 
     return 0
 }
 
 __setup() {
-    CURRENT_USER__NAME="$(id -n -u)"
-    CURRENT_GROUP_NAME="$(id -n -g)"
-
-    if [ -d "$MY_HOME_DIR" ] ; then
-        if [ -r "$MY_HOME_DIR" ] && [ -w "$MY_HOME_DIR" ] && [ -x "$MY_HOME_DIR" ] ; then
-            :
-        else
-            if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-                     chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
-            else
-                sudo chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$MY_HOME_DIR"
-            fi
-        fi
-    else
-        if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-                 install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
-        else
-            sudo install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$MY_HOME_DIR"
-        fi
+    if [ -d    "$PPKG_CORE_BIN_DIR" ] ; then
+        rm -rf "$PPKG_CORE_BIN_DIR"
     fi
 
-    if [ -d    "$MY_CORE_BIN_DIR" ] ; then
-        rm -rf "$MY_CORE_BIN_DIR"
-    fi
-
-    install -d "$MY_CORE_BIN_DIR"
+    install -d "$PPKG_CORE_BIN_DIR"
 
     #################################################################################
 
@@ -5619,18 +5598,18 @@ __setup() {
             *) die "$NATIVE_OS_KIND is not supported yet."
         esac
 
-        printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/uppm"
-        chmod +x                    "$MY_CORE_BIN_DIR/uppm"
+        printf '%s\n' '#!/bin/sh' > "$PPKG_CORE_BIN_DIR/uppm"
+        chmod +x                    "$PPKG_CORE_BIN_DIR/uppm"
 
-        export PATH="$MY_CORE_BIN_DIR:$PATH"
+        export PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
         # https://curl.se/docs/caextract.html
         wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-        run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
-        run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
+        run install -d                         "$PPKG_HOME"
+        run cp "$SETUP_WORKING_DIR/cacert.pem" "$PPKG_HOME"
 
-        export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
+        export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
 
         __setup_yq
     else
@@ -5641,11 +5620,11 @@ __setup() {
 
     wfetch 'https://raw.githubusercontent.com/leleliu008/os/master/bin/os' --output-path="$SETUP_WORKING_DIR/os"
     run chmod +x "$SETUP_WORKING_DIR/os"
-    run mv "$SETUP_WORKING_DIR/os" "$MY_CORE_BIN_DIR/os"
+    run mv "$SETUP_WORKING_DIR/os" "$PPKG_CORE_BIN_DIR/os"
 
     #################################################################################
 
-    cat > "$MY_CORE_BIN_DIR/base64-encode-string" <<EOF
+    cat > "$PPKG_CORE_BIN_DIR/base64-encode-string" <<EOF
 #!/bin/sh
 set -e
 
@@ -5657,11 +5636,11 @@ printf '%s\n' "\$@" | "\$BASE64_COMMAND" -w 0
 printf '\n'
 EOF
 
-    chmod +x "$MY_CORE_BIN_DIR/base64-encode-string"
+    chmod +x "$PPKG_CORE_BIN_DIR/base64-encode-string"
 
     #################################################################################
 
-    cat > "$MY_CORE_BIN_DIR/wfetch-url-transform.sample" <<EOF
+    cat > "$PPKG_CORE_BIN_DIR/wfetch-url-transform.sample" <<EOF
 # https://ghproxy.com/
 case \$1 in
     *githubusercontent.com/*)
@@ -5692,12 +5671,12 @@ __setup_alpine() {
     run $sudo apk update
     run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
 
-    run ln -s /usr/bin/make /opt/ppkg/core/bin/gmake
+    run ln -s /usr/bin/make "$PPKG_CORE_BIN_DIR/gmake"
 }
 
 __setup_macos() {
     command -v brew > /dev/null || {
-        XX="$MY_HOME_DIR/homebrew-install.sh"
+        XX="$PPKG_HOME/homebrew-install.sh"
         run rm -f   "$XX"
         run curl -o "$XX" -L 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh'
         run "yes | bash $XX"
@@ -5706,44 +5685,44 @@ __setup_macos() {
     run brew update
     run brew install bash coreutils findutils gawk gsed grep tree unzip zip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake xmake ninja make libtool nasm yasm flex bison m4
 
-    run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
-    run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
-    run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
-    run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
-    run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
-    run ln -sf /usr/local/bin/gfind    "$MY_CORE_BIN_DIR/find"
-    run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
-    run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
-    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
-    run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
-    run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
+    run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
+    run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
+    run ln -sf /usr/local/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
+    run ln -sf /usr/local/bin/gawk     "$PPKG_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ggrep    "$PPKG_CORE_BIN_DIR/grep"
+    run ln -sf /usr/local/bin/gfind    "$PPKG_CORE_BIN_DIR/find"
+    run ln -sf /usr/local/bin/gmake    "$PPKG_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gbase64  "$PPKG_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$PPKG_CORE_BIN_DIR/unlink"
+    run ln -sf /usr/local/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
+    run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
 
-    run ln -sf /usr/local/opt/m4/bin/m4        "$MY_CORE_BIN_DIR/m4"
+    run ln -sf /usr/local/opt/m4/bin/m4        "$PPKG_CORE_BIN_DIR/m4"
 
-    run ln -sf /usr/local/opt/flex/bin/lex     "$MY_CORE_BIN_DIR/lex"
-    run ln -sf /usr/local/opt/flex/bin/flex    "$MY_CORE_BIN_DIR/flex"
-    run ln -sf /usr/local/opt/flex/bin/flex++  "$MY_CORE_BIN_DIR/flex++"
+    run ln -sf /usr/local/opt/flex/bin/lex     "$PPKG_CORE_BIN_DIR/lex"
+    run ln -sf /usr/local/opt/flex/bin/flex    "$PPKG_CORE_BIN_DIR/flex"
+    run ln -sf /usr/local/opt/flex/bin/flex++  "$PPKG_CORE_BIN_DIR/flex++"
 
-    run ln -sf /usr/local/opt/bison/bin/bison  "$MY_CORE_BIN_DIR/bison"
-    run ln -sf /usr/local/opt/bison/bin/yacc   "$MY_CORE_BIN_DIR/yacc"
+    run ln -sf /usr/local/opt/bison/bin/bison  "$PPKG_CORE_BIN_DIR/bison"
+    run ln -sf /usr/local/opt/bison/bin/yacc   "$PPKG_CORE_BIN_DIR/yacc"
 }
 
 __setup_freebsd() {
     run $sudo pkg update
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc flex bison m4
 
-    run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
-    run ln -sf /usr/local/bin/gm4      "$MY_CORE_BIN_DIR/m4"
-    run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
-    run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
-    run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
-    run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
-    run ln -sf /usr/local/bin/gfind    "$MY_CORE_BIN_DIR/find"
-    run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
-    run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
-    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
-    run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
-    run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
+    run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
+    run ln -sf /usr/local/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
+    run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
+    run ln -sf /usr/local/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
+    run ln -sf /usr/local/bin/gawk     "$PPKG_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ggrep    "$PPKG_CORE_BIN_DIR/grep"
+    run ln -sf /usr/local/bin/gfind    "$PPKG_CORE_BIN_DIR/find"
+    run ln -sf /usr/local/bin/gmake    "$PPKG_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gbase64  "$PPKG_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$PPKG_CORE_BIN_DIR/unlink"
+    run ln -sf /usr/local/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
+    run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
 }
 
 __setup_openbsd() {
@@ -5753,42 +5732,42 @@ __setup_openbsd() {
         7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf flex bison m4
     esac
 
-    run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
-    run ln -sf /usr/local/bin/gm4      "$MY_CORE_BIN_DIR/m4"
-    run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
-    run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
-    run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
-    run ln -sf /usr/local/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
-    run ln -sf /usr/local/bin/gfind    "$MY_CORE_BIN_DIR/find"
-    run ln -sf /usr/local/bin/gmake    "$MY_CORE_BIN_DIR/make"
-    run ln -sf /usr/local/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
-    run ln -sf /usr/local/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
-    run ln -sf /usr/local/bin/ginstall "$MY_CORE_BIN_DIR/install"
-    run ln -sf /usr/local/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
-    run ln -sf /usr/local/bin/pkgconf    "$MY_CORE_BIN_DIR/pkg-config"
+    run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
+    run ln -sf /usr/local/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
+    run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
+    run ln -sf /usr/local/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
+    run ln -sf /usr/local/bin/gawk     "$PPKG_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ggrep    "$PPKG_CORE_BIN_DIR/grep"
+    run ln -sf /usr/local/bin/gfind    "$PPKG_CORE_BIN_DIR/find"
+    run ln -sf /usr/local/bin/gmake    "$PPKG_CORE_BIN_DIR/make"
+    run ln -sf /usr/local/bin/gbase64  "$PPKG_CORE_BIN_DIR/base64"
+    run ln -sf /usr/local/bin/gunlink  "$PPKG_CORE_BIN_DIR/unlink"
+    run ln -sf /usr/local/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
+    run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
+    run ln -sf /usr/local/bin/pkgconf    "$PPKG_CORE_BIN_DIR/pkg-config"
 
     # tree package in system's package manager is too old
-    printf '%s\n' '#!/bin/sh' > "$MY_CORE_BIN_DIR/tree"
-    chmod +x                    "$MY_CORE_BIN_DIR/tree"
+    printf '%s\n' '#!/bin/sh' > "$PPKG_CORE_BIN_DIR/tree"
+    chmod +x                    "$PPKG_CORE_BIN_DIR/tree"
 }
 
 __setup__netbsd() {
     run $sudo pkgin -y update
     run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4
 
-    run ln -sf /usr/pkg/bin/gln      "$MY_CORE_BIN_DIR/ln"
-    run ln -sf /usr/pkg/bin/gm4      "$MY_CORE_BIN_DIR/m4"
-    run ln -sf /usr/pkg/bin/gtar     "$MY_CORE_BIN_DIR/tar"
-    run ln -sf /usr/pkg/bin/gsed     "$MY_CORE_BIN_DIR/sed"
-    run ln -sf /usr/pkg/bin/gawk     "$MY_CORE_BIN_DIR/awk"
-    run ln -sf /usr/pkg/bin/ggrep    "$MY_CORE_BIN_DIR/grep"
-    run ln -sf /usr/pkg/bin/gfind    "$MY_CORE_BIN_DIR/find"
-    run ln -sf /usr/pkg/bin/gmake    "$MY_CORE_BIN_DIR/make"
-    run ln -sf /usr/pkg/bin/gbase64  "$MY_CORE_BIN_DIR/base64"
-    run ln -sf /usr/pkg/bin/gunlink  "$MY_CORE_BIN_DIR/unlink"
-    run ln -sf /usr/pkg/bin/ginstall "$MY_CORE_BIN_DIR/install"
-    run ln -sf /usr/pkg/bin/gsha256sum "$MY_CORE_BIN_DIR/sha256sum"
-    run ln -sf /usr/pkg/go118/bin/go "$MY_CORE_BIN_DIR/go"
+    run ln -sf /usr/pkg/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
+    run ln -sf /usr/pkg/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
+    run ln -sf /usr/pkg/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
+    run ln -sf /usr/pkg/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
+    run ln -sf /usr/pkg/bin/gawk     "$PPKG_CORE_BIN_DIR/awk"
+    run ln -sf /usr/pkg/bin/ggrep    "$PPKG_CORE_BIN_DIR/grep"
+    run ln -sf /usr/pkg/bin/gfind    "$PPKG_CORE_BIN_DIR/find"
+    run ln -sf /usr/pkg/bin/gmake    "$PPKG_CORE_BIN_DIR/make"
+    run ln -sf /usr/pkg/bin/gbase64  "$PPKG_CORE_BIN_DIR/base64"
+    run ln -sf /usr/pkg/bin/gunlink  "$PPKG_CORE_BIN_DIR/unlink"
+    run ln -sf /usr/pkg/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
+    run ln -sf /usr/pkg/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
+    run ln -sf /usr/pkg/go118/bin/go "$PPKG_CORE_BIN_DIR/go"
 
     run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
     run sudo update-ca-certificates
@@ -5831,9 +5810,9 @@ __setup_yq() {
     esac
 
     if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-        wfetch "$YQ_URL" --sha256=$YQ_SHA --output-dir="$MY_CORE_BIN_DIR"
+        wfetch "$YQ_URL" --sha256=$YQ_SHA --output-dir="$PPKG_CORE_BIN_DIR"
         run chmod +x "$FETCH_OUTPUT_PATH"
-        run mv "$FETCH_OUTPUT_PATH" "$MY_CORE_BIN_DIR/yq"
+        run mv "$FETCH_OUTPUT_PATH" "$PPKG_CORE_BIN_DIR/yq"
     fi
 }
 
@@ -5885,21 +5864,21 @@ __setup_uppm() {
 
     wfetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
 
-    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$MY_CORE_DIR"
+    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
 
-    rm -rf "$MY_CORE_DIR/.ppkg"
+    rm -rf "$PPKG_CORE_DIR/.ppkg"
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
     wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-    run install -d                         "$MY_CORE_DIR/etc/ssl/certs"
-    run cp "$SETUP_WORKING_DIR/cacert.pem" "$MY_CORE_DIR/etc/ssl/certs"
+    run install -d                         "$PPKG_HOME"
+    run cp "$SETUP_WORKING_DIR/cacert.pem" "$PPKG_HOME"
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
+    export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
 
     if [ -f ~/.uppm/repos.d/offical-core/.git/config ] ; then
         CLONE=no
@@ -5907,8 +5886,8 @@ __setup_uppm() {
         CLONE=yes
     fi
 
-    run "$MY_CORE_BIN_DIR/uppm env"
-    run "$MY_CORE_BIN_DIR/uppm update"
+    run "$PPKG_CORE_BIN_DIR/uppm env"
+    run "$PPKG_CORE_BIN_DIR/uppm update"
 
     if [ "$CLONE" = yes ] ; then
         cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
@@ -5921,9 +5900,9 @@ EOF
     for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
     do
         if [ "$NATIVE_OS_KIND" = darwin ] && [ "$item" = git ] ; then
-            run "$MY_CORE_BIN_DIR/uppm install $item -v"
+            run "$PPKG_CORE_BIN_DIR/uppm install $item -v"
         else
-            run "$MY_CORE_BIN_DIR/uppm install $item"
+            run "$PPKG_CORE_BIN_DIR/uppm install $item"
         fi
     done
 }
@@ -5936,9 +5915,9 @@ init() {
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
-        export ACLOCAL_PATH="$MY_CORE_DIR/share/aclocal"
+        export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal"
     else
-        export ACLOCAL_PATH="$MY_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
+        export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
     fi
 
     # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
@@ -5948,14 +5927,14 @@ init() {
     fi
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$MY_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$MY_CORE_DIR/etc/ssl/certs/cacert.pem"
+    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
     fi
 
-    if [ -f "$MY_INIT_RC" ] ; then
-        .   "$MY_INIT_RC" || die "load $MY_INIT_RC failed."
+    if [ -f "$PPKG_INIT_RC" ] ; then
+        .   "$PPKG_INIT_RC" || die "load $PPKG_INIT_RC failed."
     else
-        cat > "$MY_INIT_RC" <<EOF
+        cat > "$PPKG_INIT_RC" <<EOF
 # influential environment variables:
 #      CC=/usr/bin/cc
 #     CXX=/usr/bin/c++
@@ -5984,8 +5963,8 @@ init() {
 EOF
     fi
 
-    [ -e "$MY_HOME_DIR/repos" ] || {
-        printf '%s\n' "offical-core=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
+    [ -e "$PPKG_HOME/repos" ] || {
+        printf '%s\n' "offical-core=$PPKG_OFFICAL_FORMULA_REPO_URL"  > "$PPKG_HOME/repos"
     }
 
     unset NATIVE_OS_KIND
@@ -5997,7 +5976,7 @@ EOF
     unset NATIVE_OS_LIBC
     unset NATIVE_OS_SUBS
 
-    OS_COMMAND_PATH="$MY_CORE_BIN_DIR/os"
+    OS_COMMAND_PATH="$PPKG_CORE_BIN_DIR/os"
 
     NATIVE_OS_KIND=$($OS_COMMAND_PATH kind)
     NATIVE_OS_TYPE=$($OS_COMMAND_PATH type)
@@ -6036,24 +6015,24 @@ __setup_PATH_env() {
         .   "$HOME/.cargo/env"
     fi
 
-    UPPM_INSTALLED_PACKAGES_DIR="$HOME/.uppm/installed"
+    UPPM_PACKAGE_INSTALLED_DIR="$HOME/.uppm/installed"
 
-    if [ -d "$UPPM_INSTALLED_PACKAGES_DIR" ] ; then
-        for item in $(ls "$UPPM_INSTALLED_PACKAGES_DIR")
+    if [ -d "$UPPM_PACKAGE_INSTALLED_DIR" ] ; then
+        for item in $(ls "$UPPM_PACKAGE_INSTALLED_DIR")
         do
-            if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item" ] && [ -f "$UPPM_INSTALLED_PACKAGES_DIR/$item/.uppm/receipt.yml" ] ; then
-                if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin" ] ; then
-                    bppend_to_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/bin"
+            if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item" ] && [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
+                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin" ] ; then
+                    bppend_to_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin"
                 fi
 
-                if [ -d "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal" ] ; then
-                    bppend_to_ACLOCAL_PATH "$UPPM_INSTALLED_PACKAGES_DIR/$item/share/aclocal"
+                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal" ] ; then
+                    bppend_to_ACLOCAL_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal"
                 fi
             fi
         done
     fi
 
-    bppend_to_PATH "$MY_CORE_BIN_DIR"
+    bppend_to_PATH "$PPKG_CORE_BIN_DIR"
 }
 
 help() {
@@ -6204,30 +6183,34 @@ main() {
         set -x
     fi
 
+    if [ -z "$HOME" ] ; then
+        die "HOME environment variable is not set."
+    fi
+
     # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
     #IFS_DEFAULT=$(printf ' \t\n')
     #IFS=$IFS_DEFAULT
 
     # MY represents this software's
 
-    MY_VERSION=0.1.2
+    PPKG_VERSION=0.1.3
 
-    MY_HOME_PAGE="https://github.com/leleliu008/ppkg"
-    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
-    MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
+    PPKG_WEBPAGE_URL="https://github.com/leleliu008/ppkg"
+    PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
+    PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
 
-    MY_HOME_DIR="/opt/ppkg"
+    PPKG_HOME="$HOME/.ppkg"
 
-    MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
-    MY_INSTALLED_DIR="$MY_HOME_DIR/installed"
-    MY_SYMLINKED_DIR="$MY_HOME_DIR/symlinked"
-    MY_DOWNLOADS_DIR="$MY_HOME_DIR/downloads"
-    MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
+    PPKG_FORMULA_REPO_DIR="$PPKG_HOME/repos.d"
+    PPKG_PACKAGE_INSTALLED_DIR="$PPKG_HOME/installed"
+    PPKG_PACKAGE_SYMLINKED_DIR="$PPKG_HOME/symlinked"
+    PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
+    PPKG_BACKUP_DIR="$PPKG_HOME/backup.d"
 
-    MY_CORE_DIR="$MY_HOME_DIR/core"
-    MY_CORE_BIN_DIR="$MY_CORE_DIR/bin"
+    PPKG_CORE_DIR="$PPKG_HOME/core"
+    PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
 
-    MY_INIT_RC="$MY_HOME_DIR/init.rc"
+    PPKG_INIT_RC="$PPKG_HOME/init.rc"
 
     case $1 in
         ''|--help|-h)
@@ -6235,15 +6218,15 @@ main() {
             return 0
             ;;
         --version|-V)
-            printf '%s\n' "$MY_VERSION"
+            printf '%s\n' "$PPKG_VERSION"
             return 0
             ;;
         --homedir)
-            printf '%s\n' "$MY_HOME_DIR"
+            printf '%s\n' "$PPKG_HOME"
             return 0
             ;;
         --homepage)
-            printf '%s\n' "$MY_HOME_PAGE"
+            printf '%s\n' "$PPKG_WEBPAGE_URL"
             return 0
             ;;
         setup)
@@ -6257,12 +6240,12 @@ main() {
 
     case $1 in
         env)
-            printf '%b\n' "${COLOR_GREEN}ppkg $MY_VERSION${COLOR_OFF}
+            printf '%b\n' "${COLOR_GREEN}ppkg $PPKG_VERSION${COLOR_OFF}
 
 ${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
 
 ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
-            "$MY_CORE_BIN_DIR/os"
+            "$PPKG_CORE_BIN_DIR/os"
             return 0
             ;;
         ls-available) shift; __list_available_packages ;;
@@ -6311,7 +6294,7 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
             case $1 in
                 @self)
                     shift
-                    __upgrade_self "$MY_UPGRAGE_URL" $@ ;;
+                    __upgrade_self "$PPKG_UPGRAGE_URL" $@ ;;
                 *)  __upgrade_packages $@ ;;
             esac
             ;;
