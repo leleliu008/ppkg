@@ -2026,7 +2026,12 @@ main() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
-    PACKAGE_DEP_UPP="coreutils findutils gsed grep patchelf pkg-config $PACKAGE_DEP_UPP"
+    case $NATIVE_OS_KIND in
+        linux|darwin)
+            PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkg-config hexdump $PACKAGE_DEP_UPP"
+            ;;
+        *)  PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkgconf $PACKAGE_DEP_UPP"
+    esac
 
     #########################################################################################
 
