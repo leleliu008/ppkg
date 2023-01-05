@@ -3,12 +3,12 @@
 #include <string.h>
 #include "base16.h"
 
-int base16_encode(char * output, const unsigned char * input, size_t inputLengthInBytes, bool isToUpper) {
+int base16_encode(char * output, const unsigned char * input, size_t inputSizeInBytes, bool isToUpper) {
     const char *table = isToUpper ? "0123456789ABCDEF" : "0123456789abcdef";
     unsigned char highByte, lowByte;
-    size_t i;
+    size_t i, j;
 
-    for (i = 0; i < inputLengthInBytes; i++) {
+    for (i = 0; i < inputSizeInBytes; i++) {
         //向右移动4bit，获得高4bit
         highByte = input[i] >> 4;
         //与0x0f做位与运算，获得低4bit
@@ -16,7 +16,7 @@ int base16_encode(char * output, const unsigned char * input, size_t inputLength
 
         //由于高4bit和低4bit都只有4个bit，他们转换成10进制的数字，范围都在0 ～ 15闭区间内
         //大端模式
-        size_t j = i << 1;
+        j = i << 1;
         output[j] = table[highByte];
         output[j + 1] = table[lowByte];
     }
@@ -38,21 +38,20 @@ static short hex2dec(char c) {
     }
 }
 
-int base16_decode(unsigned char * output, const char * input, size_t inputLengthInBytes) {
-    if (inputLengthInBytes == 0) {
-        inputLengthInBytes = strlen(input);
+int base16_decode(unsigned char * output, const char * input, size_t inputSizeInBytes) {
+    if (inputSizeInBytes == 0) {
+        inputSizeInBytes = strlen(input);
     }
 
     //input指向的字符串长度必须是2的整数倍，也就是必须是偶数
-    if (1 == (inputLengthInBytes & 1)) {
+    if (1 == (inputSizeInBytes & 1)) {
         return 1;
     }
 
-    size_t i;
-    size_t j;
-    size_t halfInputLength = inputLengthInBytes >> 1;
+    size_t i, j;
+    size_t halfInputSize = inputSizeInBytes >> 1;
 
-    for (i = 0; i < halfInputLength; i++) {
+    for (i = 0; i < halfInputSize; i++) {
         //16进制数字转换为10进制数字的过程
         j = i << 1;
         output[i] = (hex2dec(input[j]) << 4) + hex2dec(input[j + 1]);
