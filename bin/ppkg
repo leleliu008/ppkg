@@ -2721,7 +2721,6 @@ __install_the_given_package() {
 
                 run uppm install "$item"
             fi
-            # bppend_to_PATH "$("$PPKG_CORE_BIN_DIR/uppm" info "$item" installed-dir)/bin"
         done
     fi
 
@@ -5531,17 +5530,6 @@ inspect_install_arguments() {
     fi
 }
 
-__is_core_tools_installed() {
-    [ -e "$PPKG_CORE_BIN_DIR/uppm" ] || return 1
-
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
-    do
-        "$PPKG_CORE_BIN_DIR/uppm" is-installed "$item" || return 1
-    done
-
-    return 0
-}
-
 __setup() {
     if [ -d    "$PPKG_CORE_BIN_DIR" ] ; then
         rm -rf "$PPKG_CORE_BIN_DIR"
@@ -5601,8 +5589,8 @@ __setup() {
             *) die "$NATIVE_OS_KIND is not supported yet."
         esac
 
-        printf '%s\n' '#!/bin/sh' > "$PPKG_CORE_BIN_DIR/uppm"
-        chmod +x                    "$PPKG_CORE_BIN_DIR/uppm"
+        printf '%s\n' '#!/bin/sh' > "$UPPM_COMMAND"
+        chmod +x                    "$UPPM_COMMAND"
 
         export PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
@@ -5889,8 +5877,8 @@ __setup_uppm() {
         CLONE=yes
     fi
 
-    run "$PPKG_CORE_BIN_DIR/uppm env"
-    run "$PPKG_CORE_BIN_DIR/uppm update"
+    run "$UPPM_COMMAND" env
+    run "$UPPM_COMMAND" update
 
     if [ "$CLONE" = yes ] ; then
         cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
@@ -5900,21 +5888,17 @@ __setup_uppm() {
 EOF
     fi
 
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
-    do
-        if [ "$NATIVE_OS_KIND" = darwin ] && [ "$item" = git ] ; then
-            run "$PPKG_CORE_BIN_DIR/uppm install $item -v"
-        else
-            run "$PPKG_CORE_BIN_DIR/uppm install $item"
-        fi
-    done
+    run "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
 }
 
 init() {
-    __is_core_tools_installed || {
-        error "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
-        return 1
-    }
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    do
+        "$UPPM_COMMAND" is-installed "$item" || {
+            error "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
+            return 1
+        }
+    done
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
@@ -6212,6 +6196,8 @@ main() {
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
 
     PPKG_INIT_RC="$PPKG_HOME/init.rc"
+
+    UPPM_COMMAND="$PPKG_CORE_BIN_DIR/uppm"
 
     case $1 in
         ''|--help|-h)
