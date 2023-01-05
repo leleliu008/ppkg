@@ -897,6 +897,22 @@ command_exists_in_filesystem_and_version_matched() {
     fi
 }
 
+get_file_extension_from_url() {
+    unset URL
+    URL="$(printf '%s\n' "$1" | sed 's|\?.*||')"
+
+    unset EXT
+    EXT="$(printf '%s\n' "$URL" | sed 's|.*\(\.[^.]\+$\)|\1|g')"
+
+    case $EXT in
+        .gz)  printf '%s\n' '.tgz' ;;
+        .lz)  printf '%s\n' '.tlz' ;;
+        .xz)  printf '%s\n' '.txz' ;;
+        .bz2) printf '%s\n' '.tbz2' ;;
+        *)    printf '%s\n' "$EXT" ;;
+    esac
+}
+
 # }}}
 ##############################################################################
 # {{{ operations of formula
@@ -1067,41 +1083,37 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
-        PACKAGE_SRC_URL="$PACKAGE_GIT_URL"
-    fi
+        if [ -z "$PACKAGE_GIT_URL" ] ; then
+            die "src-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
+        else
+            PACKAGE_SRC_FILETYPE=.git
+        fi
+    else
+        case $PACKAGE_SRC_URL in
+            dir://*)
+                PACKAGE_SRC_FILETYPE=.dir ;;
+            *)  PACKAGE_SRC_FILETYPE="$(get_file_extension_from_url "$PACKAGE_SRC_URL")"
 
-    if [ -z "$PACKAGE_SRC_URL" ] ; then
-        die "src-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
+                case $PACKAGE_SRC_FILETYPE in
+                    .zip)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip"      ;;
+                    .txz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz"    ;;
+                    .tgz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip"  ;;
+                    .tlz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar lzip"  ;;
+                    .tbz2)    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar bzip2" ;;
+                    *)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl"            ;;
+                esac
+        esac
     fi
-
-    case $(printf '%s\n' "$PACKAGE_SRC_URL" | sed 's|\?.*||') in
-        dir://*)   PACKAGE_SRC_FILETYPE=dir ;;
-        *.git)     PACKAGE_SRC_FILETYPE=git ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git" ;;
-        *.zip)     PACKAGE_SRC_FILETYPE=zip ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip" ;;
-        *.tar.xz)  PACKAGE_SRC_FILETYPE=txz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz" ;;
-        *.tar.gz)  PACKAGE_SRC_FILETYPE=tgz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip" ;;
-        *.tar.lz)  PACKAGE_SRC_FILETYPE=tlz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar lzip" ;;
-        *.tar.bz2) PACKAGE_SRC_FILETYPE=tbz2; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar bzip2" ;;
-        *.tgz)     PACKAGE_SRC_FILETYPE=tgz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip" ;;
-        *.tlz)     PACKAGE_SRC_FILETYPE=tlz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar lzip" ;;
-        *.txz)     PACKAGE_SRC_FILETYPE=txz ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz" ;;
-        *.tbz2)    PACKAGE_SRC_FILETYPE=tbz2; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar bzip2" ;;
-        *.c)       PACKAGE_SRC_FILETYPE=c   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
-        *.cc)      PACKAGE_SRC_FILETYPE=cc  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
-        *.cxx)     PACKAGE_SRC_FILETYPE=cc  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
-        *.cpp)     PACKAGE_SRC_FILETYPE=cc  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl" ;;
-        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz. .tlz .tbz2"
-    esac
 
     case $PACKAGE_SRC_FILETYPE in
-        dir)
+        .dir)
             PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
 
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
             fi
             ;;
-        git)
+        .git)
             PACKAGE_SRC_FILENAME="$PACKAGE_NAME.git"
             PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
 
@@ -1122,7 +1134,7 @@ __load_formula_of_the_given_package() {
                 esac
             fi
 
-            PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA.$PACKAGE_SRC_FILETYPE"
+            PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
             PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
     esac
 
@@ -1131,22 +1143,19 @@ __load_formula_of_the_given_package() {
             die "fix-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
-        case $(printf '%s\n' "$PACKAGE_FIX_URL" | sed 's|\?.*||') in
-            *.diff)    PACKAGE_FIX_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
-            *.patch)   PACKAGE_FIX_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
-            *.zip)     PACKAGE_FIX_FILETYPE=zip   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
-            *.tar.xz)  PACKAGE_FIX_FILETYPE=txz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            *.tar.gz)  PACKAGE_FIX_FILETYPE=tgz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            *.tar.lz)  PACKAGE_FIX_FILETYPE=tlz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            *.tar.bz2) PACKAGE_FIX_FILETYPE=tbz2  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
-            *.txz)     PACKAGE_FIX_FILETYPE=txz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            *.tgz)     PACKAGE_FIX_FILETYPE=tgz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            *.tlz)     PACKAGE_FIX_FILETYPE=tlz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            *.tar.bz2) PACKAGE_FIX_FILETYPE=tbz2  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
-            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2"
+        PACKAGE_FIX_FILETYPE="$(get_file_extension_from_url "$PACKAGE_FIX_URL")"
+
+        case $PACKAGE_FIX_FILETYPE in
+            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
+            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
+            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"      ;;
+            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
+            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
         esac
 
-        PACKAGE_FIX_FILENAME="$PACKAGE_FIX_URL.$PACKAGE_FIX_FILETYPE"
+        PACKAGE_FIX_FILENAME="$PACKAGE_FIX_URL$PACKAGE_FIX_FILETYPE"
         PACKAGE_FIX_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
     fi
 
@@ -1155,22 +1164,19 @@ __load_formula_of_the_given_package() {
             die "res-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
-        case $(printf '%s\n' "$PACKAGE_RES_URL" | sed 's|\?.*||') in
-            *.diff)    PACKAGE_RES_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
-            *.patch)   PACKAGE_RES_FILETYPE=patch ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"           ;;
-            *.zip)     PACKAGE_RES_FILETYPE=zip   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"     ;;
-            *.tar.xz)  PACKAGE_RES_FILETYPE=txz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            *.tar.gz)  PACKAGE_RES_FILETYPE=tgz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            *.tar.lz)  PACKAGE_RES_FILETYPE=tlz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            *.tar.bz2) PACKAGE_RES_FILETYPE=tbz2  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
-            *.txz)     PACKAGE_RES_FILETYPE=txz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            *.tgz)     PACKAGE_RES_FILETYPE=tgz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            *.tlz)     PACKAGE_RES_FILETYPE=tlz   ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            *.tbz2)    PACKAGE_RES_FILETYPE=tbz2  ; PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
-            *)  die "unrecognized res extension : $PACKAGE_FIX_URL.\n    supported res extensons are: .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2"
+        PACKAGE_RES_FILETYPE="$(get_file_extension_from_url "$PACKAGE_RES_URL")"
+
+        case $PACKAGE_RES_FILETYPE in
+            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
+            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
+            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"      ;;
+            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
+            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
+            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
+            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
         esac
 
-        PACKAGE_RES_FILENAME="$PACKAGE_RES_URL.$PACKAGE_RES_FILETYPE"
+        PACKAGE_RES_FILENAME="$PACKAGE_RES_URL$PACKAGE_RES_FILETYPE"
         PACKAGE_RES_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_RES_FILENAME"
     fi
 
@@ -1184,7 +1190,6 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
             autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
@@ -1206,7 +1211,6 @@ __load_formula_of_the_given_package() {
         case $item in
             autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
             autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
-
             configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
             cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
             cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
@@ -1581,8 +1585,8 @@ prompt_user_to_install_bat() {
 # fetch source code if needed
 __fetch_sources_of_the_given_package() {
     case $PACKAGE_SRC_FILETYPE in
-        dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
-        git)
+        .dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
+        .git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
                 GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
             else
@@ -1618,7 +1622,7 @@ __fetch_sources_of_the_given_package() {
 
             run install -d "$PACKAGE_SRC_FILEPATH" || return 1
             run git -C "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_SRC_URL" || return 1
+            run git -C "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
             run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --prune --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
             run git -C "$PACKAGE_SRC_FILEPATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
             run git -C "$PACKAGE_SRC_FILEPATH" submodule update --init || return 1
@@ -2871,7 +2875,7 @@ EOF
     __fetch_patches_of_the_given_package "$1"
 
     case $PACKAGE_SRC_FILETYPE in
-        dir)
+        .dir)
             if [ "$PACKAGE_SRC_FILEPATH" = '/dev/null' ] ; then
                 :
             elif [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
@@ -2884,18 +2888,18 @@ EOF
                 die "src-url point to dir is not exist."
             fi
             ;;
-        git)
+        .git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
                 PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_FILEPATH" && git rev-parse HEAD)
             fi
             step "copy source files to the installing src directory"
             run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
-        zip)
+        .zip)
             step "uncompressed source file to the installing src directory"
             run unzip  "$PACKAGE_SRC_FILEPATH" -d "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
-        txz|tgz|tlz|tbz2)
+        .txz|.tgz|.tlz|.tbz2)
             step "uncompressed source file to the installing src directory"
             run tar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
             ;;
@@ -2905,11 +2909,11 @@ EOF
 
     if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
         case $PACKAGE_FIX_FILETYPE in
-            zip)
+            .zip)
                 step "uncompressed patch file to the installing fix directory"
                 run unzip  "$PACKAGE_FIX_FILEPATH" -d "$PACKAGE_INSTALLING_FIX_DIR"
                 ;;
-            txz|tgz|tlz|tbz2)
+            .txz|.tgz|.tlz|.tbz2)
                 step "uncompressed patch file to the installing fix directory"
                 run tar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
@@ -2920,16 +2924,15 @@ EOF
 
     if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
         case $PACKAGE_RES_FILETYPE in
-            zip)
+            .zip)
                 step "uncompressed res file to the installing res directory"
                 run unzip "$PACKAGE_RES_FILEPATH" -d "$PACKAGE_INSTALLING_RES_DIR"
                 ;;
-            txz|tgz|tlz|tbz2)
+            .txz|.tgz|.tlz|.tbz2)
                 step "uncompressed res file to the installing res directory"
                 run tar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)
-                step "copy res file to the installing res directory"
+            *)  step "copy res file to the installing res directory"
                 run cp    "$PACKAGE_RES_FILEPATH"   "$PACKAGE_INSTALLING_RES_DIR"
         esac
     fi
@@ -6190,8 +6193,6 @@ main() {
     # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
     #IFS_DEFAULT=$(printf ' \t\n')
     #IFS=$IFS_DEFAULT
-
-    # MY represents this software's
 
     PPKG_VERSION=0.1.3
 
