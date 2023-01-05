@@ -5733,6 +5733,7 @@ __setup_freebsd() {
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
+    run ln -sf /usr/local/bin/gm4      "$MY_CORE_BIN_DIR/m4"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
@@ -5753,6 +5754,7 @@ __setup_openbsd() {
     esac
 
     run ln -sf /usr/local/bin/gln      "$MY_CORE_BIN_DIR/ln"
+    run ln -sf /usr/local/bin/gm4      "$MY_CORE_BIN_DIR/m4"
     run ln -sf /usr/local/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/local/bin/gawk     "$MY_CORE_BIN_DIR/awk"
@@ -5775,6 +5777,7 @@ __setup__netbsd() {
     run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4
 
     run ln -sf /usr/pkg/bin/gln      "$MY_CORE_BIN_DIR/ln"
+    run ln -sf /usr/pkg/bin/gm4      "$MY_CORE_BIN_DIR/m4"
     run ln -sf /usr/pkg/bin/gtar     "$MY_CORE_BIN_DIR/tar"
     run ln -sf /usr/pkg/bin/gsed     "$MY_CORE_BIN_DIR/sed"
     run ln -sf /usr/pkg/bin/gawk     "$MY_CORE_BIN_DIR/awk"
