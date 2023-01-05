@@ -64,12 +64,24 @@ int get_file_extension_from_url(char * * out, const char * url) {
             p = &url[i];
 
             if (urlLength - i == 3) {
-                if (strcmp(p, ".gz") == 0 || strcmp(p, ".xz") == 0 || strcmp(p, ".lz") == 0) {
+                if (strcmp(p, ".gz") == 0) {
                     if (urlLength > 7) {
-                        const char * p2 = &url[i - 4];
-
-                        if (strncmp(p2, ".tar", 4) == 0) {
-                            (*out) = strndup(p2, 7);
+                        if (strncmp(&url[i - 4], ".tar", 4) == 0) {
+                            (*out) = strdup(".tgz");
+                            return 0;
+                        }
+                    }
+                } else if (strcmp(p, ".xz") == 0) {
+                    if (urlLength > 7) {
+                        if (strncmp(&url[i - 4], ".tar", 4) == 0) {
+                            (*out) = strdup(".txz");
+                            return 0;
+                        }
+                    }
+                } else if (strcmp(p, ".lz") == 0) {
+                    if (urlLength > 7) {
+                        if (strncmp(&url[i - 4], ".tar", 4) == 0) {
+                            (*out) = strdup(".tlz");
                             return 0;
                         }
                     }
@@ -77,10 +89,8 @@ int get_file_extension_from_url(char * * out, const char * url) {
             } else if (urlLength - i == 4) {
                 if (strcmp(p, ".bz2") == 0) {
                     if (urlLength > 8) {
-                        const char * p2 = &url[i - 4];
-
-                        if (strncmp(p2, ".tar", 4) == 0) {
-                            (*out) = strndup(p2, 8);
+                        if (strncmp(&url[i - 4], ".tar", 4) == 0) {
+                            (*out) = strdup(".tbz2");
                             return 0;
                         }
                     }

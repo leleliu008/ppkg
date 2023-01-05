@@ -517,15 +517,11 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 }
             }
 
-            if (strcmp(srcFileNameExtension, ".tar.gz") == 0 ||
-                strcmp(srcFileNameExtension, ".tar.xz") == 0 ||
-                strcmp(srcFileNameExtension, ".tar.lz") == 0 ||
-                strcmp(srcFileNameExtension, ".tar.bz2") == 0 ||
+            if (strcmp(srcFileNameExtension, ".zip") == 0 ||
                 strcmp(srcFileNameExtension, ".tgz") == 0 ||
                 strcmp(srcFileNameExtension, ".txz") == 0 ||
                 strcmp(srcFileNameExtension, ".tlz") == 0 ||
-                strcmp(srcFileNameExtension, ".tbz2") == 0 ||
-                strcmp(srcFileNameExtension, ".zip") == 0) {
+                strcmp(srcFileNameExtension, ".tbz2") == 0) {
                 free(srcFileNameExtension);
 
                 resultCode = tar_extract(packageInstallingSrcDir, srcFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
@@ -608,15 +604,11 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             }
         }
 
-        if (strcmp(fixFileNameExtension, ".tar.gz") == 0 ||
-            strcmp(fixFileNameExtension, ".tar.xz") == 0 ||
-            strcmp(fixFileNameExtension, ".tar.lz") == 0 ||
-            strcmp(fixFileNameExtension, ".tar.bz2") == 0 ||
+        if (strcmp(fixFileNameExtension, ".zip") == 0 ||
             strcmp(fixFileNameExtension, ".tgz") == 0 ||
             strcmp(fixFileNameExtension, ".txz") == 0 ||
             strcmp(fixFileNameExtension, ".tlz") == 0 ||
-            strcmp(fixFileNameExtension, ".tbz2") == 0 ||
-            strcmp(fixFileNameExtension, ".zip") == 0) {
+            strcmp(fixFileNameExtension, ".tbz2") == 0) {
             free(fixFileNameExtension);
 
             resultCode = tar_extract(packageInstallingFixDir, fixFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
@@ -698,15 +690,11 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             }
         }
 
-        if (strcmp(resFileNameExtension, ".tar.gz") == 0 ||
-            strcmp(resFileNameExtension, ".tar.xz") == 0 ||
-            strcmp(resFileNameExtension, ".tar.lz") == 0 ||
-            strcmp(resFileNameExtension, ".tar.bz2") == 0 ||
+        if (strcmp(resFileNameExtension, ".zip") == 0 ||
             strcmp(resFileNameExtension, ".tgz") == 0 ||
             strcmp(resFileNameExtension, ".txz") == 0 ||
             strcmp(resFileNameExtension, ".tlz") == 0 ||
-            strcmp(resFileNameExtension, ".tbz2") == 0 ||
-            strcmp(resFileNameExtension, ".zip") == 0) {
+            strcmp(resFileNameExtension, ".tbz2") == 0) {
             free(resFileNameExtension);
 
             resultCode = tar_extract(packageInstallingResDir, resFilePath, ARCHIVE_EXTRACT_TIME, options.verbose, 1);
