@@ -2028,7 +2028,7 @@ main() {
 
     case $NATIVE_OS_KIND in
         linux|darwin)
-            PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkg-config hexdump $PACKAGE_DEP_UPP"
+            PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkg-config util-linux $PACKAGE_DEP_UPP"
             ;;
         *)  PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkgconf $PACKAGE_DEP_UPP"
     esac
