@@ -87,7 +87,7 @@ int ppkg_env(bool verbose) {
     printf("jansson : %s\n", JANSSON_VERSION);
     printf("archive : %s\n\n", ARCHIVE_VERSION_ONLY_STRING);
 
-    SysInfo * sysinfo = NULL;
+    SysInfo sysinfo = {0};
 
     if (sysinfo_make(&sysinfo) != 0) {
         return PPKG_ERROR;

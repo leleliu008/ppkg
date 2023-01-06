@@ -744,7 +744,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    SysInfo * sysinfo = NULL;
+    SysInfo sysinfo = {0};
 
     if (sysinfo_make(&sysinfo) != 0) {
         ppkg_formula_free(formula);
@@ -753,7 +753,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     char * libcName = NULL;
 
-    switch(sysinfo->libc) {
+    switch(sysinfo.libc) {
         case LIBC_GLIBC: libcName = (char*)"glibc"; break;
         case LIBC_MUSL:  libcName = (char*)"musl";  break;
         default:         libcName = (char*)"";
@@ -785,7 +785,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         return PPKG_ERROR;
     }
 
-    fprintf(buildonYmlFile, "os-arch: %s\nos-kind: %s\nos-type: %s\nos-name: %s\nos-vers: %s\nos-ncpu: %lu\nos-libc: %s\n", sysinfo->arch, sysinfo->kind, sysinfo->type, sysinfo->name, sysinfo->vers, sysinfo->ncpu, libcName);
+    fprintf(buildonYmlFile, "os-arch: %s\nos-kind: %s\nos-type: %s\nos-name: %s\nos-vers: %s\nos-ncpu: %lu\nos-libc: %s\n", sysinfo.arch, sysinfo.kind, sysinfo.type, sysinfo.name, sysinfo.vers, sysinfo.ncpu, libcName);
 
     fclose(buildonYmlFile);
 
@@ -809,12 +809,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     fprintf(installShellScriptFile, "TIMESTAMP_UNIX='%lu'\n\n", time(NULL));
 
-    fprintf(installShellScriptFile, "NATIVE_OS_NCPU='%lu'\n", sysinfo->ncpu);
-    fprintf(installShellScriptFile, "NATIVE_OS_ARCH='%s'\n", sysinfo->arch);
-    fprintf(installShellScriptFile, "NATIVE_OS_KIND='%s'\n", sysinfo->kind);
-    fprintf(installShellScriptFile, "NATIVE_OS_TYPE='%s'\n", sysinfo->type);
-    fprintf(installShellScriptFile, "NATIVE_OS_NAME='%s'\n", sysinfo->name);
-    fprintf(installShellScriptFile, "NATIVE_OS_VERS='%s'\n", sysinfo->vers);
+    fprintf(installShellScriptFile, "NATIVE_OS_NCPU='%lu'\n", sysinfo.ncpu);
+    fprintf(installShellScriptFile, "NATIVE_OS_ARCH='%s'\n", sysinfo.arch);
+    fprintf(installShellScriptFile, "NATIVE_OS_KIND='%s'\n", sysinfo.kind);
+    fprintf(installShellScriptFile, "NATIVE_OS_TYPE='%s'\n", sysinfo.type);
+    fprintf(installShellScriptFile, "NATIVE_OS_NAME='%s'\n", sysinfo.name);
+    fprintf(installShellScriptFile, "NATIVE_OS_VERS='%s'\n", sysinfo.vers);
     fprintf(installShellScriptFile, "NATIVE_OS_LIBC='%s'\n\n", libcName);
 
     fprintf(installShellScriptFile, "KEEP_INSTALLING_DIR='%s'\n", options.keepInstallingDir ? "yes" : "no");
@@ -831,7 +831,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         if (options.parallelJobsCount > 0) {
             njobs = options.parallelJobsCount;
         } else {
-            njobs = sysinfo->ncpu;
+            njobs = sysinfo.ncpu;
         }
     } else {
         njobs = 1;

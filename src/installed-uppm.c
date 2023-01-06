@@ -104,15 +104,15 @@ int ppkg_install_uppm(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    char * osType = NULL;
+    char osType[31] = {0};
 
-    if (sysinfo_type(&osType) != 0) {
+    if (sysinfo_type(osType, 30) != 0) {
         return PPKG_ERROR;
     }
 
-    char * osArch = NULL;
+    char osArch[31] = {0};
 
-    if (sysinfo_arch(&osArch) != 0) {
+    if (sysinfo_arch(osArch, 30) != 0) {
         return PPKG_ERROR;
     }
 
@@ -132,9 +132,6 @@ int ppkg_install_uppm(bool verbose) {
     char    tarballFilePath[tarballFilePathLength];
     memset (tarballFilePath, 0, tarballFilePathLength);
     sprintf(tarballFilePath, "%s/%s", ppkgTmpDir, tarballFileName);
-
-    free(osType);
-    free(osArch);
 
     if (http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;

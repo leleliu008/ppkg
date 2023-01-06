@@ -2,8 +2,6 @@
 #include <string.h>
 
 #include "core/fs.h"
-#include "core/sysinfo.h"
-#include "core/sha256sum.h"
 #include "ppkg.h"
 
 #include <sqlite3.h>

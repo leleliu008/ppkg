@@ -18,15 +18,16 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    char * osType = NULL;
-    char * osArch = NULL;
+    char osType[31] = {0};
 
-    if (sysinfo_type(&osType) != 0) {
+    if (sysinfo_type(osType, 30) != 0) {
         ppkg_receipt_free(receipt);
         return PPKG_ERROR;
     }
 
-    if (sysinfo_arch(&osArch) != 0) {
+    char osArch[31] = {0};
+
+    if (sysinfo_arch(osArch, 30) != 0) {
         ppkg_receipt_free(receipt);
         return PPKG_ERROR;
     }
@@ -37,8 +38,6 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     sprintf(packingDirName, "%s-%s-%s-%s", packageName, receipt->version, osType, osArch);
 
     ppkg_receipt_free(receipt);
-    free(osType);
-    free(osArch);
 
     ///////////////////////////////////////////////////////////////////////////////////
 

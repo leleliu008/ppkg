@@ -19,16 +19,16 @@ typedef struct {
    size_t ncpu;
 } SysInfo;
 
-int  sysinfo_kind(char * * out);
-int  sysinfo_type(char * * out);
-int  sysinfo_name(char * * out);
-int  sysinfo_vers(char * * out);
-int  sysinfo_arch(char * * out);
-int  sysinfo_libc(LIBC   * out);
+int  sysinfo_kind(char * buf, size_t bufSize);
+int  sysinfo_type(char * buf, size_t bufSize);
+int  sysinfo_name(char * buf, size_t bufSize);
+int  sysinfo_vers(char * buf, size_t bufSize);
+int  sysinfo_arch(char * buf, size_t bufSize);
+int  sysinfo_libc(LIBC * libc);
 int  sysinfo_ncpu(size_t * out);
 
-int  sysinfo_make(SysInfo * * sysinfo);
-void sysinfo_dump(SysInfo *   sysinfo);
-void sysinfo_free(SysInfo *   sysinfo);
+int  sysinfo_make(SysInfo * sysinfo);
+void sysinfo_dump(SysInfo sysinfo);
+void sysinfo_free(SysInfo sysinfo);
 
 #endif

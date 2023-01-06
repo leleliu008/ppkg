@@ -9,42 +9,29 @@
 
 #include <unistd.h>
 
-int sysinfo_kind(char * * out) {
+int sysinfo_kind(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    (*out) = strdup("windows");
+    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__APPLE__)
-    (*out) = strdup("darwin");
+#elif defined (__APPLE__)
+    strncpy(buf, "darwin", bufSize > 6 ? 6 : bufSize);
     return 0;
-#endif
-
-#if defined (__FreeBSD__)
-    (*out) = strdup("freebsd");
+#elif defined (__FreeBSD__)
+    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__OpenBSD__)
-    (*out) = strdup("openbsd");
+#elif defined (__OpenBSD__)
+    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__NetBSD__)
-    (*out) = strdup("netbsd");
+#elif defined (__NetBSD__)
+    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
     return 0;
-#endif
-
-#if defined (__ANDROID__)
-    (*out) = strdup("android");
+#elif defined (__ANDROID__)
+    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__linux__)
-    (*out) = strdup("linux");
+#elif defined (__linux__)
+    strncpy(buf, "linux", bufSize > 5 ? 5 : bufSize);
     return 0;
-#endif
-
+#else
     struct utsname uts;
 
     if (uname(&uts) < 0) {
@@ -52,57 +39,44 @@ int sysinfo_kind(char * * out) {
         return -1;
     }
 
-    char * kind = strdup(uts.sysname);
+    size_t osKindLength = strlen(uts.sysname);
+    size_t n = bufSize > osKindLength ? osKindLength : bufSize;
 
-    size_t kindLength = strlen(kind);
+    strncpy(buf, uts.sysname, n);
 
-    for (size_t i = 0; i < kindLength; i++) {
-        if ((kind[i] >= 'A') && (kind[i] <= 'Z')) {
-             kind[i] += 32;
+    for (size_t i = 0; i < n; i++) {
+        if ((buf[i] >= 'A') && (buf[i] <= 'Z')) {
+             buf[i] += 32;
         }
     }
 
-    (*out) = kind;
-
     return 0;
+#endif
 }
 
-int sysinfo_type(char * * out) {
+int sysinfo_type(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    (*out) = strdup("windows");
+    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__APPLE__)
-    (*out) = strdup("macos");
+#elif defined (__APPLE__)
+    strncpy(buf, "macos", bufSize > 5 ? 5 : bufSize);
     return 0;
-#endif
-
-#if defined (__FreeBSD__)
-    (*out) = strdup("freebsd");
+#elif defined (__FreeBSD__)
+    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__OpenBSD__)
-    (*out) = strdup("openbsd");
+#elif defined (__OpenBSD__)
+    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__NetBSD__)
-    (*out) = strdup("netbsd");
+#elif defined (__NetBSD__)
+    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
     return 0;
-#endif
-
-#if defined (__ANDROID__)
-    (*out) = strdup("android");
+#elif defined (__ANDROID__)
+    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__linux__)
-    (*out) = strdup("linux");
+#elif defined (__linux__)
+    strncpy(buf, "linux", bufSize > 5 ? 5 : bufSize);
     return 0;
-#endif
-
+#else
     struct utsname uts;
 
     if (uname(&uts) < 0) {
@@ -110,18 +84,22 @@ int sysinfo_type(char * * out) {
         return -1;
     }
 
-    char * kind = strdup(uts.sysname);
+    size_t osKindLength = strlen(uts.sysname);
+    size_t n = bufSize > osKindLength ? osKindLength : bufSize;
 
-    if ((kind[0] >= 'A') && (kind[0] <= 'Z')) {
-         kind[0] += 32;
+    strncpy(buf, uts.sysname, n);
+
+    for (size_t i = 0; i < n; i++) {
+        if ((buf[i] >= 'A') && (buf[i] <= 'Z')) {
+             buf[i] += 32;
+        }
     }
 
-    (*out) = kind;
-
     return 0;
+#endif
 }
 
-int sysinfo_arch(char * * out) {
+int sysinfo_arch(char * buf, size_t bufSize) {
     struct utsname uts;
 
     if (uname(&uts) < 0) {
@@ -129,42 +107,33 @@ int sysinfo_arch(char * * out) {
         return -1;
     }
 
-    (*out) = strdup(uts.machine);
+    size_t osArchLength = strlen(uts.machine);
+
+    strncpy(buf, uts.machine, bufSize > osArchLength ? osArchLength : bufSize);
 
     return 0;
 }
 
-int sysinfo_name(char * * out) {
+int sysinfo_name(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    (*out) = strdup("windows");
+    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__APPLE__)
-    (*out) = strdup("macos");
+#elif defined (__APPLE__)
+    strncpy(buf, "macos", bufSize > 5 ? 5 : bufSize);
     return 0;
-#endif
-
-#if defined (__FreeBSD__)
-    (*out) = strdup("freebsd");
+#elif defined (__FreeBSD__)
+    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__OpenBSD__)
-    (*out) = strdup("openbsd");
+#elif defined (__OpenBSD__)
+    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
-#if defined (__NetBSD__)
-    (*out) = strdup("netbsd");
+#elif defined (__NetBSD__)
+    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
     return 0;
-#endif
-
-#if defined (__ANDROID__)
-    (*out) = strdup("android");
+#elif defined (__ANDROID__)
+    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
     return 0;
-#endif
-
+#else
     struct stat sb;
 
     if ((stat("/etc/os-release", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
@@ -179,36 +148,35 @@ int sysinfo_name(char * * out) {
 
         while (fgets(line, 50, file) != NULL) {
             if (regex_matched(line, "^ID=.*")) {
-                size_t n = strlen(line);
+                char * p = &line[3];
 
-                line[n - 1] = '\0';
-
-                if (line[n - 2] == '"') {
-                    line[n - 2] = '\0';
+                if (p[0] == '"' || p[0] == '\'') {
+                    p++;
                 }
 
-                if (line[3] == '"') {
-                    (*out) = strdup(&line[4]);
-                    fclose(file);
-                    return 0;
-                } else {
-                    (*out) = strdup(&line[3]);
-                    fclose(file);
-                    return 0;
+                size_t n = strlen(p);
+
+                p[n - 1] = '\0';
+                n--;
+
+                if (p[n - 1] == '"' || p[n - 1] == '\'') {
+                    p[n - 1] = '\0';
+                    n--;
                 }
 
+                strncpy(buf, p, bufSize > n ? n : bufSize);
+                return 0;
             }
         }
 
         fclose(file);
     }
 
-    (*out) = strdup("unknown");
-
-    return 0;
+    return -2;
+#endif
 }
 
-int sysinfo_vers(char * * out) {
+int sysinfo_vers(char * buf, size_t bufSize) {
 #if defined (__NetBSD__) || defined (__OpenBSD__)
     struct utsname uts;
 
@@ -217,7 +185,9 @@ int sysinfo_vers(char * * out) {
         return -1;
     }
 
-    (*out) = strdup(uts.release);
+    size_t n = strlen(uts.release);
+
+    strncpy(buf, uts.release, bufSize > n ? n : bufSize);
 
     return 0;
 #elif defined (__APPLE__)
@@ -236,7 +206,10 @@ int sysinfo_vers(char * * out) {
         while (fgets(line, 512, file) != NULL) {
             if (regex_matched(line, "ProductVersion")) {
                 if (fgets(line, 512, file) != NULL) {
-                    (*out) = regex_extract(line, "[1-9][0-9.]+[0-9]");
+                    char * p = regex_extract(line, "[1-9][0-9.]+[0-9]");
+                    size_t n = strlen(p);
+                    strncpy(buf, p, bufSize > n ? n : bufSize);
+                    free(p);
                     fclose(file);
                     return 0;
                 }
@@ -266,30 +239,31 @@ int sysinfo_vers(char * * out) {
 
         while (fgets(line, 50, file) != NULL) {
             if (regex_matched(line, "^VERSION_ID=.*")) {
-                size_t n = strlen(line);
+                char * p = &line[11];
 
-                line[n - 1] = '\0';
-
-                if (line[n - 2] == '"') {
-                    line[n - 2] = '\0';
+                if (p[0] == '"' || p[0] == '\'') {
+                    p++;
                 }
 
-                if (line[11] == '"') {
-                    (*out) = strdup(&line[12]);
-                    fclose(file);
-                    return 0;
-                } else {
-                    (*out) = strdup(&line[11]);
-                    fclose(file);
-                    return 0;
+                size_t n = strlen(p);
+
+                p[n - 1] = '\0';
+                n--;
+
+                if (p[n - 1] == '"' || p[n - 1] == '\'') {
+                    p[n - 1] = '\0';
+                    n--;
                 }
+
+                strncpy(buf, p, bufSize > n ? n : bufSize);
+                return 0;
             }
         }
 
         fclose(file);
     }
 
-    (*out) = strdup("rolling");
+    strncpy(buf, "rolling", bufSize > 7 ? 7 : bufSize);
 
     return 0;
 #endif
@@ -356,94 +330,134 @@ int sysinfo_ncpu(size_t * out) {
     return 0;
 }
 
-int sysinfo_make(SysInfo * * out) {
-    SysInfo * sysinfo = (SysInfo*)calloc(1, sizeof(SysInfo));
-
+int sysinfo_make(SysInfo * sysinfo) {
     if (sysinfo == NULL) {
         return -1;
     }
 
-    char * arch = NULL;
-    sysinfo_arch(&arch);
-    sysinfo->arch = arch;
+    int resultCode;
 
-    char * kind = NULL;
-    sysinfo_kind(&kind);
-    sysinfo->kind = kind;
+    ///////////////////////////////////////
 
-    char * type = NULL;
-    sysinfo_type(&type);
-    sysinfo->type = type;
+    char osArch[31] = {0};
 
-    char * name = NULL;
-    sysinfo_name(&name);
-    sysinfo->name = name;
+    resultCode = sysinfo_arch(osArch, 30);
 
-    char * vers = NULL;
-    sysinfo_vers(&vers);
-    sysinfo->vers = vers;
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
+
+    char osKind[31] = {0};
+
+    resultCode = sysinfo_kind(osKind, 30);
+
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
+
+    char osType[31] = {0};
+
+    resultCode = sysinfo_type(osType, 30);
+
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
+
+    char osName[31] = {0};
+
+    resultCode = sysinfo_name(osName, 30);
+
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
+
+    char osVers[31] = {0};
+
+    resultCode = sysinfo_vers(osVers, 30);
+
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
 
     LIBC libc = LIBC_UNKNOWN;
-    sysinfo_libc(&libc);
-    sysinfo->libc = libc;
+
+    resultCode = sysinfo_libc(&libc);
+
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
 
     size_t ncpu = 0;
-    sysinfo_ncpu(&ncpu);
-    sysinfo->ncpu = ncpu;
+    
+    resultCode = sysinfo_ncpu(&ncpu);
 
-    (*out) = sysinfo;
+    if (resultCode != 0) {
+        return resultCode;
+    }
+
+    ///////////////////////////////////////
+
+    sysinfo->arch = strdup(osArch);
+    sysinfo->kind = strdup(osKind);
+    sysinfo->type = strdup(osType);
+    sysinfo->name = strdup(osName);
+    sysinfo->vers = strdup(osVers);
+    sysinfo->libc = libc;
+    sysinfo->ncpu = ncpu;
 
     return 0;
 }
 
-void sysinfo_dump(SysInfo * sysinfo) {
-    if (sysinfo == NULL) {
-        return;
-    }
+void sysinfo_dump(SysInfo sysinfo) {
+    printf("sysinfo.ncpu: %lu\n", sysinfo.ncpu);
+    printf("sysinfo.arch: %s\n",  sysinfo.arch == NULL ? "" : sysinfo.arch);
+    printf("sysinfo.kind: %s\n",  sysinfo.kind == NULL ? "" : sysinfo.kind);
+    printf("sysinfo.type: %s\n",  sysinfo.type == NULL ? "" : sysinfo.type);
+    printf("sysinfo.name: %s\n",  sysinfo.name == NULL ? "" : sysinfo.name);
+    printf("sysinfo.vers: %s\n",  sysinfo.vers == NULL ? "" : sysinfo.vers);
 
-    printf("sysinfo.ncpu: %lu\n", sysinfo->ncpu);
-    printf("sysinfo.arch: %s\n",  sysinfo->arch == NULL ? "" : sysinfo->arch);
-    printf("sysinfo.kind: %s\n",  sysinfo->kind == NULL ? "" : sysinfo->kind);
-    printf("sysinfo.type: %s\n",  sysinfo->type == NULL ? "" : sysinfo->type);
-    printf("sysinfo.name: %s\n",  sysinfo->name == NULL ? "" : sysinfo->name);
-    printf("sysinfo.vers: %s\n",  sysinfo->vers == NULL ? "" : sysinfo->vers);
-
-    switch(sysinfo->libc) {
+    switch(sysinfo.libc) {
         case LIBC_GLIBC: printf("sysinfo.libc: glibc\n"); break;
         case LIBC_MUSL:  printf("sysinfo.libc: musl\n");  break;
-        default:         printf("sysinfo.libc: unknown\n");
+        default:         printf("sysinfo.libc: \n");
     }
 }
 
-void sysinfo_free(SysInfo * sysinfo) {
-    if (sysinfo == NULL) {
-        return;
+void sysinfo_free(SysInfo sysinfo) {
+    if (sysinfo.arch != NULL) {
+        free(sysinfo.arch);
+        sysinfo.arch = NULL;
     }
 
-    if (sysinfo->arch != NULL) {
-        free(sysinfo->arch);
-        sysinfo->arch = NULL;
+    if (sysinfo.kind != NULL) {
+        free(sysinfo.kind);
+        sysinfo.kind = NULL;
     }
 
-    if (sysinfo->kind != NULL) {
-        free(sysinfo->kind);
-        sysinfo->kind = NULL;
+    if (sysinfo.type != NULL) {
+        free(sysinfo.type);
+        sysinfo.type = NULL;
     }
 
-    if (sysinfo->type != NULL) {
-        free(sysinfo->type);
-        sysinfo->type = NULL;
+    if (sysinfo.name != NULL) {
+        free(sysinfo.name);
+        sysinfo.name = NULL;
     }
 
-    if (sysinfo->name != NULL) {
-        free(sysinfo->name);
-        sysinfo->name = NULL;
+    if (sysinfo.vers != NULL) {
+        free(sysinfo.vers);
+        sysinfo.vers = NULL;
     }
-
-    if (sysinfo->vers != NULL) {
-        free(sysinfo->vers);
-        sysinfo->vers = NULL;
-    }
-
-    free(sysinfo);
 }
