@@ -68,7 +68,7 @@ int ppkg_logs(const char * packageName) {
 
         resultCode = system(cmd);
 
-        if (resultCode != PPKG_OK) {
+        if (resultCode != 0) {
             break;
         }
     }

@@ -445,7 +445,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
         if (resultCode != 0) {
             ppkg_formula_free(formula);
-            return resultCode;
+            return PPKG_ERROR;
         }
     } else {
         if (formula->src_is_dir) {
@@ -459,7 +459,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
             if (resultCode != 0) {
                 ppkg_formula_free(formula);
-                return resultCode;
+                return PPKG_ERROR;
             }
         } else {
             char srcFileNameExtension[21] = {0};
@@ -953,7 +953,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     if (resultCode != 0) {
         ppkg_formula_free(formula);
-        return resultCode;
+        return WEXITSTATUS(resultCode);
     }
 
     //////////////////////////////////////////////////////////////////////////////
