@@ -23,9 +23,17 @@
 #include <sys/sysctl.h>
 #endif
 
-int get_file_extension_from_url(char * * out, const char * url) {
+int get_file_extension_from_url(char * buf, size_t bufSize, const char * url) {
     if (url == NULL) {
         return -1;
+    }
+
+    if (buf == NULL) {
+        return -2;
+    }
+
+    if (bufSize == 0) {
+        return -3;
     }
 
     size_t urlLength = 0;
@@ -44,13 +52,13 @@ int get_file_extension_from_url(char * * out, const char * url) {
     //printf("url=%s\nurlLength=%lu\n", url, urlLength);
 
     if (urlLength < 3) {
-        return -2;
+        return -4;
     }
 
     size_t lastIndex = urlLength - 1;
 
     if (url[lastIndex] == '.') {
-        return -3;
+        return -5;
     }
 
     size_t i = lastIndex;
@@ -67,21 +75,21 @@ int get_file_extension_from_url(char * * out, const char * url) {
                 if (strcmp(p, ".gz") == 0) {
                     if (urlLength > 7) {
                         if (strncmp(&url[i - 4], ".tar", 4) == 0) {
-                            (*out) = strdup(".tgz");
+                            strncpy(buf, ".tgz", bufSize > 4 ? 4 : bufSize);
                             return 0;
                         }
                     }
                 } else if (strcmp(p, ".xz") == 0) {
                     if (urlLength > 7) {
                         if (strncmp(&url[i - 4], ".tar", 4) == 0) {
-                            (*out) = strdup(".txz");
+                            strncpy(buf, ".txz", bufSize > 4 ? 4 : bufSize);
                             return 0;
                         }
                     }
                 } else if (strcmp(p, ".lz") == 0) {
                     if (urlLength > 7) {
                         if (strncmp(&url[i - 4], ".tar", 4) == 0) {
-                            (*out) = strdup(".tlz");
+                            strncpy(buf, ".tlz", bufSize > 4 ? 4 : bufSize);
                             return 0;
                         }
                     }
@@ -90,14 +98,15 @@ int get_file_extension_from_url(char * * out, const char * url) {
                 if (strcmp(p, ".bz2") == 0) {
                     if (urlLength > 8) {
                         if (strncmp(&url[i - 4], ".tar", 4) == 0) {
-                            (*out) = strdup(".tbz2");
+                            strncpy(buf, ".tbz2", bufSize > 5 ? 5 : bufSize);
                             return 0;
                         }
                     }
                 }
             }
 
-            (*out) = strndup(p, urlLength - i);
+            size_t n = urlLength - i;
+            strncpy(buf, p, bufSize > n ? n : bufSize);
             return 0;
         }
 
@@ -106,7 +115,7 @@ int get_file_extension_from_url(char * * out, const char * url) {
         }
     }
 
-    return -3;
+    return -6;
 }
 
 int get_current_executable_realpath(char * * out) {
