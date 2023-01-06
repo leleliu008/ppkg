@@ -1588,7 +1588,11 @@ __fetch_sources_of_the_given_package() {
         .dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
         .git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                if [ -z "$PACKAGE_GIT_REF" ] ; then
+                    GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                else
+                    GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/master"
+                fi
             else
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
             fi
@@ -3471,6 +3475,9 @@ __export_relevant_environment_variables() {
     unset TOOLNAME
     unset TOOLPATH
 
+    [ -z "$CC" ]  && die "C Compiler not found."
+    [ -z "$CXX" ] && die "C++ Compiler not found."
+
     ##################################################################################
 
     cat > "$PACKAGE_INSTALLING_BIN_DIR/test.c" <<EOF
@@ -3970,6 +3977,10 @@ __printf_relevant_environment_variables() {
     step "printf relevant environment variables"
 
     printf '%s\n' "
+PPKG_VERSION      = $PPKG_VERSION
+PPKG_HOME         = $PPKG_HOME
+PPKG_EXECUTABLE   = $PPKG_EXECUTABLE
+
 PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
 PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
 PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
