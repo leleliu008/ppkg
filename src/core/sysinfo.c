@@ -221,9 +221,7 @@ int sysinfo_vers(char * buf, size_t bufSize) {
         fclose(file);
     }
 
-    (*out) = NULL;
-
-    return 0;
+    return -2;
 #else
     struct stat sb;
 
@@ -278,7 +276,11 @@ int sysinfo_libc(LIBC * out) {
     }
 
     if (strcmp(uts.sysname, "Linux") == 0) {
-        char dynamicLoaderPath[40] = {0};
+        size_t osArchLength = strlen(uts.machine);
+
+        size_t  dynamicLoaderPathLength = osArchLength + 19;
+        char    dynamicLoaderPath[dynamicLoaderPathLength];
+        memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
         sprintf(dynamicLoaderPath, "/lib/ld-musl-%s.so.1", uts.machine);
 
         struct stat sb;
@@ -286,18 +288,29 @@ int sysinfo_libc(LIBC * out) {
         if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
             (*out) = LIBC_MUSL;
         } else {
-            memset(dynamicLoaderPath, 0, 40);
-
             if (strcmp(uts.machine, "x86_64") == 0) {
-                strcpy(dynamicLoaderPath, "/lib64/ld-linux-x86-64.so.2");
-            } else {
-                sprintf(dynamicLoaderPath, "/lib64/ld-linux-%s.so.2", uts.machine);
-            }
+                const char * dynamicLoaderPath = "/lib64/ld-linux-x86-64.so.2";
 
-            if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-                (*out) = LIBC_GLIBC;
+                struct stat sb;
+
+                if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                    (*out) = LIBC_GLIBC;
+                } else {
+                    (*out) = LIBC_UNKNOWN;
+                }
             } else {
-                (*out) = LIBC_UNKNOWN;
+                size_t  dynamicLoaderPathLength = osArchLength + 22;
+                char    dynamicLoaderPath[dynamicLoaderPathLength];
+                memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
+                sprintf(dynamicLoaderPath, "/lib64/ld-linux-%s.so.2", uts.machine);
+
+                struct stat sb;
+
+                if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                    (*out) = LIBC_GLIBC;
+                } else {
+                    (*out) = LIBC_UNKNOWN;
+                }
             }
         }
     }
