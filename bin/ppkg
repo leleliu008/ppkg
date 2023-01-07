@@ -5983,7 +5983,7 @@ ${COLOR_GREEN}ppkg formula-repo del <FORMULA-REPO-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.lz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
@@ -6001,7 +6001,7 @@ ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
     download resources of all available packages to the local cache.
 
-${COLOR_GREEN}ppkg depends <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png]${COLOR_OFF}
     show the packages that are depended by the given package.
 
 ${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
@@ -6013,7 +6013,7 @@ ${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-
 ${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
-${COLOR_GREEN}ppkg upgrade @self${COLOR_OFF}
+${COLOR_GREEN}ppkg upgrade-self${COLOR_OFF}
     upgrade this software.
 
 ${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
@@ -6140,14 +6140,13 @@ ${COLOR_GREEN}current-machine-os${COLOR_OFF}"
       reinstall) shift; __reinstall_the_given_packages $@ ;;
       uninstall) shift; __uninstall_the_given_packages $@ ;;
 
+        upgrade-self)
+            shift
+            __upgrade_self "$PPKG_UPGRAGE_URL" $@
+            ;;
         upgrade)
             shift
-            case $1 in
-                @self)
-                    shift
-                    __upgrade_self "$PPKG_UPGRAGE_URL" $@ ;;
-                *)  __upgrade_packages $@ ;;
-            esac
+            __upgrade_packages $@
             ;;
         integrate)
             shift

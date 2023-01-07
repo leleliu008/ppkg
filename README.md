@@ -259,6 +259,8 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
 *   **PPKG_XTRACE**
 
+    for debugging purposes.
+
     this environment variable only affects POSIX-Shell-based implementation.
 
     enables `set -x`:
