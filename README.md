@@ -211,7 +211,13 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     this environment variable must be set.
 
-    this environment variable already have been set on most systems, if not set or set a empty string, you should set it manully.
+    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
+
+*   **PATH**
+
+    some features rely on this environment variable.
+
+    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
 *   **SSL_CERT_FILE**
 
@@ -250,6 +256,16 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ```
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
+
+*   **PPKG_XTRACE**
+
+    this environment variable only affects POSIX-Shell-based implementation.
+
+    enables `set -x`:
+
+    ```bash
+    export PPKG_XTRACE=1
+    ```
 
 *   **CMake relevant environment variables**
 
