@@ -340,10 +340,12 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
 
             if (resultCode == ARCHIVE_EOF) {
                 resultCode =  ARCHIVE_OK;
+                archive_entry_free(entry);
                 break;
             }
 
             if (resultCode != ARCHIVE_OK) {
+                archive_entry_free(entry);
                 goto clean;
             }
 
@@ -360,6 +362,7 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
             }
 
             if (resultCode != ARCHIVE_OK) {
+                archive_entry_free(entry);
                 goto clean;
             }
 
