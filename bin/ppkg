@@ -336,7 +336,7 @@ lolcat_awk() {
 # wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
 
 # influential environment variable:
-# WFETCH_URL_TRANSFORM
+# PPKG_URL_TRANSFORM
 wfetch() {
     unset FETCH_URL
     unset FETCH_URI
@@ -351,10 +351,10 @@ wfetch() {
         return 1
     fi
 
-    if [ -z "$WFETCH_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         FETCH_URL="$1"
     else
-        FETCH_URL="$("$WFETCH_URL_TRANSFORM" "$1")"
+        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")"
     fi
 
     shift
@@ -375,8 +375,8 @@ wfetch() {
                     error "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
                     return 1
                 fi
-                if [ -n "$WFETCH_URL_TRANSFORM" ] ; then
-                    FETCH_URI="$("$WFETCH_URL_TRANSFORM" "$FETCH_URI")"
+                if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")"
                 fi
                 ;;
             --output-dir=*)
@@ -2141,10 +2141,10 @@ __open_homepage_of_the_given_package() {
     fi
 }
 
-# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], <PACKAGE-NAME> is not given."
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -2152,175 +2152,28 @@ __show_packages_depended_by_the_given_package() {
 
     shift
 
-    unset OUTPUT_FILEPATH
     unset OUTPUT_FORMAT
-    unset OUTPUT_BRIEF
-    unset RECURSIVE
 
     while [ -n "$1" ]
     do
         case $1 in
-            --format=list)
-                OUTPUT_FORMAT=list
-                ;;
-            --format=json)
-                OUTPUT_FORMAT=json
-                ;;
-            --format=dot)
-                OUTPUT_FORMAT=dot
-                ;;
-            --format=txt)
-                OUTPUT_FORMAT=txt
-                ;;
-            --format=png)
-                OUTPUT_FORMAT=png
-                ;;
             --format=*)
                 OUTPUT_FORMAT=$(getvalue $1)
-                die "unsupported format: $OUTPUT_FORMAT"
+                case $OUTPUT_FORMAT in
+                    dot|box|svg|png) ;;
+                    *)  die "unsupported format: $OUTPUT_FORMAT"
+                esac
                 ;;
-            --brief)
-                OUTPUT_BRIEF=yes
-                ;;
-            -r) RECURSIVE=yes ;;
-            -o)
-                if [ -z "$2" ] ; then
-                    die "-o <OUTPUT-FILE-PATH>, <OUTPUT-FILE-PATH> must not be empty."
-                else
-                    OUTPUT_FILEPATH="$2"
-                    shift
-                fi
-                ;;
-            *)  die "$_0 depends <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], unrecognized argumet: $1"
+            *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] , unrecognized option: $1"
         esac
         shift
     done
 
     if [ -z "$OUTPUT_FORMAT" ] ; then
-        OUTPUT_FORMAT=list
+        OUTPUT_FORMAT=box
     fi
 
-    if [ -z "$OUTPUT_FILEPATH" ] ; then
-        if [ "$OUTPUT_FORMAT" = 'png' ] ; then
-            die "you want png file, but -o <OUTPUT-FILE-PATH> option is not given."
-        fi
-
-        OUTPUT_FILEPATH=/dev/tty
-    else
-        if [ "$OUTPUT_FORMAT" = 'png' ] && [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
-            die "you want png file, /dev/tty is not allowed."
-        fi
-    fi
-
-    case $OUTPUT_FORMAT in
-        list)
-            unset RECURSIVE_DEPENDENT_PACKAGES
-            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
-
-            if [ -z "$RECURSIVE_DEPENDENT_PACKAGES" ] ; then
-                return 0
-            fi
-
-            unset OUTPUT_CONTENT
-
-            if [ "$OUTPUT_BRIEF" = yes ] ; then
-                OUTPUT_CONTENT="$RECURSIVE_DEPENDENT_PACKAGES"
-            else
-                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
-                do
-                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(printf '%s\n' "$DEPENDENCY_PACKAGE_DIRECT_DEPS" | tr ' ' ',')
-
-                    unset LINE
-                    LINE=$(printf 'name:%-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_DIRECT_DEPS")
-                    if [ -z "$OUTPUT_CONTENT" ] ; then
-                        OUTPUT_CONTENT="$LINE"
-                    else
-                        OUTPUT_CONTENT="$OUTPUT_CONTENT
-$LINE"
-                    fi
-                done
-            fi
-
-            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
-                printf '%s\n' "$OUTPUT_CONTENT"
-            else
-                unset OUTPUT_DIR
-
-                case $3 in
-                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
-                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
-                esac
-
-                if [ !      -d "$OUTPUT_DIR" ] ; then
-                    install -d "$OUTPUT_DIR"
-                fi
-
-                printf '%s\n' "$OUTPUT_CONTENT" > "$OUTPUT_FILEPATH"
-            fi
-            ;;
-        json)
-            unset RECURSIVE_DEPENDENT_PACKAGES
-            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
-
-            JSON_ARRAY='['
-
-            if [ "$OUTPUT_BRIEF" = yes ] ; then
-                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
-                do
-                    JSON_ARRAY="$JSON_ARRAY\"$DEPENDENCY_PACKAGE_NAME\","
-                done
-            else
-                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
-                do
-                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
-
-                    JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
-                done
-            fi
-
-            JSON_ARRAY=$(printf '%s\n' "$JSON_ARRAY" | sed 's|,$||')
-
-            JSON_ARRAY="$JSON_ARRAY]"
-
-            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
-                printf '%s\n' "$JSON_ARRAY"
-            else
-                unset OUTPUT_DIR
-
-                case $3 in
-                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
-                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
-                esac
-
-                if [ !      -d "$OUTPUT_DIR" ] ; then
-                    install -d "$OUTPUT_DIR"
-                fi
-
-                printf '%s\n' "$JSON_ARRAY" > "$OUTPUT_FILEPATH"
-            fi
-            ;;
-        dot)
-            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" dot "$OUTPUT_FILEPATH"
-            ;;
-        txt)
-            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" txt "$OUTPUT_FILEPATH"
-            ;;
-        png)
-            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" png "$OUTPUT_FILEPATH"
-
-            if [ "$OUTPUT_FILEPATH" != '/dev/tty' ] ; then
-                for item in open feh eog lsix
-                do
-                    if command -v "$item" > /dev/null ; then
-                        "$item" "$OUTPUT_FILEPATH" &
-                        return 0
-                    fi
-                done
-            fi
-    esac
+    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FORMAT"
 }
 
 # __logs_the_given_installed_package <PACKAGE-NAME>
@@ -2576,7 +2429,7 @@ __get_dot_file_contents() {
     done
 }
 
-# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>
+# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|box|svg|png>
 __gen_dependency_graph_recursively_depended_by_the_given_package() {
     unset DIRECT_DEPENDENT_PACKAGES
     DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$1")"
@@ -2586,66 +2439,36 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
     fi
 
     case $2 in
-        dot|txt|png) ;;
-        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, format must not be empty." ;;
-        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, unrecognized format: $2"
+        dot|box|svg|png) ;;
+        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , format must not be empty." ;;
+        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , unrecognized format: $2"
     esac
-
-    if [ -z "$3" ] ; then
-        die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, <OUTPUT-FILEPATH> must be not empty."
-    fi
 
     unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
     unset GEN_DEPENDENCY_GRAPH_DOT_FILEPATH
 
     GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d) || return 1
     GEN_DEPENDENCY_GRAPH_DOT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.dot"
-    GEN_DEPENDENCY_GRAPH_TXT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.txt"
-    GEN_DEPENDENCY_GRAPH_PNG_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.png"
 
     printf 'digraph G {\n'       >  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
     __get_dot_file_contents "$1" >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
     printf '}\n'                 >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
 
-    if [ "$3" != '/dev/tty' ] ; then
-        unset GEN_DEPENDENCY_GRAPH_OUTPUT_DIR
-
-        case $3 in
-            /*) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname      "$3")" ;;
-             *) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
-        esac
-
-        if [ !      -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" ] ; then
-            install -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" || return 1
-        fi
-    fi
-
     case $2 in
         dot)
-            if [ "$3" = '/dev/tty' ] ; then
-                cat   "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
-            else
-                cp -f "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH" "$3"
-            fi
+            cat "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
             ;;
-        txt)
+        box)
             # https://github.com/ggerganov/dot-to-ascii
             curl \
-                -o "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" \
                 -s \
                 -G \
                 --data-urlencode "boxart=1" \
                 --data-urlencode "src=$(cat $GEN_DEPENDENCY_GRAPH_DOT_FILEPATH)" \
-                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || return 1
-
-            if [ "$3" = '/dev/tty' ] ; then
-                cat   "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH"
-            else
-                cp -f "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" "$3"
-            fi
+                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
             ;;
-        png)
-            (main install graphviz) || return 1
+        svg)
+            command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
 
             if command -v fc-match > /dev/null ; then
                 # Error: fontconfig: Couldn't find font.
@@ -2654,7 +2477,19 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 fi
             fi
 
-            run dot -Tpng -o "$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            run dot -Tsvg "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            ;;
+        png)
+            command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
+
+            if command -v fc-match > /dev/null ; then
+                # Error: fontconfig: Couldn't find font.
+                if [ -z "$(fc-match)" ] ; then
+                    wfetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
+                fi
+            fi
+
+            run dot -Tpng "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
             ;;
     esac
 }
@@ -2783,15 +2618,16 @@ __install_the_given_package() {
         RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.svg"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
 
         __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" box "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" || true
         # __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
 
-        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
-            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
         fi
     fi
 
@@ -3093,7 +2929,7 @@ EOF
     done
 
     step "install dependencies.dot and dependencies.txt"
-    for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
+    for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX
     do
         if [ -f "$file" ] ; then
             install -v -m 644 "$file" "$PACKAGE_METAINF_DIR"

@@ -51,16 +51,8 @@ jobs:
 
       - run: bin/ppkg depends libzip
 
-      - run: bin/ppkg depends libzip --format=list
-      - run: bin/ppkg depends libzip --format=json
-        #- run: bin/ppkg depends libzip --format=dot
-        #- run: bin/ppkg depends libzip --format=txt
-
-        #- run: bin/ppkg depends libzip --format=list -o libzip-dependencies.list
-        #- run: bin/ppkg depends libzip --format=json -o libzip-dependencies.json
-        #- run: bin/ppkg depends libzip --format=dot  -o libzip-dependencies.dot
-        #- run: bin/ppkg depends libzip --format=txt  -o libzip-dependencies.txt
-        #- run: bin/ppkg depends libzip --format=png  -o libzip-dependencies.png
+      - run: bin/ppkg depends libzip --format=dot
+      - run: bin/ppkg depends libzip --format=box
 
       - run: bin/ppkg install libzip
 
