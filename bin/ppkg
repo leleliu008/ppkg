@@ -5983,7 +5983,7 @@ ${COLOR_GREEN}ppkg formula-repo del <FORMULA-REPO-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.lz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
     pack the given installed package.
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
@@ -6091,12 +6091,20 @@ main() {
 
     case $1 in
         env)
-            printf '%b\n' "${COLOR_GREEN}ppkg $PPKG_VERSION${COLOR_OFF}
+            cat <<EOF
+sysinfo.ncpu: $("$PPKG_CORE_BIN_DIR/os" ncpu)
+sysinfo.arch: $("$PPKG_CORE_BIN_DIR/os" arch)
+sysinfo.kind: $("$PPKG_CORE_BIN_DIR/os" kind)
+sysinfo.type: $("$PPKG_CORE_BIN_DIR/os" type)
+sysinfo.name: $("$PPKG_CORE_BIN_DIR/os" name)
+sysinfo.vers: $("$PPKG_CORE_BIN_DIR/os" vers)
+sysinfo.libc: $("$PPKG_CORE_BIN_DIR/os" libc)
 
-${COLOR_GREEN}portable package manager for UNIX.${COLOR_OFF}
-
-${COLOR_GREEN}current-machine-os${COLOR_OFF}"
-            "$PPKG_CORE_BIN_DIR/os"
+ppkg.vers : $PPKG_VERSION
+ppkg.home : $PPKG_HOME
+ppkg.path : $CURRENT_SCRIPT_FILEPATH
+ppkg.github: https://github.com/leleliu008/ppkg
+EOF
             return 0
             ;;
         ls-available) shift; __list_available_packages ;;
