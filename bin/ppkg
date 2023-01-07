@@ -1585,11 +1585,14 @@ __fetch_sources_of_the_given_package() {
         .git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
                 if [ -z "$PACKAGE_GIT_REF" ] ; then
+                    GIT_BRANCH_NAME=master
                     GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
                 else
-                    GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/master"
+                    GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                    GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
                 fi
             else
+                GIT_BRANCH_NAME=master
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
             fi
 
@@ -1609,22 +1612,20 @@ __fetch_sources_of_the_given_package() {
                         success "$PACKAGE_SRC_FILEPATH already have been fetched."
                         return 0
                     fi
-
-                    run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --prune --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
-                    run git -C "$PACKAGE_SRC_FILEPATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
-                    run git -C "$PACKAGE_SRC_FILEPATH" submodule update --init || return 1
-
-                    return 0
                 else
-                    run rm -rf "$PACKAGE_SRC_FILEPATH" || return 1
+                    run rm -rf     "$PACKAGE_SRC_FILEPATH" || return 1
+                    run install -d "$PACKAGE_SRC_FILEPATH" || return 1
+                    run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
+                    run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
                 fi
+            else
+                run install -d "$PACKAGE_SRC_FILEPATH" || return 1
+                run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
+                run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
             fi
 
-            run install -d "$PACKAGE_SRC_FILEPATH" || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --prune --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" checkout --progress --force -B master refs/remotes/origin/master || return 1
+            run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
+            run git -C "$PACKAGE_SRC_FILEPATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
             run git -C "$PACKAGE_SRC_FILEPATH" submodule update --init || return 1
             ;;
         *)  if [ -z    "$PACKAGE_SRC_URI" ] ; then
