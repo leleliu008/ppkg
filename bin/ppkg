@@ -1074,11 +1074,7 @@ __load_formula_of_the_given_package() {
         die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
-        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
-    fi
-
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
+    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
         die "web-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
@@ -2108,27 +2104,39 @@ __show_or_open_homepage_of_the_given_package() {
 
 __show_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
-        PACKAGE_WEB_URL="$PPKG_WEBPAGE_URL"
+        printf '%s\n' "$PPKG_WEBPAGE_URL"
     else
         __load_formula_of_the_given_package "$1"
-    fi
 
-    printf '%s\n' "$PACKAGE_WEB_URL"
+        if [ -z "$PACKAGE_WEB_URL" ] ; then
+            printf '%s\n' "$PACKAGE_GIT_URL"
+        else
+            printf '%s\n' "$PACKAGE_WEB_URL"
+        fi
+    fi
+}
+
+__open_url() {
+    if command -v open > /dev/null ; then
+        run "open '$1'"
+    elif command -v termux-open-url > /dev/null ; then
+        run "termux-open-url '$1'"
+    else
+        warn "I don't konw how to open"
+    fi
 }
 
 __open_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
-        PACKAGE_WEB_URL="$PPKG_WEBPAGE_URL"
+        __open_url "$PPKG_WEBPAGE_URL"
     else
         __load_formula_of_the_given_package "$1"
-    fi
-    
-    if command -v open > /dev/null ; then
-        run "open '$PACKAGE_WEB_URL'"
-    elif command -v termux-open-url > /dev/null ; then
-        run "termux-open-url '$PACKAGE_WEB_URL'"
-    else
-        warn "I don't konw how to open"
+
+        if [ -z "$PACKAGE_WEB_URL" ] ; then
+            __open_url "$PACKAGE_GIT_URL"
+        else
+            __open_url "$PACKAGE_WEB_URL"
+        fi
     fi
 }
 
@@ -4335,6 +4343,10 @@ __show_infomation_as_shell_of_all_available_packages() {
         PARALLEL=false
     fi
 
+    if [ -z "$PACKAGE_WEB_URL" ] ; then
+        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
+    fi
+
     jq  --null-input \
         --arg name "$PACKAGE_NAME" \
         --arg version "$PACKAGE_VERSION" \
@@ -4707,6 +4719,10 @@ mark_is_package_installed_or_not() {
         fi
     fi
 
+    if [ -z "$PACKAGE_WEB_URL" ] ; then
+        sed_in_place "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    fi
+
     if ! grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
         sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
     fi
@@ -4810,7 +4826,7 @@ EOF
         return 1
     fi
 
-    if [ -z "$RECEIPT_PACKAGE_WEB_URL" ] && [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+    if [ -z "$RECEIPT_PACKAGE_WEB_URL" ] ; then
         error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_WEB_URL must not be empty."
         return 1
     fi
