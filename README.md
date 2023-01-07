@@ -1,6 +1,13 @@
 # ppkg
 portable package manager for Unix-like system.
 
+# two implementations
+I provide two implementations of this software:
+- implemented in `POSIX Shell`, the source code is on `master` branch.
+- implemented in `C`, the source code is on `dev` branch.
+
+In theroy, they should have same behaver except for have bugs.
+
 ## Install ppkg
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
@@ -180,11 +187,11 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg tree curl
         ppkg tree curl -L 3
         
-*   show logs of the given installed package
+*   **show logs of the given installed package**
         
         ppkg logs curl
         
-*   pack the given installed package
+*   **pack the given installed package**
         
         ppkg pack curl
         ppkg pack curl --type=tar.xz
@@ -242,7 +249,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     esac
     ```
 
-    If you want change the request url, you can set this environment variable. It is very useful for chinese users.
+    If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
 *   **CMake relevant environment variables**
 
