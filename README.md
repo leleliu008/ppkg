@@ -394,9 +394,9 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg pack curl
         ppkg pack curl --type=tar.xz
         ppkg pack curl --type=tar.gz
+        ppkg pack curl --type=tar.lz
         ppkg pack curl --type=tar.bz2
         ppkg pack curl --type=zip
-        ppkg pack curl --type=7z
         
 *   **cleanup the unused cached files**
         
@@ -448,3 +448,22 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ```
 
     If you want change the request url, you can set this environment variable. It is very useful for chinese users.
+
+*   **CMake relevant environment variables**
+
+    [Reference](https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html)
+
+*   **Cargo relevant environment variables**
+
+    [Reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html)
+
+*   **Golang relevant environment variables**
+
+    [Reference](https://golang.org/doc/install/source#environment)
+
+    example:
+
+    ```bash
+    export GOPROXY='https://goproxy.cn'
+    ```
+
