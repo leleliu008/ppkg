@@ -434,24 +434,31 @@ static inline bool ppkg_formula_check_bsystem_match(PPKGFormula * formula, const
         return false;
     } else if (regex_matched(buf, "^[[:space:]]*configure[[:space:]]*")) {
         formula->bsystem = strdup("configure");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*cmakew[[:space:]]*")) {
         formula->bsystem = strdup("cmake");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*xmakew[[:space:]]*")) {
         formula->bsystem = strdup("xmake");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*gmakew[[:space:]]*")) {
         formula->bsystem = strdup("gmake");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*mesonw[[:space:]]*")) {
         formula->bsystem = strdup("meson");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*cargow[[:space:]]*")) {
         formula->bsystem = strdup("cargo");
+        formula->bsystem_is_calculated = true;
         return true;
     } else if (regex_matched(buf, "^[[:space:]]*gow?[[:space:]]*")) {
         formula->bsystem = strdup("go");
+        formula->bsystem_is_calculated = true;
         return true;
     } else {
         return false;
@@ -536,6 +543,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             return PPKG_FORMULA_SCHEME_ERROR;
         } else {
             formula->web_url = strdup(formula->git_url);
+            formula->web_url_is_calculated = true;
         }
     }
 
@@ -746,15 +754,19 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             while (splitedStr != NULL) {
                 if (regex_matched(splitedStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$")) {
                     formula->version = strdup(splitedStr);
+                    formula->version_is_calculated = true;
                     break;
                 } else if (regex_matched(splitedStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$")) {
                     formula->version = strdup(&splitedStr[1]);
+                    formula->version_is_calculated = true;
                     break;
                 } else if (regex_matched(splitedStr, "^[0-9]{3,8}$")) {
                     formula->version = strdup(splitedStr);
+                    formula->version_is_calculated = true;
                     break;
                 } else if (regex_matched(splitedStr, "^[vrR][0-9]{2,8}$")) {
                     formula->version = strdup(&splitedStr[1]);
+                    formula->version_is_calculated = true;
                     break;
                 }
 
@@ -776,6 +788,8 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             }
 
             strftime(formula->version, 11, "%Y.%m.%d", tms);
+
+            formula->version_is_calculated = true;
         }
     }
 

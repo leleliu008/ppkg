@@ -90,6 +90,10 @@ typedef struct {
     char * install;
 
     char * path;
+
+    bool web_url_is_calculated;
+    bool version_is_calculated;
+    bool bsystem_is_calculated;
 } PPKGFormula;
 
 int  ppkg_formula_parse (const char * packageName, PPKGFormula * * formula);

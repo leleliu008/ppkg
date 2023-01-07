@@ -6,52 +6,52 @@
 #include "core/regex/regex.h"
 
 typedef enum {
-    RECEIPT_KEY_CODE_unknown,
+    PPKGReceiptKeyCode_unknown,
 
-    RECEIPT_KEY_CODE_summary,
-    RECEIPT_KEY_CODE_version,
-    RECEIPT_KEY_CODE_license,
+    PPKGReceiptKeyCode_summary,
+    PPKGReceiptKeyCode_version,
+    PPKGReceiptKeyCode_license,
 
-    RECEIPT_KEY_CODE_web_url,
+    PPKGReceiptKeyCode_web_url,
 
-    RECEIPT_KEY_CODE_git_url,
-    RECEIPT_KEY_CODE_git_sha,
-    RECEIPT_KEY_CODE_git_ref,
-    RECEIPT_KEY_CODE_shallow,
+    PPKGReceiptKeyCode_git_url,
+    PPKGReceiptKeyCode_git_sha,
+    PPKGReceiptKeyCode_git_ref,
+    PPKGReceiptKeyCode_shallow,
 
-    RECEIPT_KEY_CODE_src_url,
-    RECEIPT_KEY_CODE_src_sha,
+    PPKGReceiptKeyCode_src_url,
+    PPKGReceiptKeyCode_src_sha,
 
-    RECEIPT_KEY_CODE_fix_url,
-    RECEIPT_KEY_CODE_fix_sha,
+    PPKGReceiptKeyCode_fix_url,
+    PPKGReceiptKeyCode_fix_sha,
 
-    RECEIPT_KEY_CODE_res_url,
-    RECEIPT_KEY_CODE_res_sha,
+    PPKGReceiptKeyCode_res_url,
+    PPKGReceiptKeyCode_res_sha,
 
-    RECEIPT_KEY_CODE_dep_pkg,
-    RECEIPT_KEY_CODE_dep_upp,
-    RECEIPT_KEY_CODE_dep_pym,
-    RECEIPT_KEY_CODE_dep_plm,
+    PPKGReceiptKeyCode_dep_pkg,
+    PPKGReceiptKeyCode_dep_upp,
+    PPKGReceiptKeyCode_dep_pym,
+    PPKGReceiptKeyCode_dep_plm,
 
-    RECEIPT_KEY_CODE_bsystem,
-    RECEIPT_KEY_CODE_bscript,
-    RECEIPT_KEY_CODE_binbstd,
+    PPKGReceiptKeyCode_bsystem,
+    PPKGReceiptKeyCode_bscript,
+    PPKGReceiptKeyCode_binbstd,
 
-    RECEIPT_KEY_CODE_prepare,
-    RECEIPT_KEY_CODE_install,
-    RECEIPT_KEY_CODE_symlink,
+    PPKGReceiptKeyCode_prepare,
+    PPKGReceiptKeyCode_install,
+    PPKGReceiptKeyCode_symlink,
 
-    RECEIPT_KEY_CODE_cdefine,
-    RECEIPT_KEY_CODE_ccflags,
-    RECEIPT_KEY_CODE_xxflags,
-    RECEIPT_KEY_CODE_ldflags,
+    PPKGReceiptKeyCode_cdefine,
+    PPKGReceiptKeyCode_ccflags,
+    PPKGReceiptKeyCode_xxflags,
+    PPKGReceiptKeyCode_ldflags,
 
-    RECEIPT_KEY_CODE_exetype,
+    PPKGReceiptKeyCode_exetype,
 
-    RECEIPT_KEY_CODE_parallel,
+    PPKGReceiptKeyCode_parallel,
 
-    RECEIPT_KEY_CODE_signature,
-    RECEIPT_KEY_CODE_timestamp,
+    PPKGReceiptKeyCode_signature,
+    PPKGReceiptKeyCode_timestamp,
 } PPKGReceiptKeyCode;
 
 void ppkg_receipt_dump(PPKGReceipt * receipt) {
@@ -276,117 +276,138 @@ void ppkg_receipt_free(PPKGReceipt * receipt) {
 
 static PPKGReceiptKeyCode ppkg_receipt_key_code_from_key_name(char * key) {
            if (strcmp(key, "summary") == 0) {
-        return RECEIPT_KEY_CODE_summary;
+        return PPKGReceiptKeyCode_summary;
     } else if (strcmp(key, "version") == 0) {
-        return RECEIPT_KEY_CODE_version;
+        return PPKGReceiptKeyCode_version;
     } else if (strcmp(key, "license") == 0) {
-        return RECEIPT_KEY_CODE_license;
+        return PPKGReceiptKeyCode_license;
     } else if (strcmp(key, "web-url") == 0) {
-        return RECEIPT_KEY_CODE_web_url;
+        return PPKGReceiptKeyCode_web_url;
     } else if (strcmp(key, "git-url") == 0) {
-        return RECEIPT_KEY_CODE_git_url;
+        return PPKGReceiptKeyCode_git_url;
     } else if (strcmp(key, "git-sha") == 0) {
-        return RECEIPT_KEY_CODE_git_sha;
+        return PPKGReceiptKeyCode_git_sha;
     } else if (strcmp(key, "git-ref") == 0) {
-        return RECEIPT_KEY_CODE_git_ref;
+        return PPKGReceiptKeyCode_git_ref;
     } else if (strcmp(key, "shallow") == 0) {
-        return RECEIPT_KEY_CODE_shallow;
+        return PPKGReceiptKeyCode_shallow;
     } else if (strcmp(key, "src-url") == 0) {
-        return RECEIPT_KEY_CODE_src_url;
+        return PPKGReceiptKeyCode_src_url;
     } else if (strcmp(key, "src-sha") == 0) {
-        return RECEIPT_KEY_CODE_src_sha;
+        return PPKGReceiptKeyCode_src_sha;
     } else if (strcmp(key, "fix-url") == 0) {
-        return RECEIPT_KEY_CODE_fix_url;
+        return PPKGReceiptKeyCode_fix_url;
     } else if (strcmp(key, "fix-sha") == 0) {
-        return RECEIPT_KEY_CODE_fix_sha;
+        return PPKGReceiptKeyCode_fix_sha;
     } else if (strcmp(key, "res-url") == 0) {
-        return RECEIPT_KEY_CODE_res_url;
+        return PPKGReceiptKeyCode_res_url;
     } else if (strcmp(key, "res-sha") == 0) {
-        return RECEIPT_KEY_CODE_res_sha;
+        return PPKGReceiptKeyCode_res_sha;
     } else if (strcmp(key, "dep-pkg") == 0) {
-        return RECEIPT_KEY_CODE_dep_pkg;
+        return PPKGReceiptKeyCode_dep_pkg;
     } else if (strcmp(key, "dep-upp") == 0) {
-        return RECEIPT_KEY_CODE_dep_upp;
+        return PPKGReceiptKeyCode_dep_upp;
     } else if (strcmp(key, "dep-pym") == 0) {
-        return RECEIPT_KEY_CODE_dep_pym;
+        return PPKGReceiptKeyCode_dep_pym;
     } else if (strcmp(key, "dep-plm") == 0) {
-        return RECEIPT_KEY_CODE_dep_plm;
+        return PPKGReceiptKeyCode_dep_plm;
     } else if (strcmp(key, "cdefine") == 0) {
-        return RECEIPT_KEY_CODE_cdefine;
+        return PPKGReceiptKeyCode_cdefine;
     } else if (strcmp(key, "ccflags") == 0) {
-        return RECEIPT_KEY_CODE_ccflags;
+        return PPKGReceiptKeyCode_ccflags;
     } else if (strcmp(key, "xxflags") == 0) {
-        return RECEIPT_KEY_CODE_xxflags;
+        return PPKGReceiptKeyCode_xxflags;
     } else if (strcmp(key, "ldflags") == 0) {
-        return RECEIPT_KEY_CODE_ldflags;
+        return PPKGReceiptKeyCode_ldflags;
     } else if (strcmp(key, "prepare") == 0) {
-        return RECEIPT_KEY_CODE_prepare;
+        return PPKGReceiptKeyCode_prepare;
     } else if (strcmp(key, "install") == 0) {
-        return RECEIPT_KEY_CODE_install;
+        return PPKGReceiptKeyCode_install;
     } else if (strcmp(key, "symlink") == 0) {
-        return RECEIPT_KEY_CODE_symlink;
+        return PPKGReceiptKeyCode_symlink;
     } else if (strcmp(key, "bsystem") == 0) {
-        return RECEIPT_KEY_CODE_bsystem;
+        return PPKGReceiptKeyCode_bsystem;
     } else if (strcmp(key, "bscript") == 0) {
-        return RECEIPT_KEY_CODE_bscript;
+        return PPKGReceiptKeyCode_bscript;
     } else if (strcmp(key, "binbstd") == 0) {
-        return RECEIPT_KEY_CODE_binbstd;
+        return PPKGReceiptKeyCode_binbstd;
     } else if (strcmp(key, "exetype") == 0) {
-        return RECEIPT_KEY_CODE_exetype;
+        return PPKGReceiptKeyCode_exetype;
     } else if (strcmp(key, "parallel") == 0) {
-        return RECEIPT_KEY_CODE_parallel;
+        return PPKGReceiptKeyCode_parallel;
     } else if (strcmp(key, "signature") == 0) {
-        return RECEIPT_KEY_CODE_signature;
+        return PPKGReceiptKeyCode_signature;
     } else if (strcmp(key, "timestamp") == 0) {
-        return RECEIPT_KEY_CODE_timestamp;
+        return PPKGReceiptKeyCode_timestamp;
     } else {
-        return RECEIPT_KEY_CODE_unknown;
+        return PPKGReceiptKeyCode_unknown;
     }
 }
 
 static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPKGReceipt * receipt) {
+    if (keyCode == PPKGReceiptKeyCode_unknown) {
+        return;
+    }
+
+    char c;
+
+    for (;;) {
+        c = value[0];
+
+        if (c == '\0') {
+            return;
+        }
+
+        // non-printable ASCII characters and space
+        if (c <= 32) {
+            value = &value[1];
+        } else {
+            break;
+        }
+    }
+
     switch (keyCode) {
-        case RECEIPT_KEY_CODE_summary: if (receipt->summary != NULL) free(receipt->summary); receipt->summary = strdup(value); break;
-        case RECEIPT_KEY_CODE_version: if (receipt->version != NULL) free(receipt->version); receipt->version = strdup(value); break;
-        case RECEIPT_KEY_CODE_license: if (receipt->license != NULL) free(receipt->license); receipt->license = strdup(value); break;
+        case PPKGReceiptKeyCode_summary: if (receipt->summary != NULL) free(receipt->summary); receipt->summary = strdup(value); break;
+        case PPKGReceiptKeyCode_version: if (receipt->version != NULL) free(receipt->version); receipt->version = strdup(value); break;
+        case PPKGReceiptKeyCode_license: if (receipt->license != NULL) free(receipt->license); receipt->license = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_web_url: if (receipt->web_url != NULL) free(receipt->web_url); receipt->web_url = strdup(value); break;
+        case PPKGReceiptKeyCode_web_url: if (receipt->web_url != NULL) free(receipt->web_url); receipt->web_url = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_git_url: if (receipt->git_url != NULL) free(receipt->git_url); receipt->git_url = strdup(value); break;
-        case RECEIPT_KEY_CODE_git_sha: if (receipt->git_sha != NULL) free(receipt->git_sha); receipt->git_sha = strdup(value); break;
-        case RECEIPT_KEY_CODE_git_ref: if (receipt->git_ref != NULL) free(receipt->git_ref); receipt->git_ref = strdup(value); break;
+        case PPKGReceiptKeyCode_git_url: if (receipt->git_url != NULL) free(receipt->git_url); receipt->git_url = strdup(value); break;
+        case PPKGReceiptKeyCode_git_sha: if (receipt->git_sha != NULL) free(receipt->git_sha); receipt->git_sha = strdup(value); break;
+        case PPKGReceiptKeyCode_git_ref: if (receipt->git_ref != NULL) free(receipt->git_ref); receipt->git_ref = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_src_url: if (receipt->src_url != NULL) free(receipt->src_url); receipt->src_url = strdup(value); break;
-        case RECEIPT_KEY_CODE_src_sha: if (receipt->src_sha != NULL) free(receipt->src_sha); receipt->src_sha = strdup(value); break;
+        case PPKGReceiptKeyCode_src_url: if (receipt->src_url != NULL) free(receipt->src_url); receipt->src_url = strdup(value); break;
+        case PPKGReceiptKeyCode_src_sha: if (receipt->src_sha != NULL) free(receipt->src_sha); receipt->src_sha = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_fix_url: if (receipt->fix_url != NULL) free(receipt->fix_url); receipt->fix_url = strdup(value); break;
-        case RECEIPT_KEY_CODE_fix_sha: if (receipt->fix_sha != NULL) free(receipt->fix_sha); receipt->fix_sha = strdup(value); break;
+        case PPKGReceiptKeyCode_fix_url: if (receipt->fix_url != NULL) free(receipt->fix_url); receipt->fix_url = strdup(value); break;
+        case PPKGReceiptKeyCode_fix_sha: if (receipt->fix_sha != NULL) free(receipt->fix_sha); receipt->fix_sha = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_res_url: if (receipt->res_url != NULL) free(receipt->res_url); receipt->res_url = strdup(value); break;
-        case RECEIPT_KEY_CODE_res_sha: if (receipt->res_sha != NULL) free(receipt->res_sha); receipt->res_sha = strdup(value); break;
+        case PPKGReceiptKeyCode_res_url: if (receipt->res_url != NULL) free(receipt->res_url); receipt->res_url = strdup(value); break;
+        case PPKGReceiptKeyCode_res_sha: if (receipt->res_sha != NULL) free(receipt->res_sha); receipt->res_sha = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_dep_pkg: if (receipt->dep_pkg != NULL) free(receipt->dep_pkg); receipt->dep_pkg = strdup(value); break;
-        case RECEIPT_KEY_CODE_dep_upp: if (receipt->dep_upp != NULL) free(receipt->dep_upp); receipt->dep_upp = strdup(value); break;
-        case RECEIPT_KEY_CODE_dep_pym: if (receipt->dep_pym != NULL) free(receipt->dep_pym); receipt->dep_pym = strdup(value); break;
-        case RECEIPT_KEY_CODE_dep_plm: if (receipt->dep_plm != NULL) free(receipt->dep_plm); receipt->dep_plm = strdup(value); break;
+        case PPKGReceiptKeyCode_dep_pkg: if (receipt->dep_pkg != NULL) free(receipt->dep_pkg); receipt->dep_pkg = strdup(value); break;
+        case PPKGReceiptKeyCode_dep_upp: if (receipt->dep_upp != NULL) free(receipt->dep_upp); receipt->dep_upp = strdup(value); break;
+        case PPKGReceiptKeyCode_dep_pym: if (receipt->dep_pym != NULL) free(receipt->dep_pym); receipt->dep_pym = strdup(value); break;
+        case PPKGReceiptKeyCode_dep_plm: if (receipt->dep_plm != NULL) free(receipt->dep_plm); receipt->dep_plm = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_cdefine: if (receipt->cdefine != NULL) free(receipt->cdefine); receipt->cdefine = strdup(value); break;
-        case RECEIPT_KEY_CODE_ccflags: if (receipt->ccflags != NULL) free(receipt->ccflags); receipt->ccflags = strdup(value); break;
-        case RECEIPT_KEY_CODE_xxflags: if (receipt->xxflags != NULL) free(receipt->xxflags); receipt->xxflags = strdup(value); break;
-        case RECEIPT_KEY_CODE_ldflags: if (receipt->ldflags != NULL) free(receipt->ldflags); receipt->ldflags = strdup(value); break;
+        case PPKGReceiptKeyCode_cdefine: if (receipt->cdefine != NULL) free(receipt->cdefine); receipt->cdefine = strdup(value); break;
+        case PPKGReceiptKeyCode_ccflags: if (receipt->ccflags != NULL) free(receipt->ccflags); receipt->ccflags = strdup(value); break;
+        case PPKGReceiptKeyCode_xxflags: if (receipt->xxflags != NULL) free(receipt->xxflags); receipt->xxflags = strdup(value); break;
+        case PPKGReceiptKeyCode_ldflags: if (receipt->ldflags != NULL) free(receipt->ldflags); receipt->ldflags = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_prepare: if (receipt->prepare != NULL) free(receipt->prepare); receipt->prepare = strdup(value); break;
-        case RECEIPT_KEY_CODE_install: if (receipt->install != NULL) free(receipt->install); receipt->install = strdup(value); break;
+        case PPKGReceiptKeyCode_prepare: if (receipt->prepare != NULL) free(receipt->prepare); receipt->prepare = strdup(value); break;
+        case PPKGReceiptKeyCode_install: if (receipt->install != NULL) free(receipt->install); receipt->install = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_exetype: if (receipt->exetype != NULL) free(receipt->exetype); receipt->exetype = strdup(value); break;
+        case PPKGReceiptKeyCode_exetype: if (receipt->exetype != NULL) free(receipt->exetype); receipt->exetype = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_bsystem: if (receipt->bsystem != NULL) free(receipt->bsystem); receipt->bsystem = strdup(value); break;
-        case RECEIPT_KEY_CODE_bscript: if (receipt->bscript != NULL) free(receipt->bscript); receipt->bscript = strdup(value); break;
+        case PPKGReceiptKeyCode_bsystem: if (receipt->bsystem != NULL) free(receipt->bsystem); receipt->bsystem = strdup(value); break;
+        case PPKGReceiptKeyCode_bscript: if (receipt->bscript != NULL) free(receipt->bscript); receipt->bscript = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_signature: if (receipt->signature != NULL) free(receipt->signature); receipt->signature = strdup(value); break;
-        case RECEIPT_KEY_CODE_timestamp: if (receipt->timestamp != NULL) free(receipt->timestamp); receipt->timestamp = strdup(value); break;
+        case PPKGReceiptKeyCode_signature: if (receipt->signature != NULL) free(receipt->signature); receipt->signature = strdup(value); break;
+        case PPKGReceiptKeyCode_timestamp: if (receipt->timestamp != NULL) free(receipt->timestamp); receipt->timestamp = strdup(value); break;
 
-        case RECEIPT_KEY_CODE_shallow:
+        case PPKGReceiptKeyCode_shallow:
             if (value == NULL) {
                 receipt->shallow = false;
             }
@@ -395,28 +416,19 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
             }
             break;
 
-        case RECEIPT_KEY_CODE_binbstd:
-            if (value == NULL) {
-                receipt->binbstd = false;
-            }
+        case PPKGReceiptKeyCode_binbstd:
             if (strcmp(value, "yes") == 0) {
                 receipt->binbstd = true;
             }
             break;
 
-        case RECEIPT_KEY_CODE_symlink:
-            if (value == NULL) {
-                receipt->symlink = false;
-            }
+        case PPKGReceiptKeyCode_symlink:
             if (strcmp(value, "yes") == 0) {
                 receipt->symlink = true;
             }
             break;
 
-        case RECEIPT_KEY_CODE_parallel:
-            if (value == NULL) {
-                receipt->parallel = false;
-            }
+        case PPKGReceiptKeyCode_parallel:
             if (strcmp(value, "yes") == 0) {
                 receipt->parallel = true;
             }
@@ -432,57 +444,45 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
         return PPKG_FORMULA_SCHEME_ERROR;
     }
 
-    if (strcmp(receipt->summary, "") == 0) {
-        fprintf(stderr, "scheme error in receipt file: %s : summary mapping's value must not be empty.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
     if (receipt->version == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : version mapping not found.\n", receiptFilePath);
         return PPKG_FORMULA_SCHEME_ERROR;
     }
-
-    if (strcmp(receipt->version, "") == 0) {
-        fprintf(stderr, "scheme error in receipt file: %s : version mapping's value must not be empty.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (receipt->web_url == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : web-url mapping not found.\n", receiptFilePath);
         return PPKG_FORMULA_SCHEME_ERROR;
     }
 
-    if (strcmp(receipt->web_url, "") == 0) {
-        fprintf(stderr, "scheme error in receipt file: %s : web-url mapping's value must not be empty.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
     if (receipt->src_url == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : src-url mapping not found.\n", receiptFilePath);
+        if (receipt->git_url == NULL) {
+            fprintf(stderr, "scheme error in receipt file: %s : neither src-url nor git-url mapping not found.\n", receiptFilePath);
+            return PPKG_FORMULA_SCHEME_ERROR;
+        }
+    } else {
+        if (strncmp(receipt->src_url, "dir://", 6) == 0) {
+            ;
+        } else {
+            if (receipt->src_sha == NULL) {
+                fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping not found.\n", receiptFilePath);
+                return PPKG_FORMULA_SCHEME_ERROR;
+            }
+
+            if (strlen(receipt->src_sha) != 64) {
+                fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping's value's length must be 64.\n", receiptFilePath);
+                return PPKG_FORMULA_SCHEME_ERROR;
+            }
+        }
+    }
+
+    if (receipt->bsystem == NULL) {
+        fprintf(stderr, "scheme error in receipt file: %s : bsystem mapping not found.\n", receiptFilePath);
         return PPKG_FORMULA_SCHEME_ERROR;
     }
 
-    if (strcmp(receipt->src_url, "") == 0) {
-        fprintf(stderr, "scheme error in receipt file: %s : src-url mapping's value must not be empty.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    if (receipt->src_sha == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping not found.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
-    }
-
-    if (strlen(receipt->src_sha) != 64) {
-        fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping's value's length must be 64.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
+    if (receipt->signature == NULL) {
+        fprintf(stderr, "scheme error in receipt file: %s : signature mapping not found.\n", receiptFilePath);
+        return PPKG_RECEIPT_SCHEME_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -512,19 +512,6 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
         fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping's value's length must be 10.\n", receiptFilePath);
         return PPKG_RECEIPT_SCHEME_ERROR;
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    if (receipt->signature == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : signature mapping not found.\n", receiptFilePath);
-        return PPKG_RECEIPT_SCHEME_ERROR;
-    }
-
-    if (strcmp(receipt->signature, "") == 0) {
-        fprintf(stderr, "scheme error in receipt file: %s : signature mapping's value must not be empty.\n", receiptFilePath);
-        return PPKG_RECEIPT_SCHEME_ERROR;
-    }
-
 
     return PPKG_OK;
 }
@@ -576,7 +563,7 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
 
     yaml_parser_set_input_file(&parser, file);
 
-    PPKGReceiptKeyCode receiptKeyCode = RECEIPT_KEY_CODE_unknown;
+    PPKGReceiptKeyCode receiptKeyCode = PPKGReceiptKeyCode_unknown;
 
     PPKGReceipt * receipt = NULL;
 

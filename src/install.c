@@ -1214,7 +1214,18 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     }
 
     fprintf(receiptFile, "pkgname: %s\n", packageName);
-    fprintf(receiptFile, "version: %s\n", formula->version);
+
+    if (formula->version_is_calculated) {
+        fprintf(receiptFile, "version: %s\n", formula->version);
+    }
+
+    if (formula->bsystem_is_calculated) {
+        fprintf(receiptFile, "bsystem: %s\n", formula->bsystem);
+    }
+
+    if (formula->web_url_is_calculated) {
+        fprintf(receiptFile, "web-url: %s\n", formula->web_url);
+    }
 
     ppkg_formula_free(formula);
     formula = NULL;
