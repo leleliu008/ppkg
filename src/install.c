@@ -5,6 +5,7 @@
 #include <time.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #include "core/fs.h"
 #include "core/git.h"
@@ -953,7 +954,11 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     if (resultCode != 0) {
         ppkg_formula_free(formula);
-        return WEXITSTATUS(resultCode);
+        if (WIFEXITED(resultCode)) {
+            return WEXITSTATUS(resultCode);
+        } else {
+            return PPKG_ERROR;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
