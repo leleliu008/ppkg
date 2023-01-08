@@ -77,4 +77,4 @@ jobs:
 
       - run: bin/ppkg fetch curl
 
-      - run: bin/ppkg upgrade @self
+      - run: bin/ppkg upgrade-self
