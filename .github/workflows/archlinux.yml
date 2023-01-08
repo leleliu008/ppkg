@@ -54,8 +54,8 @@ jobs:
 
       - run: ./output/bin/ppkg info @all
       - run: ./output/bin/ppkg info libzip
-      - run: ./output/bin/ppkg info libzip --yaml
-      - run: ./output/bin/ppkg info libzip --json
+      - run: ./output/bin/ppkg info libzip formula-yaml
+      - run: ./output/bin/ppkg info libzip formula-json
       - run: ./output/bin/ppkg info libzip summary
       - run: ./output/bin/ppkg info libzip version
       - run: ./output/bin/ppkg info libzip license
