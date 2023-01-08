@@ -79,9 +79,9 @@ jobs:
 
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-dir
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-files
-      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-path
-      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-json
-      - run: $VALGRIND ./output/bin/ppkg info libzip installed-receipt-yaml
+      - run: $VALGRIND ./output/bin/ppkg info libzip receipt-path
+      - run: $VALGRIND ./output/bin/ppkg info libzip receipt-json
+      - run: $VALGRIND ./output/bin/ppkg info libzip receipt-yaml
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-unix
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-iso-8601
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-timestamp-rfc-3339

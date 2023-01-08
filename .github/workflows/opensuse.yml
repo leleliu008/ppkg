@@ -83,9 +83,9 @@ jobs:
 
       - run: ./output/bin/ppkg info libzip installed-dir
       - run: ./output/bin/ppkg info libzip installed-files
-      - run: ./output/bin/ppkg info libzip installed-receipt-path
-      - run: ./output/bin/ppkg info libzip installed-receipt-json
-      - run: ./output/bin/ppkg info libzip installed-receipt-yaml
+      - run: ./output/bin/ppkg info libzip receipt-path
+      - run: ./output/bin/ppkg info libzip receipt-json
+      - run: ./output/bin/ppkg info libzip receipt-yaml
       - run: ./output/bin/ppkg info libzip installed-timestamp-unix
       - run: ./output/bin/ppkg info libzip installed-timestamp-iso-8601
       - run: ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
