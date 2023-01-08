@@ -260,13 +260,17 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg info curl bin-url
         ppkg info curl bin-sha
         ppkg info curl install
-        ppkg info curl formula
+
+        ppkg info curl formula-path
+        ppkg info curl formula-json
+        ppkg info curl formula-yaml
+
+        ppkg info curl receipt-path
+        ppkg info curl receipt-json
+        ppkg info curl receipt-yaml
 
         ppkg info curl installed-dir
         ppkg info curl installed-files
-        ppkg info curl installed-receipt-path
-        ppkg info curl installed-receipt-json
-        ppkg info curl installed-receipt-yaml
         ppkg info curl installed-timestamp-unix
         ppkg info curl installed-timestamp-iso-8601
         ppkg info curl installed-timestamp-rfc-3339
@@ -385,11 +389,11 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg tree curl
         ppkg tree curl -L 3
         
-*   show logs of the given installed package
+*   **show logs of the given installed package**
         
         ppkg logs curl
         
-*   pack the given installed package
+*   **pack the given installed package**
         
         ppkg pack curl
         ppkg pack curl --type=tar.xz
@@ -409,7 +413,14 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     this environment variable must be set.
 
-    this environment variable already have been set on most systems, if not set or set a empty string, you should set it manully.
+    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
+
+*   **PATH**
+
+    some features rely on this environment variable.
+
+    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
+
 
 *   **SSL_CERT_FILE**
 
@@ -420,10 +431,10 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
-*   **URL_TRANSFORM**
+*   **PPKG_URL_TRANSFORM**
 
     ```bash
-    export URL_TRANSFORM=/path/of/url-transform
+    export PPKG_URL_TRANSFORM=/path/of/url-transform
     ```
 
     `/path/of/url-transform` command would be invoked as `/path/of/url-transform <URL>`
@@ -447,7 +458,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     esac
     ```
 
-    If you want change the request url, you can set this environment variable. It is very useful for chinese users.
+    If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
 *   **CMake relevant environment variables**
 

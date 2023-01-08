@@ -72,22 +72,16 @@ function _ppkg() {
                     _arguments '1:what:(zsh)'
                     ;;
                 info)
-                    if [ "$words[2]" = '@all' ] ; then
-                        _arguments \
-                            '1:package-name:(@all)' \
-                            '2:output-format:(--json --yaml --shell)'
-                    else
-                        case $words[3] in
-                            installed-*)
-                                _arguments \
-                                    '1:package-name:()' \
-                                    '2:key:(installed-dir installed-files installed-receipt-yaml installed-receipt-json installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version)'
-                                ;;
-                            *)  _arguments \
-                                    '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                    '2:key:(formula summary version license web-url git-url git-sha src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp cdefine ccflags xxflags ldflags bscript binbstd bsystem installed-dir installed-files installed-receipt-yaml installed-receipt-json installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version symlinked-files --json --yaml --shell)'
-                        esac
-                    fi
+                    case $words[3] in
+                        installed-*|receipt-*)
+                            _arguments \
+                                '1:package-name:()' \
+                                '2:key:(installed-dir installed-files receipt-path receipt-yaml receipt-json installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version)'
+                            ;;
+                        *)  _arguments \
+                                '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
+                                '2:key:(formula-path formula-json formula-yaml summary version license web-url git-url git-sha src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm cdefine ccflags xxflags ldflags bscript binbstd bsystem install symlink installed-dir installed-files receipt-path receipt-yaml receipt-json installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-version symlinked-files)'
+                    esac
                     ;;
                 fetch)
                     _arguments ':package-name:(@all $(ppkg ls-available 2>/dev/null))'

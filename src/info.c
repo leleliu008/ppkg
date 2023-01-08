@@ -108,7 +108,7 @@ int ppkg_info(const char * packageName, const char * key) {
         return resultCode;
     }
 
-    if ((key == NULL) || (strcmp(key, "") == 0) || (strcmp(key, "--yaml") == 0)) {
+    if ((key == NULL) || (strcmp(key, "") == 0) || (strcmp(key, "formula-yaml") == 0)) {
         char * formulaFilePath = NULL;
 
         resultCode = ppkg_formula_path(packageName, &formulaFilePath);
@@ -135,8 +135,8 @@ int ppkg_info(const char * packageName, const char * key) {
             printf("pkgname: %s\n", packageName);
         }
 
-        char buff[1024];
-        int  size = 0;
+        char   buff[1024];
+        size_t size = 0;
         while((size = fread(buff, 1, 1024, formulaFile)) != 0) {
             fwrite(buff, 1, size, stdout);
         }
@@ -146,7 +146,7 @@ int ppkg_info(const char * packageName, const char * key) {
         printf("formula: %s\n", formulaFilePath);
 
         free(formulaFilePath);
-    } else if (strcmp(key, "--json") == 0) {
+    } else if (strcmp(key, "formula-json") == 0) {
         PPKGFormula * formula = NULL;
 
         resultCode = ppkg_formula_parse(packageName, &formula);
@@ -211,61 +211,7 @@ int ppkg_info(const char * packageName, const char * key) {
         json_decref(root);
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "--shell") == 0) {
-        PPKGFormula * formula = NULL;
-
-        resultCode = ppkg_formula_parse(packageName, &formula);
-
-        if (resultCode != PPKG_OK) {
-            return resultCode;
-        }
-
-        printf("PPKG_PKG_PKGNAME='%s'\n", packageName);
-
-        printf("PPKG_PKG_SUMMARY='%s'\n", formula->summary == NULL ? "" : formula->summary);
-        printf("PPKG_PKG_VERSION='%s'\n", formula->version == NULL ? "" : formula->version);
-        printf("PPKG_PKG_LICENSE='%s'\n", formula->license == NULL ? "" : formula->license);
-
-        printf("PPKG_PKG_WEB_URL='%s'\n", formula->web_url == NULL ? "" : formula->web_url);
-
-        printf("PPKG_PKG_GIT_URL='%s'\n", formula->git_url == NULL ? "" : formula->git_url);
-        printf("PPKG_PKG_GIT_SHA='%s'\n", formula->git_sha == NULL ? "" : formula->git_sha);
-        printf("PPKG_PKG_GIT_REF='%s'\n", formula->git_ref == NULL ? "" : formula->git_ref);
-
-        printf("PPKG_PKG_SRC_URL='%s'\n", formula->src_url == NULL ? "" : formula->src_url);
-        printf("PPKG_PKG_SRC_SHA='%s'\n", formula->src_sha == NULL ? "" : formula->src_sha);
-
-        printf("PPKG_PKG_FIX_URL='%s'\n", formula->fix_url == NULL ? "" : formula->fix_url);
-        printf("PPKG_PKG_FIX_SHA='%s'\n", formula->fix_sha == NULL ? "" : formula->fix_sha);
-
-        printf("PPKG_PKG_RES_URL='%s'\n", formula->res_url == NULL ? "" : formula->res_url);
-        printf("PPKG_PKG_RES_SHA='%s'\n", formula->res_sha == NULL ? "" : formula->res_sha);
-
-        printf("PPKG_PKG_DEP_PKG='%s'\n", formula->dep_pkg == NULL ? "" : formula->dep_pkg);
-        printf("PPKG_PKG_DEP_UPP='%s'\n", formula->dep_upp == NULL ? "" : formula->dep_upp);
-        printf("PPKG_PKG_DEP_PYM='%s'\n", formula->dep_pym == NULL ? "" : formula->dep_pym);
-        printf("PPKG_PKG_DEP_PLM='%s'\n", formula->dep_plm == NULL ? "" : formula->dep_plm);
-
-        printf("PPKG_PKG_BSYSTEM='%s'\n", formula->bsystem == NULL ? "" : formula->bsystem);
-        printf("PPKG_PKG_BSCRIPT='%s'\n", formula->bscript == NULL ? "" : formula->bscript);
-
-        printf("PPKG_PKG_CDEFINE='%s'\n", formula->cdefine == NULL ? "" : formula->cdefine);
-        printf("PPKG_PKG_CCFLAGS='%s'\n", formula->ccflags == NULL ? "" : formula->ccflags);
-        printf("PPKG_PKG_XXFLAGS='%s'\n", formula->xxflags == NULL ? "" : formula->xxflags);
-        printf("PPKG_PKG_LDFLAGS='%s'\n", formula->ldflags == NULL ? "" : formula->ldflags);
-
-        printf("PPKG_PKG_SHALLOW='%s'\n", formula->shallow ? "yes" : "no");
-        printf("PPKG_PKG_BINBSTD='%s'\n", formula->binbstd ? "yes" : "no");
-        printf("PPKG_PKG_SYMLINK='%s'\n", formula->symlink ? "yes" : "no");
-        printf("PPKG_PKG_PARALLEL='%s'\n", formula->parallel ? "yes" : "no");
-
-        printf("PPKG_PKG_EXETYPE='%s'\n", formula->exetype == NULL ? "" : formula->exetype);
-
-        printf("PPKG_PKG_PREPARE=\"%s\"\n", formula->prepare == NULL ? "" : formula->prepare);
-        printf("PPKG_PKG_INSTALL=\"%s\"\n", formula->install == NULL ? "" : formula->install);
-
-        ppkg_formula_free(formula);
-    } else if (strcmp(key, "formula") == 0) {
+    } else if (strcmp(key, "formula-path") == 0) {
         char * formulaFilePath = NULL;
 
         resultCode = ppkg_formula_path(packageName, &formulaFilePath);
@@ -274,26 +220,8 @@ int ppkg_info(const char * packageName, const char * key) {
             return resultCode;
         }
 
-        FILE * file = fopen(formulaFilePath, "r");
-
-        if (file == NULL) {
-            perror(formulaFilePath);
-            free(formulaFilePath);
-            return PPKG_ERROR;
-        }
-
-        printf("formula: %s\n", formulaFilePath);
-
+        printf("%s\n", formulaFilePath);
         free(formulaFilePath);
-        formulaFilePath = NULL;
-
-        char buff[1024];
-        int  size = 0;
-        while((size = fread(buff, 1, 1024, file)) != 0) {
-            fwrite(buff, 1, size, stdout);
-        }
-
-        fclose(file);
     } else if (strcmp(key, "summary") == 0) {
         PPKGFormula * formula = NULL;
 
@@ -760,135 +688,6 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         fclose(installedManifestFile);
-    } else if (strcmp(key, "installed-receipt-path") == 0) {
-        char * userHomeDir = getenv("HOME");
-
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
-        }
-
-        size_t userHomeDirLength = strlen(userHomeDir);
-
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
-        char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20;
-        char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
-
-        if (exists_and_is_a_regular_file(receiptFilePath)) {
-            printf("%s\n", receiptFilePath);
-        } else {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
-        }
-    } else if (strcmp(key, "installed-receipt-yaml") == 0) {
-        char * userHomeDir = getenv("HOME");
-
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
-        }
-
-        size_t userHomeDirLength = strlen(userHomeDir);
-
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
-        char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20;
-        char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
-
-        if (!exists_and_is_a_regular_file(receiptFilePath)) {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
-        }
-
-        FILE * receiptFile = fopen(receiptFilePath, "r");
-
-        if (receiptFile == NULL) {
-            perror(receiptFilePath);
-            return PPKG_ERROR;
-        }
-
-        char buff[1024];
-        int  size = 0;
-        while((size = fread(buff, 1, 1024, receiptFile)) != 0) {
-            fwrite(buff, 1, size, stdout);
-        }
-
-        fclose(receiptFile);
-    } else if (strcmp(key, "installed-receipt-json") == 0) {
-        PPKGReceipt * receipt = NULL;
-
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
-
-        if (resultCode != PPKG_OK) {
-            return resultCode;
-        }
-
-        json_t * root = json_object();
-
-        json_object_set_new(root, "pkgname", json_string(packageName));
-
-        json_object_set_new(root, "summary", json_string(receipt->summary));
-        json_object_set_new(root, "version", json_string(receipt->version));
-        json_object_set_new(root, "license", json_string(receipt->license));
-
-        json_object_set_new(root, "web-url", json_string(receipt->web_url));
-
-        json_object_set_new(root, "git-url", json_string(receipt->git_url));
-        json_object_set_new(root, "git-sha", json_string(receipt->git_sha));
-        json_object_set_new(root, "git-ref", json_string(receipt->git_ref));
-
-        json_object_set_new(root, "src-url", json_string(receipt->src_url));
-        json_object_set_new(root, "src-sha", json_string(receipt->src_sha));
-
-        json_object_set_new(root, "fix-url", json_string(receipt->fix_url));
-        json_object_set_new(root, "fix-sha", json_string(receipt->fix_sha));
-
-        json_object_set_new(root, "res-url", json_string(receipt->res_url));
-        json_object_set_new(root, "res-sha", json_string(receipt->res_sha));
-
-        json_object_set_new(root, "dep-pkg", json_string(receipt->dep_pkg));
-        json_object_set_new(root, "dep-upp", json_string(receipt->dep_upp));
-        json_object_set_new(root, "dep-pym", json_string(receipt->dep_pym));
-        json_object_set_new(root, "dep-plm", json_string(receipt->dep_plm));
-
-        json_object_set_new(root, "cdefine", json_string(receipt->cdefine));
-        json_object_set_new(root, "ccflags", json_string(receipt->ccflags));
-        json_object_set_new(root, "xxflags", json_string(receipt->xxflags));
-        json_object_set_new(root, "ldfalgs", json_string(receipt->ldflags));
-
-        json_object_set_new(root, "bsystem", json_string(receipt->bscript));
-        json_object_set_new(root, "bscript", json_string(receipt->bscript));
-        json_object_set_new(root, "binbstd", json_boolean(receipt->binbstd));
-        json_object_set_new(root, "parallel", json_boolean(receipt->parallel));
-        json_object_set_new(root, "symlink", json_boolean(receipt->symlink));
-
-        json_object_set_new(root, "exetype", json_string(receipt->exetype));
-
-        json_object_set_new(root, "prepare", json_string(receipt->prepare));
-        json_object_set_new(root, "install", json_string(receipt->install));
-
-        json_object_set_new(root, "signature", json_string(receipt->signature));
-        json_object_set_new(root, "timestamp", json_string(receipt->timestamp));
-
-        char * jsonStr = json_dumps(root, 0);
-
-        if (jsonStr == NULL) {
-            resultCode = PPKG_ERROR;
-        } else {
-            printf("%s\n", jsonStr);
-            free(jsonStr);
-        }
-
-        json_decref(root);
-
-        ppkg_receipt_free(receipt);
     } else if (strcmp(key, "installed-version") == 0) {
         PPKGReceipt * receipt = NULL;
 
@@ -955,6 +754,135 @@ int ppkg_info(const char * packageName, const char * key) {
         buff[22] = ':';
 
         printf("%s\n", buff);
+
+        ppkg_receipt_free(receipt);
+    } else if (strcmp(key, "receipt-path") == 0) {
+        char * userHomeDir = getenv("HOME");
+
+        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
+            return PPKG_ENV_HOME_NOT_SET;
+        }
+
+        size_t userHomeDirLength = strlen(userHomeDir);
+
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        char    installedDir[installedDirLength];
+        memset (installedDir, 0, installedDirLength);
+        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+
+        size_t  receiptFilePathLength = installedDirLength + 20;
+        char    receiptFilePath[receiptFilePathLength];
+        memset (receiptFilePath, 0, receiptFilePathLength);
+        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+
+        if (exists_and_is_a_regular_file(receiptFilePath)) {
+            printf("%s\n", receiptFilePath);
+        } else {
+            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+        }
+    } else if (strcmp(key, "receipt-yaml") == 0) {
+        char * userHomeDir = getenv("HOME");
+
+        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
+            return PPKG_ENV_HOME_NOT_SET;
+        }
+
+        size_t userHomeDirLength = strlen(userHomeDir);
+
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        char    installedDir[installedDirLength];
+        memset (installedDir, 0, installedDirLength);
+        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+
+        size_t  receiptFilePathLength = installedDirLength + 20;
+        char    receiptFilePath[receiptFilePathLength];
+        memset (receiptFilePath, 0, receiptFilePathLength);
+        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+
+        if (!exists_and_is_a_regular_file(receiptFilePath)) {
+            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+        }
+
+        FILE * receiptFile = fopen(receiptFilePath, "r");
+
+        if (receiptFile == NULL) {
+            perror(receiptFilePath);
+            return PPKG_ERROR;
+        }
+
+        char buff[1024];
+        int  size = 0;
+        while((size = fread(buff, 1, 1024, receiptFile)) != 0) {
+            fwrite(buff, 1, size, stdout);
+        }
+
+        fclose(receiptFile);
+    } else if (strcmp(key, "receipt-json") == 0) {
+        PPKGReceipt * receipt = NULL;
+
+        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+
+        if (resultCode != PPKG_OK) {
+            return resultCode;
+        }
+
+        json_t * root = json_object();
+
+        json_object_set_new(root, "pkgname", json_string(packageName));
+
+        json_object_set_new(root, "summary", json_string(receipt->summary));
+        json_object_set_new(root, "version", json_string(receipt->version));
+        json_object_set_new(root, "license", json_string(receipt->license));
+
+        json_object_set_new(root, "web-url", json_string(receipt->web_url));
+
+        json_object_set_new(root, "git-url", json_string(receipt->git_url));
+        json_object_set_new(root, "git-sha", json_string(receipt->git_sha));
+        json_object_set_new(root, "git-ref", json_string(receipt->git_ref));
+
+        json_object_set_new(root, "src-url", json_string(receipt->src_url));
+        json_object_set_new(root, "src-sha", json_string(receipt->src_sha));
+
+        json_object_set_new(root, "fix-url", json_string(receipt->fix_url));
+        json_object_set_new(root, "fix-sha", json_string(receipt->fix_sha));
+
+        json_object_set_new(root, "res-url", json_string(receipt->res_url));
+        json_object_set_new(root, "res-sha", json_string(receipt->res_sha));
+
+        json_object_set_new(root, "dep-pkg", json_string(receipt->dep_pkg));
+        json_object_set_new(root, "dep-upp", json_string(receipt->dep_upp));
+        json_object_set_new(root, "dep-pym", json_string(receipt->dep_pym));
+        json_object_set_new(root, "dep-plm", json_string(receipt->dep_plm));
+
+        json_object_set_new(root, "cdefine", json_string(receipt->cdefine));
+        json_object_set_new(root, "ccflags", json_string(receipt->ccflags));
+        json_object_set_new(root, "xxflags", json_string(receipt->xxflags));
+        json_object_set_new(root, "ldfalgs", json_string(receipt->ldflags));
+
+        json_object_set_new(root, "bsystem", json_string(receipt->bscript));
+        json_object_set_new(root, "bscript", json_string(receipt->bscript));
+        json_object_set_new(root, "binbstd", json_boolean(receipt->binbstd));
+        json_object_set_new(root, "parallel", json_boolean(receipt->parallel));
+        json_object_set_new(root, "symlink", json_boolean(receipt->symlink));
+
+        json_object_set_new(root, "exetype", json_string(receipt->exetype));
+
+        json_object_set_new(root, "prepare", json_string(receipt->prepare));
+        json_object_set_new(root, "install", json_string(receipt->install));
+
+        json_object_set_new(root, "signature", json_string(receipt->signature));
+        json_object_set_new(root, "timestamp", json_string(receipt->timestamp));
+
+        char * jsonStr = json_dumps(root, 0);
+
+        if (jsonStr == NULL) {
+            resultCode = PPKG_ERROR;
+        } else {
+            printf("%s\n", jsonStr);
+            free(jsonStr);
+        }
+
+        json_decref(root);
 
         ppkg_receipt_free(receipt);
     } else {
