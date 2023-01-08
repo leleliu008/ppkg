@@ -257,19 +257,25 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg info curl version
         ppkg info curl summary
         ppkg info curl web-url
-        ppkg info curl bin-url
-        ppkg info curl bin-sha
-        ppkg info curl install
+        ppkg info curl git-url
+        ppkg info curl git-sha
+        ppkg info curl git-ref
+        ppkg info curl src-url
+        ppkg info curl src-sha
 
         ppkg info curl formula-path
+
         ppkg info curl formula-json
         ppkg info curl formula-yaml
+
         ppkg info curl formula-json | jq .
         ppkg info curl formula-yaml | yq .
 
         ppkg info curl receipt-path
+
         ppkg info curl receipt-json
         ppkg info curl receipt-yaml
+
         ppkg info curl receipt-json | jq .
         ppkg info curl receipt-yaml | yq .
 
