@@ -6,7 +6,7 @@
 #include "url-transform.h"
 
 int url_transform(const char * url, char ** out) {
-    char * urlTransformCommandPath = getenv("URL_TRANSFORM");
+    char * urlTransformCommandPath = getenv("PPKG_URL_TRANSFORM");
 
     if (urlTransformCommandPath == NULL) {
         return URL_TRANSFORM_ENV_IS_NOT_SET;
