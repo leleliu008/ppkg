@@ -1037,6 +1037,9 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_INSTALL_ACTIONS
     PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
 
+    [ "$PACKAGE_PREPARE_ACTIONS" = null ] && unset PACKAGE_PREPARE_ACTIONS
+    [ "$PACKAGE_INSTALL_ACTIONS" = null ] && unset PACKAGE_INSTALL_ACTIONS
+
     if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
         for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[ ]*||' | cut -d ' ' -f1)
         do
@@ -2698,7 +2701,7 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$PACKAGE_PREPARE_ACTIONS" != null ] ; then
+    if [ -n "$PACKAGE_PREPARE_ACTIONS" ] ; then
         cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
 prepare() {
 $PACKAGE_PREPARE_ACTIONS
@@ -2707,7 +2710,7 @@ EOF
         . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
     fi
 
-    if [ "$PACKAGE_INSTALL_ACTIONS" != null ] ; then
+    if [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
         cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
 build() {
 $PACKAGE_INSTALL_ACTIONS
@@ -4174,25 +4177,19 @@ __show_infomation_as_shell_of_all_available_packages() {
   __show_infomation_as_json__of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = yes ] ; then
-        PARALLEL=true
-    else
-        PARALLEL=false
-    fi
-
     if [ -z "$PACKAGE_WEB_URL" ] ; then
         PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
     fi
 
     jq  --null-input \
-        --arg name "$PACKAGE_NAME" \
+        --arg pkgname "$PACKAGE_NAME" \
         --arg version "$PACKAGE_VERSION" \
         --arg summary "$PACKAGE_SUMMARY" \
         --arg license "$PACKAGE_LICENSE" \
         --arg web_url "$PACKAGE_WEB_URL" \
         --arg git_url "$PACKAGE_GIT_URL" \
         --arg git_sha "$PACKAGE_GIT_SHA" \
-        --arg git_tag "$PACKAGE_GIT_REF" \
+        --arg git_ref "$PACKAGE_GIT_REF" \
         --arg src_url "$PACKAGE_SRC_URL" \
         --arg src_sha "$PACKAGE_SRC_SHA" \
         --arg fix_url "$PACKAGE_FIX_URL" \
@@ -4201,52 +4198,46 @@ __show_infomation_as_shell_of_all_available_packages() {
         --arg res_sha "$PACKAGE_RES_SHA" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
-        --arg bsystem "$PACKAGE_BUILD_SYSTEM" \
-        --arg binsrcd "$PACKAGE_BUILD_IN_BSCRIPT_DIR" \
-        --arg parallel "$PARALLEL" \
+        --arg dep_pym "$PACKAGE_DEP_PYM" \
+        --arg dep_plm "$PACKAGE_DEP_PLM" \
+        --arg prepare "$PACKAGE_PREPARE_ACTIONS" \
+        --arg install "$PACKAGE_INSTALL_ACTIONS" \
+        --arg bsystem "$PACKAGE_BSYSTEM" \
+        --arg binbstd "$PACKAGE_BINBSTD" \
         --arg cdefine "$PACKAGE_CDEFINE" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg developer "$PACKAGE_DEVELOPER" \
+        --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
 '{
-    "name":$name,
+    "pkgname":$pkgname,
     "version":$version,
+    "license":$license,
     "summary":$summary,
     "web-url":$web_url,
-    "license":$license,
-    "git": {
-        "url":$git_url,
-        "tag":$git_tag,
-        "sha":$git_sha
-    },
-    "src": {
-        "url":$src_url,
-        "sha":$src_sha
-    },
-    "fix": {
-        "url":$fix_url,
-        "sha":$fix_sha
-    },
-    "res": {
-        "url":$res_url,
-        "sha":$res_sha
-    },
-    "dep": {
-        "pkg":$dep_pkg,
-        "upp":$dep_upp
-    },
-    "build": {
-        "system":$bsystem,
-        "ccflags":$ccflags,
-        "cdefine":$cdefine,
-        "xxflags":$xxflags,
-        "ldflags":$ldflags,
-        "binsrcd":$binsrcd,
-        "parallel":$parallel
-    },
-    "developer":$developer
-}'
+    "git-url":$git_url,
+    "git-sha":$git_sha,
+    "git-ref":$git_ref,
+    "src-url":$src_url,
+    "src-sha":$src_sha,
+    "fix-url":$fix_url,
+    "fix-sha":$fix_sha,
+    "res-url":$res_url,
+    "res-sha":$res_sha,
+    "dep-pkg":$dep_pkg,
+    "dep-upp":$dep_upp,
+    "dep-pym":$dep_pym,
+    "dep-plm":$dep_plm,
+    "bsystem":$bsystem,
+    "binbstd":$binbstd,
+    "cdefine":$cdefine,
+    "ccflags":$ccflags,
+    "xxflags":$xxflags,
+    "ldflags":$ldflags,
+    "parallel":$parallel,
+    "prepare":$prepare,
+    "install":$install
+}'| jq 'with_entries(select(.value != ""))'
 }
 
 # __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
@@ -4352,17 +4343,92 @@ EOF
     done
 
     case $SHOW_INFOMATION_ARGS in
-        --json)
+        formula-json)
             __show_infomation_as_json__of_the_given_package "$1"
             ;;
-        --yaml)
+        formula-yaml)
             __show_infomation_as_yaml__of_the_given_package "$1"
             ;;
-        --shell)
-            __show_infomation_as_shell_of_the_given_package "$1"
-            ;;
-        formula)
+        formula-path)
             __path_of_formula_of_the_given_package "$1"
+            ;;
+        receipt-yaml)
+            if is_package_installed "$1" ; then
+                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        receipt-json)
+            __load_receipt_of_the_given_package "$1"
+
+            jq  --null-input \
+                --arg pkgname "$1" \
+                --arg version "$RECEIPT_PACKAGE_VERSION" \
+                --arg summary "$RECEIPT_PACKAGE_SUMMARY" \
+                --arg license "$RECEIPT_PACKAGE_LICENSE" \
+                --arg web_url "$RECEIPT_PACKAGE_WEB_URL" \
+                --arg git_url "$RECEIPT_PACKAGE_GIT_URL" \
+                --arg git_sha "$RECEIPT_PACKAGE_GIT_SHA" \
+                --arg git_ref "$RECEIPT_PACKAGE_GIT_REF" \
+                --arg src_url "$RECEIPT_PACKAGE_SRC_URL" \
+                --arg src_sha "$RECEIPT_PACKAGE_SRC_SHA" \
+                --arg fix_url "$RECEIPT_PACKAGE_FIX_URL" \
+                --arg fix_sha "$RECEIPT_PACKAGE_FIX_SHA" \
+                --arg res_url "$RECEIPT_PACKAGE_RES_URL" \
+                --arg res_sha "$RECEIPT_PACKAGE_RES_SHA" \
+                --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
+                --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
+                --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
+                --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
+                --arg cdefine "$RECEIPT_PACKAGE_CDEFINE" \
+                --arg ccflags "$RECEIPT_PACKAGE_CCFLAGS" \
+                --arg xxflags "$RECEIPT_PACKAGE_XXFLAGS" \
+                --arg ldflags "$RECEIPT_PACKAGE_LDFLAGS" \
+                --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
+                --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
+                --arg parallel "$RECEIPT_PARALLEL" \
+                --arg signature "$PACKAGE_RECEIPT_SIGNATURE" \
+                --arg timestamp "$PACKAGE_RECEIPT_TIMESTAMP" \
+'{
+    "pkgname":$pkgname,
+    "version":$version,
+    "license":$license,
+    "summary":$summary,
+    "web-url":$web_url,
+    "git-url":$git_url,
+    "git-sha":$git_sha,
+    "git-ref":$git_ref,
+    "src-url":$src_url,
+    "src-sha":$src_sha,
+    "fix-url":$fix_url,
+    "fix-sha":$fix_sha,
+    "res-url":$res_url,
+    "res-sha":$res_sha,
+    "dep-pkg":$dep_pkg,
+    "dep-upp":$dep_upp,
+    "dep-pym":$dep_pym,
+    "dep-plm":$dep_plm,
+    "bsystem":$bsystem,
+    "binbstd":$binbstd,
+    "cdefine":$cdefine,
+    "ccflags":$ccflags,
+    "xxflags":$xxflags,
+    "ldflags":$ldflags,
+    "parallel":$parallel,
+    "signature":$signature,
+    "timestamp":$timestamp,
+}' | jq 'with_entries(select(.value != ""))'
+
+            ;;
+        receipt-path)
+            if is_package_installed "$1" ; then
+                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
             ;;
         symlinked-files)
             if [ -f "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1" ] ; then
@@ -4380,22 +4446,6 @@ EOF
         installed-files)
             if is_package_installed "$1" ; then
                 cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
-            ;;
-        installed-manifest)
-            if is_package_installed "$1" ; then
-                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
-            ;;
-        installed-receipt)
-            if is_package_installed "$1" ; then
-                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
             else
                 error "package [$1] is not installed."
                 return 1
@@ -4585,10 +4635,11 @@ EOF
         return 1
     }
 
-    unset RECEIPT_PACKAGE_VERSION
     unset RECEIPT_PACKAGE_SUMMARY
-    unset RECEIPT_PACKAGE_WEB_URL
+    unset RECEIPT_PACKAGE_VERSION
     unset RECEIPT_PACKAGE_LICENSE
+
+    unset RECEIPT_PACKAGE_WEB_URL
 
     unset RECEIPT_PACKAGE_GIT_URL
     unset RECEIPT_PACKAGE_GIT_SHA
@@ -4612,7 +4663,8 @@ EOF
     unset RECEIPT_PACKAGE_DEP_PLM
 
     unset RECEIPT_PACKAGE_BSYSTEM
-
+    unset RECEIPT_PACKAGE_BSCRIPT
+    unset RECEIPT_PACKAGE_INSTALL
     unset RECEIPT_PACKAGE_SYMLINK
 
     #######################################################################################################

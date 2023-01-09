@@ -56,41 +56,39 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 *   **show infomation of the given package**
         
         ppkg info curl
-        ppkg info curl version
         ppkg info curl summary
+        ppkg info curl version
         ppkg info curl web-url
-        ppkg info curl bin-url
-        ppkg info curl bin-sha
-        ppkg info curl install
-        ppkg info curl formula
+        ppkg info curl git-url
+        ppkg info curl git-sha
+        ppkg info curl git-ref
+        ppkg info curl src-url
+        ppkg info curl src-sha
+
+        ppkg info curl formula-path
+
+        ppkg info curl formula-json
+        ppkg info curl formula-yaml
+
+        ppkg info curl formula-json | jq .
+        ppkg info curl formula-yaml | yq .
+
+        ppkg info curl receipt-path
+
+        ppkg info curl receipt-json
+        ppkg info curl receipt-yaml
+
+        ppkg info curl receipt-json | jq .
+        ppkg info curl receipt-yaml | yq .
 
         ppkg info curl installed-dir
         ppkg info curl installed-files
-        ppkg info curl installed-receipt-path
-        ppkg info curl installed-receipt-json
-        ppkg info curl installed-receipt-yaml
         ppkg info curl installed-timestamp-unix
         ppkg info curl installed-timestamp-iso-8601
         ppkg info curl installed-timestamp-rfc-3339
         ppkg info curl installed-version
 
-        ppkg info curl --json
-        ppkg info curl --json | jq .
-
-        ppkg info curl --yaml
-        ppkg info curl --yaml | yq .
-
-        ppkg info curl --shell
-
         ppkg info @all
-
-        ppkg info @all --shell
-
-        ppkg info @all --json
-        ppkg info @all --json | jq .
-
-        ppkg info @all --yaml
-        ppkg info @all --yaml | yq .
         
 *   **show packages that are depended by the given package**
         
