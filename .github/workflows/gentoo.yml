@@ -44,8 +44,7 @@ jobs:
 
       - run: bin/ppkg pack libzip --type=tar.xz
 
-      - run: bin/ppkg formula-repo list
-      - run: bin/ppkg formula view curl
+      - run: bin/ppkg formula-repo-list
 
       - run: bin/ppkg ls-available
       - run: bin/ppkg ls-installed

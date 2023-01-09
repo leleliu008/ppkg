@@ -39,10 +39,8 @@ jobs:
       - run: bin/ppkg search lib
       - run: bin/ppkg search libzip
 
-      - run: bin/ppkg formula-repo list
+      - run: bin/ppkg formula-repo-list
 
-      - run: bin/ppkg formula view curl
-      - run: bin/ppkg formula view libzip --paging=never
 
       - run: bin/ppkg info libzip
       - run: bin/ppkg info libzip version
