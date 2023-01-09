@@ -734,6 +734,28 @@ int ppkg_info(const char * packageName, const char * key) {
         printf("%s\n", buff);
 
         ppkg_receipt_free(receipt);
+    } else if (strcmp(key, "installed-timestamp-rfc-3339-utc") == 0) {
+        PPKGReceipt * receipt = NULL;
+
+        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+
+        if (resultCode != PPKG_OK) {
+            return resultCode;
+        }
+
+        time_t tt = (time_t)atol(receipt->timestamp);
+        struct tm *tms = gmtime(&tt);
+
+        char buff[26] = {0};
+        strftime(buff, 26, "%Y-%m-%d %H:%M:%S%z", tms);
+
+        buff[24] = buff[23];
+        buff[23] = buff[22];
+        buff[22] = ':';
+
+        printf("%s\n", buff);
+
+        ppkg_receipt_free(receipt);
     } else if (strcmp(key, "installed-timestamp-iso-8601") == 0) {
         PPKGReceipt * receipt = NULL;
 
@@ -752,6 +774,24 @@ int ppkg_info(const char * packageName, const char * key) {
         buff[24] = buff[23];
         buff[23] = buff[22];
         buff[22] = ':';
+
+        printf("%s\n", buff);
+
+        ppkg_receipt_free(receipt);
+    } else if (strcmp(key, "installed-timestamp-iso-8601-utc") == 0) {
+        PPKGReceipt * receipt = NULL;
+
+        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+
+        if (resultCode != PPKG_OK) {
+            return resultCode;
+        }
+
+        time_t tt = (time_t)atol(receipt->timestamp);
+        struct tm *tms = gmtime(&tt);
+
+        char buff[21] = {0};
+        strftime(buff, 21, "%Y-%m-%dT%H:%M:%SZ", tms);
 
         printf("%s\n", buff);
 

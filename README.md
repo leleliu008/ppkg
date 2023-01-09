@@ -284,6 +284,8 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg info curl installed-timestamp-unix
         ppkg info curl installed-timestamp-iso-8601
         ppkg info curl installed-timestamp-rfc-3339
+        ppkg info curl installed-timestamp-iso-8601-utc
+        ppkg info curl installed-timestamp-rfc-3339-utc
         ppkg info curl installed-version
 
         ppkg info @all
