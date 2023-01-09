@@ -450,7 +450,7 @@ wfetch() {
         *.git)
             if [    -d "$FETCH_OUTPUT_PATH" ] ; then
                 run cd "$FETCH_OUTPUT_PATH" || return 1
-                if      git rev-parse 2> /dev/null ; then
+                if      git rev-parse HEAD > /dev/null 2>&1 ; then
                     run git pull || return 1
                     run git submodule update --recursive || return 1
                 else
@@ -1411,58 +1411,53 @@ __rename_formula_of_the_given_package() {
     fi
 }
 
-# __add_a_formula_repo <REPO-NAME> <REPO-URL>
+# __add_a_formula_repo <REPO-NAME> <REPO-URL> <GIT-BRANCH-NAME>
 __add_a_formula_repo() {
-    if [ -z "$1" ] ; then
-        die "please specify a repo name."
+    [ -z "$1" ] && die "please specify a repo name."
+    [ -z "$2" ] && die "please specify a repo url."
+
+    if [ -z "$3" ] ; then
+        GIT_BRANCH_NAME=master
+    else
+        GIT_BRANCH_NAME="$3"
     fi
 
-    if [ -z "$2" ] ; then
-        die "please specify a repo url."
-    fi
+    FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$1"
 
-    case $2 in
-        *.git)
-            case $2 in
-                http://*|https://*|git@*) ;;
-                *)  die "$2: not a valid git url."
-            esac
-            ;;
-        *)  die "$2: repo url must end with .git"
-    esac
-
-    for repoName in $(__list_formula_repository_names)
-    do
-        if [ "$repoName" = "$1" ] ; then
-            die "$1 formula repo already exists."
+    if [ -d "$FORMULA_REPO_PATH" ] ; then
+        if git -C "$FORMULA_REPO_PATH" rev-parse HEAD > /dev/null 2>&1; then
+            success "$1 formula repo already have been added."
+            return 0
+        else
+            run rm -rf     "$FORMULA_REPO_PATH" || return 1
+            run install -d "$FORMULA_REPO_PATH" || return 1
         fi
-    done
+    else
+        run install -d "$FORMULA_REPO_PATH" || return 1
+    fi
 
-    printf '%s=%s\n' "$1" "$2" >> "$PPKG_HOME/repos"
+    run git -C "$FORMULA_REPO_PATH" -c init.defaultBranch=master init || return 1
+    run git -C "$FORMULA_REPO_PATH" remote add origin "$2" || return 1
+    run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
+    run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
+
+    cat > "$FORMULA_REPO_PATH/.ppkg-formula-repo.yml" <<EOF
+enabled: yes
+url: $2
+branch: $3
+EOF
 }
 
 # __del_a_formula_repo <REPO-NAME>
   __del_a_formula_repo() {
-    if [ -z "$1" ] ; then
-        die "please specify a repo name."
-    fi
+    [ -z "$1" ] && die "please specify a repo name."
 
-    if [ "$1" = 'offical-core' ] ; then
-        die "offical-core formula repo can not be deleted."
-    fi
+    [ "$1" = 'offical-core' ] && die "offical-core formula repo can not be deleted."
 
-    unset REPO_EXISTS
-    for repoName in $(__list_formula_repository_names)
-    do
-        if [ "$repoName" = "$1" ] ; then
-            REPO_EXISTS=yes
-        fi
-    done
-
-    if [ "$REPO_EXISTS" = yes ] ; then
-        sed_in_place "/^$1=/d" "$PPKG_HOME/repos"
+    if [ -d    "$PPKG_HOME/repos.d/$1" ] ; then
+        rm -rf "$PPKG_HOME/repos.d/$1"
     else
-        die "$1 formula repo not exists."
+        warn "$1 named formula repo is not exist."
     fi
 }
 
@@ -1472,7 +1467,7 @@ __repo_of_formula_of_the_given_package() {
         return 1
     }
 
-    for repoName in $(__list_formula_repository_names)
+    for repoName in $(__list_available_formula_repository_names)
     do
         if [ -e "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
             printf '%s\n' "$repoName"
@@ -1495,7 +1490,7 @@ __repo_of_formula_of_the_given_package() {
         return 1
     }
 
-    for repoName in $(__list_formula_repository_names)
+    for repoName in $(__list_available_formula_repository_names)
     do
         if [ -e           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
             printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml"
@@ -1511,50 +1506,76 @@ __repo_of_formula_of_the_given_package() {
     return 1
 }
 
-__list_formula_repository_items() {
-    if [ -f "$PPKG_HOME/repos" ] ; then
-        cat "$PPKG_HOME/repos"
-    else
-        printf 'offical-core=%s\n' "$PPKG_OFFICAL_FORMULA_REPO_URL"
+__list_available_formula_repository_items() {
+    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
+        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+        do
+            FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml"
+
+            if [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] ; then
+                unset FORMULA_REPO_NAME
+                unset FORMULA_REPO_URL_
+                unset FORMULA_REPO_BRANCH
+
+                FORMULA_REPO_URL_="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
+                FORMULA_REPO_BRANCH="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
+
+                printf '%s|%s|%s\n' "$item" "$FORMULA_REPO_URL_" "$FORMULA_REPO_BRANCH"
+            fi
+        done
     fi
 }
 
-__list_formula_repository_names() {
-    if [ -f         "$PPKG_HOME/repos" ] ; then
-        cut -d= -f1 "$PPKG_HOME/repos"
-    else
-        printf 'offical-core\n'
+__list_available_formula_repository_names() {
+    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
+        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+        do
+            if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
+                printf '%s\n' "$item"
+            fi
+        done
     fi
 }
 
 __update_formula_repositories() {
-    for item in $(__list_formula_repository_items)
-    do
-        unset FORMULA_REPO_NAME
-        unset FORMULA_REPO_URL_
+    PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED=no
 
-        FORMULA_REPO_NAME=$(printf '%s\n' "$item" | cut -d= -f1)
-        FORMULA_REPO_URL_=$(printf '%s\n' "$item" | cut -d= -f2)
+    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
+        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+        do
+            FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml"
 
-        printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+            if [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] ; then
+                if [ "$item" = 'offical-core' ] ; then
+                    PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED=yes
+                fi
 
-        FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
+                unset FORMULA_REPO_URL_
+                unset FORMULA_REPO_BRANCH
 
-        if [ -d        "$FORMULA_REPO_PATH" ] ; then
-            run git -C "$FORMULA_REPO_PATH" pull origin master:master
-            if [ "$(git -C "$FORMULA_REPO_PATH" branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then
-                run git -C "$FORMULA_REPO_PATH" checkout master
+                FORMULA_REPO_URL_="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
+                GIT_BRANCH_NAME="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
+
+                printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$item${COLOR_OFF}"
+
+                FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_DIR/$item"
+
+                #run git -C "$FORMULA_REPO_PATH" remote add origin "$2" || return 1
+                run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
+                run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
             fi
-        else
-            run install -d "$PPKG_FORMULA_REPO_DIR"
-            run git -C "$PPKG_FORMULA_REPO_DIR" clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
-        fi
-    done
+        done
+    fi
+
+    if [ "$PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED" = no ] ; then
+        printf '%b\n' "${COLOR_PURPLE}=== Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
+        __add_a_formula_repo offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL" master
+    fi
 }
 
-# __list_formula_search_dirs
-  __list_formula_search_dirs() {
-    for repoName in $(__list_formula_repository_names)
+# __list_available_formula_search_dirs
+  __list_available_formula_search_dirs() {
+    for repoName in $(__list_available_formula_repository_names)
     do
         if [ -d           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE" ] ; then
             printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE"
@@ -1566,7 +1587,7 @@ __update_formula_repositories() {
 
 __list_formula_filepath() {
     {
-        for FORMULA_SEARCH_DIR in $(__list_formula_search_dirs)
+        for FORMULA_SEARCH_DIR in $(__list_available_formula_search_dirs)
         do
             find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' || return 1
         done
@@ -1610,7 +1631,7 @@ __fetch_sources_of_the_given_package() {
             fi
 
             if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
-                if git -C "$PACKAGE_SRC_FILEPATH" rev-parse 2> /dev/null ; then
+                if git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD > /dev/null 2>&1 ; then
                     if [ -n "$PACKAGE_GIT_SHA" ] && [ "$PACKAGE_GIT_SHA" = "$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD)" ] ; then
                         success "$PACKAGE_SRC_FILEPATH already have been fetched."
                         return 0
@@ -1847,7 +1868,7 @@ __gen_github_workflows() {
 
 __list_available_packages() {
     {
-        for FORMULA_SEARCH_DIR in $(__list_formula_search_dirs)
+        for FORMULA_SEARCH_DIR in $(__list_available_formula_search_dirs)
         do
             find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
         done
@@ -4305,15 +4326,7 @@ EOF
 
 # __show_infomation_of_the_given_package <PACKAGE-NAME> [OPTIONS]
 #
-# __show_infomation_of_the_given_package @all
-# __show_infomation_of_the_given_package @all --json
-# __show_infomation_of_the_given_package @all --yaml
-# __show_infomation_of_the_given_package @all --shell
-#
 # __show_infomation_of_the_given_package curl
-# __show_infomation_of_the_given_package curl --json
-# __show_infomation_of_the_given_package curl --yaml
-# __show_infomation_of_the_given_package curl --shell
 #
 # __show_infomation_of_the_given_package curl version
 # __show_infomation_of_the_given_package curl web-url
@@ -4343,11 +4356,11 @@ EOF
     done
 
     case $SHOW_INFOMATION_ARGS in
+        formula-yaml|'')
+            __show_infomation_as_yaml__of_the_given_package "$1"
+            ;;
         formula-json)
             __show_infomation_as_json__of_the_given_package "$1"
-            ;;
-        formula-yaml)
-            __show_infomation_as_yaml__of_the_given_package "$1"
             ;;
         formula-path)
             __path_of_formula_of_the_given_package "$1"
@@ -4475,25 +4488,10 @@ EOF
             __load_receipt_of_the_given_package "$1"
             printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
             ;;
-        '') __show_infomation_as_mixed_of_the_given_package $@
-            ;;
         *)  __load_formula_of_the_given_package "$1"
             __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_GET__KEY__
     esac
-}
-
-# __show_infomation_as_mixed_of_the_given_package <PACKAGE-NAME>
-  __show_infomation_as_mixed_of_the_given_package() {
-    export BAT_STYLE=plain
-
-    main formula view "$1"
-
-    # if is_package_installed "$1" ; then
-    #     printf '\n'
-    #     printf 'status:  installed\n' | bat --language yaml
-    #     grep '^history:' "$PPKG_PACKAGE_INSTALLED_DIR/$1/receipt.yml" | bat --language yaml
-    # fi
 }
 
 mark_is_package_installed_or_not() {
@@ -5857,42 +5855,6 @@ init() {
         export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
     fi
 
-    if [ -f "$PPKG_INIT_RC" ] ; then
-        .   "$PPKG_INIT_RC" || die "load $PPKG_INIT_RC failed."
-    else
-        cat > "$PPKG_INIT_RC" <<EOF
-# influential environment variables:
-#      CC=/usr/bin/cc
-#     CXX=/usr/bin/c++
-#     CPP=/usr/bin/cpp
-#      AS=/usr/bin/as
-#      LD=/usr/bin/ld
-#      AR=/usr/bin/ar
-#      NM=/usr/bin/nm
-#    SIZE=/usr/bin/size
-#   STRIP=/usr/bin/strip
-#  RANLIB=/usr/bin/ranlib
-# STRINGS=/usr/bin/strings
-# OBJDUMP=/usr/bin/objdump
-# OBJCOPY=/usr/bin/objcopy
-# READELF=/usr/bin/readelf
-
-#   CFLAGS=
-# CPPFLAGS=
-#  LDFLAGS=
-
-# https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
-# PKG_CONFIG_LIBDIR=
-# PKG_CONFIG_PATH=
-
-# MACOSX_DEPLOYMENT_TARGET=10.15
-EOF
-    fi
-
-    [ -e "$PPKG_HOME/repos" ] || {
-        printf '%s\n' "offical-core=$PPKG_OFFICAL_FORMULA_REPO_URL"  > "$PPKG_HOME/repos"
-    }
-
     unset NATIVE_OS_KIND
     unset NATIVE_OS_TYPE
     unset NATIVE_OS_NAME
@@ -6028,34 +5990,16 @@ ${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg search <KEYWORD>${COLOR_OFF}
     search available packages.
  
-${COLOR_GREEN}ppkg formula create <PACKAGE-NAME>${COLOR_OFF}
-    create a new formula.
-
-${COLOR_GREEN}ppkg formula delete <PACKAGE-NAME>${COLOR_OFF}
-    delete a exist formula.
-
-${COLOR_GREEN}ppkg formula rename <P1> <P2>${COLOR_OFF}
-    rename a exist formula to new name.
-
-${COLOR_GREEN}ppkg formula view <PACKAGE-NAME>${COLOR_OFF}
-    view the formula of the given package.
-
-${COLOR_GREEN}ppkg formula edit <PACKAGE-NAME>${COLOR_OFF}
-    edit the formula of the given package.
-
-${COLOR_GREEN}ppkg formula list${COLOR_OFF}
-    list all formulas.
-
-${COLOR_GREEN}ppkg formula-repo [list]${COLOR_OFF}
+${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
     list formula-repos.
 
-${COLOR_GREEN}ppkg formula-repo add <FORMULA-REPO-NAME> <FORMULA-REPO-URL>${COLOR_OFF}
+${COLOR_GREEN}ppkg formula-repo-add <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-BRANCH-NAME]${COLOR_OFF}
     add a new formula-repo.
 
-${COLOR_GREEN}ppkg formula-repo del <FORMULA-REPO-NAME>${COLOR_OFF}
+${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
     delete a exist formula-repo.
 
-${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a --dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
 ${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
@@ -6134,8 +6078,6 @@ main() {
     PPKG_CORE_DIR="$PPKG_HOME/core"
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
 
-    PPKG_INIT_RC="$PPKG_HOME/init.rc"
-
     UPPM_COMMAND="$PPKG_CORE_BIN_DIR/uppm"
 
     case $1 in
@@ -6192,27 +6134,15 @@ EOF
         is-symlinked) shift; is_package_symlinked $@ ;;
         is-outdated)  shift; is_package__outdated $@ ;;
 
-        formula-repo)
-            shift
-            case $1 in
-                list) shift; __list_formula_repository_items ;;
-                add)  shift; __add_a_formula_repo $@ ;;
-                del)  shift; __del_a_formula_repo $@ ;;
-                *) help 1
-            esac
+        formula-repo-list) shift; __list_available_formula_repository_items ;;
+        formula-repo-add)
+            shift;
+
+            [ "$1" = 'offical-core' ] && die "offical-core is a reserved formula repo name, please use other names."
+
+            __add_a_formula_repo $@
             ;;
-        formula)
-            shift
-            case $1 in
-                create) shift; __create_formula_of_the_given_package $@ ;;
-                delete) shift; __delete_formula_of_the_given_package $@ ;;
-                rename) shift; __rename_formula_of_the_given_package $@ ;;
-                view)   shift;   __view_formula_of_the_given_package $@ ;;
-                edit)   shift;   __edit_formula_of_the_given_package $@ ;;
-                list)   shift; __list_formula_filepath ;;
-                   *)   help 1
-            esac
-            ;;
+        formula-repo-del)  shift; __del_a_formula_repo $@ ;;
 
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
