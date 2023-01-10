@@ -67,7 +67,7 @@ function _ppkg() {
         option)
             case $words[1] in
                 formula-repo-del)
-                    _arguments '1:repo-name:($(ppkg formula-repo-list | cut -d " " -f1))'
+                    _arguments '1:repo-name:($(ppkg formula-repo-list | cut -d "|" -f1))'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh)'

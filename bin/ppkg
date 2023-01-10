@@ -1452,7 +1452,7 @@ EOF
   __del_a_formula_repo() {
     [ -z "$1" ] && die "please specify a repo name."
 
-    [ "$1" = 'offical-core' ] && die "offical-core formula repo can not be deleted."
+    [ "$1" = 'offical-core' ] && die "offical-core formula repo is not allowed to delete."
 
     if [ -d    "$PPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$PPKG_HOME/repos.d/$1"
@@ -6125,7 +6125,9 @@ EOF
         formula-repo-add)
             shift;
 
-            [ "$1" = 'offical-core' ] && die "offical-core is a reserved formula repo name, please use other names."
+            case $1 in
+                offical-*) die "offical-* named formula repo name is reserved for ppkg offical formula repo, please use other names."
+            esac
 
             __add_a_formula_repo $@
             ;;
