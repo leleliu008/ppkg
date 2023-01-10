@@ -2259,9 +2259,9 @@ __show_packages_depended_by_the_given_package() {
             --type=*)
                 PACKED_FILETYPE=$(getvalue "$1")
                 case $PACKED_FILETYPE in
-                    7z|zip|tar.gz|tar.xz|tar.bz2) ;;
+                    zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
                     '')die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], <TYPE> must not be empty." ;;
-                    *) die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], unsupported <TYPE>: $PACKED_FILETYPE, the supported types are zip tar.gz tar.xz tar.bz2."
+                    *) die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], unsupported <TYPE>: $PACKED_FILETYPE, the supported types are zip tar.gz tar.xz tar.lz tar.bz2."
                 esac
                 ;;
             *)  die "$_0 pack <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir], unrecognized option: $1"
@@ -2339,9 +2339,10 @@ __show_packages_depended_by_the_given_package() {
     case $PACKED_FILETYPE in
         zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME" ;;
         7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.gz)  run tar zvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.xz)  run tar Jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.bz2) run tar jvcf  "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.xz)  run tar cv --xz    -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.gz)  run tar cv --gzip  -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.lz)  run tar cv --lzip  -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.bz2) run tar cv --bzip2 -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
     esac
 
     step "check integrity of packed file"

@@ -23,56 +23,94 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - run: bin/ppkg --help
-      - run: bin/ppkg --version
-      - run: bin/ppkg --homedir
-      - run: bin/ppkg --homepage
 
-      - run: bin/ppkg setup
+      - run: ./output/bin/ppkg
 
-      - run: bin/ppkg env
+      - run: ./output/bin/ppkg --help
+      - run: ./output/bin/ppkg -h
 
-      - run: bin/ppkg integrate zsh
+      - run: ./output/bin/ppkg --version
+      - run: ./output/bin/ppkg -V
 
-      - run: bin/ppkg update
+      - run: ./output/bin/ppkg setup -v
 
-      - run: bin/ppkg search lib
-      - run: bin/ppkg search libzip
+      - run: ./output/bin/ppkg env
+      - run: ./output/bin/ppkg env -v
 
-      - run: bin/ppkg formula-repo-list
+      - run: ./output/bin/ppkg integrate zsh
+      - run: ./output/bin/ppkg integrate zsh -v
 
+      - run: ./output/bin/ppkg update
 
-      - run: bin/ppkg info libzip
-      - run: bin/ppkg info libzip version
-      - run: bin/ppkg info libzip webpage
-      - run: bin/ppkg info libzip src-url
+      - run: ./output/bin/ppkg search lib
+      - run: ./output/bin/ppkg search zip
 
-      - run: bin/ppkg depends libzip
+      - run: ./output/bin/ppkg info @all
+      - run: ./output/bin/ppkg info libzip
+      - run: ./output/bin/ppkg info libzip formula-path
+      - run: ./output/bin/ppkg info libzip formula-yaml
+      - run: ./output/bin/ppkg info libzip formula-json
+      - run: ./output/bin/ppkg info libzip summary
+      - run: ./output/bin/ppkg info libzip version
+      - run: ./output/bin/ppkg info libzip license
+      - run: ./output/bin/ppkg info libzip web-url
+      - run: ./output/bin/ppkg info libzip git-url
+      - run: ./output/bin/ppkg info libzip git-sha
+      - run: ./output/bin/ppkg info libzip git-ref
+      - run: ./output/bin/ppkg info libzip src-url
+      - run: ./output/bin/ppkg info libzip src-sha
 
-      - run: bin/ppkg depends libzip --format=dot
-      - run: bin/ppkg depends libzip --format=box
+      - run: ./output/bin/ppkg depends libzip
+      - run: ./output/bin/ppkg depends libzip --format=dot
+      - run: ./output/bin/ppkg depends libzip --format=box
 
-      - run: bin/ppkg install libzip
+      - run: ./output/bin/ppkg fetch gzip
+      - run: ./output/bin/ppkg fetch gsed -v
 
-      - run: bin/ppkg tree libzip
+      - run: apk add curl g++ libc-dev linux-headers
 
-      - run: bin/ppkg pack libzip
-      - run: bin/ppkg pack libzip --type=tar.gz
-      - run: bin/ppkg pack libzip --type=tar.xz
-      - run: bin/ppkg pack libzip --type=tar.bz2
-        #- run: bin/ppkg pack libzip --type=7z
-        #- run: bin/ppkg pack libzip --type=zip
+      - run: ./output/bin/ppkg install libzip
 
-      - run: bin/ppkg ls-available
-      - run: bin/ppkg ls-installed
-      - run: bin/ppkg ls-outdated
+      - run: ./output/bin/ppkg tree libzip
 
-      - run: bin/ppkg is-available libzip
-      - run: bin/ppkg is-installed libzip
-      - run: bin/ppkg is-outdated  libzip || echo 'not outdated'
+      - run: ./output/bin/ppkg info libzip installed-dir
+      - run: ./output/bin/ppkg info libzip installed-files
+      - run: ./output/bin/ppkg info libzip receipt-path
+      - run: ./output/bin/ppkg info libzip receipt-json
+      - run: ./output/bin/ppkg info libzip receipt-yaml
+      - run: ./output/bin/ppkg info libzip installed-timestamp-unix
+      - run: ./output/bin/ppkg info libzip installed-timestamp-iso-8601
+      - run: ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
+      - run: ./output/bin/ppkg info libzip installed-timestamp-iso-8601-utc
+      - run: ./output/bin/ppkg info libzip installed-timestamp-rfc-3339-utc
+      - run: ./output/bin/ppkg info libzip installed-version
 
-      - run: bin/ppkg uninstall libzip
+      - run: ./output/bin/ppkg pack libzip
+      - run: ./output/bin/ppkg pack libzip --type=tar.gz
+      - run: ./output/bin/ppkg pack libzip --type=tar.lz
+      - run: ./output/bin/ppkg pack libzip --type=tar.xz
+      - run: ./output/bin/ppkg pack libzip --type=tar.bz2
+      - run: ./output/bin/ppkg pack libzip --type=zip
 
-      - run: bin/ppkg fetch curl
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
 
-      - run: bin/ppkg upgrade-self
+      - run: ./output/bin/ppkg ls-available
+      - run: ./output/bin/ppkg ls-installed
+      - run: ./output/bin/ppkg ls-outdated
+
+      - run: ./output/bin/ppkg is-available libzip
+      - run: ./output/bin/ppkg is-installed libzip
+      - run: ./output/bin/ppkg is-outdated  libzip
+
+      - run: ./output/bin/ppkg upgrade   libzip
+      - run: ./output/bin/ppkg reinstall libzip
+      - run: ./output/bin/ppkg uninstall libzip
+
+      - run: ./output/bin/ppkg formula-repo-list
+      - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+      - run: ./output/bin/ppkg formula-repo-del my_repo
+
+      - run: ./output/bin/ppkg cleanup
+
+      - run: ./output/bin/ppkg upgrade-self
