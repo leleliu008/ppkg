@@ -5951,12 +5951,6 @@ ${COLOR_GREEN}ppkg --version${COLOR_OFF}
 ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
-${COLOR_GREEN}ppkg --homedir${COLOR_OFF}
-    show home directory of this software.
-
-${COLOR_GREEN}ppkg --homepage${COLOR_OFF}
-    show home website of this software.
-
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
     show current machine os info.
 
@@ -5978,7 +5972,7 @@ ${COLOR_GREEN}ppkg ls-installed${COLOR_OFF}
 ${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
     list the outdated  packages.
 
-${COLOR_GREEN}ppkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+${COLOR_GREEN}ppkg is-available <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is available
 
 ${COLOR_GREEN}ppkg is-installed <PACKAGE-NAME>${COLOR_OFF}
@@ -5999,7 +5993,7 @@ ${COLOR_GREEN}ppkg formula-repo-add <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-
 ${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
     delete a exist formula-repo.
 
-${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a --dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
 ${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
@@ -6008,10 +6002,10 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY|--json|--yaml|--shell]${COLOR_OFF}
+${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY]${COLOR_OFF}
     show information of the given package.
 
-${COLOR_GREEN}ppkg info @all [--json|--yaml|--shell]${COLOR_OFF}
+${COLOR_GREEN}ppkg info @all [KEY]${COLOR_OFF}
     show information of all the available packages.
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
@@ -6087,14 +6081,6 @@ main() {
             ;;
         --version|-V)
             printf '%s\n' "$PPKG_VERSION"
-            return 0
-            ;;
-        --homedir)
-            printf '%s\n' "$PPKG_HOME"
-            return 0
-            ;;
-        --homepage)
-            printf '%s\n' "$PPKG_WEBPAGE_URL"
             return 0
             ;;
         setup)
