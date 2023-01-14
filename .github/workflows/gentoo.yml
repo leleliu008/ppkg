@@ -22,14 +22,6 @@ jobs:
       - run:  cmake --install build.d
 
 
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
-
-
       - run: ./output/bin/ppkg
 
       - run: ./output/bin/ppkg --help
@@ -106,7 +98,7 @@ jobs:
       - run: ./output/bin/ppkg uninstall libzip
 
       - run: ./output/bin/ppkg formula-repo-list
-      - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+      - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
       - run: ./output/bin/ppkg formula-repo-del my_repo
 
       - run: ./output/bin/ppkg cleanup
