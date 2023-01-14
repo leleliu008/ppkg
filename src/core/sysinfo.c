@@ -147,14 +147,17 @@ int sysinfo_name(char * buf, size_t bufSize) {
         char line[50];
 
         while (fgets(line, 50, file) != NULL) {
-            if (regex_matched(line, "^ID=.*")) {
+            size_t n = strlen(line);
+
+            if (strncmp(line, "ID=", n > 3 ? 3 : n) == 0) {
                 char * p = &line[3];
 
                 if (p[0] == '"' || p[0] == '\'') {
                     p++;
+                    n -= 4;
+                } else {
+                    n -= 3;
                 }
-
-                size_t n = strlen(p);
 
                 p[n - 1] = '\0';
                 n--;
@@ -236,14 +239,17 @@ int sysinfo_vers(char * buf, size_t bufSize) {
         char line[50];
 
         while (fgets(line, 50, file) != NULL) {
-            if (regex_matched(line, "^VERSION_ID=.*")) {
+            size_t n = strlen(line);
+
+            if (strncmp(line, "VERSION_ID=", n > 11 ? 11 : n) == 0) {
                 char * p = &line[11];
 
                 if (p[0] == '"' || p[0] == '\'') {
                     p++;
+                    n -= 12;
+                } else {
+                    n -= 11;
                 }
-
-                size_t n = strlen(p);
 
                 p[n - 1] = '\0';
                 n--;
@@ -281,7 +287,7 @@ int sysinfo_libc(LIBC * out) {
         size_t  dynamicLoaderPathLength = osArchLength + 19;
         char    dynamicLoaderPath[dynamicLoaderPathLength];
         memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
-        sprintf(dynamicLoaderPath, "/lib/ld-musl-%s.so.1", uts.machine);
+        snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib/ld-musl-%s.so.1", uts.machine);
 
         struct stat sb;
 
@@ -302,7 +308,7 @@ int sysinfo_libc(LIBC * out) {
                 size_t  dynamicLoaderPathLength = osArchLength + 22;
                 char    dynamicLoaderPath[dynamicLoaderPathLength];
                 memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
-                sprintf(dynamicLoaderPath, "/lib64/ld-linux-%s.so.2", uts.machine);
+                snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib64/ld-linux-%s.so.2", uts.machine);
 
                 struct stat sb;
 

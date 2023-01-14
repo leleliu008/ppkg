@@ -29,12 +29,12 @@ int ppkg_logs(const char * packageName) {
     size_t  packageMetadataDirLength = userHomeDirLength + strlen(packageName) + 24;
     char    packageMetadataDir[packageMetadataDirLength];
     memset (packageMetadataDir, 0, packageMetadataDirLength);
-    sprintf(packageMetadataDir, "%s/.ppkg/installed/%s/.ppkg", userHomeDir, packageName);
+    snprintf(packageMetadataDir, packageMetadataDirLength, "%s/.ppkg/installed/%s/.ppkg", userHomeDir, packageName);
 
     size_t  receiptFilePathLength = packageMetadataDirLength + 13;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
-    sprintf(receiptFilePath, "%s/receipt.yml", packageMetadataDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/receipt.yml", packageMetadataDir);
 
     if (!exists_and_is_a_regular_file(receiptFilePath)) {
         return PPKG_PACKAGE_IS_NOT_INSTALLED;
@@ -63,7 +63,7 @@ int ppkg_logs(const char * packageName) {
         size_t  cmdLength = packageMetadataDirLength + strlen(dir_entry->d_name) + 6;
         char    cmd[cmdLength];
         memset (cmd, 0, cmdLength);
-        sprintf(cmd, "bat %s/%s", packageMetadataDir, dir_entry->d_name);
+        snprintf(cmd, cmdLength, "bat %s/%s", packageMetadataDir, dir_entry->d_name);
 
 
         resultCode = system(cmd);

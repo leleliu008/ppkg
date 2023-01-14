@@ -535,13 +535,14 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
-    char * receiptFilePath = (char*)calloc(userHomeDirLength + strlen(packageName) + 36, sizeof(char));
+    size_t receiptFilePathLength = userHomeDirLength + strlen(packageName) + 36;
+    char * receiptFilePath = (char*)calloc(receiptFilePathLength, sizeof(char));
 
     if (receiptFilePath == NULL) {
         return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
     }
 
-    sprintf(receiptFilePath, "%s/.ppkg/installed/%s/.ppkg/receipt.yml", userHomeDir, packageName);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/installed/%s/.ppkg/receipt.yml", userHomeDir, packageName);
 
     FILE * file = fopen(receiptFilePath, "r");
 

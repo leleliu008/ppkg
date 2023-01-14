@@ -38,10 +38,11 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *  formulaRepoPath = formulaRepoList->repos[i]->path;
+
         size_t  formulaFilePathLength = strlen(formulaRepoPath) + strlen(packageName) + 15;
         char    formulaFilePath[formulaFilePathLength];
         memset (formulaFilePath, 0, formulaFilePathLength);
-        sprintf(formulaFilePath, "%s/formula/%s.yml", formulaRepoPath, packageName);
+        snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s.yml", formulaRepoPath, packageName);
 
         if (exists_and_is_a_regular_file(formulaFilePath)) {
             ppkg_formula_repo_list_free(formulaRepoList);
@@ -71,7 +72,7 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7; 
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgHomeDir)) {
         return PPKG_PACKAGE_IS_NOT_INSTALLED;
@@ -80,7 +81,7 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName) {
     size_t  receiptFilePathLength = ppkgHomeDirLength + strlen(packageName) + 30;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
-    sprintf(receiptFilePath, "%s/installed/%s/.ppkg/receipt.yml", ppkgHomeDir, packageName);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/receipt.yml", ppkgHomeDir, packageName);
 
     if (exists_and_is_a_regular_file(receiptFilePath)) {
         return PPKG_OK;

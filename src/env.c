@@ -9,7 +9,6 @@
 
 #include <git2.h>
 #include <yaml.h>
-#include <sqlite3.h>
 #include <jansson.h>
 #include <archive.h>
 #include <curl/curlver.h>
@@ -39,12 +38,12 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
         size_t  packageInstalledDirLength = installedDirLength + strlen(dir_entry->d_name) + 2;
         char    packageInstalledDir[packageInstalledDirLength];
         memset (packageInstalledDir, 0, packageInstalledDirLength);
-        sprintf(packageInstalledDir, "%s/%s", installedDir, dir_entry->d_name);
+        snprintf(packageInstalledDir, packageInstalledDirLength, "%s/%s", installedDir, dir_entry->d_name);
 
         size_t  receiptFilePathLength = packageInstalledDirLength + 20;
         char    receiptFilePath[receiptFilePathLength];
         memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", packageInstalledDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
 
         if (exists_and_is_a_regular_file(receiptFilePath)) {
             if ((sub == NULL) || (strcmp(sub, "") == 0)) {
@@ -53,7 +52,7 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
                 size_t  subDirLength = packageInstalledDirLength + strlen(sub) + 2;
                 char    subDir[subDirLength];
                 memset (subDir, 0, subDirLength);
-                sprintf(subDir, "%s/%s", packageInstalledDir, sub);
+                snprintf(subDir, subDirLength, "%s/%s", packageInstalledDir, sub);
 
                 if (exists_and_is_a_directory(subDir)) {
                     puts(subDir);
@@ -83,7 +82,6 @@ int ppkg_env(bool verbose) {
     printf("openssl : %s\n", OPENSSL_VERSION_TEXT);
 #endif
 
-    printf("sqlite3 : %s\n", SQLITE_VERSION);
     printf("jansson : %s\n", JANSSON_VERSION);
     printf("archive : %s\n\n", ARCHIVE_VERSION_ONLY_STRING);
 
@@ -100,15 +98,20 @@ int ppkg_env(bool verbose) {
 
     char * userHomeDir = getenv("HOME");
 
-    if ((userHomeDir == NULL) || (strcmp(userHomeDir, "") == 0)) {
-        fprintf(stderr, "HOME environment variable is not set.\n");
+    if (userHomeDir == NULL) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
-    size_t  ppkgHomeDirLength = strlen(userHomeDir) + 7;
+    size_t userHomeDirLength = strlen(userHomeDir);
+
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
+    size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     printf("ppkg.vers : %s\n", PPKG_VERSION);
     printf("ppkg.home : %s\n", ppkgHomeDir);
@@ -132,7 +135,7 @@ int ppkg_env(bool verbose) {
     size_t  installedDirLength = ppkgHomeDirLength + 11;
     char    installedDir[installedDirLength];
     memset (installedDir, 0, installedDirLength);
-    sprintf(installedDir, "%s/installed", ppkgHomeDir);
+    snprintf(installedDir, installedDirLength, "%s/installed", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(installedDir)) {
         return PPKG_OK;

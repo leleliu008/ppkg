@@ -214,7 +214,7 @@ int get_current_executable_realpath(char * * out) {
                 size_t  fullPathLength = strlen(PATHItem) + commandNameLength + 2;
                 char    fullPath[fullPathLength];
                 memset( fullPath, 0, fullPathLength);
-                sprintf(fullPath, "%s/%s", PATHItem, argv[0]);
+                snprintf(fullPath, fullPathLength, fullPathLength, "%s/%s", PATHItem, argv[0]);
 
                 if (access(fullPath, X_OK) == 0) {
                     (*out) = strdup(fullPath);

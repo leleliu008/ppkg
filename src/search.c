@@ -28,10 +28,11 @@ int ppkg_search(const char * keyword) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *  formulaRepoPath  = formulaRepoList->repos[i]->path;
+
         size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
         char    formulaDir[formulaDirLength];
         memset (formulaDir, 0, formulaDirLength);
-        sprintf(formulaDir, "%s/formula", formulaRepoPath);
+        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
 
         DIR           * dir;
         struct dirent * dir_entry;
@@ -53,7 +54,7 @@ int ppkg_search(const char * keyword) {
             size_t  patternLength = strlen(keyword) + 7;
             char    pattern[patternLength];
             memset (pattern, 0, patternLength);
-            sprintf(pattern, "*%s*.yml", keyword);
+            snprintf(pattern, patternLength, "*%s*.yml", keyword);
 
             int r = fnmatch(pattern, dir_entry->d_name, 0);
 

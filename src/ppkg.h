@@ -41,6 +41,9 @@
 #define PPKG_RECEIPT_SYNTAX_ERROR     50
 #define PPKG_RECEIPT_SCHEME_ERROR     51
 
+#define PPKG_FORMULA_REPO_CONFIG_SYNTAX_ERROR     60
+#define PPKG_FORMULA_REPO_CONFIG_SCHEME_ERROR     61
+  
 
 void ppkg_show_error_message(int errorCode, const char * str);
 
@@ -111,12 +114,21 @@ typedef struct {
     char * url;
     char * branch;
     char * path;
+    char * timestamp_added;
+    char * timestamp_last_updated;
+    bool   pinned;
+    bool   enabled;
 } PPKGFormulaRepo ;
 
 typedef struct {
     PPKGFormulaRepo * * repos;
     size_t size;
 } PPKGFormulaRepoList ;
+
+int  ppkg_formula_repo_parse(const char * formulaRepoConfigFilePath, PPKGFormulaRepo * * formulaRepo);
+void ppkg_formula_repo_free(PPKGFormulaRepo * formulaRepo);
+void ppkg_formula_repo_dump(PPKGFormulaRepo * formulaRepo);
+int  ppkg_formula_repo_update(PPKGFormulaRepo * formulaRepo);
 
 int  ppkg_formula_repo_list_new (PPKGFormulaRepoList * * p);
 void ppkg_formula_repo_list_free(PPKGFormulaRepoList   * p);
@@ -304,5 +316,7 @@ int ppkg_util_base64_encode_of_string(const char * str);
 int ppkg_util_base64_decode_to_string(const char * base64EncodedStr);
 
 int ppkg_install_uppm(bool verbose);
+
+int ppkg_fetch_via_git(const char * gitRepositoryDirPath, const char * remoteUrl, const char * refspec, const char * checkoutToBranchName);
 
 #endif

@@ -26,7 +26,7 @@ int ppkg_formula_path(const char * packageName, char ** out) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7; 
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgHomeDir)) {
         return PPKG_FORMULA_REPO_NOT_EXIST;
@@ -43,6 +43,7 @@ int ppkg_formula_path(const char * packageName, char ** out) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *  formulaRepoPath = formulaRepoList->repos[i]->path;
+
         size_t  formulaFilePathLength =  strlen(formulaRepoPath) + strlen(packageName) + 15;
         char *  formulaFilePath = (char*)calloc(formulaFilePathLength, sizeof(char));
 
@@ -51,7 +52,7 @@ int ppkg_formula_path(const char * packageName, char ** out) {
             return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
         }
 
-        sprintf(formulaFilePath, "%s/formula/%s.yml", formulaRepoPath, packageName);
+        snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s.yml", formulaRepoPath, packageName);
 
         if (exists_and_is_a_regular_file(formulaFilePath)) {
             (*out) = formulaFilePath;

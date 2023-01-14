@@ -22,7 +22,7 @@ int ppkg_list_the_available_packages() {
         size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
         char    formulaDir[formulaDirLength];
         memset (formulaDir, 0, formulaDirLength);
-        sprintf(formulaDir, "%s/formula", formulaRepoPath);
+        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
 
         DIR           * dir;
         struct dirent * dir_entry;

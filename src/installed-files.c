@@ -36,7 +36,7 @@ static int record_installed_files_r(const char * dirPath, size_t offset, FILE * 
         size_t  filePathLength = strlen(dirPath) + strlen(dir_entry->d_name) + 2;
         char    filePath[filePathLength];
         memset( filePath, 0, filePathLength);
-        sprintf(filePath, "%s/%s", dirPath, dir_entry->d_name);
+        snprintf(filePath, filePathLength, "%s/%s", dirPath, dir_entry->d_name);
 
         struct stat st;
 
@@ -71,7 +71,7 @@ int record_installed_files(const char * installedDirPath) {
     size_t  installedManifestFilePathLength = installedDirLength + 20;
     char    installedManifestFilePath[installedManifestFilePathLength];
     memset (installedManifestFilePath, 0, installedManifestFilePathLength);
-    sprintf(installedManifestFilePath, "%s/.ppkg/manifest.txt", installedDirPath);
+    snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s/.ppkg/manifest.txt", installedDirPath);
 
     if (exists_and_is_a_regular_file(installedManifestFilePath)) {
         return PPKG_OK;

@@ -8,7 +8,6 @@
 #include <sys/wait.h>
 
 #include "core/fs.h"
-#include "core/git.h"
 #include "core/log.h"
 #include "core/http.h"
 #include "core/sysinfo.h"
@@ -136,24 +135,24 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     //////////////////////////////////////////////////////////////////////////////
 
     size_t  packageInstalledDirLength = userHomeDirLength + packageNameLength + 20;
     char    packageInstalledDir[packageInstalledDirLength];
     memset (packageInstalledDir, 0, packageInstalledDirLength);
-    sprintf(packageInstalledDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+    snprintf(packageInstalledDir, packageInstalledDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
     size_t  packageInstalledMetaInfoDirLength = packageInstalledDirLength + 6;
     char    packageInstalledMetaInfoDir[packageInstalledMetaInfoDirLength];
     memset (packageInstalledMetaInfoDir, 0, packageInstalledMetaInfoDirLength);
-    sprintf(packageInstalledMetaInfoDir, "%s/.ppkg", packageInstalledDir);
+    snprintf(packageInstalledMetaInfoDir, packageInstalledMetaInfoDirLength, "%s/.ppkg", packageInstalledDir);
 
     size_t  receiptFilePathLength = packageInstalledMetaInfoDirLength + 12;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
-    sprintf(receiptFilePath, "%s/receipt.yml", packageInstalledMetaInfoDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/receipt.yml", packageInstalledMetaInfoDir);
 
     if (exists_and_is_a_regular_file(receiptFilePath)) {
         fprintf(stderr, "package [%s] already has been installed.\n", packageName);
@@ -166,7 +165,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  ppkgInstallingDirLength = ppkgHomeDirLength + packageNameLength + 12;
     char    ppkgInstallingDir[ppkgInstallingDirLength];
     memset (ppkgInstallingDir, 0, ppkgInstallingDirLength);
-    sprintf(ppkgInstallingDir, "%s/installing", ppkgHomeDir);
+    snprintf(ppkgInstallingDir, ppkgInstallingDirLength, "%s/installing", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(ppkgInstallingDir)) {
         if (mkdir(ppkgInstallingDir, S_IRWXU) != 0) {
@@ -181,7 +180,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingTopDirLength = ppkgInstallingDirLength + packageNameLength + 2;
     char    packageInstallingTopDir[packageInstallingTopDirLength];
     memset (packageInstallingTopDir, 0, packageInstallingTopDirLength);
-    sprintf(packageInstallingTopDir, "%s/%s", ppkgInstallingDir, packageName);
+    snprintf(packageInstallingTopDir, packageInstallingTopDirLength, "%s/%s", ppkgInstallingDir, packageName);
 
     if (exists_and_is_a_directory(packageInstallingTopDir)) {
         if (rm_r(packageInstallingTopDir, options.verbose) != 0) {
@@ -202,7 +201,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingSrcDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingSrcDir[packageInstallingSrcDirLength];
     memset (packageInstallingSrcDir, 0, packageInstallingSrcDirLength);
-    sprintf(packageInstallingSrcDir, "%s/src", packageInstallingTopDir);
+    snprintf(packageInstallingSrcDir, packageInstallingSrcDirLength, "%s/src", packageInstallingTopDir);
 
     if (mkdir(packageInstallingSrcDir, S_IRWXU) != 0) {
         perror(packageInstallingSrcDir);
@@ -215,7 +214,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingFixDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingFixDir[packageInstallingFixDirLength];
     memset (packageInstallingFixDir, 0, packageInstallingFixDirLength);
-    sprintf(packageInstallingFixDir, "%s/fix", packageInstallingTopDir);
+    snprintf(packageInstallingFixDir, packageInstallingFixDirLength, "%s/fix", packageInstallingTopDir);
 
     if (mkdir(packageInstallingFixDir, S_IRWXU) != 0) {
         perror(packageInstallingFixDir);
@@ -228,7 +227,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingResDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingResDir[packageInstallingResDirLength];
     memset (packageInstallingResDir, 0, packageInstallingResDirLength);
-    sprintf(packageInstallingResDir, "%s/res", packageInstallingTopDir);
+    snprintf(packageInstallingResDir, packageInstallingResDirLength, "%s/res", packageInstallingTopDir);
 
     if (mkdir(packageInstallingResDir, S_IRWXU) != 0) {
         perror(packageInstallingResDir);
@@ -241,7 +240,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingBinDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingBinDir[packageInstallingBinDirLength];
     memset (packageInstallingBinDir, 0, packageInstallingBinDirLength);
-    sprintf(packageInstallingBinDir, "%s/bin", packageInstallingTopDir);
+    snprintf(packageInstallingBinDir, packageInstallingBinDirLength, "%s/bin", packageInstallingTopDir);
 
     if (mkdir(packageInstallingBinDir, S_IRWXU) != 0) {
         perror(packageInstallingBinDir);
@@ -254,7 +253,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingIncDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingIncDir[packageInstallingIncDirLength];
     memset (packageInstallingIncDir, 0, packageInstallingIncDirLength);
-    sprintf(packageInstallingIncDir, "%s/inc", packageInstallingTopDir);
+    snprintf(packageInstallingIncDir, packageInstallingIncDirLength, "%s/inc", packageInstallingTopDir);
 
     if (mkdir(packageInstallingIncDir, S_IRWXU) != 0) {
         perror(packageInstallingIncDir);
@@ -267,7 +266,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingLibDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingLibDir[packageInstallingLibDirLength];
     memset (packageInstallingLibDir, 0, packageInstallingLibDirLength);
-    sprintf(packageInstallingLibDir, "%s/lib", packageInstallingTopDir);
+    snprintf(packageInstallingLibDir, packageInstallingLibDirLength, "%s/lib", packageInstallingTopDir);
 
     if (mkdir(packageInstallingLibDir, S_IRWXU) != 0) {
         perror(packageInstallingLibDir);
@@ -280,7 +279,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  packageInstallingTmpDirLength = packageInstallingTopDirLength + 5;
     char    packageInstallingTmpDir[packageInstallingTmpDirLength];
     memset (packageInstallingTmpDir, 0, packageInstallingTmpDirLength);
-    sprintf(packageInstallingTmpDir, "%s/tmp", packageInstallingTopDir);
+    snprintf(packageInstallingTmpDir, packageInstallingTmpDirLength, "%s/tmp", packageInstallingTopDir);
 
     if (mkdir(packageInstallingTmpDir, S_IRWXU) != 0) {
         perror(packageInstallingTmpDir);
@@ -311,7 +310,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  cargoHomeDirLength = userHomeDirLength + 8;
         char    cargoHomeDir[cargoHomeDirLength];
         memset( cargoHomeDir, 0, cargoHomeDirLength);
-        sprintf(cargoHomeDir, "%s/.cargo", userHomeDir);
+        snprintf(cargoHomeDir, cargoHomeDirLength, "%s/.cargo", userHomeDir);
 
         char * CARGO_HOME = getenv("CARGO_HOME");
 
@@ -329,7 +328,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 size_t  newPATHLength = cargoHomeDirLength + strlen(PATH) + 2;
                 char    newPATH[newPATHLength];
                 memset( newPATH, 0, newPATHLength);
-                sprintf(newPATH, "%s:%s", cargoHomeDir, PATH);
+                snprintf(newPATH, newPATHLength, "%s:%s", cargoHomeDir, PATH);
 
                 setenv("PATH", newPATH, 1);
             }
@@ -350,7 +349,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  rustupInitScriptFilePathLength = ppkgHomeDirLength + 16;
             char    rustupInitScriptFilePath[rustupInitScriptFilePathLength];
             memset( rustupInitScriptFilePath, 0, rustupInitScriptFilePathLength);
-            sprintf(rustupInitScriptFilePath, "%s/rustup-init.sh", ppkgHomeDir);
+            snprintf(rustupInitScriptFilePath, rustupInitScriptFilePathLength, "%s/rustup-init.sh", ppkgHomeDir);
 
             if (exists_and_is_a_regular_file(rustupInitScriptFilePath)) {
                 if (unlink(rustupInitScriptFilePath) != 0) {
@@ -368,7 +367,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  cmdLength = ppkgHomeDirLength + 9;
             char    cmd[cmdLength];
             memset( cmd, 0, cmdLength);
-            sprintf(cmd, "bash %s -y", rustupInitScriptFilePath);
+            snprintf(cmd, cmdLength, "bash %s -y", rustupInitScriptFilePath);
 
             resultCode = system(cmd);
 
@@ -390,7 +389,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  newPATHLength = cargoHomeDirLength + 2;
             char    newPATH[newPATHLength];
             memset( newPATH, 0, newPATHLength);
-            sprintf(newPATH, "%s:%s", cargoHomeDir, PATH);
+            snprintf(newPATH, newPATHLength, "%s:%s", cargoHomeDir, PATH);
 
             setenv("PATH", newPATH, 1);
         } else {
@@ -407,7 +406,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
     char    ppkgDownloadsDir[ppkgDownloadsDirLength];
     memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
-    sprintf(ppkgDownloadsDir, "%s/.ppkg/downloads", userHomeDir);
+    snprintf(ppkgDownloadsDir, ppkgDownloadsDirLength, "%s/.ppkg/downloads", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgDownloadsDir)) {
         if (mkdir(ppkgDownloadsDir, S_IRWXU) != 0) {
@@ -420,15 +419,36 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->src_url == NULL) {
-        size_t  gitDirLength = ppkgDownloadsDirLength + packageNameLength + 6;
-        char    gitDir[gitDirLength];
-        memset (gitDir, 0, gitDirLength);
-        sprintf(gitDir, "%s/%s.git", ppkgDownloadsDir, packageName);
+        size_t  gitRepositoryDirLength = ppkgDownloadsDirLength + packageNameLength + 6;
+        char    gitRepositoryDir[gitRepositoryDirLength];
+        memset (gitRepositoryDir, 0, gitRepositoryDirLength);
+        snprintf(gitRepositoryDir, gitRepositoryDirLength, "%s/%s.git", ppkgDownloadsDir, packageName);
 
-        if (exists_and_is_a_directory(gitDir)) {
-            resultCode = do_git_pull(gitDir, NULL, NULL);
+        if (!exists_and_is_a_directory(gitRepositoryDir)) {
+            if (mkdir(gitRepositoryDir, S_IRWXU) != 0) {
+                perror(gitRepositoryDir);
+                return PPKG_ERROR;
+            }
+        }
+
+        if (formula->git_sha == NULL) {
+            if (formula->git_ref == NULL) {
+                resultCode = ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, "refs/heads/master:refs/remotes/origin/master", "master");
+            } else {
+                size_t  refspecLength = strlen(formula->git_ref) + 28;
+                char    refspec[refspecLength];
+                memset (refspec, 0, refspecLength);
+                snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_ref);
+
+                resultCode = ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, "master");
+            }
         } else {
-            resultCode = do_git_clone(formula->git_url, gitDir);
+            size_t  refspecLength = strlen(formula->git_sha) + 28;
+            char    refspec[refspecLength];
+            memset (refspec, 0, refspecLength);
+            snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_sha);
+
+            resultCode = ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, formula->git_sha);
         }
 
         if (resultCode != PPKG_OK) {
@@ -436,10 +456,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             return resultCode;
         }
 
-        size_t  cmdLength = gitDirLength + packageInstallingSrcDirLength + 10;
+        size_t  cmdLength = gitRepositoryDirLength + packageInstallingSrcDirLength + 10;
         char    cmd[cmdLength];
         memset (cmd, 0, cmdLength);
-        sprintf(cmd, "cp -r %s/. %s", gitDir, packageInstallingSrcDir);
+        snprintf(cmd, cmdLength, "cp -r %s/. %s", gitRepositoryDir, packageInstallingSrcDir);
 
         printf("%s\n", cmd);
         resultCode = system(cmd);
@@ -453,7 +473,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  cmdLength = strlen(formula->src_url) + packageInstallingSrcDirLength + 10 - 6;
             char    cmd[cmdLength];
             memset (cmd, 0, cmdLength);
-            sprintf(cmd, "cp -r %s/. %s", &formula->src_url[6], packageInstallingSrcDir);
+            snprintf(cmd, cmdLength, "cp -r %s/. %s", &formula->src_url[6], packageInstallingSrcDir);
 
             printf("%s\n", cmd);
             resultCode = system(cmd);
@@ -475,12 +495,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  srcFileNameLength = strlen(formula->src_sha) + strlen(srcFileNameExtension) + 1;
             char    srcFileName[srcFileNameLength];
             memset( srcFileName, 0, srcFileNameLength);
-            sprintf(srcFileName, "%s%s", formula->src_sha, srcFileNameExtension);
+            snprintf(srcFileName, srcFileNameLength, "%s%s", formula->src_sha, srcFileNameExtension);
 
             size_t  srcFilePathLength = ppkgDownloadsDirLength + srcFileNameLength + 1;
             char    srcFilePath[srcFilePathLength];
             memset (srcFilePath, 0, srcFilePathLength);
-            sprintf(srcFilePath, "%s/%s", ppkgDownloadsDir, srcFileName);
+            snprintf(srcFilePath, srcFilePathLength, "%s/%s", ppkgDownloadsDir, srcFileName);
 
             bool needFetch = true;
 
@@ -541,7 +561,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 size_t  srcFilePath2Length = packageInstallingSrcDirLength + srcFileNameLength + 1;
                 char    srcFilePath2[srcFilePath2Length];
                 memset (srcFilePath2, 0, srcFilePath2Length);
-                sprintf(srcFilePath2, "%s/%s", packageInstallingSrcDir, srcFileName);
+                snprintf(srcFilePath2, srcFilePath2Length, "%s/%s", packageInstallingSrcDir, srcFileName);
 
                 if (cp(srcFilePath, srcFilePath2) != 0) {
                     ppkg_formula_free(formula);
@@ -566,12 +586,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  fixFileNameLength = strlen(formula->fix_sha) + strlen(fixFileNameExtension) + 1;
         char    fixFileName[fixFileNameLength];
         memset( fixFileName, 0, fixFileNameLength);
-        sprintf(fixFileName, "%s%s", formula->fix_sha, fixFileNameExtension);
+        snprintf(fixFileName, fixFileNameLength, "%s%s", formula->fix_sha, fixFileNameExtension);
 
         size_t  fixFilePathLength = ppkgDownloadsDirLength + fixFileNameLength + 1;
         char    fixFilePath[fixFilePathLength];
         memset (fixFilePath, 0, fixFilePathLength);
-        sprintf(fixFilePath, "%s/%s", ppkgDownloadsDir, fixFileName);
+        snprintf(fixFilePath, fixFilePathLength, "%s/%s", ppkgDownloadsDir, fixFileName);
 
         bool needFetch = true;
 
@@ -632,7 +652,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  fixFilePath2Length = packageInstallingFixDirLength + fixFileNameLength + 1;
             char    fixFilePath2[fixFilePath2Length];
             memset (fixFilePath2, 0, fixFilePath2Length);
-            sprintf(fixFilePath2, "%s/%s", packageInstallingFixDir, fixFileName);
+            snprintf(fixFilePath2, fixFilePath2Length, "%s/%s", packageInstallingFixDir, fixFileName);
 
             if (cp(fixFilePath, fixFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -656,12 +676,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  resFileNameLength = strlen(formula->res_sha) + strlen(resFileNameExtension) + 1;
         char    resFileName[resFileNameLength];
         memset( resFileName, 0, resFileNameLength);
-        sprintf(resFileName, "%s%s", formula->fix_sha, resFileNameExtension);
+        snprintf(resFileName, resFileNameLength, "%s%s", formula->fix_sha, resFileNameExtension);
 
         size_t  resFilePathLength = ppkgDownloadsDirLength + resFileNameLength + 1;
         char    resFilePath[resFilePathLength];
         memset (resFilePath, 0, resFilePathLength);
-        sprintf(resFilePath, "%s/%s", ppkgDownloadsDir, resFileName);
+        snprintf(resFilePath, resFilePathLength, "%s/%s", ppkgDownloadsDir, resFileName);
 
         bool needFetch = true;
 
@@ -722,7 +742,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  resFilePath2Length = packageInstallingResDirLength + resFileNameLength + 1;
             char    resFilePath2[resFilePath2Length];
             memset (resFilePath2, 0, resFilePath2Length);
-            sprintf(resFilePath2, "%s/%s", packageInstallingResDir, resFileName);
+            snprintf(resFilePath2, resFilePath2Length, "%s/%s", packageInstallingResDir, resFileName);
 
             if (cp(resFilePath, resFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -775,7 +795,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  buildonYmlFilePathLength = packageInstallingTopDirLength + 13;
     char    buildonYmlFilePath[buildonYmlFilePathLength];
     memset (buildonYmlFilePath, 0, buildonYmlFilePathLength);
-    sprintf(buildonYmlFilePath, "%s/buildon.yml", packageInstallingTopDir);
+    snprintf(buildonYmlFilePath, buildonYmlFilePathLength, "%s/buildon.yml", packageInstallingTopDir);
 
     FILE *  buildonYmlFile = fopen(buildonYmlFilePath, "w");
 
@@ -795,7 +815,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  installShellScriptFilePathLength = packageInstallingTopDirLength + 12;
     char    installShellScriptFilePath[installShellScriptFilePathLength];
     memset (installShellScriptFilePath, 0, installShellScriptFilePathLength);
-    sprintf(installShellScriptFilePath, "%s/install.sh", packageInstallingTopDir);
+    snprintf(installShellScriptFilePath, installShellScriptFilePathLength, "%s/install.sh", packageInstallingTopDir);
 
     FILE *  installShellScriptFile = fopen(installShellScriptFilePath, "w");
 
@@ -948,7 +968,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  cmdLength = installShellScriptFilePathLength + 4;
     char    cmd[cmdLength];
     memset (cmd, 0, cmdLength);
-    sprintf(cmd, "sh %s", installShellScriptFilePath);
+    snprintf(cmd, cmdLength, "sh %s", installShellScriptFilePath);
 
     resultCode = system(cmd);
 
@@ -972,7 +992,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  cratesTomlFilePathLength = packageInstalledDirLength + 14;
     char    cratesTomlFilePath[cratesTomlFilePathLength];
     memset (cratesTomlFilePath, 0, cratesTomlFilePathLength);
-    sprintf(cratesTomlFilePath, "%s/.crates.toml", packageInstalledDir);
+    snprintf(cratesTomlFilePath, cratesTomlFilePathLength, "%s/.crates.toml", packageInstalledDir);
 
     if (exists_and_is_a_regular_file(cratesTomlFilePath)) {
         if (unlink(cratesTomlFilePath) != 0) {
@@ -987,7 +1007,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  crates2JsonFilePathLength = packageInstalledDirLength + 15;
     char    crates2JsonFilePath[crates2JsonFilePathLength];
     memset (crates2JsonFilePath, 0, crates2JsonFilePathLength);
-    sprintf(crates2JsonFilePath, "%s/.crates2.json", packageInstalledDir);
+    snprintf(crates2JsonFilePath, crates2JsonFilePathLength, "%s/.crates2.json", packageInstalledDir);
 
     if (exists_and_is_a_regular_file(crates2JsonFilePath)) {
         if (unlink(crates2JsonFilePath) != 0) {
@@ -1011,12 +1031,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  dependenciesDotFilePathLength = packageInstallingTopDirLength + 18;
         char    dependenciesDotFilePath[dependenciesDotFilePathLength];
         memset (dependenciesDotFilePath, 0, dependenciesDotFilePathLength);
-        sprintf(dependenciesDotFilePath, "%s/dependencies.dot", packageInstallingTopDir);
+        snprintf(dependenciesDotFilePath, dependenciesDotFilePathLength, "%s/dependencies.dot", packageInstallingTopDir);
 
         size_t  dependenciesDotFilePath2Length = packageInstalledMetaInfoDirLength + 18;
         char    dependenciesDotFilePath2[dependenciesDotFilePath2Length];
         memset (dependenciesDotFilePath2, 0, dependenciesDotFilePath2Length);
-        sprintf(dependenciesDotFilePath2, "%s/dependencies.dot", packageInstalledMetaInfoDir);
+        snprintf(dependenciesDotFilePath2, dependenciesDotFilePath2Length, "%s/dependencies.dot", packageInstalledMetaInfoDir);
 
         if (cp(dependenciesDotFilePath, dependenciesDotFilePath2) != 0) {
             ppkg_formula_free(formula);
@@ -1028,13 +1048,13 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  dependenciesTxtFilePathLength = packageInstallingTopDirLength + 18;
         char    dependenciesTxtFilePath[dependenciesTxtFilePathLength];
         memset (dependenciesTxtFilePath, 0, dependenciesTxtFilePathLength);
-        sprintf(dependenciesTxtFilePath, "%s/dependencies.txt", packageInstallingTopDir);
+        snprintf(dependenciesTxtFilePath, dependenciesTxtFilePathLength, "%s/dependencies.txt", packageInstallingTopDir);
 
         if (exists_and_is_a_regular_file(dependenciesTxtFilePath)) {
             size_t  dependenciesTxtFilePath2Length = packageInstalledMetaInfoDirLength + 18;
             char    dependenciesTxtFilePath2[dependenciesTxtFilePath2Length];
             memset (dependenciesTxtFilePath2, 0, dependenciesTxtFilePath2Length);
-            sprintf(dependenciesTxtFilePath2, "%s/dependencies.txt", packageInstalledMetaInfoDir);
+            snprintf(dependenciesTxtFilePath2, dependenciesTxtFilePath2Length, "%s/dependencies.txt", packageInstalledMetaInfoDir);
 
             if (cp(dependenciesTxtFilePath, dependenciesTxtFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -1047,13 +1067,13 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  dependenciesSvgFilePathLength = packageInstallingTopDirLength + 18;
         char    dependenciesSvgFilePath[dependenciesSvgFilePathLength];
         memset (dependenciesSvgFilePath, 0, dependenciesSvgFilePathLength);
-        sprintf(dependenciesSvgFilePath, "%s/dependencies.svg", packageInstallingTopDir);
+        snprintf(dependenciesSvgFilePath, dependenciesSvgFilePathLength, "%s/dependencies.svg", packageInstallingTopDir);
 
         if (exists_and_is_a_regular_file(dependenciesSvgFilePath)) {
             size_t  dependenciesSvgFilePath2Length = packageInstalledMetaInfoDirLength + 18;
             char    dependenciesSvgFilePath2[dependenciesSvgFilePath2Length];
             memset (dependenciesSvgFilePath2, 0, dependenciesSvgFilePath2Length);
-            sprintf(dependenciesSvgFilePath2, "%s/dependencies.svg", packageInstalledMetaInfoDir);
+            snprintf(dependenciesSvgFilePath2, dependenciesSvgFilePath2Length, "%s/dependencies.svg", packageInstalledMetaInfoDir);
 
             if (cp(dependenciesSvgFilePath, dependenciesSvgFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -1066,13 +1086,13 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  dependenciesPngFilePathLength = packageInstallingTopDirLength + 18;
         char    dependenciesPngFilePath[dependenciesPngFilePathLength];
         memset (dependenciesPngFilePath, 0, dependenciesPngFilePathLength);
-        sprintf(dependenciesPngFilePath, "%s/dependencies.png", packageInstallingTopDir);
+        snprintf(dependenciesPngFilePath, dependenciesPngFilePathLength, "%s/dependencies.png", packageInstallingTopDir);
 
         if (exists_and_is_a_regular_file(dependenciesPngFilePath)) {
             size_t  dependenciesPngFilePath2Length = packageInstalledMetaInfoDirLength + 18;
             char    dependenciesPngFilePath2[dependenciesPngFilePath2Length];
             memset (dependenciesPngFilePath2, 0, dependenciesPngFilePath2Length);
-            sprintf(dependenciesPngFilePath2, "%s/dependencies.png", packageInstalledMetaInfoDir);
+            snprintf(dependenciesPngFilePath2, dependenciesPngFilePath2Length, "%s/dependencies.png", packageInstalledMetaInfoDir);
 
             if (cp(dependenciesPngFilePath, dependenciesPngFilePath2) != 0) {
                 ppkg_formula_free(formula);
@@ -1087,12 +1107,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         size_t  compileCommandsJsonFilePath2Length = packageInstalledMetaInfoDirLength + 23;
         char    compileCommandsJsonFilePath2[compileCommandsJsonFilePath2Length];
         memset (compileCommandsJsonFilePath2, 0, compileCommandsJsonFilePath2Length);
-        sprintf(compileCommandsJsonFilePath2, "%s/compile_commands.json", packageInstalledMetaInfoDir);
+        snprintf(compileCommandsJsonFilePath2, compileCommandsJsonFilePath2Length, "%s/compile_commands.json", packageInstalledMetaInfoDir);
 
         size_t  compileCommandsJsonFilePathLength = packageInstallingTmpDirLength + 23;
         char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
         memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
-        sprintf(compileCommandsJsonFilePath, "%s/compile_commands.json", packageInstallingTmpDir);
+        snprintf(compileCommandsJsonFilePath, compileCommandsJsonFilePathLength, "%s/compile_commands.json", packageInstallingTmpDir);
 
         if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
             if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
@@ -1104,7 +1124,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 size_t  compileCommandsJsonFilePathLength = packageInstallingSrcDirLength + 23;
                 char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
                 memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
-                sprintf(compileCommandsJsonFilePath, "%s/compile_commands.json", packageInstallingSrcDir);
+                snprintf(compileCommandsJsonFilePath, compileCommandsJsonFilePathLength, "%s/compile_commands.json", packageInstallingSrcDir);
 
                 if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
                     if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
@@ -1116,7 +1136,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
                 size_t  compileCommandsJsonFilePathLength = packageInstallingSrcDirLength + strlen(formula->bscript) + 24;
                 char    compileCommandsJsonFilePath[compileCommandsJsonFilePathLength];
                 memset (compileCommandsJsonFilePath, 0, compileCommandsJsonFilePathLength);
-                sprintf(compileCommandsJsonFilePath, "%s/%s/compile_commands.json", packageInstallingSrcDir, formula->bscript);
+                snprintf(compileCommandsJsonFilePath, compileCommandsJsonFilePathLength, "%s/%s/compile_commands.json", packageInstallingSrcDir, formula->bscript);
 
                 if (exists_and_is_a_regular_file(compileCommandsJsonFilePath)) {
                     if (cp(compileCommandsJsonFilePath, compileCommandsJsonFilePath2) != 0) {
@@ -1133,12 +1153,12 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  buildConfigLogFilePath2Length = packageInstalledMetaInfoDirLength + 12;
     char    buildConfigLogFilePath2[buildConfigLogFilePath2Length];
     memset (buildConfigLogFilePath2, 0, buildConfigLogFilePath2Length);
-    sprintf(buildConfigLogFilePath2, "%s/config.log", packageInstalledMetaInfoDir);
+    snprintf(buildConfigLogFilePath2, buildConfigLogFilePath2Length, "%s/config.log", packageInstalledMetaInfoDir);
 
     size_t  buildConfigLogFilePathLength = packageInstallingTmpDirLength + 12;
     char    buildConfigLogFilePath[buildConfigLogFilePathLength];
     memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
-    sprintf(buildConfigLogFilePath, "%s/config.log", packageInstallingTmpDir);
+    snprintf(buildConfigLogFilePath, buildConfigLogFilePathLength, "%s/config.log", packageInstallingTmpDir);
 
     if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
         if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
@@ -1150,7 +1170,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  buildConfigLogFilePathLength = packageInstallingSrcDirLength + 12;
             char    buildConfigLogFilePath[buildConfigLogFilePathLength];
             memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
-            sprintf(buildConfigLogFilePath, "%s/config.log", packageInstallingSrcDir);
+            snprintf(buildConfigLogFilePath, buildConfigLogFilePathLength, "%s/config.log", packageInstallingSrcDir);
 
             if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
                 if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
@@ -1162,7 +1182,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             size_t  buildConfigLogFilePathLength = packageInstallingSrcDirLength + strlen(formula->bscript) + 13;
             char    buildConfigLogFilePath[buildConfigLogFilePathLength];
             memset (buildConfigLogFilePath, 0, buildConfigLogFilePathLength);
-            sprintf(buildConfigLogFilePath, "%s/%s/config.log", packageInstallingSrcDir, formula->bscript);
+            snprintf(buildConfigLogFilePath, buildConfigLogFilePathLength, "%s/%s/config.log", packageInstallingSrcDir, formula->bscript);
 
             if (exists_and_is_a_regular_file(buildConfigLogFilePath)) {
                 if (cp(buildConfigLogFilePath, buildConfigLogFilePath2) != 0) {
@@ -1178,7 +1198,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     size_t  buildonYmlFilePath2Length = packageInstalledMetaInfoDirLength + 13;
     char    buildonYmlFilePath2[buildonYmlFilePath2Length];
     memset (buildonYmlFilePath2, 0, buildonYmlFilePath2Length);
-    sprintf(buildonYmlFilePath2, "%s/buildon.yml", packageInstalledMetaInfoDir);
+    snprintf(buildonYmlFilePath2, buildonYmlFilePath2Length, "%s/buildon.yml", packageInstalledMetaInfoDir);
 
     if (cp(buildonYmlFilePath, buildonYmlFilePath2) != 0) {
         ppkg_formula_free(formula);

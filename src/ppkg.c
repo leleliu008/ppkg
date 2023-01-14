@@ -629,6 +629,11 @@ int ppkg_main(int argc, char* argv[]) {
             return PPKG_ARG_IS_NULL;
         }
 
+        if (strcmp(argv[2], "offical-core") == 0) {
+            fprintf(stderr, "offical-core is reserved, please use other name.\n");
+            return PPKG_ERROR;
+        }
+
         return ppkg_formula_repo_add(argv[2], argv[3], argv[4]);
     }
 

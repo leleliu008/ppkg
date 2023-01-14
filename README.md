@@ -19,13 +19,13 @@ ppkg install ppkg
 |[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
 |[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
 ||||
-|[sqlite3](https://www.sqlite.org/)|required|for storing data.|
 |[jansson](https://github.com/akheron/jansson)|required|for parsing and creating JSON.|
 |[libyaml](https://github.com/yaml/libyaml/)|required|for parsing formula files whose format is YAML.|
 |[libgit2](https://libgit2.org/)|required|for updating formula repositories.|
 |[libcurl](https://curl.se/)|required|for http requesting support.|
 |[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
 |[libarchive](https://www.libarchive.org/)|required|for uncompressing .zip and .tar.* files.|
+|[zlib](https://www.zlib.net/)||for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
 
@@ -39,7 +39,7 @@ cd vcpkg
 export VCPKG_ROOT="$PWD/vcpkg"
 export PATH="$VCPKG_ROOT:$PATH"
 
-vcpkg install curl openssl libgit2 libarchive libyaml jansson sqlite3
+vcpkg install curl openssl libgit2 libarchive libyaml jansson
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -53,7 +53,7 @@ cmake --install build.d
 
 ```bash
 apt -y update
-apt -y install git cmake ninja-build pkg-config gcc libcurl4 libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev libsqlite3-dev
+apt -y install git cmake ninja-build pkg-config gcc libcurl4 libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev zlib1g-dev
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -67,7 +67,7 @@ cmake --install build.d
 
 ```bash
 dnf -y update
-dnf -y install git cmake ninja-build pkg-config gcc libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
+dnf -y install git cmake ninja-build pkg-config gcc libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -81,7 +81,7 @@ cmake --install build.d
 
 ```bash
 pacman -Syyuu --noconfirm
-pacman -S     --noconfirm git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson sqlite
+pacman -S     --noconfirm git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson zlib
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -94,7 +94,7 @@ cmake --install build.d
 **[AlpineLinux](https://www.alpinelinux.org/)**
 
 ```bash
-apk add git cmake ninja pkgconf gcc libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+apk add git cmake ninja pkgconf gcc libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev zlib-dev
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -108,7 +108,7 @@ cmake --install build.d
 
 ```bash
 xbps-install -Suy xbps
-xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
+xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -121,7 +121,7 @@ cmake --install build.d
 **[Gentoo Linux](https://www.gentoo.org/)**
 
 ```bash
-emerge dev-vcs/git cmake dev-util/ninja gcc pkg-config net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-db/sqlite
+emerge dev-vcs/git cmake dev-util/ninja gcc pkg-config net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-libs/zlib
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -135,7 +135,7 @@ cmake --install build.d
 
 ```bash
 zypper update  -y  
-zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel sqlite3-devel
+zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel zlib-devel
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -149,7 +149,7 @@ cmake --install build.d
 
 ```bash
 brew update
-brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive sqlite
+brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive zlib
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -157,7 +157,7 @@ cd ppkg
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
 
 CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
-CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive);$(brew --prefix sqlite)"
+CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
 
 cmake \
     -S . \
@@ -174,7 +174,7 @@ cmake --install build.d
 **[FreeBSD](https://www.freebsd.org/)**
 
 ```bash
-pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson sqlite3
+pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson zlib
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -187,7 +187,7 @@ cmake --install build.d
 **[OpenBSD](https://www.openbsd.org/)**
 
 ```bash
-pkg_add git cmake ninja pkgconf llvm curl libgit2 libarchive libyaml jansson sqlite
+pkg_add git cmake ninja pkgconf llvm curl libgit2 libarchive libyaml jansson zlib
 
 git clone https://github.com/leleliu008/ppkg
 cd ppkg
@@ -200,7 +200,7 @@ cmake --install build.d
 **[NetBSD](https://www.netbsd.org/)**
 
 ```bash
-pkgin -y install git mozilla-rootcerts cmake ninja-build pkg-config clang curl openssl libgit2 libarchive libyaml jansson sqlite
+pkgin -y install git mozilla-rootcerts cmake ninja-build pkg-config clang curl openssl libgit2 libarchive libyaml jansson zlib
 
 mozilla-rootcerts install
 
@@ -473,4 +473,27 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ```bash
     export GOPROXY='https://goproxy.cn'
     ```
+
+## ppkg formula repository
+a ppkg formula repository is a git repository.
+
+a ppkg formula repository's location is `~/.ppkg/repos.d/${PPKGFormulaRepoName}`
+
+a ppkg formula repository should have a config file whose location is `~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.dat`, this file is zlib deflated, and you're able to uncompress it via `zlib-flate -uncompress < ~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.dat`.
+
+follwoing is `offical-core` formula repository's uncompressed config:
+
+```
+url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
+branch: master
+pinned: no
+```
+
+If a ppkg formula repository is pinned, which means this ppkg formula repository would not be updated.
+
+If you find that a package is not in `offical-core` formula repo yet, PR is welcomed.
+
+**Note:** 
+ - please do not directly modify the formula file. your modifications may be lost after updaing.
+ - ppkg supports multiple formula repositories.
 

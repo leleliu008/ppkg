@@ -66,7 +66,7 @@ function _ppkg() {
         option)
             case $words[1] in
                 formula-repo-del)
-                    _arguments '1:repo-name:($(ppkg formula-repo-list | cut -d " " -f1))'
+                    _arguments '1:repo-name:($(ppkg formula-repo-list | sed -n "/name: /p" | cut -c7-))'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh)'
@@ -94,8 +94,8 @@ function _ppkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '--type=-[set output type]:output-type:(7z zip tar.gz tar.xz tar.bz2)' \
-                        '--keep-packing-dir[do not delete packing dir even if packed success]'
+                        '--type=-[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '--keep-packing-dir[do not delete packing dir even if succesully packed]'
                     ;;
                 tree)
                     _arguments \

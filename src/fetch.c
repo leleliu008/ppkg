@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 
 #include "core/fs.h"
-#include "core/git.h"
 #include "core/http.h"
 #include "core/util.h"
 #include "core/sha256sum.h"
@@ -27,10 +26,11 @@ int ppkg_fetch_all_available_packages(bool verbose) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *  formulaRepoPath  = formulaRepoList->repos[i]->path;
+
         size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
         char    formulaDir[formulaDirLength];
         memset (formulaDir, 0, formulaDirLength);
-        sprintf(formulaDir, "%s/formula", formulaRepoPath);
+        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
 
         DIR           * dir;
         struct dirent * dir_entry;
@@ -84,16 +84,36 @@ int ppkg_fetch_all_available_packages(bool verbose) {
 }
 
 static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength) {
-    size_t  gitDirLength = ppkgDownloadsDirLength + strlen(packageName) + 6;
-    char    gitDir[gitDirLength];
-    memset (gitDir, 0, gitDirLength);
-    sprintf(gitDir, "%s/%s.git", ppkgDownloadsDir, packageName);
+    size_t  gitRepositoryDirLength = ppkgDownloadsDirLength + strlen(packageName) + 6;
+    char    gitRepositoryDir[gitRepositoryDirLength];
+    memset (gitRepositoryDir, 0, gitRepositoryDirLength);
+    snprintf(gitRepositoryDir, gitRepositoryDirLength, "%s/%s.git", ppkgDownloadsDir, packageName);
 
+    if (!exists_and_is_a_directory(gitRepositoryDir)) {
+        if (mkdir(gitRepositoryDir, S_IRWXU) != 0) {
+            perror(gitRepositoryDir);
+            return PPKG_ERROR;
+        }
+    }
 
-    if (exists_and_is_a_directory(gitDir)) {
-        return do_git_pull(gitDir, NULL, NULL);
+    if (formula->git_sha == NULL) {
+        if (formula->git_ref == NULL) {
+            return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, "refs/heads/master:refs/remotes/origin/master", "master");
+        } else {
+            size_t  refspecLength = strlen(formula->git_ref) + 28;
+            char    refspec[refspecLength];
+            memset (refspec, 0, refspecLength);
+            snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_ref);
+
+            return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, "master");
+        }
     } else {
-        return do_git_clone(formula->git_url, gitDir);
+        size_t  refspecLength = strlen(formula->git_sha) + 28;
+        char    refspec[refspecLength];
+        memset (refspec, 0, refspecLength);
+        snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_sha);
+
+        return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, formula->git_sha);
     }
 }
 
@@ -109,12 +129,12 @@ static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, con
     size_t  fileNameLength = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1;
     char    fileName[fileNameLength];
     memset( fileName, 0, fileNameLength);
-    sprintf(fileName, "%s%s", expectedSHA256SUM, fileNameExtension);
+    snprintf(fileName, fileNameLength, "%s%s", expectedSHA256SUM, fileNameExtension);
 
     size_t  filePathLength = ppkgDownloadsDirLength + fileNameLength + 1;
     char    filePath[filePathLength];
     memset (filePath, 0, filePathLength);
-    sprintf(filePath, "%s/%s", ppkgDownloadsDir, fileName);
+    snprintf(filePath, filePathLength, "%s/%s", ppkgDownloadsDir, fileName);
 
     if (exists_and_is_a_regular_file(filePath)) {
         char actualSHA256SUM[65] = {0};
@@ -188,7 +208,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     size_t  ppkgDownloadsDirLength = userHomeDirLength + 18;
     char    ppkgDownloadsDir[ppkgDownloadsDirLength];
     memset (ppkgDownloadsDir, 0, ppkgDownloadsDirLength);
-    sprintf(ppkgDownloadsDir, "%s/.ppkg/downloads", userHomeDir);
+    snprintf(ppkgDownloadsDir, ppkgDownloadsDirLength, "%s/.ppkg/downloads", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgDownloadsDir)) {
         if (mkdir(ppkgDownloadsDir, S_IRWXU) != 0) {

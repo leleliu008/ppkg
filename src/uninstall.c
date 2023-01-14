@@ -14,21 +14,25 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
 
     char * userHomeDir = getenv("HOME");
 
-    if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
+    if (userHomeDir == NULL) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
+    }
+
     size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
     char    installedDir[installedDirLength];
     memset (installedDir, 0, installedDirLength);
-    sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+    snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
     size_t  receiptFilePathLength = installedDirLength + 20;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
-    sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
     if (exists_and_is_a_regular_file(receiptFilePath)) {
         if (rm_r(installedDir, verbose) == 0) {

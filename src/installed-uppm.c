@@ -29,7 +29,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgHomeDir)) {
         if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
@@ -43,7 +43,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  ppkgTmpDirLength = ppkgHomeDirLength + 5;
     char    ppkgTmpDir[ppkgTmpDirLength];
     memset (ppkgTmpDir, 0, ppkgTmpDirLength);
-    sprintf(ppkgTmpDir, "%s/tmp", ppkgHomeDir);
+    snprintf(ppkgTmpDir, ppkgTmpDirLength, "%s/tmp", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(ppkgTmpDir)) {
         if (mkdir(ppkgTmpDir, S_IRWXU) != 0) {
@@ -59,7 +59,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  githubApiResultJsonFilePathLength = ppkgTmpDirLength + 18;
     char    githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
     memset (githubApiResultJsonFilePath, 0, githubApiResultJsonFilePathLength);
-    sprintf(githubApiResultJsonFilePath, "%s/latest-uppm.json", ppkgTmpDir);
+    snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest-uppm.json", ppkgTmpDir);
 
     char * latestVersion = NULL;
 
@@ -121,17 +121,17 @@ int ppkg_install_uppm(bool verbose) {
     size_t  tarballFileNameLength = latestVersionLength + strlen(osType) + strlen(osArch) + 15;
     char    tarballFileName[tarballFileNameLength];
     memset( tarballFileName, 0, tarballFileNameLength);
-    sprintf(tarballFileName, "uppm-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
 
     size_t  tarballUrlLength = tarballFileNameLength + latestVersionLength + 55;
     char    tarballUrl[tarballUrlLength];
     memset( tarballUrl, 0, tarballUrlLength);
-    sprintf(tarballUrl, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestVersion, tarballFileName);
+    snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestVersion, tarballFileName);
 
     size_t  tarballFilePathLength = ppkgTmpDirLength + tarballFileNameLength + 2;
     char    tarballFilePath[tarballFilePathLength];
     memset (tarballFilePath, 0, tarballFilePathLength);
-    sprintf(tarballFilePath, "%s/%s", ppkgTmpDir, tarballFileName);
+    snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", ppkgTmpDir, tarballFileName);
 
     if (http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;
@@ -142,7 +142,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  ppkgCoreDirLength = ppkgHomeDirLength + 6;
     char    ppkgCoreDir[ppkgCoreDirLength];
     memset (ppkgCoreDir, 0, ppkgCoreDirLength);
-    sprintf(ppkgCoreDir, "%s/core", ppkgHomeDir);
+    snprintf(ppkgCoreDir, ppkgCoreDirLength, "%s/core", ppkgHomeDir);
 
     int resultCode = tar_extract(ppkgCoreDir, tarballFilePath, 0, verbose, 1);
 
@@ -153,7 +153,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  cacertPemFilePathLength = ppkgTmpDirLength + 12;
     char    cacertPemFilePath[cacertPemFilePathLength];
     memset (cacertPemFilePath, 0, cacertPemFilePathLength);
-    sprintf(cacertPemFilePath, "%s/cacert.pem", ppkgTmpDir);
+    snprintf(cacertPemFilePath, cacertPemFilePathLength, "%s/cacert.pem", ppkgTmpDir);
 
     if (http_fetch_to_file("https://curl.se/ca/cacert.pem", cacertPemFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;
@@ -162,7 +162,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  cacertPemFilePath2Length = ppkgTmpDirLength + 12;
     char    cacertPemFilePath2[cacertPemFilePath2Length];
     memset (cacertPemFilePath2, 0, cacertPemFilePath2Length);
-    sprintf(cacertPemFilePath2, "%s/cacert.pem", ppkgHomeDir);
+    snprintf(cacertPemFilePath2, cacertPemFilePath2Length, "%s/cacert.pem", ppkgHomeDir);
 
     if (cp(cacertPemFilePath, cacertPemFilePath2) != 0) {
         return PPKG_ERROR;
@@ -173,7 +173,7 @@ int ppkg_install_uppm(bool verbose) {
     size_t  cmdLength = ppkgCoreDirLength + 17;
     char    cmd[cmdLength];
     memset (cmd, 0, cmdLength);
-    sprintf(cmd, "%s/bin/uppm update", ppkgCoreDir);
+    snprintf(cmd, cmdLength, "%s/bin/uppm update", ppkgCoreDir);
 
     if (system(cmd) != 0) {
         return PPKG_ERROR;

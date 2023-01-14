@@ -29,7 +29,7 @@ int url_transform(const char * url, char ** out) {
     size_t  cmdLength = urlLength + strlen(urlTransformCommandPath) + 2;
     char    cmd[cmdLength];
     memset( cmd, 0, cmdLength);
-    sprintf(cmd, "%s %s", urlTransformCommandPath, url);
+    snprintf(cmd, cmdLength, "%s %s", urlTransformCommandPath, url);
 
     FILE * file = popen(cmd, "r");
 
@@ -81,6 +81,9 @@ int url_transform(const char * url, char ** out) {
     if (result == NULL) {
         return URL_TRANSFORM_RUN_EMPTY_RESULT;
     } else {
+        fprintf(stderr, "you have set PPKG_URL_TRANSFORM=%s\n", urlTransformCommandPath);
+        fprintf(stderr, "transform from: %s\n", url);
+        fprintf(stderr, "transform to:   %s\n", result);
         (*out) = result;
         return URL_TRANSFORM_OK;
     }

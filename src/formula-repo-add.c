@@ -1,29 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sqlite3.h>
+#include <time.h>
 
 #include "ppkg.h"
+#include "core/fs.h"
+#include "core/zlib-flate.h"
 
 int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName) {
     if (formulaRepoName == NULL) {
         return PPKG_ARG_IS_NULL;
     }
 
-    if (strcmp(formulaRepoName, "") == 0) {
-        return PPKG_ARG_IS_EMPTY;
-    }
+    size_t formulaRepoNameLength = strlen(formulaRepoName);
 
-    if (strcmp(formulaRepoName, "offical-core") == 0) {
-        fprintf(stderr, "offical-core is reserved, please use other name.\n");
-        return PPKG_ERROR;
+    if (formulaRepoNameLength == 0) {
+        return PPKG_ARG_IS_EMPTY;
     }
 
     if (formulaRepoUrl == NULL) {
         return PPKG_ARG_IS_NULL;
     }
 
-    if (strcmp(formulaRepoUrl, "") == 0) {
+    size_t formulaRepoUrlLength = strlen(formulaRepoUrl);
+
+    if (formulaRepoUrlLength == 0) {
         return PPKG_ARG_IS_EMPTY;
     }
 
@@ -31,60 +32,94 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
         branchName = (char*)"master";
     }
 
+    size_t branchNameLength = strlen(branchName);
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+
     char * userHomeDir = getenv("HOME");
 
-    if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
+    if (userHomeDir == NULL) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
-    size_t  formulaRepoDBPathLength = userHomeDirLength + 16;
-    char    formulaRepoDBPath[formulaRepoDBPathLength];
-    memset (formulaRepoDBPath, 0, formulaRepoDBPathLength);
-    sprintf(formulaRepoDBPath, "%s/.ppkg/repos.db", userHomeDir);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    sqlite3 * db = NULL;
-
-    int resultCode = sqlite3_open(formulaRepoDBPath, &db);
-
-    if (resultCode != SQLITE_OK) {
-        fprintf(stderr, "%s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return resultCode;
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * createTableSql = "CREATE TABLE IF NOT EXISTS formulaRepo (name TEXT PRIMARY KEY, url TEXT NOT NULL, branchName TEXT NOT NULL);";
-    char * errorMsg = NULL;
+    size_t  formulaRepoRootDirLength = userHomeDirLength + 15;
+    char    formulaRepoRootDir[formulaRepoRootDirLength];
+    memset (formulaRepoRootDir, 0, formulaRepoRootDirLength);
+    snprintf(formulaRepoRootDir, formulaRepoRootDirLength, "%s/.ppkg/repos.d", userHomeDir);
 
-    resultCode = sqlite3_exec(db, createTableSql, NULL, NULL, &errorMsg);
-
-    if (resultCode != SQLITE_OK) {
-        fprintf(stderr, "%s\n", errorMsg);
-        sqlite3_close(db);
-        return resultCode;
+    if (!exists_and_is_a_directory(formulaRepoRootDir)) {
+        if (mkdir(formulaRepoRootDir, S_IRWXU) != 0) {
+            perror(formulaRepoRootDir);
+            return PPKG_ERROR;
+        }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t  updateSqlLength = 80 + strlen(formulaRepoName) + strlen(formulaRepoUrl) + strlen(branchName);
-    char    updateSql[updateSqlLength];
-    memset( updateSql, 0, updateSqlLength);
-    sprintf(updateSql, "INSERT OR REPLACE INTO formulaRepo (name,url,branchName) VALUES ('%s','%s','%s');", formulaRepoName, formulaRepoUrl, branchName);
+    size_t  formulaRepoDirLength = formulaRepoRootDirLength + formulaRepoNameLength + 2;
+    char    formulaRepoDir[formulaRepoDirLength];
+    memset (formulaRepoDir, 0, formulaRepoDirLength);
+    snprintf(formulaRepoDir, formulaRepoDirLength, "%s/%s", formulaRepoRootDir, formulaRepoName);
 
-    errorMsg = NULL;
-
-    resultCode = sqlite3_exec(db, updateSql, NULL, NULL, &errorMsg);
-
-    if (resultCode != SQLITE_OK) {
-        fprintf(stderr, "%s\n", errorMsg);
+    if (!exists_and_is_a_directory(formulaRepoDir)) {
+        if (mkdir(formulaRepoDir, S_IRWXU) != 0) {
+            perror(formulaRepoDir);
+            return PPKG_ERROR;
+        }
     }
 
-    sqlite3_close(db);
+    ////////////////////////////////////////////////////////////////////////////////////////
 
-    return resultCode;
+    printf("Adding formula repo : %s => %s\n", formulaRepoName, formulaRepoUrl);
+
+    size_t  refspecLength = (branchNameLength << 1) + 33;
+    char    refspec[refspecLength];
+    memset (refspec, 0, refspecLength);
+    snprintf(refspec, refspecLength, "refs/heads/%s:refs/remotes/origin/%s", branchName, branchName);
+
+    if (ppkg_fetch_via_git(formulaRepoDir, formulaRepoUrl, refspec, branchName) != 0) {
+        return PPKG_ERROR;
+    }
+
+    size_t formulaRepoConfigFilePathLength = formulaRepoDirLength + 24;
+    char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
+    memset(formulaRepoConfigFilePath, 0, formulaRepoConfigFilePathLength);
+    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.dat", formulaRepoDir);
+
+    FILE * file = fopen(formulaRepoConfigFilePath, "wb");
+
+    if (file == NULL) {
+        perror(formulaRepoConfigFilePath);
+        return PPKG_ERROR;
+    }
+
+    char ts[11];
+    memset(ts, 0, 11);
+    snprintf(ts, 11, "%ld", time(NULL));
+
+    size_t  strLength = formulaRepoUrlLength + branchNameLength + strlen(ts) + 45;
+    char    str[strLength];
+    memset (str, 0, strLength);
+    snprintf(str, strLength, "url: %s\nbranch: %s\npinned: no\ntimestamp-added: %s\n", formulaRepoUrl, branchName, ts);
+
+    if (zlib_deflate_string_to_file(str, strLength - 1, file) != 0) {
+        fclose(file);
+
+        if (unlink(formulaRepoConfigFilePath) != 0) {
+            perror(formulaRepoConfigFilePath);
+        }
+
+        return PPKG_ERROR;
+    } else {
+        fclose(file);
+        return PPKG_OK;
+    }
 }

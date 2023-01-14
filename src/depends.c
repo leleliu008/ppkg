@@ -102,7 +102,7 @@ static int ppkg_depends_make_box(const char * dotScriptStr) {
     size_t  urlLength = strlen(dataUrlEncoded) + 66;
     char    url[urlLength];
     memset (url, 0, urlLength);
-    sprintf(url, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", dataUrlEncoded);
+    snprintf(url, urlLength, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", dataUrlEncoded);
 
     //printf("url=%s\n", url);
 
@@ -148,7 +148,7 @@ static int ppkg_depends_make_png(const char * dotScriptStr) {
     size_t  cmdLength = strlen(dotScriptStr) + 22;
     char    cmd[cmdLength];
     memset( cmd, 0, cmdLength);
-    sprintf(cmd, "dot -Tpng <<EOF\n%s\nEOF", dotScriptStr);
+    snprintf(cmd, cmdLength, "dot -Tpng <<EOF\n%s\nEOF", dotScriptStr);
 
     if (system(cmd) == 0) {
         return PPKG_OK;
@@ -162,7 +162,7 @@ static int ppkg_depends_make_svg(const char * dotScriptStr) {
     size_t  cmdLength = strlen(dotScriptStr) + 22;
     char    cmd[cmdLength];
     memset( cmd, 0, cmdLength);
-    sprintf(cmd, "dot -Tsvg <<EOF\n%s\nEOF", dotScriptStr);
+    snprintf(cmd, cmdLength, "dot -Tsvg <<EOF\n%s\nEOF", dotScriptStr);
 
     if (system(cmd) == 0) {
         return PPKG_OK;
@@ -200,21 +200,21 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputFormat outputFormat)
         size_t  dotScriptStrLength = n + 15;
         char    dotScriptStr[dotScriptStrLength];
         memset( dotScriptStr, 0, dotScriptStrLength);
-        sprintf(dotScriptStr, "digraph G {\n%s}", buff);
+        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", buff);
 
         return ppkg_depends_make_box(dotScriptStr);
     } else if (outputFormat == PPKGDependsOutputFormat_PNG) {
         size_t  dotScriptStrLength = n + 15;
         char    dotScriptStr[dotScriptStrLength];
         memset( dotScriptStr, 0, dotScriptStrLength);
-        sprintf(dotScriptStr, "digraph G {\n%s}", buff);
+        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", buff);
 
         return ppkg_depends_make_png(dotScriptStr);
     } else if (outputFormat == PPKGDependsOutputFormat_SVG) {
         size_t  dotScriptStrLength = n + 15;
         char    dotScriptStr[dotScriptStrLength];
         memset( dotScriptStr, 0, dotScriptStrLength);
-        sprintf(dotScriptStr, "digraph G {\n%s}", buff);
+        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", buff);
 
         return ppkg_depends_make_svg(dotScriptStr);
     } else {

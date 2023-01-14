@@ -99,7 +99,7 @@ find_package(LibYAML REQUIRED)
 
 find_package(JANSSON REQUIRED)
 
-find_package(SQLite3 REQUIRED)
+find_package(ZLIB REQUIRED)
 
 if (CMAKE_SYSTEM_NAME STREQUAL OpenBSD)
     find_package(PCRE2 REQUIRED)
@@ -139,6 +139,7 @@ message(STATUS "LibArchive_LIBRARIES=${LibArchive_LIBRARIES}")
 message(STATUS "LIBGIT2_LIBRARIES=${LIBGIT2_LIBRARIES}")
 message(STATUS "LIBYAML_LIBRARY=${LIBYAML_LIBRARY}")
 message(STATUS "JANSSON_LIBRARY=${JANSSON_LIBRARY}")
+message(STATUS "ZLIB_LIBRARIES=${ZLIB_LIBRARIES}")
 
 target_link_libraries(ppkg CURL::libcurl)
 target_link_libraries(ppkg OpenSSL::SSL)
@@ -147,7 +148,7 @@ target_link_libraries(ppkg LibArchive::LibArchive)
 target_link_libraries(ppkg LIBGIT2::LIBGIT2)
 target_link_libraries(ppkg LIBYAML::LIBYAML)
 target_link_libraries(ppkg JANSSON::JANSSON)
-target_link_libraries(ppkg SQLite::SQLite3)
+target_link_libraries(ppkg ZLIB::ZLIB)
 target_link_libraries(ppkg "-lm")
 
 if (CMAKE_SYSTEM_NAME STREQUAL OpenBSD)

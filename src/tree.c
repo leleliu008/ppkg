@@ -49,17 +49,17 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     size_t  packageInstalledDirLength = ppkgHomeDirLength + strlen(packageName) + 12;
     char    packageInstalledDir[packageInstalledDirLength];
     memset (packageInstalledDir, 0, packageInstalledDirLength);
-    sprintf(packageInstalledDir, "%s/installed/%s", ppkgHomeDir, packageName);
+    snprintf(packageInstalledDir, packageInstalledDirLength, "%s/installed/%s", ppkgHomeDir, packageName);
 
     size_t  receiptFilePathLength = packageInstalledDirLength + 20;
     char    receiptFilePath[receiptFilePathLength];
     memset (receiptFilePath, 0, receiptFilePathLength);
-    sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", packageInstalledDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
 
     struct stat st;
 
@@ -72,7 +72,7 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
     size_t  treeCommandPath1Length = userHomeDirLength + 31;
     char    treeCommandPath1[treeCommandPath1Length];
     memset (treeCommandPath1, 0, treeCommandPath1Length);
-    sprintf(treeCommandPath1, "%s/.uppm/installed/tree/bin/tree", userHomeDir);
+    snprintf(treeCommandPath1, treeCommandPath1Length, "%s/.uppm/installed/tree/bin/tree", userHomeDir);
 
     struct stat st1;
 
@@ -85,7 +85,7 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
     size_t  treeCommandPath2Length = userHomeDirLength + 31;
     char    treeCommandPath2[treeCommandPath2Length];
     memset (treeCommandPath2, 0, treeCommandPath2Length);
-    sprintf(treeCommandPath2, "%s/.ppkg/installed/tree/bin/tree", userHomeDir);
+    snprintf(treeCommandPath2, treeCommandPath2Length, "%s/.ppkg/installed/tree/bin/tree", userHomeDir);
 
     struct stat st2;
 

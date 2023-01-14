@@ -59,12 +59,16 @@ jobs:
 
       - run: ./output/bin/ppkg info @all
       - run: ./output/bin/ppkg info libzip
+      - run: ./output/bin/ppkg info libzip formula-path
       - run: ./output/bin/ppkg info libzip formula-yaml
       - run: ./output/bin/ppkg info libzip formula-json
       - run: ./output/bin/ppkg info libzip summary
       - run: ./output/bin/ppkg info libzip version
       - run: ./output/bin/ppkg info libzip license
       - run: ./output/bin/ppkg info libzip web-url
+      - run: ./output/bin/ppkg info libzip git-url
+      - run: ./output/bin/ppkg info libzip git-sha
+      - run: ./output/bin/ppkg info libzip git-ref
       - run: ./output/bin/ppkg info libzip src-url
       - run: ./output/bin/ppkg info libzip src-sha
 
@@ -89,6 +93,8 @@ jobs:
       - run: ./output/bin/ppkg info libzip installed-timestamp-unix
       - run: ./output/bin/ppkg info libzip installed-timestamp-iso-8601
       - run: ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
+      - run: ./output/bin/ppkg info libzip installed-timestamp-iso-8601-utc
+      - run: ./output/bin/ppkg info libzip installed-timestamp-rfc-3339-utc
       - run: ./output/bin/ppkg info libzip installed-version
 
       - run: ./output/bin/ppkg pack libzip

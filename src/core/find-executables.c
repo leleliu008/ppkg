@@ -38,7 +38,7 @@ int find_executables(ExecuablePathList * pathList, const char * commandName, boo
             size_t  fullPathLength = strlen(PATHItem) + commandNameLength + 2;
             char    fullPath[fullPathLength];
             memset( fullPath, 0, fullPathLength);
-            sprintf(fullPath, "%s/%s", PATHItem, commandName);
+            snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
 
             if (access(fullPath, X_OK) == 0) {
                 if (pathList->size == capcity) {

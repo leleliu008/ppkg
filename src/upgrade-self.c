@@ -29,7 +29,7 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  ppkgHomeDirLength = userHomeDirLength + 7;
     char    ppkgHomeDir[ppkgHomeDirLength];
     memset (ppkgHomeDir, 0, ppkgHomeDirLength);
-    sprintf(ppkgHomeDir, "%s/.ppkg", userHomeDir);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
     if (!exists_and_is_a_directory(ppkgHomeDir)) {
         if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
@@ -43,7 +43,7 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  ppkgTmpDirLength = ppkgHomeDirLength + 5;
     char    ppkgTmpDir[ppkgTmpDirLength];
     memset (ppkgTmpDir, 0, ppkgTmpDirLength);
-    sprintf(ppkgTmpDir, "%s/tmp", ppkgHomeDir);
+    snprintf(ppkgTmpDir, ppkgTmpDirLength, "%s/tmp", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(ppkgTmpDir)) {
         if (mkdir(ppkgTmpDir, S_IRWXU) != 0) {
@@ -59,7 +59,7 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  githubApiResultJsonFilePathLength = ppkgTmpDirLength + 18;
     char    githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
     memset (githubApiResultJsonFilePath, 0, githubApiResultJsonFilePathLength);
-    sprintf(githubApiResultJsonFilePath, "%s/latest-ppkg.json", ppkgTmpDir);
+    snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest-ppkg.json", ppkgTmpDir);
 
     if (http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;
@@ -129,17 +129,17 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  tarballFileNameLength = latestVersionLength + strlen(osType) + strlen(osArch) + 15;
     char    tarballFileName[tarballFileNameLength];
     memset( tarballFileName, 0, tarballFileNameLength);
-    sprintf(tarballFileName, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    snprintf(tarballFileName, tarballFileNameLength, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
 
     size_t  tarballUrlLength = tarballFileNameLength + latestVersionLength + 55;
     char    tarballUrl[tarballUrlLength];
     memset( tarballUrl, 0, tarballUrlLength);
-    sprintf(tarballUrl, "https://github.com/leleliu008/ppkg/releases/download/%s/%s", latestVersion, tarballFileName);
+    snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/ppkg/releases/download/%s/%s", latestVersion, tarballFileName);
 
     size_t  tarballFilePathLength = ppkgTmpDirLength + tarballFileNameLength + 2;
     char    tarballFilePath[tarballFilePathLength];
     memset (tarballFilePath, 0, tarballFilePathLength);
-    sprintf(tarballFilePath, "%s/%s", ppkgTmpDir, tarballFileName);
+    snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", ppkgTmpDir, tarballFileName);
 
     if (http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose) != 0) {
         return PPKG_NETWORK_ERROR;
@@ -150,7 +150,7 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  tarballExtractDirLength = tarballFilePathLength + 3;
     char    tarballExtractDir[tarballExtractDirLength];
     memset (tarballExtractDir, 0, tarballExtractDirLength);
-    sprintf(tarballExtractDir, "%s.d", tarballFilePath);
+    snprintf(tarballExtractDir, tarballExtractDirLength, "%s.d", tarballFilePath);
 
     int resultCode = tar_extract(tarballExtractDir, tarballFilePath, 0, verbose, 1);
 
@@ -161,7 +161,7 @@ int ppkg_upgrade_self(bool verbose) {
     size_t  upgradableExecutableFilePathLength = tarballExtractDirLength + 10;
     char    upgradableExecutableFilePath[upgradableExecutableFilePathLength];
     memset (upgradableExecutableFilePath, 0, upgradableExecutableFilePathLength);
-    sprintf(upgradableExecutableFilePath, "%s/bin/ppkg", tarballExtractDir);
+    snprintf(upgradableExecutableFilePath, upgradableExecutableFilePathLength, "%s/bin/ppkg", tarballExtractDir);
 
     printf("the latest version of executable was downloaded to %s\n", upgradableExecutableFilePath);
 

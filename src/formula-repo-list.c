@@ -1,24 +1,26 @@
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
 
+#include "core/zlib-flate.h"
 #include "core/fs.h"
 #include "ppkg.h"
 
-#include <sqlite3.h>
 
-PPKGFormulaRepo* ppkg_formula_repo_default_new(char * userHomeDir, size_t userHomeDirLength) {
-    char *  formulaRepoPath = (char*)calloc(userHomeDirLength + 30, sizeof(char));
+int ppkg_formula_repo_default_new(PPKGFormulaRepo ** out, char * userHomeDir, size_t userHomeDirLength) {
+    size_t formulaRepoPathLength = userHomeDirLength + 30;
+    char * formulaRepoPath = (char*)calloc(formulaRepoPathLength, sizeof(char));
 
     if (formulaRepoPath == NULL) {
-        return NULL;
+        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
     }
 
-    sprintf(formulaRepoPath, "%s/.ppkg/repos.d/offical-core", userHomeDir);
+    snprintf(formulaRepoPath, formulaRepoPathLength, "%s/.ppkg/repos.d/offical-core", userHomeDir);
 
     PPKGFormulaRepo * formulaRepo = (PPKGFormulaRepo*)calloc(1, sizeof(PPKGFormulaRepo));
 
     if (formulaRepo == NULL) {
-        return NULL;
+        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
     }
 
     formulaRepo->branch = strdup("master");
@@ -26,113 +28,161 @@ PPKGFormulaRepo* ppkg_formula_repo_default_new(char * userHomeDir, size_t userHo
     formulaRepo->url    = strdup("https://github.com/leleliu008/ppkg-formula-repository-offical-core");
     formulaRepo->path   = formulaRepoPath;
 
-    return formulaRepo;
+    (*out) = formulaRepo;
+    return PPKG_OK;
 }
 
 int ppkg_formula_repo_list_new(PPKGFormulaRepoList * * out) {
     char * userHomeDir = getenv("HOME");
 
-    if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
+    if (userHomeDir == NULL) {
         return PPKG_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
-    size_t  formulaRepoDBPathLength = userHomeDirLength + 16;
-    char    formulaRepoDBPath[formulaRepoDBPathLength];
-    memset (formulaRepoDBPath, 0, formulaRepoDBPathLength);
-    sprintf(formulaRepoDBPath, "%s/.ppkg/repos.db", userHomeDir);
-
-    PPKGFormulaRepoList * formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
-    formulaRepoList->repos = (PPKGFormulaRepo**)calloc(1, sizeof(PPKGFormulaRepo*));
-    formulaRepoList->repos[0] = ppkg_formula_repo_default_new(userHomeDir, userHomeDirLength);
-    formulaRepoList->size     = 1;
-
-    if (!exists_and_is_a_regular_file(formulaRepoDBPath)) {
-        (*out) = formulaRepoList;
-        return PPKG_OK;
+    if (userHomeDirLength == 0) {
+        return PPKG_ENV_HOME_NOT_SET;
     }
 
-    size_t capacity = 5;
+    size_t  ppkgFormulaRepoDirLength = userHomeDirLength + 15;
+    char    ppkgFormulaRepoDir[ppkgFormulaRepoDirLength];
+    memset (ppkgFormulaRepoDir, 0, ppkgFormulaRepoDirLength);
+    snprintf(ppkgFormulaRepoDir, ppkgFormulaRepoDirLength, "%s/.ppkg/repos.d", userHomeDir);
 
-    sqlite3      * db        = NULL;
-    sqlite3_stmt * statement = NULL;
+    DIR           * dir;
+    struct dirent * dir_entry;
 
-    int resultCode = sqlite3_open(formulaRepoDBPath, &db);
+    dir = opendir(ppkgFormulaRepoDir);
 
-    if (resultCode != SQLITE_OK) {
-        goto clean;
+    if (dir == NULL) {
+        perror(ppkgFormulaRepoDir);
+        return PPKG_ERROR;
     }
 
-    resultCode = sqlite3_prepare_v2(db, "select * from formulaRepo", -1, &statement, NULL);
+    size_t capcity = 5;
 
-    if (resultCode != SQLITE_OK) {
-        if (strcmp(sqlite3_errmsg(db), "Error: no such table: formulaRepo") == 0) {
-            resultCode = SQLITE_OK;
-        }
-        goto clean;
-    }
+    PPKGFormulaRepoList * formulaRepoList = NULL;
 
-    for(;;) {
-        resultCode = sqlite3_step(statement);
+    int resultCode = PPKG_OK;
 
-        if (resultCode == SQLITE_ROW) {
-            resultCode =  SQLITE_OK;
-
-            char * formulaRepoName   = (char *)sqlite3_column_text(statement, 0);
-            char * formulaRepoUrl    = (char *)sqlite3_column_text(statement, 1);
-            char * formulaRepoBranch = (char *)sqlite3_column_text(statement, 2);
-
-            //printf("formulaRepoName=%s\nformulaRepoUrl=%s\nformulaRepoBranch=%s\n", formulaRepoName, formulaRepoUrl, formulaRepoBranch);
-
-            char *  formulaRepoPath = (char*)calloc(userHomeDirLength + 16 + strlen(formulaRepoName), sizeof(char));
-            sprintf(formulaRepoPath, "%s/.ppkg/repos.d/%s", userHomeDir, formulaRepoName);
-
-            PPKGFormulaRepo * formulaRepo = (PPKGFormulaRepo*)calloc(1, sizeof(PPKGFormulaRepo));
-            formulaRepo->name = strdup(formulaRepoName);
-            formulaRepo->url  = strdup(formulaRepoUrl);
-            formulaRepo->path =        formulaRepoPath;
-            formulaRepo->branch  = strdup(formulaRepoBranch);
-
-            if (formulaRepoList->size == capacity) {
-                capacity += capacity;
-                formulaRepoList->repos = (PPKGFormulaRepo**)realloc(formulaRepoList->repos, capacity * sizeof(PPKGFormulaRepo*));
-            }
-
-            formulaRepoList->repos[formulaRepoList->size] = formulaRepo;
-            formulaRepoList->size += 1;
-
+    while ((dir_entry = readdir(dir))) {
+        //puts(dir_entry->d_name);
+        if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
             continue;
         }
 
-        if (resultCode == SQLITE_DONE) {
-            resultCode =  SQLITE_OK;
-        }
+        size_t  formulaRepoPathLength = ppkgFormulaRepoDirLength + strlen(dir_entry->d_name) + 2;
+        char    formulaRepoPath[formulaRepoPathLength];
+        memset (formulaRepoPath, 0, formulaRepoPathLength);
+        snprintf(formulaRepoPath, formulaRepoPathLength, "%s/%s", ppkgFormulaRepoDir, dir_entry->d_name);
 
-        break;
+        size_t  formulaRepoConfigFilePathLength = formulaRepoPathLength + 24;
+        char    formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
+        memset (formulaRepoConfigFilePath, 0, formulaRepoConfigFilePathLength);
+        snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.dat", formulaRepoPath);
+
+        if (exists_and_is_a_regular_file(formulaRepoConfigFilePath)) {
+            PPKGFormulaRepo * formulaRepo = NULL;
+
+            size_t  formulaRepoConfigFilePath2Length = formulaRepoPathLength + 24;
+            char    formulaRepoConfigFilePath2[formulaRepoConfigFilePath2Length];
+            memset (formulaRepoConfigFilePath2, 0, formulaRepoConfigFilePath2Length);
+            snprintf(formulaRepoConfigFilePath2, formulaRepoConfigFilePath2Length, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+
+            FILE * inputFile  = NULL;
+            FILE * outputFile = NULL;
+
+            inputFile = fopen(formulaRepoConfigFilePath, "rb");
+
+            if (inputFile == NULL) {
+                perror(formulaRepoConfigFilePath);
+                goto clean;
+            }
+
+            outputFile = fopen(formulaRepoConfigFilePath2, "w");
+
+            if (outputFile == NULL) {
+                perror(formulaRepoConfigFilePath2);
+                fclose(inputFile);
+                goto clean;
+            }
+
+            resultCode = zlib_inflate_file_to_file(inputFile, outputFile);
+
+            fclose(inputFile);
+            fclose(outputFile);
+
+            if (resultCode != 0) {
+                goto clean;
+            }
+
+            resultCode = ppkg_formula_repo_parse(formulaRepoConfigFilePath2, &formulaRepo);
+
+            if (resultCode != PPKG_OK) {
+                //parse failed, treat it as a invalid ppkg formula repo.
+                continue;
+            }
+
+            if (formulaRepoList == NULL) {
+                formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
+
+                if (formulaRepoList == NULL) {
+                    ppkg_formula_repo_free(formulaRepo);
+                    resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+                    goto clean;
+                }
+
+                formulaRepoList->repos = (PPKGFormulaRepo**)calloc(capcity, sizeof(PPKGFormulaRepo*));
+
+                if (formulaRepoList->repos == NULL) {
+                    ppkg_formula_repo_free(formulaRepo);
+                    resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+                    goto clean;
+                }
+            }
+
+            if (capcity == formulaRepoList->size) {
+                capcity += 5;
+                PPKGFormulaRepo ** formulaRepoArray = (PPKGFormulaRepo**)realloc(formulaRepoList->repos, capcity * sizeof(PPKGFormulaRepo*));
+
+                if (formulaRepoArray == NULL) {
+                    ppkg_formula_repo_free(formulaRepo);
+                    ppkg_formula_repo_list_free(formulaRepoList);
+                    resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+                    goto clean;
+                } else {
+                    formulaRepoList->repos = formulaRepoArray;
+                }
+            }
+
+            formulaRepo->name = strdup(dir_entry->d_name);
+            formulaRepo->path = strdup(formulaRepoPath);
+
+            formulaRepoList->repos[formulaRepoList->size] = formulaRepo;
+            formulaRepoList->size += 1;
+        } else {
+            continue;
+        }
+    }
+
+    if (formulaRepoList == NULL) {
+        formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
+
+        if (formulaRepoList == NULL) {
+            resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+            goto clean;
+        }
     }
 
 clean:
-    if (resultCode == SQLITE_OK) {
-        if (formulaRepoList == NULL) {
-            formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
-            formulaRepoList->repos = (PPKGFormulaRepo**)calloc(1, sizeof(PPKGFormulaRepo*));
-            formulaRepoList->repos[0] = ppkg_formula_repo_default_new(userHomeDir, userHomeDirLength);
-            formulaRepoList->size     = 1;
-        }
-
+    if (resultCode == PPKG_OK) {
         (*out) = formulaRepoList;
     } else {
-        fprintf(stderr, "%s\n", sqlite3_errmsg(db));
+        ppkg_formula_repo_list_free(formulaRepoList);
     }
 
-    if (statement != NULL) {
-        sqlite3_finalize(statement);
-    }
-
-    if (db != NULL) {
-        sqlite3_close(db);
-    }
+    closedir(dir);
 
     return resultCode;
 }
@@ -149,19 +199,7 @@ void ppkg_formula_repo_list_free(PPKGFormulaRepoList * formulaRepoList) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         PPKGFormulaRepo * formulaRepo = formulaRepoList->repos[i];
-
-        free(formulaRepo->name);
-        free(formulaRepo->url);
-        free(formulaRepo->path);
-        free(formulaRepo->branch);
-
-        formulaRepo->name = NULL;
-        formulaRepo->url  = NULL;
-        formulaRepo->path = NULL;
-        formulaRepo->branch = NULL;
-
-        free(formulaRepoList->repos[i]);
-        formulaRepoList->repos[i] = NULL;
+        ppkg_formula_repo_free(formulaRepo);
     }
 
     free(formulaRepoList->repos);

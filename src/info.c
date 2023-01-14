@@ -25,10 +25,11 @@ int ppkg_info_all_available_packages(const char * key) {
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *  formulaRepoPath  = formulaRepoList->repos[i]->path;
+
         size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
         char    formulaDir[formulaDirLength];
         memset (formulaDir, 0, formulaDirLength);
-        sprintf(formulaDir, "%s/formula", formulaRepoPath);
+        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
 
         DIR           * dir;
         struct dirent * dir_entry;
@@ -634,12 +635,12 @@ int ppkg_info(const char * packageName, const char * key) {
         size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
         char    installedDir[installedDirLength];
         memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
         size_t  receiptFilePathLength = installedDirLength + 20;
         char    receiptFilePath[receiptFilePathLength];
         memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         if (exists_and_is_a_regular_file(receiptFilePath)) {
             printf("%s\n", installedDir);
@@ -658,12 +659,12 @@ int ppkg_info(const char * packageName, const char * key) {
         size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
         char    installedDir[installedDirLength];
         memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
         size_t  receiptFilePathLength = installedDirLength + 20;
         char    receiptFilePath[receiptFilePathLength];
         memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         if (!exists_and_is_a_regular_file(receiptFilePath)) {
             return PPKG_PACKAGE_IS_NOT_INSTALLED;
@@ -672,7 +673,7 @@ int ppkg_info(const char * packageName, const char * key) {
         size_t  installedManifestFilePathLength = installedDirLength + 20;
         char    installedManifestFilePath[installedManifestFilePathLength];
         memset (installedManifestFilePath, 0, installedManifestFilePathLength);
-        sprintf(installedManifestFilePath, "%s/.ppkg/manifest.txt", installedDir);
+        snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s/.ppkg/manifest.txt", installedDir);
 
         FILE * installedManifestFile = fopen(installedManifestFilePath, "r");
 
@@ -808,12 +809,12 @@ int ppkg_info(const char * packageName, const char * key) {
         size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
         char    installedDir[installedDirLength];
         memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
         size_t  receiptFilePathLength = installedDirLength + 20;
         char    receiptFilePath[receiptFilePathLength];
         memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         if (exists_and_is_a_regular_file(receiptFilePath)) {
             printf("%s\n", receiptFilePath);
@@ -832,12 +833,12 @@ int ppkg_info(const char * packageName, const char * key) {
         size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
         char    installedDir[installedDirLength];
         memset (installedDir, 0, installedDirLength);
-        sprintf(installedDir, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
         size_t  receiptFilePathLength = installedDirLength + 20;
         char    receiptFilePath[receiptFilePathLength];
         memset (receiptFilePath, 0, receiptFilePathLength);
-        sprintf(receiptFilePath, "%s/.ppkg/receipt.yml", installedDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         if (!exists_and_is_a_regular_file(receiptFilePath)) {
             return PPKG_PACKAGE_IS_NOT_INSTALLED;
