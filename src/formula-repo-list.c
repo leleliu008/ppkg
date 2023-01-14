@@ -6,32 +6,6 @@
 #include "core/fs.h"
 #include "ppkg.h"
 
-
-int ppkg_formula_repo_default_new(PPKGFormulaRepo ** out, char * userHomeDir, size_t userHomeDirLength) {
-    size_t formulaRepoPathLength = userHomeDirLength + 30;
-    char * formulaRepoPath = (char*)calloc(formulaRepoPathLength, sizeof(char));
-
-    if (formulaRepoPath == NULL) {
-        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
-    }
-
-    snprintf(formulaRepoPath, formulaRepoPathLength, "%s/.ppkg/repos.d/offical-core", userHomeDir);
-
-    PPKGFormulaRepo * formulaRepo = (PPKGFormulaRepo*)calloc(1, sizeof(PPKGFormulaRepo));
-
-    if (formulaRepo == NULL) {
-        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
-    }
-
-    formulaRepo->branch = strdup("master");
-    formulaRepo->name   = strdup("offical-core");
-    formulaRepo->url    = strdup("https://github.com/leleliu008/ppkg-formula-repository-offical-core");
-    formulaRepo->path   = formulaRepoPath;
-
-    (*out) = formulaRepo;
-    return PPKG_OK;
-}
-
 int ppkg_formula_repo_list_new(PPKGFormulaRepoList * * out) {
     char * userHomeDir = getenv("HOME");
 
@@ -49,6 +23,17 @@ int ppkg_formula_repo_list_new(PPKGFormulaRepoList * * out) {
     char    ppkgFormulaRepoDir[ppkgFormulaRepoDirLength];
     memset (ppkgFormulaRepoDir, 0, ppkgFormulaRepoDirLength);
     snprintf(ppkgFormulaRepoDir, ppkgFormulaRepoDirLength, "%s/.ppkg/repos.d", userHomeDir);
+
+    if (!exists_and_is_a_directory(ppkgFormulaRepoDir)) {
+        PPKGFormulaRepoList* formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
+
+        if (formulaRepoList == NULL) {
+            return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+        } else {
+            (*out) = formulaRepoList;
+            return PPKG_OK;
+        }
+    }
 
     DIR           * dir;
     struct dirent * dir_entry;
