@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['3.16','3.15','3.14','3.13']
+        tag: ['3.16','3.15']
 
     container: alpine:${{ matrix.tag }}
 
@@ -26,14 +26,6 @@ jobs:
       - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
-
-
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
 
 
       - run: ./output/bin/ppkg

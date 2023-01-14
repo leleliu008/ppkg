@@ -14,17 +14,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [22.04]
+        version: [20.04, 22.04]
 
     container: ubuntu:${{ matrix.version }}
 
     steps:
-      - run:  apt -y update
-      - run:  apt -y install cmake ninja-build pkg-config gcc libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev libsqlite3-dev
-
       - uses: actions/checkout@main
 
-      - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
+      - run:  apt -y update
+      - run:  apt -y install cmake ninja-build pkg-config g++ linux-headers-generic  curl zip unzip tar git
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - run:  cd vcpkg && ./bootstrap-vcpkg.sh
+
+      - run:  cd vcpkg && ./vcpkg install curl openssl libgit2 libarchive libyaml jansson zlib
+
+      - run:  |
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON
+
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
 
@@ -108,6 +127,7 @@ jobs:
 
       - run: ./output/bin/ppkg formula-repo-list
       - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: ./output/bin/ppkg formula-repo-list
       - run: ./output/bin/ppkg formula-repo-del my_repo
 
       - run: ./output/bin/ppkg cleanup

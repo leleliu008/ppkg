@@ -57,8 +57,6 @@ void ppkg_formula_repo_dump(PPKGFormulaRepo * formulaRepo) {
 
         printf("timestamp-last-updated2: %s\n", buff);
     }
-
-    printf("\n");
 }
 
 void ppkg_formula_repo_free(PPKGFormulaRepo * formulaRepo) {

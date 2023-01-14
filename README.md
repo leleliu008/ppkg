@@ -25,7 +25,7 @@ ppkg install ppkg
 |[libcurl](https://curl.se/)|required|for http requesting support.|
 |[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
 |[libarchive](https://www.libarchive.org/)|required|for uncompressing .zip and .tar.* files.|
-|[zlib](https://www.zlib.net/)||for compress and uncompress data.|
+|[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
 

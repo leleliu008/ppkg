@@ -46,6 +46,6 @@ int ppkg_formula_repo_del(const char * formulaRepoName) {
         return rm_r(formulaRepoDir, false);
     } else {
         fprintf(stderr, "%s named formula repo is not exist.", formulaRepoName);
-        return 0;
+        return PPKG_ERROR;
     }
 }
