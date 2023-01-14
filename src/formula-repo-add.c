@@ -50,10 +50,24 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t  formulaRepoRootDirLength = userHomeDirLength + 15;
+    size_t  ppkgHomeDirLength = userHomeDirLength + 7;
+    char    ppkgHomeDir[ppkgHomeDirLength];
+    memset (ppkgHomeDir, 0, ppkgHomeDirLength);
+    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
+
+    if (!exists_and_is_a_directory(ppkgHomeDir)) {
+        if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
+            perror(ppkgHomeDir);
+            return PPKG_ERROR;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t  formulaRepoRootDirLength = ppkgHomeDirLength + 9;
     char    formulaRepoRootDir[formulaRepoRootDirLength];
     memset (formulaRepoRootDir, 0, formulaRepoRootDirLength);
-    snprintf(formulaRepoRootDir, formulaRepoRootDirLength, "%s/.ppkg/repos.d", userHomeDir);
+    snprintf(formulaRepoRootDir, formulaRepoRootDirLength, "%s/repos.d", ppkgHomeDir);
 
     if (!exists_and_is_a_directory(formulaRepoRootDir)) {
         if (mkdir(formulaRepoRootDir, S_IRWXU) != 0) {
