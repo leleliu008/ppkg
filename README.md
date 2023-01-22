@@ -1,12 +1,14 @@
 # ppkg
 portable package manager for Unix-like system.
 
+**Note:** This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+
 # two implementations
-I provide two implementations of this software:
+This project provide two implementations:
 - implemented in `POSIX Shell`, the source code is on `master` branch.
 - implemented in `C`, the source code is on `dev` branch.
 
-In theroy, they should have same behaver except for have bugs.
+In theroy, these two implementations should have same behaver except for have bugs.
 
 ## Install ppkg
 ```bash
@@ -30,7 +32,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg -V
         ppkg --version
         
-*   **show current machine os info**
+*   **show your system's infomation**
 
         ppkg env
         
@@ -40,15 +42,15 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
         ppkg integrate zsh -v
         
-    I have provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, it will auto complete the rest for you.
+    I provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
 
-    **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
+    **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 
-*   **update formula repositories**
+*   **update all available formula repositories**
 
         ppkg update
         
-*   **search packages**
+*   **search all available packages whose name matches the given regular express partten**
         
         ppkg search curl
         ppkg search lib
@@ -106,7 +108,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg depends curl --format=png > xx.png
         ppkg depends curl --format=svg > xx.svg
         
-*   **download formula resources of the given package to the local cache**
+*   **download resources of the given package to the local cache**
         
         ppkg fetch curl
         ppkg fetch @all
@@ -140,7 +142,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg upgrade-self
         ppkg upgrade-self -v
         
-*   **list the avaliable formula repositories**
+*   **list all avaliable formula repositories**
 
         ppkg formula-repo-list
 
@@ -158,31 +160,31 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
         ppkg formula-repo-del my_repo
 
-*   **list the available packages**
+*   **list all available packages**
         
         ppkg ls-available
         
-*   **list the installed packages**
+*   **list all installed packages**
         
         ppkg ls-installed
         
-*   **list the outdated packages**
+*   **list all outdated packages**
         
         ppkg ls-outdated
         
-*   **is the given package available ?**
+*   **check if the given package is available**
         
         ppkg is-available curl
         
-*   **is the given package installed ?**
+*   **check if the given package is installed**
         
         ppkg is-installed curl
         
-*   **is the given package outdated ?**
+*   **check if the given package is outdated**
         
         ppkg is-outdated  curl
         
-*   **list files of the given installed package in a tree-like format**
+*   **list installed files of the given installed package in a tree-like format**
         
         ppkg tree curl
         ppkg tree curl -L 3
@@ -200,22 +202,18 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg pack curl --type=tar.bz2
         ppkg pack curl --type=zip
         
-*   **cleanup the unused cached files**
+*   **delete the unused cached files**
         
         ppkg cleanup
         
 
-## influential environment variables
+## environment variables
 
 *   **HOME**
-
-    this environment variable must be set.
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
 *   **PATH**
-
-    some features rely on this environment variable.
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
@@ -257,6 +255,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
+
 *   **PPKG_XTRACE**
 
     for debugging purposes.
@@ -286,3 +285,52 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ```bash
     export GOPROXY='https://goproxy.cn'
     ```
+
+## ppkg formula
+
+a ppkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ppkg package's meta-infomation including one sentence description, package version, installation instructions, etc.
+
+a ppkg formula's filename suffix must be `.yml`
+
+a ppkg formula'a filename prefix would be treated as the package name.
+
+a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z0-9+-._]{1,50}$`
+
+a ppkg formula's file content must follow [the ppkg formula scheme](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
+
+## ppkg formula repository
+a ppkg formula repository is a git repository.
+
+a ppkg formula repository's root dir should have a `formula` named sub dir, this repository's formulas all should be located in this dir.
+
+a ppkg formula repository's local path is `~/.ppkg/repos.d/${PPKGFormulaRepoName}`
+
+**Note:**
+ - please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
+ - ppkg supports multiple formula repositories.
+
+## ppkg formula repository's config
+After a ppkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
+
+a typical ppkg formula repository's config as following:
+
+```
+url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
+branch: master
+pinned: 0
+enabled: 1
+timestamp-added: 1673684639
+timestamp-last-updated: 1673684767
+```
+
+If a ppkg formula repository is pinned, which means it would not be updated.
+
+If a ppkg formula repository is disabled, which means ppkg would not search formula in this formula repository.
+
+## ppkg offical formula repository
+
+ppkg offical formula repository's url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
+
+**Note:** If you find that a package is not in ppkg offical formula repository yet, PR is welcomed.
+
+These formula repositories would be automatically fetched to local cache as name `offical-core` when you run `ppkg update` command.

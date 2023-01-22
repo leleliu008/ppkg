@@ -106,7 +106,7 @@ jobs:
       - run: bin/ppkg uninstall libzip
 
       - run: bin/ppkg formula-repo-list
-      - run: bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+      - run: bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
       - run: bin/ppkg formula-repo-del my_repo
 
       - run: bin/ppkg cleanup

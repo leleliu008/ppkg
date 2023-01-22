@@ -30,6 +30,9 @@ jobs:
           mem: 2048
           box: generic/freebsd${{ matrix.version }}
           run: |
+            run pkg update
+            run pkg install -y curl libnghttp2
+
             run bin/ppkg --help
             run bin/ppkg --version
 
