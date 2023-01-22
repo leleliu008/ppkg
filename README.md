@@ -152,10 +152,6 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo master
         ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo main
         
-    **Note:**
-    - this software supports multiple formula repositories.
-    - offical formula repository is https://github.com/leleliu008/ppkg-formula-repository-offical-core
-
 *   **delete a existing formula repository**
 
         ppkg formula-repo-del my_repo
@@ -331,6 +327,7 @@ If a ppkg formula repository is disabled, which means ppkg would not search form
 
 ppkg offical formula repository's url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 
+ppkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ppkg update` command.
+
 **Note:** If you find that a package is not in ppkg offical formula repository yet, PR is welcomed.
 
-These formula repositories would be automatically fetched to local cache as name `offical-core` when you run `ppkg update` command.

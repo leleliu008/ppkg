@@ -5669,6 +5669,8 @@ __setup_freebsd() {
     run ln -sf /usr/local/bin/gunlink  "$PPKG_CORE_BIN_DIR/unlink"
     run ln -sf /usr/local/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
+
+    printf 'ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
 }
 
 __setup_openbsd() {
@@ -5692,6 +5694,8 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/local/bin/pkgconf    "$PPKG_CORE_BIN_DIR/pkg-config"
 
+    printf 'ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
+
     # tree package in system's package manager is too old
     printf '%s\n' '#!/bin/sh' > "$PPKG_CORE_BIN_DIR/tree"
     chmod +x                    "$PPKG_CORE_BIN_DIR/tree"
@@ -5714,6 +5718,8 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
     run ln -sf /usr/pkg/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$PPKG_CORE_BIN_DIR/go"
+
+    printf 'ACLOCAL_PATH=/usr/pkg/share/aclocal' > "$PPKG_CORE_DIR/env"
 
     run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
     run sudo update-ca-certificates
@@ -5854,6 +5860,10 @@ init() {
             return 1
         }
     done
+
+    if [ -f "$PPKG_CORE_DIR/env" ] ; then
+        .   "$PPKG_CORE_DIR/env"
+    fi
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
