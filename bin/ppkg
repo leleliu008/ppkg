@@ -1416,6 +1416,12 @@ __add_a_formula_repo() {
     [ -z "$1" ] && die "please specify a repo name."
     [ -z "$2" ] && die "please specify a repo url."
 
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        GIT_FETCH_URL="$2"
+    else
+        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$2")"
+    fi
+
     if [ -z "$3" ] ; then
         GIT_BRANCH_NAME=master
     else
@@ -1437,14 +1443,16 @@ __add_a_formula_repo() {
     fi
 
     run git -C "$FORMULA_REPO_PATH" -c init.defaultBranch=master init || return 1
-    run git -C "$FORMULA_REPO_PATH" remote add origin "$2" || return 1
+    run git -C "$FORMULA_REPO_PATH" remote add origin "$GIT_FETCH_URL" || return 1
     run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
     run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
 
     cat > "$FORMULA_REPO_PATH/.ppkg-formula-repo.yml" <<EOF
-enabled: yes
 url: $2
 branch: $3
+pinned: 0
+enabled: 1
+timestamp-added: $(date +%s)
 EOF
 }
 
@@ -1538,37 +1546,46 @@ __list_available_formula_repository_names() {
 }
 
 __update_formula_repositories() {
-    PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED=no
-
     if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
         for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
         do
             FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml"
 
             if [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] ; then
-                if [ "$item" = 'offical-core' ] ; then
-                    PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED=yes
+                unset GIT_FETCH_URL
+                unset GIT_BRANCH_NAME
+
+                GIT_BRANCH_NAME="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
+                GIT_FETCH_URL="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
+
+                if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$GIT_FETCH_URL")"
                 fi
 
-                unset FORMULA_REPO_URL_
-                unset FORMULA_REPO_BRANCH
-
-                FORMULA_REPO_URL_="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
-                GIT_BRANCH_NAME="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
-
-                printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$item${COLOR_OFF}"
+                printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$item${COLOR_OFF}"
 
                 FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_DIR/$item"
 
-                #run git -C "$FORMULA_REPO_PATH" remote add origin "$2" || return 1
+                if [ -z "$(git config remote.origin.url || true)" ] ; then
+                    run git -C "$FORMULA_REPO_PATH" remote add     origin "$GIT_FETCH_URL" || return 1
+                else
+                    run git -C "$FORMULA_REPO_PATH" remote set-url origin "$GIT_FETCH_URL" || return 1
+                fi
+
                 run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
                 run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
+
+                if grep -q '^timestamp-last-updated: ' "$FORMULA_REPO_CONFIG_FILEPATH" ; then
+                    sed -i "/timestamp-last-updated: /c timestamp-last-updated: $(date +%s)" "$FORMULA_REPO_CONFIG_FILEPATH"
+                else
+                    printf '%s\n' "timestamp-last-updated: $(date +%s)" >> "$FORMULA_REPO_CONFIG_FILEPATH"
+                fi
             fi
         done
     fi
 
-    if [ "$PPKG_OFFICAL_FORMULA_REPO_IS_UPDATED" = no ] ; then
-        printf '%b\n' "${COLOR_PURPLE}=== Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
+    if [ ! -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] ; then
+        printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
         __add_a_formula_repo offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL" master
     fi
 }
@@ -5588,17 +5605,17 @@ EOF
 
 __setup_ubuntu() {
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip zip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic flex bison m4
+    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip zip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic flex bison m4 jq
 }
 
 __setup_fedora() {
     run $sudo dnf -y update
-    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ flex bison m4
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ flex bison m4 jq
 }
 
 __setup_alpine() {
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
+    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go jq yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
 
     run ln -s /usr/bin/make "$PPKG_CORE_BIN_DIR/gmake"
 }
@@ -5612,7 +5629,7 @@ __setup_macos() {
     }
 
     run brew update
-    run brew install bash coreutils findutils gawk gsed grep tree unzip zip gnu-tar gzip lzip gpatch patchelf pkg-config golang yq git curl cmake xmake ninja make libtool nasm yasm flex bison m4
+    run brew install bash coreutils findutils gawk gsed grep tree unzip zip gnu-tar gzip lzip gpatch patchelf pkg-config golang jq yq git curl cmake xmake ninja make libtool nasm yasm flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
@@ -5638,7 +5655,7 @@ __setup_macos() {
 
 __setup_freebsd() {
     run $sudo pkg update
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq git curl cmake ninja gmake libtool gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq jq git curl cmake ninja gmake libtool gcc flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
@@ -5657,8 +5674,8 @@ __setup_freebsd() {
 __setup_openbsd() {
     # https://man.openbsd.org/pkg_add
     case $(uname -r) in
-        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc flex bison m4 ;;
-        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf flex bison m4
+        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc flex bison m4 jq ;;
+        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf flex bison m4 jq
     esac
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
@@ -5682,7 +5699,7 @@ __setup_openbsd() {
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4 jq
 
     run ln -sf /usr/pkg/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
     run ln -sf /usr/pkg/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
@@ -5826,11 +5843,11 @@ __setup_uppm() {
 EOF
     fi
 
-    run "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    run "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config jq yq
 }
 
 init() {
-    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config yq
+    for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config jq yq
     do
         "$UPPM_COMMAND" is-installed "$item" || {
             error "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
