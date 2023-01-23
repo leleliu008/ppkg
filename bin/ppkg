@@ -5670,14 +5670,16 @@ __setup_freebsd() {
     run ln -sf /usr/local/bin/ginstall "$PPKG_CORE_BIN_DIR/install"
     run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
 
-    printf 'ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
 }
 
 __setup_openbsd() {
+    # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
+    #
     # https://man.openbsd.org/pkg_add
     case $(uname -r) in
-        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc flex bison m4 jq ;;
-        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool gcc%11 patchelf flex bison m4 jq
+        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool automake-1.16.3 gcc flex bison m4 jq ;;
+        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool automake-1.16.3 gcc%11 patchelf flex bison m4 jq
     esac
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
@@ -5694,7 +5696,13 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/local/bin/pkgconf    "$PPKG_CORE_BIN_DIR/pkg-config"
 
-    printf 'ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
+    cat > "$PPKG_CORE_DIR/env" <<EOF
+export AUTOCONF_VERSION=2.69
+export AUTOMAKE_VERSION=1.16
+export ACLOCAL_PATH=/usr/local/share/aclocal
+export CPPFLAGS=-I/usr/local/include
+export  LDFLAGS=-L/usr/local/lib
+EOF
 
     # tree package in system's package manager is too old
     printf '%s\n' '#!/bin/sh' > "$PPKG_CORE_BIN_DIR/tree"
@@ -5719,7 +5727,7 @@ __setup__netbsd() {
     run ln -sf /usr/pkg/bin/gsha256sum "$PPKG_CORE_BIN_DIR/sha256sum"
     run ln -sf /usr/pkg/go118/bin/go "$PPKG_CORE_BIN_DIR/go"
 
-    printf 'ACLOCAL_PATH=/usr/pkg/share/aclocal' > "$PPKG_CORE_DIR/env"
+    printf 'export ACLOCAL_PATH=/usr/pkg/share/aclocal' > "$PPKG_CORE_DIR/env"
 
     run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
     run sudo update-ca-certificates
