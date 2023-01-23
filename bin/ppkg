@@ -3113,7 +3113,10 @@ __adjust_elf_files_for_the_given_target() {
 
             if [ "$BUILD_TYPE" = release ] ; then
                 if [ "$x" != lib ] ; then
+                    # freebsd's strip has problem
+                    if [ "$NATIVE_OS_KIND" != freebsd ] ; then
                     run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                    fi
                 fi
             fi
 

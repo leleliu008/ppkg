@@ -13,24 +13,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['7.5.1804', '8.3.2011']
+        tag: [7, 8]
 
     container: centos:${{ matrix.tag }}
 
     steps:
       - run: |
-          if [ ${{ matrix.tag }} = '7.5.1804' ] ; then
             yum -y update
             yum -y install epel-release
             yum -y --enablerepo=epel update
             yum -y --enablerepo=epel install curl xz gcc-c++
-          else
+        if: ${{ matrix.tag }} == 7 }}
+
+      - run: |
             sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
-
             dnf -y update
             dnf -y install curl xz gcc-c++
-          fi
+        if: ${{ matrix.tag }} == 8 }}
 
       - uses: actions/checkout@v3
 
