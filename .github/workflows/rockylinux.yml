@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['8', '8.5']
+        tag: ['8', '9']
 
     container: rockylinux:${{ matrix.tag }}
 
