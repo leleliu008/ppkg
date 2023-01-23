@@ -5693,7 +5693,7 @@ __setup_openbsd() {
     # https://man.openbsd.org/pkg_add
     case $(uname -r) in
         6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool automake-1.16.3 gcc flex bison m4 jq ;;
-        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool automake-1.16.3 gcc%11 patchelf flex bison m4 jq
+        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep unzip-- gtar-- xz bzip2 lzip gpatch pkgconf go git curl cmake ninja gmake libtool automake-1.16.5 gcc%11 patchelf bison m4 jq
     esac
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
