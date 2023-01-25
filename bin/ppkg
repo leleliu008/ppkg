@@ -3890,9 +3890,10 @@ __printf_relevant_environment_variables() {
     step "printf relevant environment variables"
 
     printf '%s\n' "
-PPKG_VERSION      = $PPKG_VERSION
-PPKG_HOME         = $PPKG_HOME
-PPKG_EXECUTABLE   = $PPKG_EXECUTABLE
+PPKG_VERSION       = $PPKG_VERSION
+PPKG_HOME          = $PPKG_HOME
+PPKG_EXE_FILEPATH  = $PPKG_EXE_FILEPATH
+PPKG_URL_TRANSFORM = $PPKG_URL_TRANSFORM
 
 PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
 PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
@@ -3964,6 +3965,9 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
 
     printf '    LD_LIBRARY_PATH = '
     __printf_colon_separated_list "$LD_LIBRARY_PATH"
+
+    printf "\n%19s = " ACLOCAL_PATH
+    __printf_colon_separated_list "$ACLOCAL_PATH"
 
     printf "\n%19s = " PATH
     __printf_colon_separated_list "$PATH"
@@ -6038,6 +6042,8 @@ main() {
     # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
     #IFS_DEFAULT=$(printf ' \t\n')
     #IFS=$IFS_DEFAULT
+
+    PPKG_EXE_FILEPATH="$CURRENT_SCRIPT_FILEPATH"
 
     PPKG_VERSION=0.1.3
 

@@ -1,16 +1,17 @@
 # ppkg
 portable package manager for Unix-like system.
 
-**Note:** This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+# project status
+This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
 # two implementations
 This project provides two implementations:
-- implemented in `POSIX Shell`, the source code is on `master` branch.
-- implemented in `C`, the source code is on `dev` branch.
+1. implemented in `POSIX Shell`, the source code is on `master` branch.
+2. implemented in `C`, the source code is on `dev` branch.
 
 In theroy, these two implementations should have same behaver except for have bugs.
 
-## Install ppkg
+## Install POSIX-Shell-based ppkg
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
 chmod a+x ppkg
