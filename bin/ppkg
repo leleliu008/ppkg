@@ -5648,6 +5648,8 @@ __setup_alpine() {
     run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go jq yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
 
     run ln -s /usr/bin/make "$PPKG_CORE_BIN_DIR/gmake"
+
+    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > "$PPKG_CORE_DIR/env"
 }
 
 __setup_macos() {
@@ -5681,6 +5683,8 @@ __setup_macos() {
 
     run ln -sf /usr/local/opt/bison/bin/bison  "$PPKG_CORE_BIN_DIR/bison"
     run ln -sf /usr/local/opt/bison/bin/yacc   "$PPKG_CORE_BIN_DIR/yacc"
+
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > "$PPKG_CORE_DIR/env"
 }
 
 __setup_freebsd() {
