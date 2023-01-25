@@ -368,7 +368,7 @@ wfetch() {
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         FETCH_URL="$1"
     else
-        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")"
+        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")" || return 1
     fi
 
     shift
@@ -390,7 +390,7 @@ wfetch() {
                     return 1
                 fi
                 if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")"
+                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
                 fi
                 ;;
             --output-dir=*)
@@ -1039,7 +1039,7 @@ __load_formula_of_the_given_package() {
         __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
 
         if [ "$__VALUE__" = null ] ; then
-                __VALUE__=
+               __VALUE__=
         fi
 
         eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
@@ -1088,16 +1088,16 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_SUMMARY" ] ; then
-        die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        die "web-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "web-url or git-url mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
         if [ -z "$PACKAGE_GIT_URL" ] ; then
-            die "src-url or git-url must be configed in $PACKAGE_FORMULA_FILEPATH"
+            die "src-url or git-url mapping not found in $PACKAGE_FORMULA_FILEPATH"
         else
             PACKAGE_SRC_FILETYPE=.git
         fi
@@ -1136,13 +1136,13 @@ __load_formula_of_the_given_package() {
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SHA" ] ; then
-                die "src-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+                die "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
             fi
 
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                 case $PACKAGE_VERSION in
-                    '') die "version is not configed in $PACKAGE_FORMULA_FILEPATH" ;;
+                    '') die "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
                     v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
                 esac
             fi
@@ -1153,7 +1153,7 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
         if [ -z "$PACKAGE_FIX_SHA" ] ; then
-            die "fix-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+            die "fix-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_FIX_FILETYPE="$(get_file_extension_from_url "$PACKAGE_FIX_URL")"
@@ -1174,7 +1174,7 @@ __load_formula_of_the_given_package() {
 
     if [ -n "$PACKAGE_RES_URL" ] ; then
         if [ -z "$PACKAGE_RES_SHA" ] ; then
-            die "res-sha is not configed in $PACKAGE_FORMULA_FILEPATH"
+            die "res-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_RES_FILETYPE="$(get_file_extension_from_url "$PACKAGE_RES_URL")"
@@ -1433,7 +1433,7 @@ __add_a_formula_repo() {
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         GIT_FETCH_URL="$2"
     else
-        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$2")"
+        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$2")" || return 1
     fi
 
     if [ -z "$3" ] ; then
@@ -1573,7 +1573,7 @@ __update_formula_repositories() {
                 GIT_FETCH_URL="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
 
                 if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$GIT_FETCH_URL")"
+                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$GIT_FETCH_URL")" || return 1
                 fi
 
                 printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$item${COLOR_OFF}"
@@ -1638,6 +1638,12 @@ __fetch_sources_of_the_given_package() {
     case $PACKAGE_SRC_FILETYPE in
         .dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
         .git)
+            unset GIT_FETCH_URL
+
+            if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+            fi
+
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
                 if [ -z "$PACKAGE_GIT_REF" ] ; then
                     GIT_BRANCH_NAME=master
@@ -1671,12 +1677,12 @@ __fetch_sources_of_the_given_package() {
                     run rm -rf     "$PACKAGE_SRC_FILEPATH" || return 1
                     run install -d "$PACKAGE_SRC_FILEPATH" || return 1
                     run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-                    run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
+                    run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$GIT_FETCH_URL" || return 1
                 fi
             else
                 run install -d "$PACKAGE_SRC_FILEPATH" || return 1
                 run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-                run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$PACKAGE_GIT_URL" || return 1
+                run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$GIT_FETCH_URL" || return 1
             fi
 
             run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
@@ -2073,7 +2079,7 @@ __cleanup() {
 
 __search_packages() {
     [ -z "$1" ] && {
-        error "please specify a keyword."
+        error "please specify a regular express partten."
         return 1
     }
 
@@ -4293,7 +4299,7 @@ __show_infomation_as_shell_of_all_available_packages() {
     "parallel":$parallel,
     "prepare":$prepare,
     "install":$install
-}'| jq 'with_entries(select(.value != ""))'
+}' | jq 'with_entries(select(.value != ""))'
 }
 
 # __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
@@ -4631,43 +4637,43 @@ mark_is_package_installed_or_not() {
 
     run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
 
+    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
+
     sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
-    if ! grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
         sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
+    }
 
-    if [ "$PACKAGE_SRC_FILETYPE" = git ] || [ "$PACKAGE_SRC_FILETYPE" = dir ] ; then
-        if ! grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            if grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-                sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-            else
-                sed_in_place "\$a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-            fi
-        fi
-    fi
-
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
+    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
         sed_in_place "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
+    }
 
-    if ! grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || {
         sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
+    }
 
-    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
+    if [ -n "$PACKAGE_GIT_SHA" ] ; then
+        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
+            sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+        }
+
+        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
+            sed_in_place "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+        }
+    fi
 
     if [ -n "$PACKAGE_DEP_UPP" ] ; then
         if grep -q '^dep-upp: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            sed_in_place "/^dep-uppm:/c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
+            sed_in_place "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         else
             sed_in_place "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         fi
     fi
 
-    if ! grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
+    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || {
         sed_in_place "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
-    fi
+    }
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
 
@@ -5843,41 +5849,228 @@ __setup_uppm() {
 
     run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
 
-    rm -rf "$PPKG_CORE_DIR/.ppkg"
-
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
     wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
-    run install -d                         "$PPKG_HOME"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$PPKG_HOME"
-
-    ##################################################################################
 
     export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
 
-    if [ -f ~/.uppm/repos.d/offical-core/.git/config ] ; then
-        CLONE=no
-    else
-        CLONE=yes
-    fi
+    ##################################################################################
 
     run "$UPPM_COMMAND" env
     run "$UPPM_COMMAND" update
-
-    if [ "$CLONE" = yes ] ; then
-        cat >> ~/.uppm/repos.d/offical-core/.git/config <<EOF
-[user]
-    email = leleliu008@gmail.com
-    name = leleliu008
-EOF
-    fi
-
     run "$UPPM_COMMAND" install bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config jq yq
 }
 
-init() {
+bppend_to_ACLOCAL_PATH() {
+    case ":${ACLOCAL_PATH}:" in
+        *:"$1":*) ;;
+        *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
+    esac
+}
+
+__setup_PATH_env() {
+    # pip install --user <PKG>
+    bppend_to_PATH "$HOME/.local/bin"
+
+    # cpan install to default local location
+    bppend_to_PATH "$HOME/perl5/bin"
+
+    if [ -f "$HOME/.cargo/env" ] ; then
+        .   "$HOME/.cargo/env"
+    fi
+
+    UPPM_PACKAGE_INSTALLED_DIR="$HOME/.uppm/installed"
+
+    if [ -d "$UPPM_PACKAGE_INSTALLED_DIR" ] ; then
+        for item in $(ls "$UPPM_PACKAGE_INSTALLED_DIR")
+        do
+            if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item" ] && [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
+                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin" ] ; then
+                    bppend_to_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin"
+                fi
+
+                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal" ] ; then
+                    bppend_to_ACLOCAL_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal"
+                fi
+            fi
+        done
+    fi
+
+    bppend_to_PATH "$PPKG_CORE_BIN_DIR"
+}
+
+__help() {
+    if command -v base64 > /dev/null ; then
+        LOGO_BASE64_ENCODED='ICAgICAgICAgICAgIF8gICAgICAgICAKIF8gX18gIF8gX18gfCB8IF9fX18gXyAKfCAnXyBcfCAn
+XyBcfCB8LyAvIF9gIHwKfCB8XykgfCB8XykgfCAgIDwgKF98IHwKfCAuX18vfCAuX18vfF98XF9c
+X18sIHwKfF98ICAgfF98ICAgICAgICB8X19fLyAK'
+
+        if command -v lolcat > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
+        elif command -v awk > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat_awk
+        else
+            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
+        fi
+    fi
+
+    echo "
+${COLOR_GREEN}A portable package manager for UNIX.${COLOR_OFF}
+
+${COLOR_GREEN}ppkg <ACTION> [ARGUMENT...]${COLOR_OFF}
+
+${COLOR_GREEN}ppkg --help${COLOR_OFF}
+${COLOR_GREEN}ppkg -h${COLOR_OFF}
+    show help of this command.
+
+${COLOR_GREEN}ppkg --version${COLOR_OFF}
+${COLOR_GREEN}ppkg -V${COLOR_OFF}
+    show version of this command.
+
+${COLOR_GREEN}ppkg env${COLOR_OFF}
+    show your system's infomation.
+
+${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
+    download a zsh-completion script file to a approprivate location.
+
+${COLOR_GREEN}ppkg update${COLOR_OFF}
+    update all available formula repositories.
+
+${COLOR_GREEN}ppkg cleanup${COLOR_OFF}
+    delete the unused cached files.
+
+${COLOR_GREEN}ppkg ls-available${COLOR_OFF}
+    list all available packages.
+
+${COLOR_GREEN}ppkg ls-installed${COLOR_OFF}
+    list all installed packages.
+
+${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
+    list all outdated  packages.
+
+${COLOR_GREEN}ppkg is-available <PACKAGE-NAME>${COLOR_OFF}
+    check if the given package is available
+
+${COLOR_GREEN}ppkg is-installed <PACKAGE-NAME>${COLOR_OFF}
+    check if the given package is installed
+
+${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
+    check if the given package is outdated
+
+${COLOR_GREEN}ppkg search <REGULAR-EXPRESS-PARTTEN>${COLOR_OFF}
+    search all available packages whose name matches the given regular express partten
+ 
+${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
+    list all available formula repositories.
+
+${COLOR_GREEN}ppkg formula-repo-add <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-BRANCH-NAME]${COLOR_OFF}
+    add a new formula repositories.
+
+${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
+    delete a exist formula repositories.
+
+${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
+    list installed files of the given installed package in a tree-like format.
+
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
+    pack the given installed package.
+
+${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
+    show logs of the given installed package.
+
+${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY]${COLOR_OFF}
+    show information of the given package.
+
+${COLOR_GREEN}ppkg info @all [KEY]${COLOR_OFF}
+    show information of all the available packages.
+
+${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
+    download resources of the given package to the local cache.
+
+${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
+    download resources of all available packages to the local cache.
+
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png]${COLOR_OFF}
+    show the packages that are depended by the given package.
+
+${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+    install the given packages.
+    ${COLOR_RED}C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.${COLOR_OFF}
+
+${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+    reinstall the given packages.
+
+${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+    upgrade the given packages or all outdated packages.
+
+${COLOR_GREEN}ppkg upgrade-self${COLOR_OFF}
+    upgrade this software.
+
+${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
+    uninstall the given packages.
+    "
+
+    if [ -z "$1" ] ; then
+        exit
+    else
+        exit "$1"
+    fi
+}
+
+main() {
+    set -e
+
+    if [ -n "$PPKG_XTRACE" ] ; then
+        set -x
+    fi
+
+    if [ -z "$HOME" ] ; then
+        die "HOME environment variable is not set."
+    fi
+
+    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+    #IFS_DEFAULT=$(printf ' \t\n')
+    #IFS=$IFS_DEFAULT
+
+    PPKG_VERSION=0.1.3
+
+    PPKG_WEBPAGE_URL="https://github.com/leleliu008/ppkg"
+    PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
+    PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
+
+    PPKG_HOME="$HOME/.ppkg"
+
+    PPKG_FORMULA_REPO_DIR="$PPKG_HOME/repos.d"
+    PPKG_PACKAGE_INSTALLED_DIR="$PPKG_HOME/installed"
+    PPKG_PACKAGE_SYMLINKED_DIR="$PPKG_HOME/symlinked"
+    PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
+    PPKG_BACKUP_DIR="$PPKG_HOME/backup.d"
+
+    PPKG_CORE_DIR="$PPKG_HOME/core"
+    PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
+
+    UPPM_COMMAND="$PPKG_CORE_BIN_DIR/uppm"
+
+    case $1 in
+        ''|--help|-h)
+            __help
+            return 0
+            ;;
+        --version|-V)
+            printf '%s\n' "$PPKG_VERSION"
+            return 0
+            ;;
+        setup)
+            shift
+            __setup $@
+            return 0
+            ;;
+    esac
+
     for item in bash coreutils util-linux findutils gawk gsed grep tree curl git zip unzip gtar gzip xz bzip2 lzip patch patchelf pkg-config jq yq
     do
         "$UPPM_COMMAND" is-installed "$item" || {
@@ -5936,214 +6129,6 @@ init() {
     TIMESTAMP_UNIX="$(date +%s)"
 
     __setup_PATH_env
-}
-
-bppend_to_ACLOCAL_PATH() {
-    case ":${ACLOCAL_PATH}:" in
-        *:"$1":*) ;;
-        *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
-    esac
-}
-
-__setup_PATH_env() {
-    # pip install --user <PKG>
-    bppend_to_PATH "$HOME/.local/bin"
-
-    # cpan install to default local location
-    bppend_to_PATH "$HOME/perl5/bin"
-
-    if [ -f "$HOME/.cargo/env" ] ; then
-        .   "$HOME/.cargo/env"
-    fi
-
-    UPPM_PACKAGE_INSTALLED_DIR="$HOME/.uppm/installed"
-
-    if [ -d "$UPPM_PACKAGE_INSTALLED_DIR" ] ; then
-        for item in $(ls "$UPPM_PACKAGE_INSTALLED_DIR")
-        do
-            if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item" ] && [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
-                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin" ] ; then
-                    bppend_to_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin"
-                fi
-
-                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal" ] ; then
-                    bppend_to_ACLOCAL_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal"
-                fi
-            fi
-        done
-    fi
-
-    bppend_to_PATH "$PPKG_CORE_BIN_DIR"
-}
-
-help() {
-    if command -v base64 > /dev/null ; then
-        LOGO_BASE64_ENCODED='ICAgICAgICAgICAgIF8gICAgICAgICAKIF8gX18gIF8gX18gfCB8IF9fX18gXyAKfCAnXyBcfCAn
-XyBcfCB8LyAvIF9gIHwKfCB8XykgfCB8XykgfCAgIDwgKF98IHwKfCAuX18vfCAuX18vfF98XF9c
-X18sIHwKfF98ICAgfF98ICAgICAgICB8X19fLyAK'
-
-        if command -v lolcat > /dev/null ; then
-            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
-        elif command -v awk > /dev/null ; then
-            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat_awk
-        else
-            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
-        fi
-    fi
-
-    echo "
-${COLOR_GREEN}A portable package manager for UNIX.${COLOR_OFF}
-
-${COLOR_GREEN}ppkg <ACTION> [ARGUMENT...]${COLOR_OFF}
-
-${COLOR_GREEN}ppkg --help${COLOR_OFF}
-${COLOR_GREEN}ppkg -h${COLOR_OFF}
-    show help of this command.
-
-${COLOR_GREEN}ppkg --version${COLOR_OFF}
-${COLOR_GREEN}ppkg -V${COLOR_OFF}
-    show version of this command.
-
-${COLOR_GREEN}ppkg env${COLOR_OFF}
-    show current machine os info.
-
-${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
-    download a zsh-completion script file to a approprivate location.
-
-${COLOR_GREEN}ppkg update${COLOR_OFF}
-    update the formula repositories.
-
-${COLOR_GREEN}ppkg cleanup${COLOR_OFF}
-    cleanup the unused cache.
-
-${COLOR_GREEN}ppkg ls-available${COLOR_OFF}
-    list the available packages.
-
-${COLOR_GREEN}ppkg ls-installed${COLOR_OFF}
-    list the installed packages.
-
-${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
-    list the outdated  packages.
-
-${COLOR_GREEN}ppkg is-available <PACKAGE-NAME>${COLOR_OFF}
-    check if the given package is available
-
-${COLOR_GREEN}ppkg is-installed <PACKAGE-NAME>${COLOR_OFF}
-    check if the given package is installed
-
-${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
-    check if the given package is outdated
-
-${COLOR_GREEN}ppkg search <KEYWORD>${COLOR_OFF}
-    search available packages.
- 
-${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
-    list formula-repos.
-
-${COLOR_GREEN}ppkg formula-repo-add <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-BRANCH-NAME]${COLOR_OFF}
-    add a new formula-repo.
-
-${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
-    delete a exist formula-repo.
-
-${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
-    list files of the given installed package in a tree-like format.
-
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
-    pack the given installed package.
-
-${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
-    show logs of the given installed package.
-
-${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY]${COLOR_OFF}
-    show information of the given package.
-
-${COLOR_GREEN}ppkg info @all [KEY]${COLOR_OFF}
-    show information of all the available packages.
-
-${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
-    download resources of the given package to the local cache.
-
-${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
-    download resources of all available packages to the local cache.
-
-${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png]${COLOR_OFF}
-    show the packages that are depended by the given package.
-
-${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
-    install the given packages.
-
-${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
-    reinstall the given packages.
-
-${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
-    upgrade the given packages or all outdated packages.
-
-${COLOR_GREEN}ppkg upgrade-self${COLOR_OFF}
-    upgrade this software.
-
-${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
-    uninstall the given packages.
-    "
-
-    if [ -z "$1" ] ; then
-        exit
-    else
-        exit "$1"
-    fi
-}
-
-main() {
-    set -e
-
-    if [ -n "$PPKG_XTRACE" ] ; then
-        set -x
-    fi
-
-    if [ -z "$HOME" ] ; then
-        die "HOME environment variable is not set."
-    fi
-
-    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
-    #IFS_DEFAULT=$(printf ' \t\n')
-    #IFS=$IFS_DEFAULT
-
-    PPKG_VERSION=0.1.3
-
-    PPKG_WEBPAGE_URL="https://github.com/leleliu008/ppkg"
-    PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
-    PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
-
-    PPKG_HOME="$HOME/.ppkg"
-
-    PPKG_FORMULA_REPO_DIR="$PPKG_HOME/repos.d"
-    PPKG_PACKAGE_INSTALLED_DIR="$PPKG_HOME/installed"
-    PPKG_PACKAGE_SYMLINKED_DIR="$PPKG_HOME/symlinked"
-    PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
-    PPKG_BACKUP_DIR="$PPKG_HOME/backup.d"
-
-    PPKG_CORE_DIR="$PPKG_HOME/core"
-    PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
-
-    UPPM_COMMAND="$PPKG_CORE_BIN_DIR/uppm"
-
-    case $1 in
-        ''|--help|-h)
-            help
-            return 0
-            ;;
-        --version|-V)
-            printf '%s\n' "$PPKG_VERSION"
-            return 0
-            ;;
-        setup)
-            shift
-            __setup $@
-            return 0
-            ;;
-    esac
-
-    init
 
     case $1 in
         env)

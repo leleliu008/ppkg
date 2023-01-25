@@ -121,6 +121,8 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg install curl
         ppkg install curl bzip2 -v
         
+**Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
+
 *   **reinstall packages**
         
         ppkg reinstall curl
@@ -264,17 +266,15 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     export PPKG_XTRACE=1
     ```
 
-*   **CMake relevant environment variables**
+*   **other relevant environment variables**
 
-    [Reference](https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html)
-
-*   **Cargo relevant environment variables**
-
-    [Reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html)
-
-*   **Golang relevant environment variables**
-
-    [Reference](https://golang.org/doc/install/source#environment)
+    |utility|reference|
+    |-|-|
+    |[cmake](https://cmake.org/)|[reference](https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html)|
+    |[cargo](https://doc.rust-lang.org/cargo/)|[reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html)|
+    |[go](https://golang.org/)|[reference](https://golang.org/doc/install/source#environment)|
+    |[pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)|[reference](https://www.linuxhowtos.org/manpages/1/pkg-config.htm#lbAF)|
+    |[aclocal](https://www.gnu.org/software/automake/manual/html_node/configure.html)|[reference](https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html)|
 
     example:
 
