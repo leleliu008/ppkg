@@ -4,7 +4,7 @@ portable package manager for Unix-like system.
 **Note:** This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
 # two implementations
-This project provide two implementations:
+This project provides two implementations:
 - implemented in `POSIX Shell`, the source code is on `master` branch.
 - implemented in `C`, the source code is on `dev` branch.
 
@@ -42,7 +42,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
         ppkg integrate zsh -v
         
-    I provide a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
+    This project provides a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 

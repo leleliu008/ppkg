@@ -1100,6 +1100,7 @@ __load_formula_of_the_given_package() {
             die "src-url or git-url mapping not found in $PACKAGE_FORMULA_FILEPATH"
         else
             PACKAGE_SRC_FILETYPE=.git
+            PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
         fi
     else
         case $PACKAGE_SRC_URL in
@@ -1640,7 +1641,9 @@ __fetch_sources_of_the_given_package() {
         .git)
             unset GIT_FETCH_URL
 
-            if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+            if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+                GIT_FETCH_URL="$PACKAGE_GIT_URL"
+            else
                 GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
             fi
 
