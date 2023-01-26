@@ -994,7 +994,7 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_SYSTEM_CONFIGURE
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
-    # dir relative to $PACKAGE_INSTALLING_TOP_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    # dir relative to $PACKAGE_WORKING_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
 
     # if build in build script dir, otherwise build in build dir
@@ -2641,22 +2641,25 @@ __install_the_given_package() {
 
     step "create relevant directories"
 
-    PACKAGE_INSTALLING_TOP_DIR="$PPKG_HOME/installing/$1"
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_INSTALLING_TOP_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_INSTALLING_TOP_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/bin"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_INSTALLING_TOP_DIR/inc"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_INSTALLING_TOP_DIR/lib"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_INSTALLING_TOP_DIR/tmp"
+    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
+
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/build.d"
 
     if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
     else
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
     fi
 
-    rm -rf     "$PACKAGE_INSTALLING_TOP_DIR"
+    rm -rf     "$PACKAGE_WORKING_DIR"
 
     install -d "$PACKAGE_INSTALLING_SRC_DIR"
     install -d "$PACKAGE_INSTALLING_FIX_DIR"
@@ -2665,6 +2668,7 @@ __install_the_given_package() {
     install -d "$PACKAGE_INSTALLING_INC_DIR"
     install -d "$PACKAGE_INSTALLING_LIB_DIR"
     install -d "$PACKAGE_INSTALLING_TMP_DIR"
+    install -d "$PACKAGE_BCACHED_DIR"
 
     #########################################################################################
 
@@ -2682,10 +2686,10 @@ __install_the_given_package() {
         step "generating dependency tree of $1"
         RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
 
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.svg"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_WORKING_DIR/dependencies.svg"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
 
         __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
         __gen_dependency_graph_recursively_depended_by_the_given_package "$1" box "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" || true
@@ -2764,21 +2768,21 @@ __install_the_given_package() {
     #########################################################################################
 
     if [ -n "$PACKAGE_PREPARE_ACTIONS" ] ; then
-        cat > "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh" <<EOF
+        cat > "$PACKAGE_INSTALLING_TMP_DIR/prepare.sh" <<EOF
 prepare() {
 $PACKAGE_PREPARE_ACTIONS
 }
 EOF
-        . "$PACKAGE_INSTALLING_BIN_DIR/prepare.sh"
+        . "$PACKAGE_INSTALLING_TMP_DIR/prepare.sh"
     fi
 
     if [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
-        cat > "$PACKAGE_INSTALLING_BIN_DIR/install.sh" <<EOF
+        cat > "$PACKAGE_INSTALLING_TMP_DIR/install.sh" <<EOF
 build() {
 $PACKAGE_INSTALL_ACTIONS
 }
 EOF
-        . "$PACKAGE_INSTALLING_BIN_DIR/install.sh"
+        . "$PACKAGE_INSTALLING_TMP_DIR/install.sh"
     fi
 
     #########################################################################################
@@ -2851,21 +2855,21 @@ EOF
     fi
 
     step "tree files of the installing top directory"
-    run tree --dirsfirst -L 2 "$PACKAGE_INSTALLING_TOP_DIR"
+    run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
 
     step "list files of the installing top directory"
-    run ls -l "$PACKAGE_INSTALLING_TOP_DIR"
+    run ls -l "$PACKAGE_WORKING_DIR"
 
     step "list files of the installing src directory"
     run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
 
     if [ -n "$PACKAGE_BSCRIPT" ] ; then
         step "list files of the installing build script directory"
-        run ls -l "$PACKAGE_INSTALLING_BST_DIR"
+        run ls -l "$PACKAGE_BSCRIPT_DIR"
     fi
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        ccache -s > "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
+        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
     fi
 
     [ -n "$RECURSIVE_DEPENDENT_PACKAGES" ] && {
@@ -2881,7 +2885,7 @@ EOF
             if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
                 for item in $(find "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
                 do
-                    if [ -e "$PACKAGE_INSTALLING_TOP_DIR/$item" ] ; then
+                    if [ -e "$PACKAGE_WORKING_DIR/$item" ] ; then
                         continue
                     else
                         if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$item" ] ; then
@@ -2896,8 +2900,8 @@ EOF
     }
 
     step "do some preparation works"
-    if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
-        run cd "$PACKAGE_INSTALLING_BST_DIR"
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run cd "$PACKAGE_BSCRIPT_DIR"
     fi
     if command -v prepare > /dev/null ; then
         prepare "$1"
@@ -2943,11 +2947,11 @@ EOF
     step "building"
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-        if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
-            run cd "$PACKAGE_INSTALLING_BST_DIR" || return 1
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
         fi
     else
-            run cd "$PACKAGE_INSTALLING_TMP_DIR" || return 1
+            run cd "$PACKAGE_BCACHED_DIR" || return 1
     fi
 
     if command -v build > /dev/null ; then
@@ -2978,7 +2982,7 @@ EOF
     install -d "$PACKAGE_METAINF_DIR"
 
     step "install config.log"
-    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
+    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
             install -v -m 644 "$dir/config.log" "$PACKAGE_METAINF_DIR"
@@ -2986,7 +2990,7 @@ EOF
     done
 
     step "install compile_commands.json"
-    for dir in "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR"
+    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/compile_commands.json" ] ; then
             install -v -m 644 "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
@@ -3042,14 +3046,14 @@ EOF
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
         note "Before Build:"
-        run  cat "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
+        run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
         note "After  Build:"
         run  ccache -s
     fi
 
     if [ "$KEEP_INSTALLING_DIR" != yes ] ; then
         step "delete the installing directory"
-        run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
+        run rm -rf "$PACKAGE_WORKING_DIR"
     fi
 
     step "show installed files in tree-like format"
@@ -3167,7 +3171,7 @@ __adjust_elf_files_for_the_given_target() {
                                     continue
                                 fi
 
-                                if [ "$LIBDIR" = "$PACKAGE_INSTALLING_LIB_DIR" ] ; then
+                                if [ "$LIBDIR" = "$PACKAGE_WORKING_DIR/lib" ] ; then
                                     continue
                                 fi
 
@@ -3393,22 +3397,22 @@ __export_relevant_environment_variables() {
 
     ##################################################################################
 
-    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.c" <<EOF
+    cat > "$PACKAGE_INSTALLING_TMP_DIR/test.c" <<EOF
 int main() {
     return 0;
 }
 EOF
-    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.cc" <<EOF
+    cat > "$PACKAGE_INSTALLING_TMP_DIR/test.cc" <<EOF
 int main() {
     return 0;
 }
 EOF
 
-    if $CC  $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+    if $CC  $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.c" 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
     fi
 
-    if $CXX $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
+    if $CXX $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.cc" 2>/dev/null ; then
         XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
     fi
 
@@ -3624,7 +3628,7 @@ EOF
      LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
 
     # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib $RUSTFLAGS"
+    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
 
     export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
 
@@ -3637,15 +3641,15 @@ EOF
 
     case $NATIVE_OS_KIND in
         netbsd)
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
 
             LDFLAGS="$LDFLAGS -pthread"
             ;;
         openbsd)
             # https://github.com/mesonbuild/meson/issues/5390
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/librt.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libcrypt.a"
 
             LDFLAGS="$LDFLAGS -pthread"
             ;;
@@ -3748,7 +3752,7 @@ EOF
             CMAKE_FIND_DEBUG_MODE=OFF
         fi
 
-        CMAKE_TOOLCHAIN_FILE="$PACKAGE_INSTALLING_TOP_DIR/toolchain.cmake"
+        CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
@@ -3796,7 +3800,7 @@ EOF
         if [ "$LINK_TYPE" = 'static-only' ] ; then
             if [ "$NATIVE_OS_KIND" != darwin ] ; then
                 if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-                    echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+                    echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_WORKING_DIR/lib/libgcc_s.a
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
                 fi
             fi
@@ -3890,17 +3894,15 @@ __printf_relevant_environment_variables() {
     step "printf relevant environment variables"
 
     printf '%s\n' "
-PPKG_VERSION       = $PPKG_VERSION
-PPKG_HOME          = $PPKG_HOME
-PPKG_EXE_FILEPATH  = $PPKG_EXE_FILEPATH
-PPKG_URL_TRANSFORM = $PPKG_URL_TRANSFORM
+PPKG_VERSION        = $PPKG_VERSION
+PPKG_HOME           = $PPKG_HOME
+PPKG_EXE_FILEPATH   = $PPKG_EXE_FILEPATH
+PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
 
-PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
-PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
-PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
-PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
-
-PACKAGE_INSTALL_DIR        = $PACKAGE_INSTALL_DIR
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
 
 STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
 SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
@@ -4806,12 +4808,12 @@ gow() {
 
     # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        GOMOD="$PACKAGE_INSTALLING_BST_DIR/go.mod"
+        GOMOD="$PACKAGE_BSCRIPT_DIR/go.mod"
 
         if [ -f "$GOMOD" ] && go mod graph | grep -q 'golang\.org/x/sys' ; then
             run go get -u golang.org/x/sys
 
-            if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
+            if [ -d "$PACKAGE_BSCRIPT_DIR/vendor" ] ; then
                 unset GO_VERSION_MAJOR
                 unset GO_VERSION_MINOR
 
@@ -4897,21 +4899,21 @@ gow() {
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
 
     if [ -z "$GO_BUILD_ARGV_O" ] ; then
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/"
     else
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/$GO_BUILD_ARGV_O"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/$GO_BUILD_ARGV_O"
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
     run go build $GO_BUILD_ARGS
 
-    for item in $(ls "$PACKAGE_INSTALLING_TMP_DIR")
+    for item in $(ls "$PACKAGE_BCACHED_DIR")
     do
         case $item in
-            *.a)  run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
-            *.so) run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
-            *)    run install_bins "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
+            *.a)  run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *.so) run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *)    run install_bins "$PACKAGE_BCACHED_DIR/$item" ;;
         esac
     done
 }
@@ -4985,7 +4987,7 @@ cargow() {
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_INSTALLING_BST_DIR"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_BSCRIPT_DIR"
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
@@ -5082,22 +5084,22 @@ configure_only() {
     esac
 
     if [ "$VERBOSE_LEVEL" -eq 4 ] ; then
-        sed_in_place '1a set -x' "$PACKAGE_INSTALLING_BST_DIR/configure"
+        sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
-    if run $PACKAGE_INSTALLING_BST_DIR/configure $CONFIGURE_ARGS $@ ; then
+    if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ ; then
         echo
     else
-        if [ -f "$PACKAGE_INSTALLING_TMP_DIR/config.log" ] ; then
-            run cat "$PACKAGE_INSTALLING_TMP_DIR/config.log"
-        elif [ -f "$PACKAGE_INSTALLING_BST_DIR/config.log" ] ; then
-            run cat "$PACKAGE_INSTALLING_BST_DIR/config.log"
+        if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BCACHED_DIR/config.log"
+        elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BSCRIPT_DIR/config.log"
         fi
         return 1
     fi
 
     if [ "$VERBOSE_LEVEL" -ge 2 ] ; then
-        for Makefile in $(find "$PACKAGE_INSTALLING_BST_DIR" -name Makefile)
+        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
             sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
@@ -5190,7 +5192,7 @@ EOF
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
 
-    CMAKE_PROJECT_INCLUDE="$PACKAGE_INSTALLING_TOP_DIR/project-after.cmake"
+    CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
 
@@ -5222,10 +5224,10 @@ EOF
         -DCMAKE_PROJECT_INCLUDE=$CMAKE_PROJECT_INCLUDE \
         -DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE \
         -DCMAKE_COLOR_MAKEFILE=$CMAKE_COLOR_MAKEFILE \
-        -S $PACKAGE_INSTALLING_BST_DIR \
-        -B $PACKAGE_INSTALLING_TMP_DIR $@ &&
-    run cmake --build   "$PACKAGE_INSTALLING_TMP_DIR" -- -j$BUILD_NJOBS &&
-    run cmake --install "$PACKAGE_INSTALLING_TMP_DIR"
+        -S $PACKAGE_BSCRIPT_DIR \
+        -B $PACKAGE_BCACHED_DIR $@ &&
+    run cmake --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
+    run cmake --install "$PACKAGE_BCACHED_DIR"
 }
 
 # https://github.com/xmake-io/xmake/issues/2003
@@ -5266,7 +5268,7 @@ xmakew() {
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
     fi
 
-    run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_INSTALLING_BST_DIR --buildir=$PACKAGE_INSTALLING_TMP_DIR &&
+    run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$PACKAGE_BCACHED_DIR &&
     run $XMAKE --jobs=$BUILD_NJOBS &&
     run $XMAKE install -o "$PACKAGE_INSTALL_DIR"
 }
@@ -5280,7 +5282,7 @@ mesonw() {
         static|shared|both) MESON_BUILD_DEFAULT_LIBRARY="$INSTALL_LIB"
     esac
 
-        MESON_CROSS_FILE="$PACKAGE_INSTALLING_TMP_DIR/cross-file"
+        MESON_CROSS_FILE="$PACKAGE_BCACHED_DIR/cross-file"
 
     cat > "$MESON_CROSS_FILE" <<EOF
 [binaries]
@@ -5306,14 +5308,14 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH" \
         -Ddefault_library=$MESON_BUILD_DEFAULT_LIBRARY \
         -Dlibdir=lib \
-        $@ "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR" &&
+        $@ "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
             build_configed
         fi
     } &&
-    run ninja -C "$PACKAGE_INSTALLING_TMP_DIR" &&
-    run ninja -C "$PACKAGE_INSTALLING_TMP_DIR" install
+    run ninja -C "$PACKAGE_BCACHED_DIR" &&
+    run ninja -C "$PACKAGE_BCACHED_DIR" install
 }
 
 to_meson_array() {
