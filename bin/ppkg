@@ -2303,7 +2303,7 @@ __show_packages_depended_by_the_given_package() {
                 if [ -z "$1" ] ; then
                     die "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
                 else
-                    OUTPUT_FILEPATH="$(realpath -s "$1")"
+                    OUTPUT_FILEPATH="$1"
                 fi
                 ;;
             *)  die "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-packing-dir], unrecognized option: $1"
@@ -2378,7 +2378,7 @@ __show_packages_depended_by_the_given_package() {
                 OUTPUT_FILETYPE='tar.xz'
             fi
 
-            OUTPUT_DIR="$OUTPUT_FILEPATH"
+            OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
             OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
         else
             case $OUTPUT_FILEPATH in
@@ -2387,10 +2387,12 @@ __show_packages_depended_by_the_given_package() {
                         OUTPUT_FILETYPE='tar.xz'
                     fi
 
-                    OUTPUT_DIR="$OUTPUT_FILEPATH"
+                    OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
                     OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
                     ;;
                 *)
+                    OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
+
                     if [ -z "$OUTPUT_FILETYPE" ] ; then
                         case $OUTPUT_FILEPATH in
                             *.tar.gz|*.tgz)
