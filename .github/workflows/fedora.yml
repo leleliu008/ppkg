@@ -47,7 +47,7 @@ jobs:
       - run: bin/ppkg install libzip
 
       - run: bin/ppkg tree libzip
-      - run: bin/ppkg pack libzip --type=tar.xz
+      - run: bin/ppkg pack libzip -t tar.xz
 
       - run: bin/ppkg formula-repo-list
 

@@ -90,13 +90,14 @@ function _ppkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '--format=-[set output format]:format:(dot box svg png)' \
-                        '-o[set the output filepath]:output-filepath:{_files}'
+                        '-t[set output format]:output-type:(dot box svg png)' \
+                        '-o[set output filepath or directory]:output-path:{_files}'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '--type=-[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-o[set output filepath or directory]:output-path:{_files}' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 tree)

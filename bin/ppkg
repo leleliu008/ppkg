@@ -361,7 +361,7 @@ wfetch() {
     unset FETCH_SILENT
 
     if [ -z "$1" ] ; then
-        error "wfetch <URL> [OPTION]... , <URL> must not be empty."
+        error "wfetch <URL> [OPTION]... , <URL> must be non-empty."
         return 1
     fi
 
@@ -386,7 +386,7 @@ wfetch() {
             --uri=*)
                 FETCH_URI=$(getvalue "$1")
                 if [ -z "$FETCH_URI" ] ; then
-                    error "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must not be empty."
+                    error "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must be non-empty."
                     return 1
                 fi
                 if [ -n "$PPKG_URL_TRANSFORM" ] ; then
@@ -396,21 +396,21 @@ wfetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    error "wfetch <URL> --output-dir=<DIR> , <DIR> must not be empty."
+                    error "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
                     return 1
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    error "wfetch <URL> --output-name=<NAME> , <NAME> must not be empty."
+                    error "wfetch <URL> --output-name=<NAME> , <NAME> must be non-empty."
                     return 1
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    error "wfetch <URL> --output-path=<FILEPATH> , <FILEPATH> must not be empty."
+                    error "wfetch <URL> --output-path=<FILEPATH> , <FILEPATH> must be non-empty."
                     return 1
                 fi
                 ;;
@@ -563,7 +563,7 @@ wfetch() {
 # __upgrade_self <URL>
   __upgrade_self() {
     if [ -z "$1" ] ; then
-        error "__upgrade_self <URL> , <URL> must not be empty."
+        error "__upgrade_self <URL> , <URL> must be non-empty."
         return 1
     fi
 
@@ -610,7 +610,7 @@ wfetch() {
 # __integrate_zsh_completions <URL> [--output-dir=<DIR>]
   __integrate_zsh_completions() {
     if [ -z "$1" ] ; then
-        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must not be empty."
+        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must be non-empty."
         return 1
     else
         ZSH_COMPLETIONS_SCRIPT_URL="$1"
@@ -626,7 +626,7 @@ wfetch() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$OUTPUT_DIR" ] ; then
-                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must not be empty."
+                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must be non-empty."
                     return 1
                 fi
                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
@@ -1808,7 +1808,7 @@ __gen_github_workflows() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 case "$OUTPUT_DIR" in
-                    '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
+                    '') die "--output-dir=<DIR>, <DIR> must be non-empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
                     \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
@@ -2138,10 +2138,10 @@ __compare_versions_with_brew() {
     done
 }
 
-# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>], <PACKAGE-NAME> is unspecified."
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2149,37 +2149,81 @@ __show_packages_depended_by_the_given_package() {
 
     shift
 
-    unset OUTPUT_FORMAT
+    ###########################################################################################
+
+    unset OUTPUT_FILETYPE
     unset OUTPUT_FILEPATH
 
     while [ -n "$1" ]
     do
         case $1 in
-            --format=*)
-                OUTPUT_FORMAT=$(getvalue $1)
-
-                case $OUTPUT_FORMAT in
-                    dot|box|svg|png) ;;
-                    *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>], unsupported format: $OUTPUT_FORMAT"
+            -t) shift
+                case $1 in
+                    dot|box|svg|png)
+                        OUTPUT_FILETYPE="$1" ;;
+                    '') die "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
+                    *)  die "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|box|svg|png"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH>], -o option follow a value."
+                    die "$_0 depends <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
                 else
-                    OUTPUT_FILEPATH="$1"
+                    OUTPUT_FILEPATH="$(realpath -s "$1")"
                 fi
                 ;;
-            *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH>], unrecognized option: $1"
+            *)  die "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-packing-dir], unrecognized option: $1"
         esac
         shift
     done
 
-    if [ -z "$OUTPUT_FORMAT" ] ; then
-        OUTPUT_FORMAT=box
+    ###########################################################################################
+
+    if [ -z "$OUTPUT_FILEPATH" ] ; then
+        if [ -z "$OUTPUT_FILETYPE" ] ; then
+            OUTPUT_FILETYPE='box'
+        fi
+    else
+        if [ -d "$OUTPUT_FILEPATH" ] ; then
+            if [ -z "$OUTPUT_FILETYPE" ] ; then
+                OUTPUT_FILETYPE='box'
+            fi
+
+            OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
+        else
+            case $OUTPUT_FILEPATH in
+                */)
+                    if [ -z "$OUTPUT_FILETYPE" ] ; then
+                        OUTPUT_FILETYPE='box'
+                    fi
+
+                    OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
+                    ;;
+                *)
+                    if [ -z "$OUTPUT_FILETYPE" ] ; then
+                        case $OUTPUT_FILEPATH in
+                            *.box)
+                                OUTPUT_FILETYPE=box
+                                ;;
+                            *.dot)
+                                OUTPUT_FILETYPE=dot
+                                ;;
+                            *.svg)
+                                OUTPUT_FILETYPE=svg
+                                ;;
+                            *.png)
+                                OUTPUT_FILETYPE=png
+                                ;;
+                            *)  die "when -t <OUTPUT-TYPE> option is not given, -o <OUTPUT-PATH> option specified filename must ends with one of .dot|.box|.svg|.png"
+                        esac
+                    fi
+            esac
+        fi
     fi
 
-    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FORMAT" "$OUTPUT_FILEPATH"
+    ###########################################################################################
+
+    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FILETYPE" "$OUTPUT_FILEPATH"
 }
 
 # __logs_the_given_installed_package <PACKAGE-NAME>
@@ -2221,16 +2265,20 @@ __show_packages_depended_by_the_given_package() {
 }
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir]
-# __pack_the_given_installed_package    autoconf     --type=tar.xz
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-packing-dir]
+# __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
     RECEIPT_PACKAGE_NAME="$1"
 
-    unset PACKED_FILETYPE
-
     shift
+
+    ###########################################################################################
+
+    unset OUTPUT_DIR
+    unset OUTPUT_FILETYPE
+    unset OUTPUT_FILEPATH
 
     while [ -n "$1" ]
     do
@@ -2238,33 +2286,43 @@ __show_packages_depended_by_the_given_package() {
             --keep-packing-dir)
                 KEEP_PACKING_DIR=yes
                 ;;
-            --type=*)
-                PACKED_FILETYPE=$(getvalue "$1")
-                case $PACKED_FILETYPE in
+            -t) shift
+
+                if [ -z "$1" ] ; then
+                    die "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified."
+                else
+                    OUTPUT_FILETYPE="$1"
+                fi
+
+                case $OUTPUT_FILETYPE in
                     zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    '')die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], <TYPE> must not be empty." ;;
-                    *) die "$_0 pack <PACKAGE-NAME> [--type=<TYPE>], unsupported <TYPE>: $PACKED_FILETYPE, the supported types are zip tar.gz tar.xz tar.lz tar.bz2."
+                    *) die "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_FILETYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
-            *)  die "$_0 pack <PACKAGE-NAME> [--type=TYPE] [--keep-packing-dir], unrecognized option: $1"
+            -o) shift
+                if [ -z "$1" ] ; then
+                    die "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
+                else
+                    OUTPUT_FILEPATH="$(realpath -s "$1")"
+                fi
+                ;;
+            *)  die "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-packing-dir], unrecognized option: $1"
         esac
         shift
     done
 
-    if [ -z "$PACKED_FILETYPE" ] ; then
-        PACKED_FILETYPE='tar.xz'
-    fi
+    ###########################################################################################
 
-    PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=no
+    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
         if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" ] ; then
             for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" -type f)
             do
                 case $FILEPATH in
-                    */lib*.a)   PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
-                    */lib*.so*) PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
-                    */*.o)      PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                    */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                    */lib*.so*) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
+                    */*.o)      OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
                 esac
             done
         fi
@@ -2283,7 +2341,7 @@ __show_packages_depended_by_the_given_package() {
                         PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                         if [ -n "$PT_INTERP" ] ; then
-                            PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
+                            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
                             break
                         fi
                     fi
@@ -2294,18 +2352,76 @@ __show_packages_depended_by_the_given_package() {
         if [ -z "$PACKED_DIR_NAME" ] ; then
             for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
             do
-                PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
+                OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
         fi
     fi
 
-    if [ "$PACKED_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
+    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = yes ] ; then
         PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH-$NATIVE_OS_LIBC"
     else
         PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
     fi
 
-    PACKED_FILENAME="$PACKED_DIR_NAME.$PACKED_FILETYPE"
+    ###########################################################################################
+
+    if [ -z "$OUTPUT_FILEPATH" ] ; then
+        if [ -z "$OUTPUT_FILETYPE" ] ; then
+            OUTPUT_FILETYPE='tar.xz'
+        fi
+
+        OUTPUT_DIR="$PPKG_HOME/packed"
+        OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
+    else
+        if [ -d "$OUTPUT_FILEPATH" ] ; then
+            if [ -z "$OUTPUT_FILETYPE" ] ; then
+                OUTPUT_FILETYPE='tar.xz'
+            fi
+
+            OUTPUT_DIR="$OUTPUT_FILEPATH"
+            OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
+        else
+            case $OUTPUT_FILEPATH in
+                */)
+                    if [ -z "$OUTPUT_FILETYPE" ] ; then
+                        OUTPUT_FILETYPE='tar.xz'
+                    fi
+
+                    OUTPUT_DIR="$OUTPUT_FILEPATH"
+                    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
+                    ;;
+                *)
+                    if [ -z "$OUTPUT_FILETYPE" ] ; then
+                        case $OUTPUT_FILEPATH in
+                            *.tar.gz|*.tgz)
+                                OUTPUT_FILETYPE=tar.gz
+                                ;;
+                            *.tar.xz|*.txz)
+                                OUTPUT_FILETYPE=tar.xz
+                                ;;
+                            *.tar.lz|*.tlz)
+                                OUTPUT_FILETYPE=tar.lz
+                                ;;
+                            *.tar.bz2|*.tbz2)
+                                OUTPUT_FILETYPE=tar.bz2
+                                ;;
+                            *.zip)
+                                OUTPUT_FILETYPE=zip
+                                ;;
+                            *.7z)
+                                OUTPUT_FILETYPE=7z
+                                ;;
+                            *)  die "when -t <OUTPUT-TYPE> option is not given, -o <OUTPUT-PATH> option specified filename must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|.zip|.7z"
+                        esac
+                    fi
+
+                    OUTPUT_DIR="$(dirname "$OUTPUT_FILEPATH")"
+                    OUTPUT_FILENAME="$(basename "$OUTPUT_FILEPATH")"
+            esac
+        fi
+    fi
+
+    ###########################################################################################
 
     step "create packing directory"
     printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
@@ -2318,32 +2434,32 @@ __show_packages_depended_by_the_given_package() {
     run ln -s "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    case $PACKED_FILETYPE in
-        zip) run zip -9 -r     "$PACKED_FILENAME" "$PACKED_DIR_NAME" ;;
-        7z)  run 7za a -t7z -r "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.xz)  run tar cv --xz    -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.gz)  run tar cv --gzip  -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.lz)  run tar cv --lzip  -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
-        tar.bz2) run tar cv --bzip2 -f "$PACKED_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+    case $OUTPUT_FILETYPE in
+        zip) run zip -9 -r     "$OUTPUT_FILENAME" "$PACKED_DIR_NAME" ;;
+        7z)  run 7za a -t7z -r "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.xz)  run tar cv --xz    -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.gz)  run tar cv --gzip  -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.lz)  run tar cv --lzip  -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
+        tar.bz2) run tar cv --bzip2 -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg" ;;
     esac
 
     step "check integrity of packed file"
-    case $PACKED_FILETYPE in
-        7z)    run 7za t -t7z "$PACKED_FILENAME" ;;
-        zip)   run unzip -t   "$PACKED_FILENAME" ;;
-        tar.*) run tar   -tf  "$PACKED_FILENAME" ;;
+    case $OUTPUT_FILETYPE in
+        7z)    run 7za t -t7z "$OUTPUT_FILENAME" ;;
+        zip)   run unzip -t   "$OUTPUT_FILENAME" ;;
+        tar.*) run tar   -tf  "$OUTPUT_FILENAME" ;;
     esac
 
     step "show size of packed file"
-    run "du -sh $PACKED_FILENAME | cut -f1"
+    run "du -sh $OUTPUT_FILENAME | cut -f1"
 
-    if [ ! -d "$PPKG_HOME/packed" ] ; then
-        step "create cached binary dir"
-        run install -d "$PPKG_HOME/packed"
+    if [ ! -d "$OUTPUT_DIR" ] ; then
+        step "create output dir"
+        run install -d "$OUTPUT_DIR"
     fi
 
-    step "copy packed file to cached dir"
-    run cp "$PACKED_FILENAME" "$PPKG_HOME/packed/"
+    step "copy packed file to output dir"
+    run cp "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
 
     if [ "$KEEP_PACKING_DIR" = yes ] ; then
         echo
@@ -2447,8 +2563,8 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
 
     case $2 in
         dot|box|svg|png) ;;
-        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , format must not be empty." ;;
-        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , unrecognized format: $2"
+        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , format must be non-empty." ;;
+        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , unsupported format: $2"
     esac
 
     unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
@@ -2647,7 +2763,7 @@ __install_the_given_package() {
         RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_WORKING_DIR/dependencies.svg"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
 
@@ -2981,7 +3097,7 @@ EOF
 
     #########################################################################################
 
-    step "install dependencies.dot and dependencies.txt"
+    step "install dependencies.dot and dependencies.box"
 
     for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX
     do
@@ -3020,7 +3136,7 @@ os-vers: $NATIVE_OS_VERS
 os-ncpu: $NATIVE_OS_NCPU
 os-libc: $NATIVE_OS_LIBC
 os-euid: $NATIVE_OS_EUID
-os-egid: $NATIVE_OS_GUID
+os-egid: $NATIVE_OS_EGID
 EOF
 
     step "generate manifest.txt"
@@ -4752,12 +4868,12 @@ EOF
     PACKAGE_RECEIPT_TIMESTAMP="$(yq .timestamp "$PACKAGE_RECEIPT_FILEPATH")"
 
     if [ -z "$PACKAGE_RECEIPT_SIGNATURE" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must not be empty."
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must be non-empty."
         return 1
     fi
 
     if [ -z "$PACKAGE_RECEIPT_TIMESTAMP" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must not be empty."
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must be non-empty."
         return 1
     fi
 
@@ -4779,17 +4895,17 @@ EOF
     done
 
     if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_VERSION must not be empty."
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_VERSION must be non-empty."
         return 1
     fi
 
     if [ -z "$RECEIPT_PACKAGE_SUMMARY" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_SUMMARY must not be empty."
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_SUMMARY must be non-empty."
         return 1
     fi
 
     if [ -z "$RECEIPT_PACKAGE_WEB_URL" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_WEB_URL must not be empty."
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_WEB_URL must be non-empty."
         return 1
     fi
 
@@ -5455,8 +5571,8 @@ inspect_install_arguments() {
                 BUILD_TYPE=$(getvalue "$1")
                 case $BUILD_TYPE in
                     debug|release) ;;
-                    '') die "--build-type=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--build-type=<VALUE>, VALUE must be one of debug release"
+                    '') die "--build-type=<VALUE>, VALUE must be non-empty." ;;
+                    *)  die "--build-type=<VALUE>, VALUE must be one of debug|release"
                 esac
                 ;;
             --install-doc)
@@ -5472,34 +5588,34 @@ inspect_install_arguments() {
                 INSTALL_LIB=$(getvalue "$1")
                 case $INSTALL_LIB in
                     static|shared|both|yes|no) ;;
-                    '') die "--install-lib=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--install-lib=<VALUE>, VALUE must be one of static shared both yes no"
+                    '') die "--install-lib=<VALUE>, VALUE must be non-empty." ;;
+                    *)  die "--install-lib=<VALUE>, VALUE must be one of static|shared|both|yes|no"
                 esac
                 ;;
             --link-type=*)
                 LINK_TYPE=$(getvalue "$1")
                 case $LINK_TYPE in
                     static-only|shared-only|static-prefered|shared-prefered) ;;
-                    '') die "--link-type=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--link-type=<VALUE>, VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                    '') die "--link-type=<VALUE>, VALUE must be non-empty." ;;
+                    *)  die "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-prefered|shared-prefered"
                 esac
                 ;;
             --jobs=*)
                 BUILD_NJOBS=$(getvalue "$1")
-                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be a integer."
+                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be an integer."
                 ;;
-            [a-z]*)
-                if [ "$1" = 'all' ] ; then
-                    USER_SPECIFIED_PACKAGES="$(__list_available_packages)"
-                else
+            -*) die "unrecognized option: $1"
+                ;;
+            *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
                     if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
                         USER_SPECIFIED_PACKAGES="$1"
                     else
                         USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
                     fi
+                else
+                    die "invalid package name: $1"
                 fi
                 ;;
-            *)  die "unrecognized argument: $1"
         esac
         shift
     done
@@ -5991,8 +6107,16 @@ ${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
     list installed files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [--type=<zip|tar.gz|tar.xz|tar.lz|tar.bz2>]${COLOR_OFF}
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
+
+    <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|zip
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be expanded to <OUTPUT-PATH>/\$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.tar.xz
+
+    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be \$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.tar.xz
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
     show logs of the given installed package.
@@ -6009,8 +6133,16 @@ ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
     download resources of all available packages to the local cache.
 
-${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png] [-o <OUTPUT-FILEPATH>]${COLOR_OFF}
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
+
+    <OUTPUT-PATH> can be either the filepath or directory where the file will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPU-TYPE> will be box and <OUTPUT-PATH> will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.box
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .dot|.box|.svg|.png
+
+    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
 ${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
     install the given packages.

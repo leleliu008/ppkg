@@ -61,8 +61,14 @@ jobs:
       - run: bin/ppkg info libzip src-sha
 
       - run: bin/ppkg depends libzip
-      - run: bin/ppkg depends libzip --format=dot
-      - run: bin/ppkg depends libzip --format=box
+      - run: bin/ppkg depends libzip -t dot
+      - run: bin/ppkg depends libzip -t box
+      - run: bin/ppkg depends libzip -t dot -o .
+      - run: bin/ppkg depends libzip -t box -o .
+      - run: bin/ppkg depends libzip -o a/
+      - run: bin/ppkg depends libzip -o b/
+      - run: bin/ppkg depends libzip -o a.dot
+      - run: bin/ppkg depends libzip -o b.box
 
       - run: bin/ppkg fetch gzip
       - run: bin/ppkg fetch gsed -v
@@ -84,11 +90,11 @@ jobs:
       - run: bin/ppkg info libzip installed-version
 
       - run: bin/ppkg pack libzip
-      - run: bin/ppkg pack libzip --type=tar.gz
-      - run: bin/ppkg pack libzip --type=tar.lz
-      - run: bin/ppkg pack libzip --type=tar.xz
-      - run: bin/ppkg pack libzip --type=tar.bz2
-      - run: bin/ppkg pack libzip --type=zip
+      - run: bin/ppkg pack libzip -t tar.gz
+      - run: bin/ppkg pack libzip -t tar.lz
+      - run: bin/ppkg pack libzip -t tar.xz
+      - run: bin/ppkg pack libzip -t tar.bz2
+      - run: bin/ppkg pack libzip -t zip
 
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml

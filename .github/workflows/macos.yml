@@ -48,10 +48,10 @@ jobs:
 
       - run: bin/ppkg tree libzip
 
-      - run: bin/ppkg pack libzip --type=tar.gz
-      - run: bin/ppkg pack libzip --type=tar.xz
-      - run: bin/ppkg pack libzip --type=tar.bz2
-      - run: bin/ppkg pack libzip --type=zip
+      - run: bin/ppkg pack libzip -t tar.gz
+      - run: bin/ppkg pack libzip -t tar.xz
+      - run: bin/ppkg pack libzip -t tar.bz2
+      - run: bin/ppkg pack libzip -t zip
 
       - run: bin/ppkg formula-repo-list
 

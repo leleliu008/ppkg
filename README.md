@@ -247,7 +247,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         https://github.com/*)
             printf 'https://ghproxy.com/%s\n' "$1"
             ;;
-        '') printf '%s\n' 'url-transform <URL>, <URL> is not given.' >&2 ;;
+        '') printf '%s\n' "$0 <URL>, <URL> is unspecified." >&2 ;;
         *)  printf '%s\n' "$1"
     esac
     ```
