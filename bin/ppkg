@@ -264,7 +264,7 @@ is_integer() {
 
 is_elf_file() {
     [ -z "$1" ] && {
-        error "is_elf_file <FILE-PATH>, <FILE-PATH> is not given."
+        error "is_elf_file <FILE-PATH>, <FILE-PATH> is unspecified."
         return 1
     }
 
@@ -1278,7 +1278,7 @@ __load_formula_of_the_given_package() {
 # __view_formula_of_the_given_package curl --paging=never
   __view_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1338,7 +1338,7 @@ __load_formula_of_the_given_package() {
 # __edit_formula_of_the_given_package <PACKAGE-NAME>
   __edit_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1357,7 +1357,7 @@ __load_formula_of_the_given_package() {
 # __create_formula_of_the_given_package <PACKAGE-NAME>
   __create_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__create_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__create_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1384,7 +1384,7 @@ EOF
 # __delete_formula_of_the_given_package <PACKAGE-NAME>
   __delete_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1397,12 +1397,12 @@ EOF
 # __rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>
 __rename_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <OLD-PACKAGE-NAME> is not given."
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <OLD-PACKAGE-NAME> is unspecified."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <NEW-PACKAGE-NAME> is not given."
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <NEW-PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1486,7 +1486,7 @@ EOF
 
 __repo_of_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1509,7 +1509,7 @@ __repo_of_formula_of_the_given_package() {
 # __path_of_formula_of_the_given_package <PACKAGE-NAME>
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1711,7 +1711,7 @@ __fetch_patches_of_the_given_package() {
 
 __fetch_resources_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1754,7 +1754,7 @@ __fetch_resources_of_the_given_package() {
 # is_package_available automake
   is_package_available() {
     [ -z "$1" ] && {
-        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], <PACKAGE-NAME> is not given."
+        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1771,7 +1771,7 @@ __fetch_resources_of_the_given_package() {
 # is_package_installed <PACKAGE-NAME>
   is_package_installed() {
     [ -z "$1" ] && {
-        error "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1959,7 +1959,7 @@ __list__outdated_packages() {
 # __tree_the_given_installed_package <PACKAGE-NAME> [TREE-OPTIONS]
   __tree_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__tree_the_given_installed_package <PACKAGE-NAME> [TREE-OPTIONS], <PACKAGE-NAME> is not given."
+        error "__tree_the_given_installed_package <PACKAGE-NAME> [TREE-OPTIONS], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -1986,7 +1986,7 @@ __list__outdated_packages() {
     done
 
     [ -z "$USER_SPECIFIED_PACKAGES" ] && {
-        error "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        error "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2013,7 +2013,7 @@ __reinstall_the_given_packages() {
     inspect_install_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGES" ] && {
-        error "__reinstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        error "__reinstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2138,77 +2138,10 @@ __compare_versions_with_brew() {
     done
 }
 
-__show_or_open_homepage_of_the_given_package() {
-    unset ACTION
-    unset PACKAGE
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --open)
-                ACTION=open
-                ;;
-            -*|--*)
-                die "unrecognized argument: 41"
-                ;;
-            *)  if [ -z "$PACKAGE" ] ; then
-                    PACKAGE=$1
-                else
-                    die "too many packages given."
-                fi
-        esac
-        shift
-    done
-
-    if [ "$ACTION" = open ] ; then
-        __open_homepage_of_the_given_package $PACKAGE
-    else
-        __show_homepage_of_the_given_package $PACKAGE
-    fi
-}
-
-__show_homepage_of_the_given_package() {
-    if [ -z "$1" ] ; then
-        printf '%s\n' "$PPKG_WEBPAGE_URL"
-    else
-        __load_formula_of_the_given_package "$1"
-
-        if [ -z "$PACKAGE_WEB_URL" ] ; then
-            printf '%s\n' "$PACKAGE_GIT_URL"
-        else
-            printf '%s\n' "$PACKAGE_WEB_URL"
-        fi
-    fi
-}
-
-__open_url() {
-    if command -v open > /dev/null ; then
-        run "open '$1'"
-    elif command -v termux-open-url > /dev/null ; then
-        run "termux-open-url '$1'"
-    else
-        warn "I don't konw how to open"
-    fi
-}
-
-__open_homepage_of_the_given_package() {
-    if [ -z "$1" ] ; then
-        __open_url "$PPKG_WEBPAGE_URL"
-    else
-        __load_formula_of_the_given_package "$1"
-
-        if [ -z "$PACKAGE_WEB_URL" ] ; then
-            __open_url "$PACKAGE_GIT_URL"
-        else
-            __open_url "$PACKAGE_WEB_URL"
-        fi
-    fi
-}
-
-# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>], <PACKAGE-NAME> is not given."
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<dot|box|svg|png>], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2217,18 +2150,27 @@ __show_packages_depended_by_the_given_package() {
     shift
 
     unset OUTPUT_FORMAT
+    unset OUTPUT_FILEPATH
 
     while [ -n "$1" ]
     do
         case $1 in
             --format=*)
                 OUTPUT_FORMAT=$(getvalue $1)
+
                 case $OUTPUT_FORMAT in
                     dot|box|svg|png) ;;
-                    *)  die "unsupported format: $OUTPUT_FORMAT"
+                    *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>], unsupported format: $OUTPUT_FORMAT"
                 esac
                 ;;
-            *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] , unrecognized option: $1"
+            -o) shift
+                if [ -z "$1" ] ; then
+                    die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH>], -o option follow a value."
+                else
+                    OUTPUT_FILEPATH="$1"
+                fi
+                ;;
+            *)  die "$_0 depends <PACKAGE-NAME> [--format=<dot|box|svg|png>] [-o <OUTPUT-FILEPATH>], unrecognized option: $1"
         esac
         shift
     done
@@ -2237,13 +2179,13 @@ __show_packages_depended_by_the_given_package() {
         OUTPUT_FORMAT=box
     fi
 
-    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FORMAT"
+    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FORMAT" "$OUTPUT_FILEPATH"
 }
 
 # __logs_the_given_installed_package <PACKAGE-NAME>
   __logs_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 logs <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "$_0 logs <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2423,7 +2365,7 @@ __show_packages_depended_by_the_given_package() {
 # __get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>...
   __get_packages_that_are_recursively_depended_by_the_given_packages() {
       [ -z "$1" ] && {
-          error "__get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+          error "__get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
           return 1
       }
 
@@ -2436,7 +2378,7 @@ __show_packages_depended_by_the_given_package() {
 # __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> internal
   __get_packages_that_are_recursively_depended_by_the_given_package() {
     [ -z "$1" ] && {
-        error "__get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> [internal], <PACKAGE-NAME> is not given."
+        error "__get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> [internal], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2494,7 +2436,7 @@ __get_dot_file_contents() {
     done
 }
 
-# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|box|svg|png>
+# __gen_dependency_graph_recursively_depended_by_the_given_package <PACKAGE-NAME> <dot|box|svg|png> [OUTPUT-FILEPATH]
 __gen_dependency_graph_recursively_depended_by_the_given_package() {
     unset DIRECT_DEPENDENT_PACKAGES
     DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$1")"
@@ -2521,11 +2463,21 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
 
     case $2 in
         dot)
-            cat "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            if [ -z "$3" ] ; then
+                cat "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            else
+                cp  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH" "$3"
+            fi
             ;;
         box)
+            if [ -z "$3" ] ; then
+                CURL_OPTS=
+            else
+                CURL_OPTS="-o $3"
+            fi
+
             # https://github.com/ggerganov/dot-to-ascii
-            curl \
+            curl $CURL_OPTS \
                 -s \
                 -G \
                 --data-urlencode "boxart=1" \
@@ -2542,7 +2494,11 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 fi
             fi
 
-            run dot -Tsvg "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            if [ -z "$3" ] ; then
+                run dot -Tsvg "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            else
+                run dot -Tsvg "-o$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            fi
             ;;
         png)
             command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
@@ -2554,7 +2510,11 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 fi
             fi
 
-            run dot -Tpng "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            if [ -z "$3" ] ; then
+                run dot -Tpng "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            else
+                run dot -Tpng "-o$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            fi
             ;;
     esac
 }
@@ -2563,7 +2523,7 @@ __install_the_given_packages() {
     inspect_install_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGES" ] && {
-        error "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        error "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -2854,11 +2814,10 @@ EOF
         esac
     fi
 
+    #########################################################################################
+
     step "tree files of the installing top directory"
     run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
-
-    step "list files of the installing top directory"
-    run ls -l "$PACKAGE_WORKING_DIR"
 
     step "list files of the installing src directory"
     run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
@@ -2867,6 +2826,8 @@ EOF
         step "list files of the installing build script directory"
         run ls -l "$PACKAGE_BSCRIPT_DIR"
     fi
+
+    #########################################################################################
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
@@ -2899,11 +2860,15 @@ EOF
         unset LINK_LIBRARY_TYPE
     }
 
+    #########################################################################################
+
     step "do some preparation works"
+
     if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
     fi
-    if command -v prepare > /dev/null ; then
+
+    if [ -n "$PACKAGE_PREPARE_ACTIONS" ] ; then
         prepare "$1"
     else
         case $PACKAGE_BUILD_SYSTEM in
@@ -2919,7 +2884,10 @@ EOF
         esac
     fi
 
+    #########################################################################################
+
     step "create symbolic link for CC and CXX to use ccache"
+
     if [ "$CCACHE_ENABLED" = yes ] ; then
         if [ -z "$CCACHE" ] ; then
             die "ccache is not installed."
@@ -2933,18 +2901,14 @@ EOF
     # run ln -sf "$CC" "$PACKAGE_INSTALLING_BIN_DIR/cc"
     # run ln -sf "$LD" "$PACKAGE_INSTALLING_BIN_DIR/ld"
 
-    if [ "$DRYRUN" = yes ] ; then
-        if [ -z "$SHELL" ] ; then
-            SHELL=$(command -v zsh || command -v bash || command -v sh)
-        fi
+    #########################################################################################
+
+    [ "$DRYRUN" = yes ] && {
+        [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh)
         exec "$SHELL" || return 1
-    fi
+    }
 
-    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
-        run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
-    fi
-
-    step "building"
+    #########################################################################################
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
@@ -2954,8 +2918,16 @@ EOF
             run cd "$PACKAGE_BCACHED_DIR" || return 1
     fi
 
-    if command -v build > /dev/null ; then
-        build $1
+    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+        run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
+    fi
+
+    #########################################################################################
+
+    step "building"
+
+    if [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
+        build "$1"
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)   configure ;;
@@ -2970,10 +2942,14 @@ EOF
         esac
     fi
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        [ -f "$PACKAGE_INSTALL_DIR/.crates.toml"  ] && rm "$PACKAGE_INSTALL_DIR/.crates.toml"
-        [ -f "$PACKAGE_INSTALL_DIR/.crates2.json" ] && rm "$PACKAGE_INSTALL_DIR/.crates2.json"
-    fi
+    #########################################################################################
+
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+        rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
+        rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
+    }
+
+    #########################################################################################
 
     cd "$PACKAGE_INSTALL_DIR" || die "nothing is installed."
 
@@ -2981,7 +2957,10 @@ EOF
 
     install -d "$PACKAGE_METAINF_DIR"
 
+    #########################################################################################
+
     step "install config.log"
+
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
@@ -2989,7 +2968,10 @@ EOF
         fi
     done
 
+    #########################################################################################
+
     step "install compile_commands.json"
+
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/compile_commands.json" ] ; then
@@ -2997,13 +2979,18 @@ EOF
         fi
     done
 
+    #########################################################################################
+
     step "install dependencies.dot and dependencies.txt"
+
     for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX
     do
         if [ -f "$file" ] ; then
             install -v -m 644 "$file" "$PACKAGE_METAINF_DIR"
         fi
     done
+
+    #########################################################################################
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
@@ -3021,6 +3008,8 @@ EOF
         __adjust_pc_files_for_the_given_target $@
     fi
 
+    #########################################################################################
+
     step "generate buildon.yml"
     cat > "$PACKAGE_METAINF_DIR/buildon.yml" <<EOF
 os-kind: $NATIVE_OS_KIND
@@ -3030,6 +3019,8 @@ os-arch: $NATIVE_OS_ARCH
 os-vers: $NATIVE_OS_VERS
 os-ncpu: $NATIVE_OS_NCPU
 os-libc: $NATIVE_OS_LIBC
+os-euid: $NATIVE_OS_EUID
+os-egid: $NATIVE_OS_GUID
 EOF
 
     step "generate manifest.txt"
@@ -3042,6 +3033,8 @@ EOF
         step "symlink installed files to $PPKG_PACKAGE_SYMLINKED_DIR"
         __symlink_installed_files_of_the_given_package "$1"
     fi
+
+    #########################################################################################
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
@@ -3056,11 +3049,11 @@ EOF
         run rm -rf "$PACKAGE_WORKING_DIR"
     fi
 
+    echo
+    success "$1 have been successfully installed."
+
     step "show installed files in tree-like format"
     __tree_the_given_installed_package "$1" $TREE_ARGS
-
-    echo
-    success "$1 have been installed successfully."
 }
 
 __adjust_elf_files_for_the_given_target() {
@@ -3680,8 +3673,11 @@ EOF
 
     export M4
 
-    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+    ##################################################################################
+
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+
         unset CMAKE_PREFIX_PATH
         unset CMAKE_APPLE_SILICON_PROCESSOR
         unset CMAKE_BUILD_PARALLEL_LEVEL
@@ -3754,6 +3750,8 @@ EOF
 
         CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
     fi
+
+    ##################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         # https://docs.rs/backtrace/latest/backtrace/
@@ -3856,6 +3854,8 @@ EOF
         env | grep CARGO_
     fi
 
+    ##################################################################################
+
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
         # https://golang.org/doc/install/source#environment
         export CGO_ENABLED=0
@@ -3896,7 +3896,7 @@ __printf_relevant_environment_variables() {
     printf '%s\n' "
 PPKG_VERSION        = $PPKG_VERSION
 PPKG_HOME           = $PPKG_HOME
-PPKG_EXE_FILEPATH   = $PPKG_EXE_FILEPATH
+PPKG                = $PPKG
 PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
 
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
@@ -3920,6 +3920,8 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
      NATIVE_OS_NCPU = $NATIVE_OS_NCPU
      NATIVE_OS_LIBC = $NATIVE_OS_LIBC
      NATIVE_OS_SUBS = $NATIVE_OS_SUBS
+     NATIVE_OS_EUID = $NATIVE_OS_EUID
+     NATIVE_OS_GUID = $NATIVE_OS_GUID
 
         PROXIED_CC  = $PROXIED_CC
         PROXIED_CXX = $PROXIED_CXX
@@ -4382,7 +4384,7 @@ EOF
 # __show_infomation_of_the_given_package curl web-url
   __show_infomation_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_infomation_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is not given."
+        error "__show_infomation_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -4640,7 +4642,7 @@ mark_is_package_installed_or_not() {
 # __generate_receipt_of_the_given_package <PACKAGE-NAME>
   __generate_receipt_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -4694,7 +4696,7 @@ EOF
 # __load_receipt_of_the_given_package <PACKAGE-NAME>
   __load_receipt_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__load_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -5350,7 +5352,7 @@ list_all_installed_libs() {
 
 __ldd() {
     [ -z "$1" ] && {
-        error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
         return 1
     }
 
@@ -5366,7 +5368,7 @@ __ldd() {
 
     ldd_recursion() {
         [ -z "$1" ] && {
-            error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+            error "__ldd <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
             return 1
         }
 
@@ -5627,7 +5629,7 @@ case \$1 in
     https://github.com/*)
         printf 'https://ghproxy.com/%s\n' "\$1"
         ;;
-    '') printf '%s\n' 'wfetch-url-transform <URL>, <URL> is not given.' >&2 ;;
+    '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ;;
     *)  printf '%s\n' "\$1"
 esac
 EOF
@@ -5901,7 +5903,7 @@ __setup_PATH_env() {
     if [ -d "$UPPM_PACKAGE_INSTALLED_DIR" ] ; then
         for item in $(ls "$UPPM_PACKAGE_INSTALLED_DIR")
         do
-            if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item" ] && [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
+            if [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
                 if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin" ] ; then
                     bppend_to_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin"
                 fi
@@ -6007,7 +6009,7 @@ ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
     download resources of all available packages to the local cache.
 
-${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png]${COLOR_OFF}
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [--format=dot|box|svg|png] [-o <OUTPUT-FILEPATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
 ${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
@@ -6049,7 +6051,7 @@ main() {
     #IFS_DEFAULT=$(printf ' \t\n')
     #IFS=$IFS_DEFAULT
 
-    PPKG_EXE_FILEPATH="$CURRENT_SCRIPT_FILEPATH"
+    PPKG="$CURRENT_SCRIPT_FILEPATH"
 
     PPKG_VERSION=0.1.3
 
@@ -6136,6 +6138,7 @@ main() {
     NATIVE_OS_LIBC=$($OS_COMMAND_PATH libc)
     NATIVE_OS_SUBS=$($OS_COMMAND_PATH subs)
     NATIVE_OS_EUID=$(id -u)
+    NATIVE_OS_EGID=$(id -g)
 
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
@@ -6148,18 +6151,20 @@ main() {
     case $1 in
         env)
             cat <<EOF
-sysinfo.ncpu: $("$PPKG_CORE_BIN_DIR/os" ncpu)
-sysinfo.arch: $("$PPKG_CORE_BIN_DIR/os" arch)
-sysinfo.kind: $("$PPKG_CORE_BIN_DIR/os" kind)
-sysinfo.type: $("$PPKG_CORE_BIN_DIR/os" type)
-sysinfo.name: $("$PPKG_CORE_BIN_DIR/os" name)
-sysinfo.vers: $("$PPKG_CORE_BIN_DIR/os" vers)
-sysinfo.libc: $("$PPKG_CORE_BIN_DIR/os" libc)
+sysinfo.ncpu: $NATIVE_OS_NCPU
+sysinfo.arch: $NATIVE_OS_ARCH
+sysinfo.kind: $NATIVE_OS_KIND
+sysinfo.type: $NATIVE_OS_TYPE
+sysinfo.name: $NATIVE_OS_NAME
+sysinfo.vers: $NATIVE_OS_VERS
+sysinfo.libc: $NATIVE_OS_LIBC
+sysinfo.euid: $NATIVE_OS_EUID
+sysinfo.egid: $NATIVE_OS_EGID
 
 ppkg.vers : $PPKG_VERSION
 ppkg.home : $PPKG_HOME
-ppkg.path : $CURRENT_SCRIPT_FILEPATH
-ppkg.github: https://github.com/leleliu008/ppkg
+ppkg.path : $PPKG
+ppkg.link : https://github.com/leleliu008/ppkg
 EOF
             return 0
             ;;
@@ -6209,7 +6214,6 @@ EOF
                 *)   die "ppkg integrate $1: not support."
             esac
             ;;
-        homepage) shift;  __show_or_open_homepage_of_the_given_package $@ ;;
         depends)  shift; __show_packages_depended_by_the_given_package $@ ;;
         fetch)    shift;        __fetch_resources_of_the_given_package $@ ;;
 

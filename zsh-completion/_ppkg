@@ -90,7 +90,8 @@ function _ppkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '--format=-[set output format]:format:(dot box svg png)'
+                        '--format=-[set output format]:format:(dot box svg png)' \
+                        '-o[set the output filepath]:output-filepath:{_files}'
                     ;;
                 pack)
                     _arguments \

@@ -104,10 +104,10 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg depends curl --format=png
         ppkg depends curl --format=svg
 
-        ppkg depends curl --format=dot > xx.dot
-        ppkg depends curl --format=box > xx.txt
-        ppkg depends curl --format=png > xx.png
-        ppkg depends curl --format=svg > xx.svg
+        ppkg depends curl --format=dot -o curl-dependencies.dot
+        ppkg depends curl --format=box -o curl-dependencies.txt
+        ppkg depends curl --format=png -o curl-dependencies.png
+        ppkg depends curl --format=svg -o curl-dependencies.svg
         
 *   **download resources of the given package to the local cache**
         
