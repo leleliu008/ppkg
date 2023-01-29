@@ -99,15 +99,20 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         
         ppkg depends curl
 
-        ppkg depends curl --format=dot
-        ppkg depends curl --format=box
-        ppkg depends curl --format=png
-        ppkg depends curl --format=svg
+        ppkg depends curl -t dot
+        ppkg depends curl -t box
+        ppkg depends curl -t png
+        ppkg depends curl -t svg
 
-        ppkg depends curl --format=dot -o curl-dependencies.dot
-        ppkg depends curl --format=box -o curl-dependencies.txt
-        ppkg depends curl --format=png -o curl-dependencies.png
-        ppkg depends curl --format=svg -o curl-dependencies.svg
+        ppkg depends curl -o curl-dependencies.dot
+        ppkg depends curl -o curl-dependencies.txt
+        ppkg depends curl -o curl-dependencies.png
+        ppkg depends curl -o curl-dependencies.svg
+
+        ppkg depends curl -t dot -o dependencies/
+        ppkg depends curl -t box -o dependencies/
+        ppkg depends curl -t png -o dependencies/
+        ppkg depends curl -t svg -o dependencies/
         
 *   **download resources of the given package to the local cache**
         
@@ -195,11 +200,14 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 *   **pack the given installed package**
         
         ppkg pack curl
-        ppkg pack curl --type=tar.xz
-        ppkg pack curl --type=tar.gz
-        ppkg pack curl --type=tar.lz
-        ppkg pack curl --type=tar.bz2
-        ppkg pack curl --type=zip
+        ppkg pack curl -t tar.xz
+        ppkg pack curl -t tar.gz
+        ppkg pack curl -t tar.lz
+        ppkg pack curl -t tar.bz2
+        ppkg pack curl -t zip
+
+        ppkg pack curl -t zip -o a/
+        ppkg pack curl -o a/xx.zip
         
 *   **delete the unused cached files**
         

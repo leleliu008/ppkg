@@ -2189,9 +2189,11 @@ __show_packages_depended_by_the_given_package() {
                 OUTPUT_FILETYPE='box'
             fi
 
+            unset OUTPUT_DIR
+            OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
 
-            OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
-            OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
+
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
         else
             case $OUTPUT_FILEPATH in
                 */)
@@ -2199,11 +2201,20 @@ __show_packages_depended_by_the_given_package() {
                         OUTPUT_FILETYPE='box'
                     fi
 
-                    OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
-                    OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
+                    unset OUTPUT_DIR
+                    OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
+
+                    OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
+
+                    [ -d "$OUTPUT_DIR" ] || install -d "$OUTPUT_DIR"
                     ;;
                 *)
                     OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
+
+                    unset OUTPUT_DIR
+                    OUTPUT_DIR="$(dirname "$OUTPUT_FILEPATH")"
+
+                    [ -d "$OUTPUT_DIR" ] || install -d "$OUTPUT_DIR"
 
                     if [ -z "$OUTPUT_FILETYPE" ] ; then
                         case $OUTPUT_FILEPATH in
