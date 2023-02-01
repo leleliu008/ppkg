@@ -2230,7 +2230,7 @@ __show_packages_depended_by_the_given_package() {
                             *.png)
                                 OUTPUT_FILETYPE=png
                                 ;;
-                            *)  die "when -t <OUTPUT-TYPE> option is not given, -o <OUTPUT-PATH> option specified filename must ends with one of .dot|.box|.svg|.png"
+                            *)  OUTPUT_FILETYPE=box
                         esac
                     fi
             esac
@@ -2429,7 +2429,7 @@ __show_packages_depended_by_the_given_package() {
                             *.7z)
                                 OUTPUT_FILETYPE=7z
                                 ;;
-                            *)  die "when -t <OUTPUT-TYPE> option is not given, -o <OUTPUT-PATH> option specified filename must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|.zip|.7z"
+                            *)  OUTPUT_FILETYPE=tar.xz
                         esac
                     fi
 
@@ -3089,7 +3089,177 @@ EOF
 
     [ -z "$(ls)" ]            && die "nothing is installed."
 
+    #########################################################################################
+
+    # reassigned to make sure it has the right value, becsuse it may be changed in prepare and install block.
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
+
+    #########################################################################################
+
+    PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
+
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/manifest.txt"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/receipt.yml"
+
     install -d "$PACKAGE_METAINF_DIR"
+
+    #########################################################################################
+
+    step "install COPYING"
+
+    COPYING_FOUND=0
+
+    for item in $(find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -name "COPYING*")
+    do
+        if [ -f "$item" ] ; then
+            COPYING_FOUND=1
+            install -v -m 644 "$item" "$PACKAGE_METAINF_DIR/"
+        fi
+    done
+
+    if [ "$COPYING_FOUND" = 0 ] ; then
+        note "'COPYING' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install LICENSE"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/LICENSE" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/LICENSE" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'LICENSE' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install AUTHORS"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'AUTHORS' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install CONTRIBUTORS"
+
+    CONTRIBUTORS_FOUND=0
+
+    for item in CONTRIBUTORS CONTRIBUTORS.md CONTRIBUTORS.rst
+    do
+        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
+            CONTRIBUTORS_FOUND=1
+            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
+        fi
+    done
+
+    if [ "$CONTRIBUTORS_FOUND" = 0 ] ; then
+        note "neither of 'CONTRIBUTORS' 'CONTRIBUTORS.md' 'CONTRIBUTORS.rst' named files was found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install README"
+
+    README_FOUND=0
+
+    for item in README README.md README.rst
+    do
+        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
+            README_FOUND=1
+            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
+        fi
+    done
+
+    if [ "$README_FOUND" = 0 ] ; then
+        note "none of 'README' 'README.md' 'README.rst' named files was found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install CONTRIBUTING"
+
+    CONTRIBUTING_FOUND=0
+
+    for item in CONTRIBUTING CONTRIBUTING.md CONTRIBUTING.rst
+    do
+        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
+            CONTRIBUTING_FOUND=1
+            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
+        fi
+    done
+
+    if [ "$CONTRIBUTING_FOUND" = 0 ] ; then
+        note "none of 'CONTRIBUTING' 'CONTRIBUTING.md' 'CONTRIBUTING.rst' named files was found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install CHANGELOG"
+
+    CHANGELOG_FOUND=0
+
+    for item in CHANGELOG CHANGELOG.md CHANGES
+    do
+        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
+            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
+            CHANGELOG_FOUND=1
+            break;
+        fi
+    done
+
+    if [ "$CHANGELOG_FOUND" = 0 ] ; then
+        note "none of 'CHANGELOG' 'CHANGELOG.md' 'CHANGES' named files was found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install NEWS"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/NEWS" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/NEWS" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'NEWS' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install TODO"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/TODO" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/TODO" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'TODO' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install FAQ"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/FAQ" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/FAQ" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'FAQ' named file was not found, skipped."
+    fi
+
+    #########################################################################################
+
+    step "install THANKS"
+
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/THANKS" ] ; then
+        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/THANKS" "$PACKAGE_METAINF_DIR/"
+    else
+        note "'THANKS' named file was not found, skipped."
+    fi
 
     #########################################################################################
 
@@ -6125,16 +6295,18 @@ ${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
     list installed files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
 
-    <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    <OUTPUT-TYPE> must be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|zip
+    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be expanded to <OUTPUT-PATH>/\$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.tar.xz
+    <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
 
-    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be \$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.tar.xz
+    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/\$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.<OUTPUT-PATH>
+
+    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be tar.xz, <OUTPUT-PATH> will be \$PPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$NATIVE_OS_KIND-\$NATIVE_OS_ARCH.tar.xz
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
     show logs of the given installed package.
@@ -6151,14 +6323,18 @@ ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
     download resources of all available packages to the local cache.
 
-${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
-    <OUTPUT-PATH> can be either the filepath or directory where the file will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    <OUTPUT-TYPE> must be one of <dot|box|svg|png>
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPU-TYPE> will be box and <OUTPUT-PATH> will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.box
+    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .dot|.box|.svg|.png
+    <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+
+    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
+
+    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
