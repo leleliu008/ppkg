@@ -2170,45 +2170,46 @@ __cleanup() {
 ##############################################################################
 # {{{ ppkg compare-versions
 
-__compare_versions_with_brew() {
-    get_brew_package_name_from_my_package_name() {
-        case $1 in
-            gm4)      printf '%s\n' 'm4'        ;;
-            file)     printf '%s\n' 'file-formula' ;;
-            xattr)    printf '%s\n' 'attr'      ;;
-            patch)    printf '%s\n' 'gpatch'    ;;
-            delta)    printf '%s\n' 'git-delta' ;;
-            gmake)    printf '%s\n' 'make'      ;;
-            gtar)     printf '%s\n' 'gnu-tar'   ;;
-            libjxl)   printf '%s\n' 'jpeg-xl'   ;;
-            blake3)   printf '%s\n' 'b3sum'     ;;
-            libwebp)  printf '%s\n' 'webp'      ;;
-            proj7)    printf '%s\n' 'proj@7'    ;;
-            openssl)  printf '%s\n' 'openssl@1.1';;
-            freetype2)printf '%s\n' 'freetype'  ;;
-            freetype2-with-harfbuzz)
-                      printf '%s\n' 'freetype'  ;;
-            libmediainfo|mediainfo)
-                      printf '%s\n' 'media-info';;
-            tcl-core) printf '%s\n' 'tcl-tk'    ;;
-            openssl1.1.x)
-                      printf '%s\n' 'openssl@1.1';;
-            gnu-binutils)
-                      printf '%s\n' 'binutils'  ;;
-            *)        printf '%s\n' "$1"
-        esac
-    }
+package_name_transform_from_uppm_to_brew() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        file)     printf '%s\n' 'file-formula' ;;
+        xattr)    printf '%s\n' 'attr'      ;;
+        patch)    printf '%s\n' 'gpatch'    ;;
+        delta)    printf '%s\n' 'git-delta' ;;
+        gmake)    printf '%s\n' 'make'      ;;
+        gtar)     printf '%s\n' 'gnu-tar'   ;;
+        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+        blake3)   printf '%s\n' 'b3sum'     ;;
+        libwebp)  printf '%s\n' 'webp'      ;;
+        proj7)    printf '%s\n' 'proj@7'    ;;
+        openssl)  printf '%s\n' 'openssl@1.1';;
+        freetype2)printf '%s\n' 'freetype'  ;;
+        freetype2-with-harfbuzz)
+                  printf '%s\n' 'freetype'  ;;
+        libmediainfo|mediainfo)
+                  printf '%s\n' 'media-info';;
+        tcl-core) printf '%s\n' 'tcl-tk'    ;;
+        openssl1.1.x)
+                  printf '%s\n' 'openssl@1.1';;
+        gnu-binutils)
+                  printf '%s\n' 'binutils'  ;;
+        *)        printf '%s\n' "$1"
+    esac
+}
 
+__compare_versions_with_brew() {
     cd "$PPKG_HOME/repos.d/offical-core/formula"
 
     for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
     do
         __load_formula_of_the_given_package "$item"
 
-        BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name "$PACKAGE_NAME")"
+        BREW_PKG_NMAE="$(package_name_transform_from_uppm_to_brew "$PACKAGE_NAME")"
 
         if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
             BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" --json | yq '.[0].versions.stable')
+
             if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
                 printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
             else
