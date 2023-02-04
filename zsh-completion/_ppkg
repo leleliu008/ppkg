@@ -114,7 +114,7 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                        '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
+                        '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-installing-dir[do not delete installing dir even if installed success]' \
@@ -126,8 +126,6 @@ function _ppkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
-                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
                         '-vv[debug mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -136,7 +134,7 @@ function _ppkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--toolchain=-[set which toolchain to use]:toolchain:(zig gcc llvm)' \
+                        '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-installing-dir[do not delete installing dir even if installed success]' \
@@ -148,8 +146,6 @@ function _ppkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
-                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
                         '-vv[debug mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -169,8 +165,6 @@ function _ppkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst -a)' \
-                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)' \
                         + '(verbose_level)' \
                         '-vv[debug mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
