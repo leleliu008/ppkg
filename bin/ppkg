@@ -2235,7 +2235,7 @@ __gen_github_workflows() {
         case $1 in
             --group-size=*)
                 GROUP_SIZE="${1#*=}"
-                is_integer "$GROUP_SIZE" || abort 1 "--group-size=INTEGER"
+                is_integer "$GROUP_SIZE" || abort 1 "--group-size=<INTEGER>, <INTEGER> must be an integer."
                 ;;
             --output-dir=*)
                 OUTPUT_DIR="${1#*=}"
@@ -2255,7 +2255,7 @@ __gen_github_workflows() {
     done
 
     if [ -z "$GROUP_SIZE" ] ; then
-        abort 1 "please sepecify --group-size=INTEGER argument."
+        abort 1 "--group-size=<INTEGER> option must be given."
     fi
 
     if [ -z "$OUTPUT_DIR" ] ; then
@@ -3015,7 +3015,7 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
 
-    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '} pkg-config"
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '} pkg-config patchelf tree"
 
     #########################################################################################
 
