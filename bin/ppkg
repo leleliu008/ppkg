@@ -3304,7 +3304,6 @@ EOF
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
              CC="$(xcrun --sdk macosx --find clang)"
             CXX="$(xcrun --sdk macosx --find clang++)"
-            CPP="$(xcrun --sdk macosx --find cpp)"
              AS="$(xcrun --sdk macosx --find as)"
              AR="$(xcrun --sdk macosx --find ar)"
          RANLIB="$(xcrun --sdk macosx --find ranlib)"
@@ -3320,7 +3319,6 @@ EOF
     else
              CC="$(command -v cc || command -v clang || command -v gcc || error "C Compiler not found.")"
             CXX="$(command -v c++ || command -v clang++ || command -v g++ || error "C++ Compiler not found.")"
-            CPP="$(command -v cpp)"
              AS="$(command -v as)"
              AR="$(command -v ar)"
          RANLIB="$(command -v ranlib)"
@@ -3334,6 +3332,8 @@ EOF
         READELF="$(command -v readelf)"
         ADDR2LINE="$(command -v addr2line || true)"
     fi
+
+    CPP="$CC -E"
 
     for TOOL in CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
     do
@@ -3369,8 +3369,8 @@ EOF
         # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
         export SDKROOT="$SYSROOT"
 
-        printf '%s\n' "$SDKROOT=$SDKROOT"
-        printf '%s\n' "$SYSROOT=$SYSROOT"
+        printf '%s\n' "SDKROOT=$SDKROOT"
+        printf '%s\n' "SYSROOT=$SYSROOT"
     fi
 
     #########################################################################################
@@ -3389,7 +3389,7 @@ EOF
         CCFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
     fi
 
-    if $CC  $CCFLAGS -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.c" 2>/dev/null ; then
+    if $CC $CCFLAGS -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.c" 2>/dev/null ; then
         PACKAGE_CCFLAGS="$PACKAGE_CCFLAGS -Wno-error=unused-command-line-argument"
         success "YES"
     else
