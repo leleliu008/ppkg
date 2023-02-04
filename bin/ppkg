@@ -2948,9 +2948,13 @@ __install_the_given_packages() {
         printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $RECURSIVE_DEPENDENT_PACKAGE_NAMES $COLOR_OFF\n"
     fi
 
+    unset INSTALLED_DEPENDENT_PACKAGE_NAMES
+
     for PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         if is_package_installed "$PACKAGE_NAME" ; then
+            INSTALLED_DEPENDENT_PACKAGE_NAMES="$INSTALLED_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME"
+
             if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
             fi
@@ -2960,6 +2964,8 @@ __install_the_given_packages() {
             if [ "$DRYRUN" = no ] ; then
                 is_package_installed "$PACKAGE_NAME" || abort 1 "package [$PACKAGE_NAME] install failed"
             fi
+
+            INSTALLED_DEPENDENT_PACKAGE_NAMES="$INSTALLED_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME"
         fi
     done
 }
@@ -3004,6 +3010,116 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
 
     step "load formula"
     __load_formula_of_the_given_package "$1"
+
+    #########################################################################################
+
+    step "create relevant directories"
+
+    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
+    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
+
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/build.d"
+
+    if [ -z "$PACKAGE_BSCRIPT" ] ; then
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
+    else
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+    fi
+
+    rm -rf     "$PACKAGE_WORKING_DIR"
+
+    install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    install -d "$PACKAGE_INSTALLING_RES_DIR"
+    install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    install -d "$PACKAGE_INSTALLING_INC_DIR"
+    install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    install -d "$PACKAGE_INSTALLING_TMP_DIR"
+    install -d "$PACKAGE_BCACHED_DIR"
+
+    cat <<EOF
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
+EOF
+
+    #########################################################################################
+
+    unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "calculate dependency list of $1"
+
+        RECURSIVE_DEPENDENT_PACKAGE_NAMES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
+
+        printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES"
+    }
+
+    #########################################################################################
+
+    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        do
+            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME"
+
+            if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
+            else
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/sbin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$docbook_INSTALL_DIR/catalog.xml"
+            fi
+        done
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "generate dependency tree of $1"
+
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_WORKING_DIR/dependencies.svg"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
+
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" box "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" || true
+
+        if command -v dot > /dev/null ; then
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" svg "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+        fi
+
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
+        fi
+    }
 
     #########################################################################################
 
@@ -3149,102 +3265,34 @@ SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
 
     #########################################################################################
 
-    step "create relevant directories"
-
-    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
-    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
-
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
-
-    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/build.d"
-
-    if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
-    else
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    fi
-
-    rm -rf     "$PACKAGE_WORKING_DIR"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_INSTALLING_TMP_DIR"
-    install -d "$PACKAGE_BCACHED_DIR"
-
-    cat <<EOF
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
-PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-EOF
-
-    #########################################################################################
-
-    unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
-
-    if [ -n "$PACKAGE_DEP_PKG" ] ; then
-        step "generating dependency tree of $1"
-
-        RECURSIVE_DEPENDENT_PACKAGE_NAMES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
-
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_WORKING_DIR/dependencies.svg"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
-
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" box "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" || true
-
-        if command -v dot > /dev/null ; then
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" svg "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
-        fi
-
-        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
-            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
-        fi
-    fi
-
-    #########################################################################################
-
-    [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
+    [ -n "$PACKAGE_DEP_PKG" ] && {
         step "create symbolic links for dependent libraries"
 
-        unset libNameSuffix
+        unset libFileNameSuffix
 
         case $LINK_TYPE in
             static-only|static-prefered)
-                libNameSuffix='.a'
+                libFileNameSuffix='.a'
                 ;;
             shared-only|shared-prefered)
                 if [ "$NATIVE_OS_KIND" = darwin ] ; then
-                    libNameSuffix='.dylib'
+                    libFileNameSuffix='.dylib'
                 else
-                    libNameSuffix='.so'
+                    libFileNameSuffix='.so'
                 fi
                 ;;
             *)  die "unrecognized link type: $LINK_TYPE"
         esac
 
-        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
         do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
+            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
 
             if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                for libName in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*$libNameSuffix" -exec basename {} \;)
+                for libFileName in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*$libFileNameSuffix" -exec basename {} \;)
                 do
-                    if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$libName" ] ; then
-                        run ln -s "$DEPENDENT_PACKAGE_LIBRARY_DIR/$libName" "$PACKAGE_INSTALLING_LIB_DIR/$libName"
+                    if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$libFileName" ] ; then
+                        run ln -s "$DEPENDENT_PACKAGE_LIBRARY_DIR/$libFileName" "$PACKAGE_INSTALLING_LIB_DIR/$libFileName"
                     fi
                 done
             fi
@@ -3604,8 +3652,6 @@ EOF
         LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
-    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
@@ -3627,27 +3673,12 @@ EOF
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INCLUDE_DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_LIBRARY_DIR'"
 
-        if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-            PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-        fi
-
         if [ -d "$DEPENDENT_PACKAGE_INCLUDE_DIR" ] ; then
             PPFLAGS="-I$DEPENDENT_PACKAGE_INCLUDE_DIR $PPFLAGS"
         fi
 
         if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
             LDFLAGS="-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $LDFLAGS"
-        fi
-
-        if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
-            # http://xmlsoft.org/xslt/xsltproc.html
-            export XML_CATALOG_FILES="$docbook_INSTALL_DIR/catalog.xml"
-        fi
-
-        if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
-            RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
-        else
-            RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
         fi
     done
 
