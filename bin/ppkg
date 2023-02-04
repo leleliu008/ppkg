@@ -5698,7 +5698,7 @@ __setup() {
         export PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$PPKG_CORE_DIR/etc/ssl/certs"
+        wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
         run install -d                         "$PPKG_CORE_DIR/etc/ssl/certs"
         run cp "$SETUP_WORKING_DIR/cacert.pem" "$PPKG_CORE_DIR/etc/ssl/certs"
