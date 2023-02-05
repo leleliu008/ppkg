@@ -1000,18 +1000,17 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
-            autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
-            configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
-            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
-            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
-            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
+            autogen)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4" ; PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
+            autotools)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4" ; PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
+            configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"        ;;
+            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake cmake"  ;;
+            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja cmake"  ;;
+            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja cmake"  ;;
             xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
             meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
             ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
             gmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
             rake)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"   ;;
-            #cargo)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP rustup" ;;
             go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
         esac
     done
@@ -2948,13 +2947,9 @@ __install_the_given_packages() {
         printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $RECURSIVE_DEPENDENT_PACKAGE_NAMES $COLOR_OFF\n"
     fi
 
-    unset INSTALLED_DEPENDENT_PACKAGE_NAMES
-
     for PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         if is_package_installed "$PACKAGE_NAME" ; then
-            INSTALLED_DEPENDENT_PACKAGE_NAMES="$INSTALLED_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME"
-
             if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
             fi
@@ -2964,8 +2959,6 @@ __install_the_given_packages() {
             if [ "$DRYRUN" = no ] ; then
                 is_package_installed "$PACKAGE_NAME" || abort 1 "package [$PACKAGE_NAME] install failed"
             fi
-
-            INSTALLED_DEPENDENT_PACKAGE_NAMES="$INSTALLED_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME"
         fi
     done
 }
@@ -3261,6 +3254,83 @@ EOF
             export CARGO_HOME="$HOME/.cargo"
             export PATH="$CARGO_HOME/bin:$PATH"
         }
+    }
+
+    #########################################################################################
+
+    step "locate build tools"
+
+    unset AUTORECONF
+    unset AUTOCONF
+    unset AUTOMAKE
+    unset ACLOCAL
+    unset PERL
+    unset M4
+
+    unset MESON
+    unset CMAKE
+    unset XMAKE
+    unset GMAKE
+    unset NINJA
+
+    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ; then
+        AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
+        AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
+        AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
+        ACLOCAL=$(command -v aclocal)       || abort 1 "command not found: aclocal"
+        PERL=$(command -v perl)             || abort 1 "command not found: perl"
+        M4=$(command -v m4)                 || abort 1 "command not found: m4"
+
+        run "$AUTORECONF" --version
+        run "$AUTOCONF"   --version
+        run "$AUTOMAKE"   --version
+        run "$ACLOCAL"    --version
+        run "$PERL"       --version
+        run "$M4"         --version
+    fi
+
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
+        MESON=$(command -v meson) || abort 1 "command not found: meson"
+
+        run "$MESON"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
+        CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
+
+        run "$CMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
+        XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+
+        run "$XMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
+        GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
+
+        run "$GMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
+        NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
+
+        run "$NINJA"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
+        CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
+
+        run "$RUSTUP"     --version
+        run "$CARGO"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
+        GO=$(command -v go) || abort 1 "command not found: go"
+
+        run "$GO"      version
     }
 
     #########################################################################################
