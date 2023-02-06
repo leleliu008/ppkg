@@ -710,7 +710,7 @@ filetype_from_url() {
 
 # __load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH]
   __load_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__parse_formula <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
+    [ -z "$1" ] && abort 1 "__load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
 
     unset PACKAGE_FORMULA_FILEPATH
 
@@ -1401,7 +1401,7 @@ __fetch_resources_of_the_given_package() {
             done
             ;;
         *)
-             __load_formula_of_the_given_package
+             __load_formula_of_the_given_package "$1"
             __fetch_sources_of_the_given_package "$@"
             __fetch_patches_of_the_given_package "$@"
     esac
