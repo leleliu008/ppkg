@@ -687,7 +687,7 @@ __list_formula_filepath() {
 ##############################################################################
 # {{{ formula parse
 
-get_file_extension_from_url() {
+filetype_from_url() {
     # remove query params
     URL="${1%%'?'*}"
 
@@ -708,7 +708,12 @@ get_file_extension_from_url() {
     esac
 }
 
-__load_formula_of_the_given_package() {
+# __load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH]
+  __load_formula_of_the_given_package() {
+    [ -z "$1" ] && abort 1 "__parse_formula <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
+
+    unset PACKAGE_FORMULA_FILEPATH
+
     unset PACKAGE_FORMULA_LOADED
 
     unset PACKAGE_NAME
@@ -771,7 +776,7 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_SYSTEM_CONFIGURE
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
-    # dir relative to $PACKAGE_WORKING_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    # dir relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
 
     # if build in build script dir, otherwise build in build dir
@@ -805,22 +810,28 @@ __load_formula_of_the_given_package() {
     unset -f build
     unset -f build_configed
 
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")" || abort 1 "package [$1] is not available."
+    #########################################################################################
 
-    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
+    if [ -z "$2" ] ; then
+        PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")" || abort 1 "package [$1] is not available."
+    else
+        PACKAGE_FORMULA_FILEPATH="$2"
+    fi
+
+    #########################################################################################
+
+    for KEY in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
     do
-        unset __KEY_UPPERCASE_UNDERSCORE__
-        unset __VALUE__
+        unset VALUE; VALUE="$(yq ".$KEY" "$PACKAGE_FORMULA_FILEPATH")"
 
-        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
-
-        if [ "$__VALUE__" = null ] ; then
-               __VALUE__=
+        if [ "$VALUE" != null ] ; then
+            unset KEY_UPPERCASE_UNDERSCORE
+            KEY_UPPERCASE_UNDERSCORE="$(printf '%s\n' "$KEY" | tr '-' '_' | tr a-z A-Z)"
+            eval "PACKAGE_${KEY_UPPERCASE_UNDERSCORE}=\"$VALUE\""
         fi
-
-        eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
+
+    #########################################################################################
 
     unset PACKAGE_PREPARE_ACTIONS
     PACKAGE_PREPARE_ACTIONS="$(yq .prepare "$PACKAGE_FORMULA_FILEPATH")"
@@ -831,7 +842,9 @@ __load_formula_of_the_given_package() {
     [ "$PACKAGE_PREPARE_ACTIONS" = null ] && unset PACKAGE_PREPARE_ACTIONS
     [ "$PACKAGE_INSTALL_ACTIONS" = null ] && unset PACKAGE_INSTALL_ACTIONS
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ]; then
+    #########################################################################################
+
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
         for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
         do
             case "$FirstWordOfLineInInstallActions" in
@@ -846,16 +859,14 @@ __load_formula_of_the_given_package() {
         done
     fi
 
+    #########################################################################################
+
     PACKAGE_NAME="$1"
     PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
-
-    if [ -z "$PACKAGE_SYMLINK" ] ; then
-        PACKAGE_SYMLINK=yes
-    fi
 
     if [ -z "$PACKAGE_PARALLEL" ] ; then
         PACKAGE_PARALLEL=yes
@@ -864,17 +875,19 @@ __load_formula_of_the_given_package() {
         PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
     fi
 
-    if [ -z "$PACKAGE_SUMMARY" ] ; then
-        abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
-    fi
+    [ -z "$PACKAGE_SYMLINK" ] && PACKAGE_SYMLINK=yes
+
+    [ -z "$PACKAGE_SUMMARY" ] && abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
 
     if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        abort 1 "web-url or git-url mapping not found in $PACKAGE_FORMULA_FILEPATH"
+        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
     fi
+
+    #########################################################################################
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
         if [ -z "$PACKAGE_GIT_URL" ] ; then
-            abort 1 "src-url or git-url mapping not found in $PACKAGE_FORMULA_FILEPATH"
+            abort 1 "neither src-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
         else
             PACKAGE_SRC_FILETYPE=.git
             PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
@@ -883,7 +896,7 @@ __load_formula_of_the_given_package() {
         case $PACKAGE_SRC_URL in
             dir://*)
                 PACKAGE_SRC_FILETYPE=.dir ;;
-            *)  PACKAGE_SRC_FILETYPE="$(get_file_extension_from_url "$PACKAGE_SRC_URL")"
+            *)  PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
 
                 case $PACKAGE_SRC_FILETYPE in
                     .zip)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip"      ;;
@@ -895,6 +908,8 @@ __load_formula_of_the_given_package() {
                 esac
         esac
     fi
+
+    #########################################################################################
 
     case $PACKAGE_SRC_FILETYPE in
         .dir)
@@ -929,12 +944,12 @@ __load_formula_of_the_given_package() {
             PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
     esac
 
-    if [ -n "$PACKAGE_FIX_URL" ] ; then
-        if [ -z "$PACKAGE_FIX_SHA" ] ; then
-            abort 1 "fix-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
-        fi
+    #########################################################################################
 
-        PACKAGE_FIX_FILETYPE="$(get_file_extension_from_url "$PACKAGE_FIX_URL")"
+    [ -n "$PACKAGE_FIX_URL" ] && {
+        [ -z "$PACKAGE_FIX_SHA" ] && abort 1 "fix-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
+
+        PACKAGE_FIX_FILETYPE="$(filetype_from_url "$PACKAGE_FIX_URL")"
 
         case $PACKAGE_FIX_FILETYPE in
             .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
@@ -948,14 +963,14 @@ __load_formula_of_the_given_package() {
 
         PACKAGE_FIX_FILENAME="$PACKAGE_FIX_SHA$PACKAGE_FIX_FILETYPE"
         PACKAGE_FIX_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
-    fi
+    }
 
-    if [ -n "$PACKAGE_RES_URL" ] ; then
-        if [ -z "$PACKAGE_RES_SHA" ] ; then
-            abort 1 "res-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
-        fi
+    #########################################################################################
 
-        PACKAGE_RES_FILETYPE="$(get_file_extension_from_url "$PACKAGE_RES_URL")"
+    [ -n "$PACKAGE_RES_URL" ] && {
+        [ -z "$PACKAGE_RES_SHA" ] && abort 1 "res-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
+
+        PACKAGE_RES_FILETYPE="$(filetype_from_url "$PACKAGE_RES_URL")"
 
         case $PACKAGE_RES_FILETYPE in
             .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
@@ -969,14 +984,18 @@ __load_formula_of_the_given_package() {
 
         PACKAGE_RES_FILENAME="$PACKAGE_RES_SHA$PACKAGE_RES_FILETYPE"
         PACKAGE_RES_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_RES_FILENAME"
-    fi
+    }
 
-    if [ -n "$PACKAGE_VERSION" ] ; then
+    #########################################################################################
+
+    [ -n "$PACKAGE_VERSION" ] && {
         PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
         PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
         PACKAGE_VERSION_PATCH="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f3)"
         PACKAGE_VERSION_TWEAK="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f4)"
-    fi
+    }
+
+    #########################################################################################
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
@@ -997,6 +1016,8 @@ __load_formula_of_the_given_package() {
         esac
     done
 
+    #########################################################################################
+
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
@@ -1015,36 +1036,39 @@ __load_formula_of_the_given_package() {
         esac
     done
 
-    if [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] ; then
+    #########################################################################################
+
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
         PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
-    fi
+    }
 
-    if [ -n "$PACKAGE_DEP_PYM" ] ; then
+    [ -n "$PACKAGE_DEP_PYM" ] && {
         PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG python3"
-    fi
+    }
 
-    if [ -n "$PACKAGE_DEP_PLM" ] ; then
+    [ -n "$PACKAGE_DEP_PLM" ] && {
         PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl"
-    fi
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    }
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
+    [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] && {
         BUILD_NJOBS=1
-    fi
+    }
 
-    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
+    }
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
+    }
 
-    if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
         PACKAGE_BINBSTD=yes
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
+    }
 
     PACKAGE_FORMULA_LOADED=yes
 }
@@ -1371,13 +1395,13 @@ __fetch_resources_of_the_given_package() {
             for PKG in $(__list_available_packages)
             do
                 step "$PKG"
-                 __load_formula_of_the_given_package "$PKG" "$@"
+                 __load_formula_of_the_given_package "$PKG"
                 __fetch_sources_of_the_given_package "$PKG" "$@"
                 __fetch_patches_of_the_given_package "$PKG" "$@"
             done
             ;;
         *)
-             __load_formula_of_the_given_package "$@"
+             __load_formula_of_the_given_package
             __fetch_sources_of_the_given_package "$@"
             __fetch_patches_of_the_given_package "$@"
     esac
@@ -2280,7 +2304,9 @@ __gen_github_workflows() {
 
     for x in $AVAILABLE_PACKAGES
     do
-        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $(__get_packages_that_are_directly_depended_by_the_given_package "$x")"
+        __load_formula_of_the_given_package "$x"
+
+        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $PACKAGE_DEP_PKG"
     done
 
     YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)
@@ -2345,9 +2371,7 @@ __gen_github_workflows() {
 
 # __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]
 __show_packages_depended_by_the_given_package() {
-    [ -z "$1" ] && {
-        abort 1 "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
-    }
+    [ -z "$1" ] && abort 1 "_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
 
     PACKAGE_NAME="$1"
 
@@ -2443,122 +2467,62 @@ __show_packages_depended_by_the_given_package() {
 
     ###########################################################################################
 
-    __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" "$OUTPUT_FILETYPE" "$OUTPUT_FILEPATH"
-}
+    unset DOT_CONTENT
 
-# this fuction should be run in subshell
-# __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
-  __get_packages_that_are_directly_depended_by_the_given_package() {
-      __load_formula_of_the_given_package "$1" && printf '%s\n' "$PACKAGE_DEP_PKG"
-}
+    STACK="$PACKAGE_NAME"
 
-# this fuction should be run in subshell
-#
-# __get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>...
-  __get_packages_that_are_recursively_depended_by_the_given_packages() {
-      [ -z "$1" ] && abort 1 "__get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
-
-      __get_packages_that_are_recursively_depended_by_the_given_package ";$(printf '%s\n' "$*" | tr ' ' ';')"
-}
-
-# this fuction should be run in subshell
-#
-# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME>
-# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> internal
-  __get_packages_that_are_recursively_depended_by_the_given_package() {
-    [ -z "$1" ] && abort 1 "__get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> [internal], <PACKAGE-NAME> is unspecified."
-
-    unset DIRECT_DEPENDENT_PACKAGES
-
-    case $1 in
-        *\;*) DIRECT_DEPENDENT_PACKAGES=$(printf '%s\n' "$1" | tr ';' ' ') ;;
-        *)    DIRECT_DEPENDENT_PACKAGES=$(__get_packages_that_are_directly_depended_by_the_given_package "$1")
-    esac
-
-    [ "$2" != internal ] && {
-        DEPTH=1
-        RESULT=
-    }
-
-    DEPTH=$(expr "$DEPTH" + 1)
-
-    for DIRECT_DEPENDENT_PACKAGE_NAME in $DIRECT_DEPENDENT_PACKAGES
+    while [ -n "$STACK" ]
     do
-        is_package_available "$DIRECT_DEPENDENT_PACKAGE_NAME" || {
-            abort 1 "package [$DIRECT_DEPENDENT_PACKAGE_NAME] is not available."
-        }
+        case $STACK in
+            *' '*) PACKAGE_NAME="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
+            *)     PACKAGE_NAME="${STACK}" ; unset STACK
+        esac
 
-        if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENT_PACKAGE_NAME" ] ; then
-            RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/d")
-        fi
+        __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-        if [ -z "$RESULT" ] ; then
-            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME"
-        else
-            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME
-$RESULT"
-        fi
+        if [ -n "$PACKAGE_DEP_PKG" ] ; then
+            unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
+            unset Y; Y="$(printf '    "%s" -> { %s}\n' "$PACKAGE_NAME" "$X")"
 
-        __get_packages_that_are_recursively_depended_by_the_given_package "$DIRECT_DEPENDENT_PACKAGE_NAME" internal
-    done
-
-    DEPTH=$(expr "$DEPTH" - 1)
-
-    if [ "$DEPTH" -eq 1 ] ; then
-        printf '%s\n' "$RESULT"
-    fi
-}
-
-__get_dot_file_contents() {
-    for PKG in "$@"
-    do
-        unset DIRECT_DEPENDENT_PACKAGES
-        DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$PKG")"
-        if [ -n "$DIRECT_DEPENDENT_PACKAGES" ] ; then
-            printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENT_PACKAGES" | sed 's/ /" "/g')"
-            __get_dot_file_contents $DIRECT_DEPENDENT_PACKAGES
-        fi
-    done
-}
-
-# __gen_dependency_graph_recursively_depended_by_the_given_package <PACKAGE-NAME> <dot|box|svg|png> [OUTPUT-FILEPATH]
-__gen_dependency_graph_recursively_depended_by_the_given_package() {
-    unset DIRECT_DEPENDENT_PACKAGES
-    DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$1")"
-
-    if [ -z "$DIRECT_DEPENDENT_PACKAGES" ] ; then
-        return 0
-    fi
-
-    case $2 in
-        dot|box|svg|png) ;;
-        '') abort 1 "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , format must be non-empty." ;;
-        *)  abort 1 "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> , unsupported format: $2"
-    esac
-
-    unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
-    unset GEN_DEPENDENCY_GRAPH_DOT_FILEPATH
-
-    GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d) || return 1
-    GEN_DEPENDENCY_GRAPH_DOT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.dot"
-
-    printf 'digraph G {\n'       >  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
-    __get_dot_file_contents "$1" >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
-    printf '}\n'                 >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
-
-    case $2 in
-        dot)
-            if [ -z "$3" ] ; then
-                cat "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            if [ -z "$DOT_CONTENT" ] ; then
+                DOT_CONTENT="$Y"
             else
-                cp  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH" "$3"
+                DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
+            fi
+        fi
+
+        for item in $PACKAGE_DEP_PKG
+        do
+
+            STACK="$STACK $item"
+        done
+
+        STACK="${STACK#' '}"
+    done
+
+    ###########################################################################################
+
+    [ -z "$DOT_CONTENT" ] && return 0
+
+    DOT_CONTENT="digraph G {
+$DOT_CONTENT
+}"
+
+    ###########################################################################################
+
+    case $OUTPUT_FILETYPE in
+        dot)
+            if [ -z "$OUTPUT_FILEPATH" ] ; then
+                printf '%s\n' "$DOT_CONTENT"
+            else
+                printf '%s\n' "$DOT_CONTENT" > "$OUTPUT_FILEPATH"
             fi
             ;;
         box)
-            if [ -z "$3" ] ; then
+            if [ -z "$OUTPUT_FILEPATH" ] ; then
                 CURL_OPTS=
             else
-                CURL_OPTS="-o $3"
+                CURL_OPTS="-o $OUTPUT_FILEPATH"
             fi
 
             # https://github.com/ggerganov/dot-to-ascii
@@ -2566,7 +2530,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 -s \
                 -G \
                 --data-urlencode "boxart=1" \
-                --data-urlencode "src=$(cat "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH")" \
+                --data-urlencode "src=$DOT_CONTENT" \
                 "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
             ;;
         svg)
@@ -2579,11 +2543,19 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 fi
             fi
 
-            if [ -z "$3" ] ; then
-                run dot -Tsvg "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            unset TMP_DIR; TMP_DIR=$(mktemp -d)
+
+            DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
+
+            printf '%s\n' "$DOT_CONTENT" > "$DOT_CONTENT_FILEPATH"
+
+            if [ -z "$OUTPUT_FILEPATH" ] ; then
+                DOT_OPTS="-Tsvg"
             else
-                run dot -Tsvg "-o$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+                DOT_OPTS="-Tsvg -o $OUTPUT_FILEPATH"
             fi
+
+            run dot "$DOT_OPTS" "$DOT_CONTENT_FILEPATH"
             ;;
         png)
             command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
@@ -2595,11 +2567,19 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 fi
             fi
 
-            if [ -z "$3" ] ; then
-                run dot -Tpng "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            unset TMP_DIR; TMP_DIR=$(mktemp -d)
+
+            DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
+
+            printf '%s\n' "$DOT_CONTENT" > "$DOT_CONTENT_FILEPATH"
+
+            if [ -z "$OUTPUT_FILEPATH" ] ; then
+                DOT_OPTS="-Tpng"
             else
-                run dot -Tpng "-o$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+                DOT_OPTS="-Tpng -o $OUTPUT_FILEPATH"
             fi
+
+            run dot "$DOT_OPTS" "$DOT_CONTENT_FILEPATH"
             ;;
     esac
 }
@@ -2662,6 +2642,8 @@ __reinstall_the_given_packages() {
         is_package_installed "$packageName" || abort 1 "package [$packageName] is not installed."
     done
 
+    __inspect_toolchain
+
     for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
     do
         [ -d "$PPKG_BACKUP_DIR" ] || {
@@ -2693,6 +2675,8 @@ __upgrade_packages() {
         is_package_installed "$packageName" || abort 1 "package [$packageName] is not installed."
     done
 
+    __inspect_toolchain
+
     for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
     do
         [ -d "$PPKG_BACKUP_DIR" ] || {
@@ -2712,6 +2696,8 @@ __upgrade_packages() {
 # {{{ ppkg install
 
 __inspect_install_arguments() {
+    step "inspect arguments"
+
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
@@ -2866,6 +2852,7 @@ __inspect_install_arguments() {
 }
 
 __inspect_toolchain_config_file() {
+    return 0
     [ -z "$1" ] && abort 1 "__inspect_toolchain_config_file <TOOLCHAIN_CONFIG_FILEPATH>, <TOOLCHAIN_CONFIG_FILEPATH> is unspecified."
 
     TOOLCHAIN_CONFIG_FILEPATH="$1"
@@ -2934,473 +2921,7 @@ ldflags: $TOOLCHAIN_CONFIG_LDFLAGS
 EOF
 }
 
-__install_the_given_packages() {
-    __inspect_install_arguments "$@"
-
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
-
-    unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
-    RECURSIVE_DEPENDENT_PACKAGE_NAMES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $USER_SPECIFIED_PACKAGES)"
-
-    if [ $(list_size $RECURSIVE_DEPENDENT_PACKAGE_NAMES) -gt 1 ] ; then
-        RECURSIVE_DEPENDENT_PACKAGE_NAMES="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr '\n' ' ')"
-        printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $RECURSIVE_DEPENDENT_PACKAGE_NAMES $COLOR_OFF\n"
-    fi
-
-    for PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-    do
-        if is_package_installed "$PACKAGE_NAME" ; then
-            if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
-                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
-            fi
-        else
-            (__install_the_given_package "$PACKAGE_NAME")
-
-            if [ "$DRYRUN" = no ] ; then
-                is_package_installed "$PACKAGE_NAME" || abort 1 "package [$PACKAGE_NAME] install failed"
-            fi
-        fi
-    done
-}
-
-# Note: this function must run in a subshell
-__install_the_given_package() {
-    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
-
-    # brew install meson
-    # Error: The current work directory doesn't exist, cannot proceed.
-    # beacuse previous package's work direcotory is deleted.
-    cd ~
-
-    printf '%s\n' "
-     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
-
-     NATIVE_OS_KIND = $NATIVE_OS_KIND
-     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-     NATIVE_OS_NAME = $NATIVE_OS_NAME
-     NATIVE_OS_VERS = $NATIVE_OS_VERS
-     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
-     NATIVE_OS_EUID = $NATIVE_OS_EUID
-     NATIVE_OS_EGID = $NATIVE_OS_EGID
-
-PPKG_VERSION        = $PPKG_VERSION
-PPKG_HOME           = $PPKG_HOME
-PPKG                = $PPKG
-PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
-
-        BUILD_NJOBS = $BUILD_NJOBS
-        BUILD_TYPE  = $BUILD_TYPE
-
-STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
-SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
-    "
-
-    step "view formula"
-    __view_formula_of_the_given_package "$1" --paging=never
-
-    step "load formula"
-    __load_formula_of_the_given_package "$1"
-
-    #########################################################################################
-
-    step "create relevant directories"
-
-    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
-    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
-
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
-
-    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/build.d"
-
-    if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
-    else
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    fi
-
-    rm -rf     "$PACKAGE_WORKING_DIR"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_INSTALLING_TMP_DIR"
-    install -d "$PACKAGE_BCACHED_DIR"
-
-    cat <<EOF
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
-PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-EOF
-
-    #########################################################################################
-
-    unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
-
-    [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "calculate dependency list of $1"
-
-        RECURSIVE_DEPENDENT_PACKAGE_NAMES="$(__get_packages_that_are_recursively_depended_by_the_given_packages $PACKAGE_DEP_PKG)"
-
-        printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES"
-    }
-
-    #########################################################################################
-
-    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-
-    [ -n "$PACKAGE_DEP_PKG" ] && {
-        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-        do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME"
-
-            if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
-                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
-            else
-                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
-            fi
-
-            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
-
-            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-            fi
-
-            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/sbin"
-
-            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$docbook_INSTALL_DIR/catalog.xml"
-            fi
-        done
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "generate dependency tree of $1"
-
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_WORKING_DIR/dependencies.svg"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
-
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" box "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" || true
-
-        if command -v dot > /dev/null ; then
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" svg "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
-        fi
-
-        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
-            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
-        fi
-    }
-
-    #########################################################################################
-
-    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
-    fi
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
-    fi
-
-    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '} pkg-config patchelf tree"
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_UPP" ] && {
-        if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
-            step "install needed packages via brew"
-
-            unset BREW; BREW=$(command -v brew)
-
-            run "$BREW" update
-            run "$BREW" --env
-
-            for item in $PACKAGE_DEP_UPP
-            do
-                unset BREW_PACKAGE_NAME; BREW_PACKAGE_NAME=$(package_name_transform_from_uppm_to_brew "$item")
-
-                run "$BREW" install "$BREW_PACKAGE_NAME"
-
-                unset BREW_PACKAGE_INSTALLED_DIR; BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
-
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-                fi
-
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
-                fi
-            done
-        elif [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
-            step "install needed packages via uppm"
-
-            UPPM="$PPKG_CORE_BIN_DIR/uppm"
-
-            run "$UPPM" env
-            run "$UPPM" update
-
-            for item in $PACKAGE_DEP_UPP
-            do
-                run "$UPPM" install "$item"
-
-                unset UPPM_PACKAGE_INSTALLED_DIR
-                UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
-
-                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-                fi
-
-                if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-                fi
-            done
-        fi
-
-        export PATH
-        export ACLOCAL_PATH
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_PYM" ] && {
-        step "install needed python packages via pip3"
-
-        run pip3 --version
-        run pip3 install --upgrade pip setuptools wheel
-        run pip3 --version
-
-        for item in $PACKAGE_DEP_PYM
-        do
-            run pip3 install "$item" --upgrade
-        done
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_PLM" ] && {
-        step "install needed perl modules via cpan"
-
-        for item in $PACKAGE_DEP_PLM
-        do
-            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
-                note "perl module $item has been already installed."
-            else
-                case $item in
-                    XML::Parser)
-                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
-                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
-                        export EXPATINCPATH="$expat_INCLUDE_DIR"
-                        echo EXPATLIBPATH=$EXPATLIBPATH
-                        echo EXPATINCPATH=$EXPATINCPATH
-                        ;;
-                esac
-
-                # Would you like to configure as much as possible automatically? [yes]
-                run "printf '%s\n' 'yes' | cpan $item"
-            fi
-        done
-
-        if [ -d "$HOME/perl5/bin" ] ; then
-            # cpan install to default local location
-            bppend_to_PATH "$HOME/perl5/bin"
-        fi
-    }
-
-    #########################################################################################
-
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
-        command -v rustup > /dev/null || {
-            # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
-
-            if [ -f    "$PPKG_HOME/tmp.d/rustup-init.sh" ] ; then
-                run rm "$PPKG_HOME/tmp.d/rustup-init.sh"
-            fi
-
-            wfetch 'https://sh.rustup.rs' --output-path="$PPKG_HOME/tmp.d/rustup-init.sh"
-
-            run bash "$PPKG_HOME/tmp.d/rustup-init.sh" -y
-
-            export CARGO_HOME="$HOME/.cargo"
-            export PATH="$CARGO_HOME/bin:$PATH"
-        }
-    }
-
-    #########################################################################################
-
-    step "locate build tools"
-
-    unset AUTORECONF
-    unset AUTOCONF
-    unset AUTOMAKE
-    unset ACLOCAL
-    unset PERL
-    unset M4
-
-    unset MESON
-    unset CMAKE
-    unset XMAKE
-    unset GMAKE
-    unset NINJA
-
-    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ; then
-        AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
-        AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
-        AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
-        ACLOCAL=$(command -v aclocal)       || abort 1 "command not found: aclocal"
-        PERL=$(command -v perl)             || abort 1 "command not found: perl"
-        M4=$(command -v m4)                 || abort 1 "command not found: m4"
-
-        run "$AUTORECONF" --version
-        run "$AUTOCONF"   --version
-        run "$AUTOMAKE"   --version
-        run "$ACLOCAL"    --version
-        run "$PERL"       --version
-        run "$M4"         --version
-    fi
-
-    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
-        MESON=$(command -v meson) || abort 1 "command not found: meson"
-
-        run "$MESON"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
-        CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
-
-        run "$CMAKE"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
-        XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
-
-        run "$XMAKE"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
-        GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
-
-        run "$GMAKE"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
-        NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
-
-        run "$NINJA"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
-        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
-        CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
-
-        run "$RUSTUP"     --version
-        run "$CARGO"      --version
-    }
-
-    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
-        GO=$(command -v go) || abort 1 "command not found: go"
-
-        run "$GO"      version
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "create symbolic links for dependent libraries"
-
-        unset libFileNameSuffix
-
-        case $LINK_TYPE in
-            static-only|static-prefered)
-                libFileNameSuffix='.a'
-                ;;
-            shared-only|shared-prefered)
-                if [ "$NATIVE_OS_KIND" = darwin ] ; then
-                    libFileNameSuffix='.dylib'
-                else
-                    libFileNameSuffix='.so'
-                fi
-                ;;
-            *)  die "unrecognized link type: $LINK_TYPE"
-        esac
-
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-
-            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                for libFileName in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*$libFileNameSuffix" -exec basename {} \;)
-                do
-                    if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$libFileName" ] ; then
-                        run ln -s "$DEPENDENT_PACKAGE_LIBRARY_DIR/$libFileName" "$PACKAGE_INSTALLING_LIB_DIR/$libFileName"
-                    fi
-                done
-            fi
-        done
-    }
-
-    #########################################################################################
-
-    case $NATIVE_OS_KIND in
-        netbsd)
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
-            ;;
-        openbsd)
-            # https://github.com/mesonbuild/meson/issues/5390
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/librt.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libcrypt.a"
-            ;;
-    esac
-
-    #########################################################################################
-
-    step "create symbolic link for ccache"
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        unset CCACHE
-        CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
-
-        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CC")"
-        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CXX")"
-
-        "$CCACHE" -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
-    else
-        note "ccache is disabled, skipped."
-    fi
-
-    #########################################################################################
-
+__inspect_toolchain() {
     step "locate C/C++ toolchain"
 
     unset CC
@@ -3479,36 +3000,38 @@ EOF
     unset SYSROOT
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        step "locate sysroot"
-
         SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
         # https://keith.github.io/xcode-man-pages/xcrun.1.html
         # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
         export SDKROOT="$SYSROOT"
 
-        printf '%s\n' "SDKROOT=$SDKROOT"
-        printf '%s\n' "SYSROOT=$SYSROOT"
+        printf "  SDKROOT = $SDKROOT\n"
+        printf "  SYSROOT = $SYSROOT\n"
     fi
+
+    #########################################################################################
+
+    unset TEST_DIR; TEST_DIR=$(mktemp -d); cd "$TEST_DIR"
 
     #########################################################################################
 
     step "check if C compiler supports -Wno-error=unused-command-line-argument option"
 
-    cat > "$PACKAGE_INSTALLING_TMP_DIR/test.c" <<EOF
+    cat > test.c <<EOF
 int main() {
     return 0;
 }
 EOF
 
     if [ -z "$SYSROOT" ] ; then
-        CCFLAGS='-Wno-error=unused-command-line-argument'
+        TEST_CCFLAGS='-Wno-error=unused-command-line-argument'
     else
-        CCFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
+        TEST_CCFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
     fi
 
-    if $CC $CCFLAGS -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.c" 2>/dev/null ; then
-        PACKAGE_CCFLAGS="$PACKAGE_CCFLAGS -Wno-error=unused-command-line-argument"
+    if $CC $TEST_CCFLAGS test.c 2>/dev/null ; then
+        CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
         success "YES"
     else
         error "NO"
@@ -3518,20 +3041,20 @@ EOF
 
     step "check if C++ compiler supports -Wno-error=unused-command-line-argument option"
 
-    cat > "$PACKAGE_INSTALLING_TMP_DIR/test.cc" <<EOF
+    cat > test.cc <<EOF
 int main() {
     return 0;
 }
 EOF
 
     if [ -z "$SYSROOT" ] ; then
-        CXXFLAGS='-Wno-error=unused-command-line-argument'
+        TEST_XXFLAGS='-Wno-error=unused-command-line-argument'
     else
-        CXXFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
+        TEST_XXFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
     fi
 
-    if $CXX $CXXFLAGS -o "$PACKAGE_INSTALLING_TMP_DIR/a.out" "$PACKAGE_INSTALLING_TMP_DIR/test.cc" 2>/dev/null ; then
-        PACKAGE_XXFLAGS="$PACKAGE_XXFLAGS -Wno-error=unused-command-line-argument"
+    if $CXX $TEST_XXFLAGS test.cc 2>/dev/null ; then
+        XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
         success "YES"
     else
         error "NO"
@@ -3541,13 +3064,7 @@ EOF
 
     step "create proxy for C/C++ compiler"
 
-    export PROXIED_CC="$CC"
-    export PROXIED_CXX="$CXX"
-
-     CC="$PPKG_CORE_BIN_DIR/proxy-cc"
-    CXX="$PPKG_CORE_BIN_DIR/proxy-c++"
-
-    cat > "$CC.c" <<EOF
+    cat > proxy-cc.c <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3644,14 +3161,24 @@ int main(int argc, char * argv[]) {
 }
 EOF
 
+    PROXY_CC="$PPKG_CORE_BIN_DIR/proxy-cc"
+    PROXY_CXX="$PPKG_CORE_BIN_DIR/proxy-c++"
+
     if [ -z "$SYSROOT" ] ; then
-        CCFLAGS='-std=c99'
+        TMP_CCFLAGS='-std=c99'
     else
-        CCFLAGS="-std=c99 -isysroot $SYSROOT"
+        TMP_CCFLAGS="-std=c99 -isysroot $SYSROOT"
     fi
 
-    run $PROXIED_CC $CCFLAGS -o "$CC" "$CC.c"
-    run ln -sf "$CC" "$CXX"
+    run $CC $TMP_CCFLAGS -o "$PROXY_CC" proxy-cc.c
+
+    run ln -sfr "$PROXY_CC" "$PROXY_CXX"
+
+    export PROXIED_CC="$CC"
+    export PROXIED_CXX="$CXX"
+
+    export CC="$PROXY_CC"
+    export CXX="$PROXY_CXX"
 
 cat <<EOF
 PROXIED_CC  = $PROXIED_CC
@@ -3660,6 +3187,627 @@ PROXIED_CXX = $PROXIED_CXX
         CC  = $CC
         CXX = $CXX
 EOF
+}
+
+__install_the_given_packages() {
+    __inspect_install_arguments "$@"
+
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
+
+    __inspect_toolchain
+
+    #########################################################################################
+
+    step "analyse packages to be installed."
+
+    unset TO_BE_INSTALLED_PACKAGE_NAMES
+
+    STACK="$USER_SPECIFIED_PACKAGES"
+
+    while [ -n "$STACK" ]
+    do
+        case $STACK in
+            *' '*) PACKAGE_NAME="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
+            *)     PACKAGE_NAME="${STACK}" ; unset STACK
+        esac
+
+        __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+        cp -v "$PACKAGE_FORMULA_FILEPATH" "$TEST_DIR/$PACKAGE_NAME.yml"
+
+        TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+        for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+        do
+            if [ "$item" != "$PACKAGE_NAME" ] ; then
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+            fi
+        done
+
+        TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+
+        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+        for item in $PACKAGE_DEP_PKG
+        do
+
+            STACK="$STACK $item"
+        done
+
+        STACK="${STACK#' '}"
+    done
+
+    printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
+
+    #########################################################################################
+
+    for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+    do
+        if is_package_installed "$PACKAGE_NAME" ; then
+            if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
+            fi
+        else
+            (__install_the_given_package "$PACKAGE_NAME")
+        fi
+    done
+}
+
+__install_the_given_package_onexit() {
+    if [ "$DRYRUN" = no ] ; then
+        is_package_installed "$PACKAGE_NAME" || abort 1 "package installation failure: $PACKAGE_NAME"
+    fi
+}
+
+# Note: this function must run in a subshell
+__install_the_given_package() {
+    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+
+    trap  __install_the_given_package_onexit EXIT
+
+    # brew install meson
+    # Error: The current work directory doesn't exist, cannot proceed.
+    # beacuse previous package's work direcotory is deleted.
+    cd ~
+
+    printf '%s\n' "
+     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+
+     NATIVE_OS_KIND = $NATIVE_OS_KIND
+     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_NAME = $NATIVE_OS_NAME
+     NATIVE_OS_VERS = $NATIVE_OS_VERS
+     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
+     NATIVE_OS_EUID = $NATIVE_OS_EUID
+     NATIVE_OS_EGID = $NATIVE_OS_EGID
+
+PPKG_VERSION        = $PPKG_VERSION
+PPKG_HOME           = $PPKG_HOME
+PPKG                = $PPKG
+PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
+
+        BUILD_NJOBS = $BUILD_NJOBS
+        BUILD_TYPE  = $BUILD_TYPE
+
+STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
+SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
+    "
+
+    step "view formula"
+
+    if command -v bat > /dev/null ; then
+        run bat --language=yaml --paging=never "$TEST_DIR/$1.yml"
+    else
+        run cat "$TEST_DIR/$1.yml"
+    fi
+   
+    step "load formula"
+    __load_formula_of_the_given_package "$1" "$TEST_DIR/$1.yml"
+
+    #########################################################################################
+
+    step "create relevant directories"
+
+    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
+    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
+
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
+
+    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+    PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
+
+    rm -rf     "$PACKAGE_WORKING_DIR"
+
+    install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    install -d "$PACKAGE_INSTALLING_RES_DIR"
+    install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    install -d "$PACKAGE_INSTALLING_INC_DIR"
+    install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    install -d "$PACKAGE_INSTALLING_TMP_DIR"
+    install -d "$PACKAGE_BCACHED_DIR"
+
+    cat <<EOF
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
+EOF
+
+    #########################################################################################
+
+    unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "calculate dependency list of $1"
+
+        unset STACK
+
+        for item in $PACKAGE_DEP_PKG
+        do
+            STACK="$STACK $item"
+        done
+
+        STACK="${STACK#' '}"
+
+        while [ -n "$STACK" ]
+        do
+            case $STACK in
+                *' '*) TOPE="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
+                *)     TOPE="${STACK}" ; unset STACK
+            esac
+
+            RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$TOPE"
+
+            for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+            do
+                if [ "$item" != "$TOPE" ] ; then
+                    RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$RECURSIVE_DEPENDENT_PACKAGE_NAMES2 $item"
+                fi
+            done
+
+            RECURSIVE_DEPENDENT_PACKAGE_NAMES="$RECURSIVE_DEPENDENT_PACKAGE_NAMES2"
+
+            unset TOPE_UPPERCASE_UNDERSCORE
+            TOPE_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$TOPE" | tr '@+-.' '_' | tr a-z A-Z)
+
+            for item in $(eval echo \$PACKAGE_DEP_PKG_"${TOPE_UPPERCASE_UNDERSCORE}")
+            do
+
+                STACK="$STACK $item"
+            done
+
+            STACK="${STACK#' '}"
+        done
+
+        printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES"
+    }
+
+    #########################################################################################
+
+    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        do
+            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME"
+
+            if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
+            else
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/sbin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$DEPENDENT_PACKAGE_INSTALL_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            fi
+        done
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "generate dependency tree of $1"
+
+        unset DOT_CONTENT
+
+        STACK="$PACKAGE_NAME"
+
+        while [ -n "$STACK" ]
+        do
+            case $STACK in
+                *' '*) TOPE="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
+                *)     TOPE="${STACK}" ; unset STACK
+            esac
+
+            unset TOPE_UPPERCASE_UNDERSCORE
+            TOPE_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$TOPE" | tr '@+-.' '_' | tr a-z A-Z)
+
+            TOPE_DEP_PKG="$(eval echo \$PACKAGE_DEP_PKG_"${TOPE_UPPERCASE_UNDERSCORE}")"
+
+            if [ -n "$TOPE_DEP_PKG" ] ; then
+                unset X; X="$(printf '"%s" ' $TOPE_DEP_PKG)"
+                unset Y; Y="$(printf '    "%s" -> { %s}\n' "$TOPE" "$X")"
+
+                if [ -z "$DOT_CONTENT" ] ; then
+                    DOT_CONTENT="$Y"
+                else
+                    DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
+                fi
+            fi
+
+            for item in $TOPE_DEP_PKG
+            do
+
+                STACK="$STACK $item"
+            done
+
+            STACK="${STACK#' '}"
+        done
+
+        DOT_CONTENT="digraph G {
+$DOT_CONTENT
+}"
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        printf '%s\n' "$DOT_CONTENT" > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        # https://github.com/ggerganov/dot-to-ascii
+        curl \
+            -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" \
+            -s \
+            -G \
+            --data-urlencode "boxart=1" \
+            --data-urlencode "src=$DOT_CONTENT" \
+            "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        if command -v dot > /dev/null ; then
+            run dot -Tsvg -o "$PACKAGE_WORKING_DIR/dependencies.svg" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+            run dot -Tpng -o "$PACKAGE_WORKING_DIR/dependencies.png" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        fi
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
+        else
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+        fi
+    }
+
+    #########################################################################################
+
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
+    fi
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
+    fi
+
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '} pkg-config patchelf tree"
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_UPP" ] && {
+        if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
+            step "install needed packages via brew"
+
+            unset BREW; BREW=$(command -v brew)
+
+            run "$BREW" update
+            run "$BREW" --env
+
+            for item in $PACKAGE_DEP_UPP
+            do
+                unset BREW_PACKAGE_NAME; BREW_PACKAGE_NAME=$(package_name_transform_from_uppm_to_brew "$item")
+
+                run "$BREW" install "$BREW_PACKAGE_NAME"
+
+                unset BREW_PACKAGE_INSTALLED_DIR; BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
+
+                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                    PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
+                fi
+
+                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                    PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+                fi
+
+                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
+                    PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
+                fi
+            done
+        elif [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
+            step "install needed packages via uppm"
+
+            UPPM="$PPKG_CORE_BIN_DIR/uppm"
+
+            run "$UPPM" env
+            run "$UPPM" update
+
+            for item in $PACKAGE_DEP_UPP
+            do
+                run "$UPPM" install "$item"
+
+                unset UPPM_PACKAGE_INSTALLED_DIR
+                UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+
+                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+                fi
+
+                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+                fi
+
+                if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                    ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+                fi
+            done
+        fi
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PYM" ] && {
+        step "install needed python packages via pip3"
+
+        run pip3 --version
+        run pip3 install --upgrade pip setuptools wheel
+        run pip3 --version
+
+        for item in $PACKAGE_DEP_PYM
+        do
+            run pip3 install "$item" --upgrade
+        done
+    }
+
+    #########################################################################################
+
+    # cpan use the C/C++ compiler same as perl was built with
+    # so make sure C/C++ compiler be found before reaching here
+
+    [ -n "$PACKAGE_DEP_PLM" ] && {
+        step "install needed perl modules via cpan"
+
+        for item in $PACKAGE_DEP_PLM
+        do
+            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
+                note "perl module $item has been already installed."
+            else
+                case $item in
+                    XML::Parser)
+                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
+                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
+                        export EXPATINCPATH="$expat_INCLUDE_DIR"
+                        echo EXPATLIBPATH=$EXPATLIBPATH
+                        echo EXPATINCPATH=$EXPATINCPATH
+                        ;;
+                esac
+
+                # Would you like to configure as much as possible automatically? [yes]
+                run "printf '%s\n' 'yes' | cpan $item"
+            fi
+        done
+
+        if [ -d "$HOME/perl5/bin" ] ; then
+            # cpan install to default local location
+            bppend_to_PATH "$HOME/perl5/bin"
+        fi
+    }
+
+    #########################################################################################
+
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+        command -v rustup > /dev/null || {
+            # https://www.rust-lang.org/tools/install
+            note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
+
+            if [ -f    "$PPKG_HOME/tmp.d/rustup-init.sh" ] ; then
+                run rm "$PPKG_HOME/tmp.d/rustup-init.sh"
+            fi
+
+            wfetch 'https://sh.rustup.rs' --output-path="$PPKG_HOME/tmp.d/rustup-init.sh"
+
+            run bash "$PPKG_HOME/tmp.d/rustup-init.sh" -y
+
+            export CARGO_HOME="$HOME/.cargo"
+            export PATH="$CARGO_HOME/bin:$PATH"
+        }
+    }
+
+    #########################################################################################
+
+    step "locate build tools"
+
+    unset AUTORECONF
+    unset AUTOCONF
+    unset AUTOMAKE
+    unset ACLOCAL
+    unset PERL
+    unset M4
+
+    unset MESON
+    unset CMAKE
+    unset XMAKE
+    unset GMAKE
+    unset NINJA
+
+    unset BEAR
+    unset CCACHE
+    unset PKG_CONFIG
+
+    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ; then
+        AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
+        AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
+        AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
+        ACLOCAL=$(command -v aclocal)       || abort 1 "command not found: aclocal"
+        PERL=$(command -v perl)             || abort 1 "command not found: perl"
+        M4=$(command -v m4)                 || abort 1 "command not found: m4"
+
+        run "$AUTORECONF" --version
+        run "$AUTOCONF"   --version
+        run "$AUTOMAKE"   --version
+        run "$ACLOCAL"    --version
+        run "$PERL"       --version
+        run "$M4"         --version
+    fi
+
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
+        MESON=$(command -v meson) || abort 1 "command not found: meson"
+
+        run "$MESON"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
+        CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
+
+        run "$CMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
+        XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+
+        run "$XMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
+        GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
+
+        run "$GMAKE"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
+        NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
+
+        run "$NINJA"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
+        CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
+
+        run "$RUSTUP"     --version
+        run "$CARGO"      --version
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
+        GO=$(command -v go) || abort 1 "command not found: go"
+
+        run "$GO"      version
+    }
+
+    [ "$CCACHE_ENABLED" = yes ] && {
+        CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
+
+        run "$CCACHE"    --version
+    }
+
+    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf) || abort 1 "command not found: pkg-config"
+
+    run "$PKG_CONFIG"    --version
+
+    unset  M4
+    export M4="$(command -v m4 || true)"
+
+    #########################################################################################
+
+    step "create symbolic link for ccache"
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CC")"
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CXX")"
+
+        "$CCACHE" -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
+    else
+        note "ccache is disabled, skipped."
+    fi
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "create symbolic links for dependent libraries"
+
+        unset libFileNameSuffix
+
+        case $LINK_TYPE in
+            static-only|static-prefered)
+                libFileNameSuffix='.a'
+                ;;
+            shared-only|shared-prefered)
+                if [ "$NATIVE_OS_KIND" = darwin ] ; then
+                    libFileNameSuffix='.dylib'
+                else
+                    libFileNameSuffix='.so'
+                fi
+                ;;
+            *)  die "unrecognized link type: $LINK_TYPE"
+        esac
+
+        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        do
+            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
+                for libFileName in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*$libFileNameSuffix" -exec basename {} \;)
+                do
+                    if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$libFileName" ] ; then
+                        run ln -s "$DEPENDENT_PACKAGE_LIBRARY_DIR/$libFileName" "$PACKAGE_INSTALLING_LIB_DIR/$libFileName"
+                    fi
+                done
+            fi
+        done
+    }
+
+    #########################################################################################
+
+    case $NATIVE_OS_KIND in
+        netbsd)
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            ;;
+        openbsd)
+            # https://github.com/mesonbuild/meson/issues/5390
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/librt.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libcrypt.a"
+            ;;
+    esac
 
     #########################################################################################
 
@@ -3686,10 +3834,10 @@ EOF
 
     step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
-    CCFLAGS="$PACKAGE_CCFLAGS -fPIC -fno-common"
-    XXFLAGS="$PACKAGE_XXFLAGS -fPIC -fno-common"
-    PPFLAGS="$PACKAGE_PPFLAGS"
-    LDFLAGS="$PACKAGE_LDFLAGS"
+    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS -fPIC -fno-common"
+    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS -fPIC -fno-common"
+    PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
+    LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
 
     CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
     XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
@@ -3792,13 +3940,6 @@ EOF
 
     #########################################################################################
 
-    export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
-
-    unset  M4
-    export M4="$(command -v m4 || true)"
-
-    #########################################################################################
-
     step "list XDG_DATA_DIRS"
 
     # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -3853,6 +3994,8 @@ EOF
 
     step "list PATH"
 
+    PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+
     printf '%s\n' "$PATH" | tr : '\n'
 
     #########################################################################################
@@ -3862,9 +4005,6 @@ EOF
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
         export PKG_CONFIG_DEBUG_SPEW='set'
     fi
-
-    unset  PKG_CONFIG
-    export PKG_CONFIG="$(command -v pkg-config || command -v pkgconf || true)"
 
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
@@ -4533,6 +4673,19 @@ $PACKAGE_INSTALL_ACTIONS
 
     #########################################################################################
 
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "install dependency formulas"
+
+        install -v -d "$PACKAGE_METAINF_DIR/formula"
+
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        do
+            install -v -m 644 "$TEST_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
+        done
+    }
+
+    #########################################################################################
+
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         step "adjust Mach-O files for ${COLOR_GREEN}$*${COLOR_OFF}"
         __adjust_mach_o_files_for_the_given_target "$@"
@@ -5164,19 +5317,16 @@ EOF
 
     #######################################################################################################
 
-    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel exetype symlink
+    for KEY in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd cdefine ccflags xxflags ldflags parallel exetype symlink
     do
-        unset __KEY_UPPERCASE_UNDERSCORE__
-        unset __VALUE__
+        unset VALUE; VALUE="$(yq ".$KEY" "$PACKAGE_RECEIPT_FILEPATH")"
 
-        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$PACKAGE_RECEIPT_FILEPATH")"
+        if [ "$VALUE" != null ] ; then
+            unset KEY_UPPERCASE_UNDERSCORE
+            KEY_UPPERCASE_UNDERSCORE="$(printf '%s\n' "$KEY" | tr '-' '_' | tr a-z A-Z)"
 
-        if [ "$__VALUE__" = null ] ; then
-                __VALUE__=
+            eval "RECEIPT_PACKAGE_$KEY_UPPERCASE_UNDERSCORE='$VALUE'"
         fi
-
-        eval "RECEIPT_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
 
     [ -z "$RECEIPT_PACKAGE_VERSION" ] && abort 1 "receipt scheme error. version mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
@@ -5511,12 +5661,10 @@ configure() {
 # {{{ gmakew
 
 gmakew() {
-    run gmake --version
-
     if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        run gmake "-j$BUILD_NJOBS" --debug "$@"
+        run "$GMAKE" "-j$BUILD_NJOBS" --debug "$@"
     else
-        run gmake "-j$BUILD_NJOBS" "$@"
+        run "$GMAKE" "-j$BUILD_NJOBS" "$@"
     fi
 }
 
@@ -5611,7 +5759,7 @@ EOF
         run cat "$CMAKE_PROJECT_INCLUDE"
     fi
 
-    run cmake \
+    run "$CMAKE" \
         -Wno-dev \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
@@ -5621,8 +5769,8 @@ EOF
         -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
         -S "$PACKAGE_BSCRIPT_DIR" \
         -B "$PACKAGE_BCACHED_DIR" "$@" &&
-    run cmake --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
-    run cmake --install "$PACKAGE_BCACHED_DIR"
+    run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
+    run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
 }
 
 # }}}
@@ -5633,12 +5781,6 @@ EOF
 # run in a subshell
 xmakew() {
     export XMAKE_ROOT=y
-
-    unset XMAKE; XMAKE=$(command -v xmake)
-
-    [ -z "$XMAKE" ] && abort 1 "command not found: xmake"
-
-    run xmake --version
 
     XMAKE_CONFIG_OPTIONS="$*"
 
@@ -5701,9 +5843,7 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    run meson --version
-    run ninja --version
-    run meson setup \
+    run "$MESON" setup \
         --prefix="$PACKAGE_INSTALL_DIR" \
         --buildtype=release \
         --backend=ninja \
@@ -5717,8 +5857,8 @@ EOF
             build_configed
         fi
     } &&
-    run ninja -C "$PACKAGE_BCACHED_DIR" &&
-    run ninja -C "$PACKAGE_BCACHED_DIR" install
+    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" &&
+    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" install
 }
 
 to_meson_array() {
@@ -5906,6 +6046,8 @@ __setup_macos() {
         fi
     done
 
+    BREW_PACKAGE_EXEFIND_PATH="${BREW_PACKAGE_EXEFIND_PATH#':'}"
+
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
@@ -5921,7 +6063,6 @@ __setup_macos() {
 
     cat > "$PPKG_CORE_DIR/env" <<EOF
 PPKG_USE_EXTERNAL_PACKAGE_MANAGER=brew
-PPKG_USE_UPPM=no
 
 export ACLOCAL_PATH=/usr/local/share/aclocal
 export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
@@ -5980,8 +6121,9 @@ __setup_openbsd() {
 export AUTOCONF_VERSION=2.69
 export AUTOMAKE_VERSION=1.16
 export ACLOCAL_PATH=/usr/local/share/aclocal
-export CPPFLAGS=-I/usr/local/include
-export  LDFLAGS=-L/usr/local/lib
+
+PPFLAGS=-I/usr/local/include
+LDFLAGS=-L/usr/local/lib
 EOF
 }
 
@@ -6140,6 +6282,9 @@ __setup_uppm() {
             UPPM_PACKAGE_ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
         fi
     done
+
+    UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
+    UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
     cat > "$PPKG_CORE_DIR/env" <<EOF
 PPKG_USE_EXTERNAL_PACKAGE_MANAGER=uppm
@@ -6327,6 +6472,8 @@ main() {
 
     unset TIMESTAMP_UNIX; TIMESTAMP_UNIX="$(date +%s)"
 
+    #########################################################################################
+
     case $1 in
         ''|--help|-h)
             __help
@@ -6343,7 +6490,7 @@ main() {
             ;;
     esac
 
-    unset PPKG_USE_EXTERNAL_PACKAGE_MANAGER
+    #########################################################################################
 
     if [ -z "$CARGO_HOME" ] ; then
         bppend_to_PATH "$HOME/.cargo/bin"
@@ -6357,11 +6504,26 @@ main() {
     # cpan install to default local location
     bppend_to_PATH "$HOME/perl5/bin"
 
+    #########################################################################################
+
+    unset PPKG_USE_EXTERNAL_PACKAGE_MANAGER
+
+    unset ACLOCAL_PATH
+
+    unset CCFLAGS
+    unset XXFLAGS
+    unset PPFLAGS
+    unset LDFLAGS
+
+    #########################################################################################
+
     if [ -f "$PPKG_CORE_DIR/env" ] ; then
         .   "$PPKG_CORE_DIR/env"
     else
         abort 1 "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
     fi
+
+    #########################################################################################
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     if [ -z "$ACLOCAL_PATH" ] ; then
@@ -6377,6 +6539,7 @@ main() {
 
     bppend_to_PATH "$PPKG_CORE_BIN_DIR"
 
+    #########################################################################################
 
     unset NATIVE_OS_KIND
     unset NATIVE_OS_TYPE
@@ -6403,6 +6566,8 @@ main() {
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
     fi
+
+    #########################################################################################
 
     case $1 in
         sysinfo)
