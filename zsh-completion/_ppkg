@@ -31,6 +31,7 @@ _commands=(
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
     'gen-github-workflows:generate github workflows.'
+    'gen-url-transform-sample:generate url-transform sample.'
 )
 
 function _ppkg_commands() {

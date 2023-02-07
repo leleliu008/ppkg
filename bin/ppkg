@@ -2247,6 +2247,37 @@ __compare_versions_with_brew() {
 
 # }}}
 ##############################################################################
+# {{{ ppkg gen-url-transform-sample
+
+__gen_url_transform_sample() {
+    install -d "$PPKG_HOME"
+
+    FILEPATH="$PPKG_HOME/url-transform.sample"
+
+    cat > "$FILEPATH" <<EOF
+#!/bin/sh
+
+# https://ghproxy.com/
+case \$1 in
+    *githubusercontent.com/*)
+        printf 'https://ghproxy.com/%s\n' "\$1"
+        ;;
+    https://github.com/*)
+        printf 'https://ghproxy.com/%s\n' "\$1"
+        ;;
+    '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ;;
+    *)  printf '%s\n' "\$1"
+esac
+EOF
+
+    chmod +x "$FILEPATH"
+
+    success "url-transform sample has been written into $PPKG_HOME/url-transform.sample"
+    note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export PPKG_URL_TRANSFORM=$PPKG_HOME/url-transform' in your terminal."
+}
+
+# }}}
+##############################################################################
 # {{{ ppkg gen-github-workflows
 
 __gen_github_workflows() {
@@ -2474,8 +2505,8 @@ __show_packages_depended_by_the_given_package() {
     while [ -n "$STACK" ]
     do
         case $STACK in
-            *' '*) PACKAGE_NAME="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
-            *)     PACKAGE_NAME="${STACK}" ; unset STACK
+            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+            *)    PACKAGE_NAME="${STACK}"     ; STACK=
         esac
 
         __load_formula_of_the_given_package "$PACKAGE_NAME"
@@ -2493,11 +2524,12 @@ __show_packages_depended_by_the_given_package() {
 
         for item in $PACKAGE_DEP_PKG
         do
-
-            STACK="$STACK $item"
+            if [ -z "$item" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
         done
-
-        STACK="${STACK#' '}"
     done
 
     ###########################################################################################
@@ -3202,18 +3234,27 @@ __install_the_given_packages() {
 
     unset TO_BE_INSTALLED_PACKAGE_NAMES
 
-    STACK="$USER_SPECIFIED_PACKAGES"
+    unset STACK
+
+    for item in $USER_SPECIFIED_PACKAGES
+    do
+        if [ -z "$STACK" ] ; then
+            STACK="$item"
+        else
+            STACK="$STACK;$item"
+        fi
+    done
 
     while [ -n "$STACK" ]
     do
         case $STACK in
-            *' '*) PACKAGE_NAME="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
-            *)     PACKAGE_NAME="${STACK}" ; unset STACK
+            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+            *)    PACKAGE_NAME="${STACK}"     ; STACK=
         esac
 
         __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-        cp -v "$PACKAGE_FORMULA_FILEPATH" "$TEST_DIR/$PACKAGE_NAME.yml"
+        cp "$PACKAGE_FORMULA_FILEPATH" "$TEST_DIR/$PACKAGE_NAME.yml"
 
         TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
 
@@ -3230,11 +3271,12 @@ __install_the_given_packages() {
 
         for item in $PACKAGE_DEP_PKG
         do
-
-            STACK="$STACK $item"
+            if [ -z "$STACK" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
         done
-
-        STACK="${STACK#' '}"
     done
 
     printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
@@ -3254,7 +3296,7 @@ __install_the_given_packages() {
 }
 
 __install_the_given_package_onexit() {
-    if [ "$DRYRUN" = no ] ; then
+    if [ "$DRYRUN" != yes ] ; then
         is_package_installed "$PACKAGE_NAME" || abort 1 "package installation failure: $PACKAGE_NAME"
     fi
 }
@@ -3356,16 +3398,18 @@ EOF
 
         for item in $PACKAGE_DEP_PKG
         do
-            STACK="$STACK $item"
+            if [ -z "$item" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
         done
-
-        STACK="${STACK#' '}"
 
         while [ -n "$STACK" ]
         do
             case $STACK in
-                *' '*) TOPE="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
-                *)     TOPE="${STACK}" ; unset STACK
+                *\;*) TOPE="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+                *)    TOPE="${STACK}"     ; STACK=
             esac
 
             RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$TOPE"
@@ -3384,11 +3428,12 @@ EOF
 
             for item in $(eval echo \$PACKAGE_DEP_PKG_"${TOPE_UPPERCASE_UNDERSCORE}")
             do
-
-                STACK="$STACK $item"
+                if [ -z "$item" ] ; then
+                    STACK="$item"
+                else
+                    STACK="$STACK;$item"
+                fi
             done
-
-            STACK="${STACK#' '}"
         done
 
         printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES"
@@ -3441,8 +3486,8 @@ EOF
         while [ -n "$STACK" ]
         do
             case $STACK in
-                *' '*) TOPE="${STACK##*' '}"   STACK="${STACK%' '*}" ;;
-                *)     TOPE="${STACK}" ; unset STACK
+                *\;*) TOPE="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+                *)    TOPE="${STACK}"     ; STACK=
             esac
 
             unset TOPE_UPPERCASE_UNDERSCORE
@@ -3464,10 +3509,12 @@ EOF
             for item in $TOPE_DEP_PKG
             do
 
-                STACK="$STACK $item"
+                if [ -z "$item" ] ; then
+                    STACK="$item"
+                else
+                    STACK="$STACK;$item"
+                fi
             done
-
-            STACK="${STACK#' '}"
         done
 
         DOT_CONTENT="digraph G {
@@ -5976,20 +6023,6 @@ EOF
 
     #################################################################################
 
-    cat > "$PPKG_CORE_BIN_DIR/wfetch-url-transform.sample" <<EOF
-# https://ghproxy.com/
-case \$1 in
-    *githubusercontent.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
-        ;;
-    https://github.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
-        ;;
-    '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ;;
-    *)  printf '%s\n' "\$1"
-esac
-EOF
-
     success "ppkg have been succefully setup."
 }
 
@@ -6486,6 +6519,10 @@ main() {
         setup)
             shift
             __setup "$@"
+            return 0
+            ;;
+        gen-url-transform-sample)
+            __gen_url_transform_sample "$@"
             return 0
             ;;
     esac
