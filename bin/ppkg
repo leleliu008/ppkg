@@ -2674,6 +2674,7 @@ __reinstall_the_given_packages() {
 
     SESSION_DIR="$PPKG_HOME/var/run/$$"
 
+    rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
 
     #########################################################################################
@@ -2785,7 +2786,7 @@ __upgrade_packages() {
     __inspect_install_arguments "$@"
 
     if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
-        USER_SPECIFIED_PACKAGES=$(__list__outdated_packages)
+        USER_SPECIFIED_PACKAGES="$(__list__outdated_packages)"
 
         if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
             return 0
@@ -2801,6 +2802,7 @@ __upgrade_packages() {
 
     SESSION_DIR="$PPKG_HOME/var/run/$$"
 
+    rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
 
     #########################################################################################
@@ -3141,6 +3143,7 @@ __install_the_given_packages() {
 
     SESSION_DIR="$PPKG_HOME/var/run/$$"
 
+    rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
 
     #########################################################################################
