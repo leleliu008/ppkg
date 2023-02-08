@@ -2627,16 +2627,14 @@ $DOT_CONTENT
     while [ -n "$1" ]
     do
         case "$1" in
-            -*) abort 1 "__uninstall_the_given_packages <PACKAGE-NAME>..., unrecognized option: $1"
+            -*) abort 1 "_0 uninstall <PACKAGE-NAME>..., unrecognized option: $1"
                 ;;
             *)  USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
         esac
         shift
     done
 
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
-        abort 1 "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
-    }
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "_0 uninstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
 
     for packageName in $USER_SPECIFIED_PACKAGES
     do
@@ -2664,9 +2662,7 @@ $DOT_CONTENT
 __reinstall_the_given_packages() {
     __inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
-        abort 1 "__reinstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
-    }
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "_0 reinstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
 
     for packageName in $USER_SPECIFIED_PACKAGES
     do
@@ -2674,19 +2670,110 @@ __reinstall_the_given_packages() {
         is_package_installed "$packageName" || abort 1 "package [$packageName] is not installed."
     done
 
-    __inspect_toolchain
+    #########################################################################################
 
-    for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
+    SESSION_DIR="$PPKG_HOME/var/run/$$"
+
+    install -d "$SESSION_DIR"
+
+    #########################################################################################
+
+    unset TO_BE_INSTALLED_PACKAGE_NAMES
+
+    unset STACK
+
+    for item in $USER_SPECIFIED_PACKAGES
     do
-        [ -d "$PPKG_BACKUP_DIR" ] || {
-            install -d "$PPKG_BACKUP_DIR"
-        }
+        if [ -z "$STACK" ] ; then
+            STACK="$item"
+        else
+            STACK="$STACK;$item"
+        fi
+    done
 
-        mv "$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME" "$PPKG_BACKUP_DIR/$PACKAGE_NAME"
+    while [ -n "$STACK" ]
+    do
+        case $STACK in
+            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+            *)    PACKAGE_NAME="${STACK}"     ; STACK=
+        esac
+
+        #################################################################
+
+        __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+        #################################################################
+
+        PACKAGE_NAME_IS_USER_SPECIFIED=no
+
+        for item in $USER_SPECIFIED_PACKAGES
+        do
+            [ "$item" = "$PACKAGE_NAME" ] && {
+                PACKAGE_NAME_IS_USER_SPECIFIED=yes
+                break;
+            }
+        done
+
+        #################################################################
+
+        NEED_RERANK=no
+
+        if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
+            NEED_RERANK=yes
+        else
+            if is_package_installed "$PACKAGE_NAME" ; then
+                NEED_RERANK=no
+            else
+                NEED_RERANK=yes
+            fi
+        fi
+
+        #################################################################
+
+        if [ "$NEED_RERANK" = yes ] ; then
+            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            do
+                if [ "$item" != "$PACKAGE_NAME" ] ; then
+                    TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                fi
+            done
+
+            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+        fi
+
+        #################################################################
+
+        for item in $PACKAGE_DEP_PKG
+        do
+            if [ -z "$STACK" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
+        done
+    done
+
+    printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
+
+    #########################################################################################
+
+    [ -d "$PPKG_BACKUP_DIR" ] || install -d "$PPKG_BACKUP_DIR"
+
+    for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+    do
+        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME"
+
+        if [ -d "$PACKAGE_INSTALLED_DIR" ] ; then
+            mv  "$PACKAGE_INSTALLED_DIR" "$PPKG_BACKUP_DIR/$PACKAGE_NAME-$TIMESTAMP_UNIX"
+        fi
 
         (__install_the_given_package "$PACKAGE_NAME")
-
-        rm -rf "$PPKG_BACKUP_DIR/$PACKAGE_NAME"
     done
 }
 
@@ -2699,27 +2786,121 @@ __upgrade_packages() {
 
     if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
         USER_SPECIFIED_PACKAGES=$(__list__outdated_packages)
+
+        if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
+            return 0
+        fi
+    else
+        for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
+        do
+            is_package__outdated "$PACKAGE_NAME" || abort 1 "package [$PACKAGE_NAME] is not outdated."
+        done
     fi
 
-    for packageName in $USER_SPECIFIED_PACKAGES
+    #########################################################################################
+
+    SESSION_DIR="$PPKG_HOME/var/run/$$"
+
+    install -d "$SESSION_DIR"
+
+    #########################################################################################
+
+    unset TO_BE_INSTALLED_PACKAGE_NAMES
+
+    unset STACK
+
+    for item in $USER_SPECIFIED_PACKAGES
     do
-        is_package_available "$packageName" || abort 1 "package [$packageName] is not available."
-        is_package_installed "$packageName" || abort 1 "package [$packageName] is not installed."
+        if [ -z "$STACK" ] ; then
+            STACK="$item"
+        else
+            STACK="$STACK;$item"
+        fi
     done
 
-    __inspect_toolchain
-
-    for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
+    while [ -n "$STACK" ]
     do
-        [ -d "$PPKG_BACKUP_DIR" ] || {
-            install -d "$PPKG_BACKUP_DIR"
-        }
+        case $STACK in
+            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+            *)    PACKAGE_NAME="${STACK}"     ; STACK=
+        esac
 
-        mv "$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME" "$PPKG_BACKUP_DIR/$PACKAGE_NAME"
+        #################################################################
+
+        __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+        #################################################################
+
+        PACKAGE_NAME_IS_USER_SPECIFIED=no
+
+        for item in $USER_SPECIFIED_PACKAGES
+        do
+            [ "$item" = "$PACKAGE_NAME" ] && {
+                PACKAGE_NAME_IS_USER_SPECIFIED=yes
+                break;
+            }
+        done
+
+        #################################################################
+
+        NEED_RERANK=no
+
+        if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
+            NEED_RERANK=yes
+        else
+            if is_package_installed "$PACKAGE_NAME" ; then
+                NEED_RERANK=no
+            else
+                NEED_RERANK=yes
+            fi
+        fi
+
+        #################################################################
+
+        if [ "$NEED_RERANK" = yes ] ; then
+            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            do
+                if [ "$item" != "$PACKAGE_NAME" ] ; then
+                    TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                fi
+            done
+
+            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+        fi
+
+        #################################################################
+
+        for item in $PACKAGE_DEP_PKG
+        do
+            if [ -z "$STACK" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
+        done
+    done
+
+    printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
+
+    #########################################################################################
+
+    [ -d "$PPKG_BACKUP_DIR" ] || install -d "$PPKG_BACKUP_DIR"
+
+    for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+    do
+        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME"
+
+        if [ -d "$PACKAGE_INSTALLED_DIR" ] ; then
+            mv  "$PACKAGE_INSTALLED_DIR" "$PPKG_BACKUP_DIR/$PACKAGE_NAME-$TIMESTAMP_UNIX"
+        fi
 
         (__install_the_given_package "$PACKAGE_NAME")
-
-        rm -rf "$PPKG_BACKUP_DIR/$PACKAGE_NAME"
     done
 }
 
@@ -2728,8 +2909,6 @@ __upgrade_packages() {
 # {{{ ppkg install
 
 __inspect_install_arguments() {
-    step "inspect arguments"
-
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
@@ -2953,7 +3132,163 @@ ldflags: $TOOLCHAIN_CONFIG_LDFLAGS
 EOF
 }
 
-__inspect_toolchain() {
+__install_the_given_packages() {
+    __inspect_install_arguments "$@"
+
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
+
+    #########################################################################################
+
+    SESSION_DIR="$PPKG_HOME/var/run/$$"
+
+    install -d "$SESSION_DIR"
+
+    #########################################################################################
+
+    unset TO_BE_INSTALLED_PACKAGE_NAMES
+
+    unset STACK
+
+    for item in $USER_SPECIFIED_PACKAGES
+    do
+        if [ -z "$STACK" ] ; then
+            STACK="$item"
+        else
+            STACK="$STACK;$item"
+        fi
+    done
+
+    while [ -n "$STACK" ]
+    do
+        case $STACK in
+            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+            *)    PACKAGE_NAME="${STACK}"     ; STACK=
+        esac
+
+        __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+        TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+        for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+        do
+            if [ "$item" != "$PACKAGE_NAME" ] ; then
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+            fi
+        done
+
+        TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+
+        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+        for item in $PACKAGE_DEP_PKG
+        do
+            if [ -z "$STACK" ] ; then
+                STACK="$item"
+            else
+                STACK="$STACK;$item"
+            fi
+        done
+    done
+
+    printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
+
+    #########################################################################################
+
+    for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+    do
+        if is_package_installed "$PACKAGE_NAME" ; then
+            if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
+            fi
+        else
+            (__install_the_given_package "$PACKAGE_NAME")
+        fi
+    done
+}
+
+__install_the_given_package_onexit() {
+    if [ "$DRYRUN" != yes ] ; then
+        is_package_installed "$PACKAGE_NAME" || abort 1 "package installation failure: $PACKAGE_NAME"
+    fi
+}
+
+# Note: this function must run in a subshell
+__install_the_given_package() {
+    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+
+    trap  __install_the_given_package_onexit EXIT
+
+    # brew install meson
+    # Error: The current work directory doesn't exist, cannot proceed.
+    # beacuse previous package's work direcotory is deleted.
+    cd ~
+
+    #########################################################################################
+
+    printf '%s\n' "
+     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+
+     NATIVE_OS_KIND = $NATIVE_OS_KIND
+     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_NAME = $NATIVE_OS_NAME
+     NATIVE_OS_VERS = $NATIVE_OS_VERS
+     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
+     NATIVE_OS_EUID = $NATIVE_OS_EUID
+     NATIVE_OS_EGID = $NATIVE_OS_EGID
+
+PPKG_VERSION        = $PPKG_VERSION
+PPKG_HOME           = $PPKG_HOME
+PPKG                = $PPKG
+PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
+
+        BUILD_NJOBS = $BUILD_NJOBS
+        BUILD_TYPE  = $BUILD_TYPE
+
+STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
+SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
+    "
+
+    #########################################################################################
+
+    step "create and change to working directory"
+
+    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
+    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
+
+    rm -rf     "$PACKAGE_WORKING_DIR"
+
+    install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    install -d "$PACKAGE_INSTALLING_RES_DIR"
+    install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    install -d "$PACKAGE_INSTALLING_INC_DIR"
+    install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    install -d "$PACKAGE_BCACHED_DIR"
+
+    cat <<EOF
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
+EOF
+
+    cd "$PACKAGE_WORKING_DIR"
+
+    #########################################################################################
+
     step "locate C/C++ toolchain"
 
     unset CC
@@ -3041,10 +3376,6 @@ __inspect_toolchain() {
         printf "  SDKROOT = $SDKROOT\n"
         printf "  SYSROOT = $SYSROOT\n"
     fi
-
-    #########################################################################################
-
-    unset TEST_DIR; TEST_DIR=$(mktemp -d); cd "$TEST_DIR"
 
     #########################################################################################
 
@@ -3219,173 +3550,19 @@ PROXIED_CXX = $PROXIED_CXX
         CC  = $CC
         CXX = $CXX
 EOF
-}
-
-__install_the_given_packages() {
-    __inspect_install_arguments "$@"
-
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
-
-    __inspect_toolchain
 
     #########################################################################################
-
-    step "analyse packages to be installed."
-
-    unset TO_BE_INSTALLED_PACKAGE_NAMES
-
-    unset STACK
-
-    for item in $USER_SPECIFIED_PACKAGES
-    do
-        if [ -z "$STACK" ] ; then
-            STACK="$item"
-        else
-            STACK="$STACK;$item"
-        fi
-    done
-
-    while [ -n "$STACK" ]
-    do
-        case $STACK in
-            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-            *)    PACKAGE_NAME="${STACK}"     ; STACK=
-        esac
-
-        __load_formula_of_the_given_package "$PACKAGE_NAME"
-
-        cp "$PACKAGE_FORMULA_FILEPATH" "$TEST_DIR/$PACKAGE_NAME.yml"
-
-        TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
-
-        for item in $TO_BE_INSTALLED_PACKAGE_NAMES
-        do
-            if [ "$item" != "$PACKAGE_NAME" ] ; then
-                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
-            fi
-        done
-
-        TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
-
-        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
-
-        for item in $PACKAGE_DEP_PKG
-        do
-            if [ -z "$STACK" ] ; then
-                STACK="$item"
-            else
-                STACK="$STACK;$item"
-            fi
-        done
-    done
-
-    printf "$TO_BE_INSTALLED_PACKAGE_NAMES\n"
-
-    #########################################################################################
-
-    for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
-    do
-        if is_package_installed "$PACKAGE_NAME" ; then
-            if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
-                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
-            fi
-        else
-            (__install_the_given_package "$PACKAGE_NAME")
-        fi
-    done
-}
-
-__install_the_given_package_onexit() {
-    if [ "$DRYRUN" != yes ] ; then
-        is_package_installed "$PACKAGE_NAME" || abort 1 "package installation failure: $PACKAGE_NAME"
-    fi
-}
-
-# Note: this function must run in a subshell
-__install_the_given_package() {
-    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
-
-    trap  __install_the_given_package_onexit EXIT
-
-    # brew install meson
-    # Error: The current work directory doesn't exist, cannot proceed.
-    # beacuse previous package's work direcotory is deleted.
-    cd ~
-
-    printf '%s\n' "
-     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
-
-     NATIVE_OS_KIND = $NATIVE_OS_KIND
-     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-     NATIVE_OS_NAME = $NATIVE_OS_NAME
-     NATIVE_OS_VERS = $NATIVE_OS_VERS
-     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
-     NATIVE_OS_EUID = $NATIVE_OS_EUID
-     NATIVE_OS_EGID = $NATIVE_OS_EGID
-
-PPKG_VERSION        = $PPKG_VERSION
-PPKG_HOME           = $PPKG_HOME
-PPKG                = $PPKG
-PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
-
-        BUILD_NJOBS = $BUILD_NJOBS
-        BUILD_TYPE  = $BUILD_TYPE
-
-STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
-SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
-    "
 
     step "view formula"
 
     if command -v bat > /dev/null ; then
-        run bat --language=yaml --paging=never "$TEST_DIR/$1.yml"
+        run bat --language=yaml --paging=never "$SESSION_DIR/$1.yml"
     else
-        run cat "$TEST_DIR/$1.yml"
+        run cat "$SESSION_DIR/$1.yml"
     fi
    
     step "load formula"
-    __load_formula_of_the_given_package "$1" "$TEST_DIR/$1.yml"
-
-    #########################################################################################
-
-    step "create relevant directories"
-
-    PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
-    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
-
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
-
-    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
-
-    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
-
-    rm -rf     "$PACKAGE_WORKING_DIR"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_INSTALLING_TMP_DIR"
-    install -d "$PACKAGE_BCACHED_DIR"
-
-    cat <<EOF
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
-PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-EOF
+    __load_formula_of_the_given_package "$1" "$SESSION_DIR/$1.yml"
 
     #########################################################################################
 
@@ -3477,7 +3654,7 @@ EOF
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "generate dependency tree of $1"
+        step "generate  dependency tree of $1"
 
         unset DOT_CONTENT
 
@@ -3729,66 +3906,74 @@ $DOT_CONTENT
         M4=$(command -v m4)                 || abort 1 "command not found: m4"
 
         run "$AUTORECONF" --version
+        printf '\n'
         run "$AUTOCONF"   --version
+        printf '\n'
         run "$AUTOMAKE"   --version
+        printf '\n'
         run "$ACLOCAL"    --version
+        printf '\n'
         run "$PERL"       --version
+        printf '\n'
         run "$M4"         --version
+        printf '\n'
     fi
 
     [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
         MESON=$(command -v meson) || abort 1 "command not found: meson"
-
         run "$MESON"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
         CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
-
         run "$CMAKE"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
         XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
-
         run "$XMAKE"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
         GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
-
         run "$GMAKE"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
         NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
-
         run "$NINJA"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
         RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
         CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
-
         run "$RUSTUP"     --version
+        printf '\n'
         run "$CARGO"      --version
+        printf '\n'
     }
 
     [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
         GO=$(command -v go) || abort 1 "command not found: go"
-
         run "$GO"      version
+        printf '\n'
     }
 
     [ "$CCACHE_ENABLED" = yes ] && {
         CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
-
         run "$CCACHE"    --version
+        printf '\n'
     }
 
     PKG_CONFIG=$(command -v pkg-config || command -v pkgconf) || abort 1 "command not found: pkg-config"
 
     run "$PKG_CONFIG"    --version
+    printf '\n'
 
     unset  M4
     export M4="$(command -v m4 || true)"
@@ -4422,6 +4607,9 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+    PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
+
     step "tree files of the installing top directory"
     run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
 
@@ -4528,7 +4716,6 @@ $PACKAGE_INSTALL_ACTIONS
     PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
     PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-    PACKAGE_INSTALLING_TMP_DIR="$PACKAGE_WORKING_DIR/tmp"
 
     #########################################################################################
 
@@ -4727,7 +4914,7 @@ $PACKAGE_INSTALL_ACTIONS
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            install -v -m 644 "$TEST_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
+            install -v -m 644 "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
         done
     }
 
