@@ -1203,11 +1203,11 @@ prompt_user_to_install_bat() {
   is_package_installed() {
     [ -z "$1" ] && abort 1 "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$1" ]                    || return 10
-    [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg" ]              || return 11
-    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/buildon.yml" ]  || return 12
-    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt" ] || return 13
-    [ -f "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml" ]  || return 14
+    [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$1" ]                    || return 10
+    [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg" ]              || return 11
+    [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/buildon.yml" ]  || return 12
+    [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/manifest.txt" ] || return 13
+    [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml" ]  || return 14
 }
 
 # }}}
@@ -1216,7 +1216,7 @@ prompt_user_to_install_bat() {
 
 # is_package_symlinked <PACKAGE-NAME>
   is_package_symlinked() {
-    is_package_installed "$1" && [ -f "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1" ]
+    is_package_installed "$1" && [ -f "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1" ]
 }
 
 # }}}
@@ -1248,8 +1248,8 @@ __list_available_packages() {
 # {{{ ppkg ls-installed
 
 __list_installed_packages() {
-    if [ -d "$PPKG_PACKAGE_INSTALLED_DIR" ] ; then
-         cd "$PPKG_PACKAGE_INSTALLED_DIR" > /dev/null || return 1
+    if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] ; then
+         cd "$PPKG_PACKAGE_INSTALLED_ROOT" > /dev/null || return 1
     else
         return 0
     fi
@@ -1267,8 +1267,8 @@ __list_installed_packages() {
 # {{{ ppkg ls-symlinked
 
 __list_symlinked_packages() {
-    if [ -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" ] ; then
-         cd "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" || return 1
+    if [ -d "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry" ] ; then
+         cd "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry" || return 1
     else
         return 0
     fi
@@ -1281,8 +1281,8 @@ __list_symlinked_packages() {
 # {{{ ppkg ls-outdated
 
 __list__outdated_packages() {
-    if [ -d "$PPKG_PACKAGE_INSTALLED_DIR" ] ; then
-         cd "$PPKG_PACKAGE_INSTALLED_DIR" > /dev/null || return 1
+    if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] ; then
+         cd "$PPKG_PACKAGE_INSTALLED_ROOT" > /dev/null || return 1
     else
         return 0
     fi
@@ -1652,7 +1652,7 @@ EOF
             ;;
         receipt-yaml)
             if is_package_installed "$1" ; then
-                cat "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
+                cat "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml"
             else
                 abort 1 "package [$1] is not installed."
             fi
@@ -1721,26 +1721,26 @@ EOF
             ;;
         receipt-path)
             if is_package_installed "$1" ; then
-                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/receipt.yml"
+                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml"
             else
                 abort 1 "package [$1] is not installed."
             fi
             ;;
         symlinked-files)
-            if [ -f "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1" ] ; then
-                cat "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1"
+            if [ -f "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1" ] ; then
+                cat "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1"
             fi
             ;;
         installed-dir)
             if is_package_installed "$1" ; then
-                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_DIR/$1"
+                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_ROOT/$1"
             else
                 abort 1 "package [$1] is not installed."
             fi
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/manifest.txt"
+                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/manifest.txt"
             else
                 abort 1 "package [$1] is not installed."
             fi
@@ -1797,7 +1797,7 @@ mark_is_package_installed_or_not() {
 
     shift
 
-    run tree "$@" "$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME"
+    run tree "$@" "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
 }
 
 # }}}
@@ -1814,9 +1814,9 @@ mark_is_package_installed_or_not() {
         VIEWER=less
     fi
 
-    for item in $(ls "$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg")
+    for item in $(ls "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg")
     do
-        item="$PPKG_PACKAGE_INSTALLED_DIR/$1/.ppkg/$item"
+        item="$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/$item"
 
         if [ -d "$item" ] ; then
             continue
@@ -1895,8 +1895,8 @@ mark_is_package_installed_or_not() {
     OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=no
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" ] ; then
-            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/lib" -type f)
+        if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/lib" ] ; then
+            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/lib" -type f)
             do
                 case $FILEPATH in
                     */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes; break ;;
@@ -1907,8 +1907,8 @@ mark_is_package_installed_or_not() {
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            if [ -d "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" ] ; then
-                for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME/bin" -type f)
+            if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/bin" ] ; then
+                for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/bin" -type f)
                 do
                     unset FILE_MAGIC
 
@@ -1929,7 +1929,7 @@ mark_is_package_installed_or_not() {
         fi
 
         if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
+            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME" -type f -a -name "*.a")
             do
                 OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=yes
             done
@@ -2012,7 +2012,7 @@ mark_is_package_installed_or_not() {
     run cd "$PACKING_DIR"
 
     step "make link refer to installed package root dir"
-    run ln -s "$PPKG_PACKAGE_INSTALLED_DIR/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
+    run ln -s "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $OUTPUT_FILETYPE in
@@ -2500,6 +2500,8 @@ __show_packages_depended_by_the_given_package() {
 
     unset DOT_CONTENT
 
+    unset DIRECTED_EDGE_LIST
+
     STACK="$PACKAGE_NAME"
 
     while [ -n "$STACK" ]
@@ -2511,23 +2513,46 @@ __show_packages_depended_by_the_given_package() {
 
         __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-        if [ -n "$PACKAGE_DEP_PKG" ] ; then
-            unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
-            unset Y; Y="$(printf '    "%s" -> { %s}\n' "$PACKAGE_NAME" "$X")"
+        [ -z "$PACKAGE_DEP_PKG" ] && continue
 
-            if [ -z "$DOT_CONTENT" ] ; then
-                DOT_CONTENT="$Y"
-            else
-                DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
-            fi
+        unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
+        unset Y; Y="$(printf '    "%s" -> { %s}\n' "$PACKAGE_NAME" "$X")"
+
+        if [ -z "$DOT_CONTENT" ] ; then
+            DOT_CONTENT="$Y"
+        else
+            DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
         fi
 
-        for item in $PACKAGE_DEP_PKG
+        for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
-            if [ -z "$item" ] ; then
-                STACK="$item"
+            if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                abort 1 "package [$PACKAGE_NAME] depends itself."
+            fi
+
+            ###################################################
+
+            DIRECTED_EDGE="$PACKAGE_NAME->$DEPENDENT_PACKAGE_NAME"
+
+            # check if has duplicate directed edge
+
+            for item in $DIRECTED_EDGE_LIST
+            do
+                if [ "$DIRECTED_EDGE" = "$item" ] ; then
+                    error "package [$PACKAGE_NAME] depends has circle."
+                    printf '    %s\n' $DIRECTED_EDGE_LIST
+                    exit 1
+                fi
+            done
+
+            DIRECTED_EDGE_LIST="$DIRECTED_EDGE_LIST $DIRECTED_EDGE"
+
+            ###################################################
+
+            if [ -z "$STACK" ] ; then
+                STACK="$DEPENDENT_PACKAGE_NAME"
             else
-                STACK="$STACK;$item"
+                STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
             fi
         done
     done
@@ -2622,33 +2647,33 @@ $DOT_CONTENT
 
 # __uninstall_the_given_packages <PACKAGE-NAME>...
   __uninstall_the_given_packages() {
-    unset USER_SPECIFIED_PACKAGES
+    unset USER_SPECIFIED_PACKAGE_NAME_LIST
 
     while [ -n "$1" ]
     do
         case "$1" in
             -*) abort 1 "_0 uninstall <PACKAGE-NAME>..., unrecognized option: $1"
                 ;;
-            *)  USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
+            *)  USER_SPECIFIED_PACKAGE_NAME_LIST="$USER_SPECIFIED_PACKAGE_NAME_LIST $1"
         esac
         shift
     done
 
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "_0 uninstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
+    [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] && abort 1 "_0 uninstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
 
-    for packageName in $USER_SPECIFIED_PACKAGES
+    for packageName in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
         if is_package_installed "$packageName" ; then
-            PACKAGE_SYMLINK_REGISTER_FILEPATH="$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$packageName"
+            PACKAGE_SYMLINK_REGISTER_FILEPATH="$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$packageName"
 
             if [ -f "$PACKAGE_SYMLINK_REGISTER_FILEPATH" ] ; then
                 while read -r item
                 do
-                    run unlink "\"$PPKG_PACKAGE_SYMLINKED_DIR/$item\""
+                    run unlink "\"$PPKG_PACKAGE_SYMLINKED_ROOT/$item\""
                 done < "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
             fi
             run rm "$PACKAGE_SYMLINK_REGISTER_FILEPATH"
-            run rm -rf "$PPKG_PACKAGE_INSTALLED_DIR/$packageName"
+            run rm -rf "$PPKG_PACKAGE_INSTALLED_ROOT/$packageName"
         else
             warn "$packageName is not installed."
         fi
@@ -2662,9 +2687,9 @@ $DOT_CONTENT
 __reinstall_the_given_packages() {
     __inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "_0 reinstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
+    [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] && abort 1 "_0 reinstall <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
 
-    for packageName in $USER_SPECIFIED_PACKAGES
+    for packageName in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
         is_package_available "$packageName" || abort 1 "package [$packageName] is not available."
         is_package_installed "$packageName" || abort 1 "package [$packageName] is not installed."
@@ -2683,7 +2708,7 @@ __reinstall_the_given_packages() {
 
     unset STACK
 
-    for item in $USER_SPECIFIED_PACKAGES
+    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
         if [ -z "$STACK" ] ; then
             STACK="$item"
@@ -2711,7 +2736,7 @@ __reinstall_the_given_packages() {
 
         PACKAGE_NAME_IS_USER_SPECIFIED=no
 
-        for item in $USER_SPECIFIED_PACKAGES
+        for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
         do
             [ "$item" = "$PACKAGE_NAME" ] && {
                 PACKAGE_NAME_IS_USER_SPECIFIED=yes
@@ -2768,7 +2793,7 @@ __reinstall_the_given_packages() {
 
     for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
     do
-        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME"
+        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
 
         if [ -d "$PACKAGE_INSTALLED_DIR" ] ; then
             mv  "$PACKAGE_INSTALLED_DIR" "$PPKG_BACKUP_DIR/$PACKAGE_NAME-$TIMESTAMP_UNIX"
@@ -2785,14 +2810,14 @@ __reinstall_the_given_packages() {
 __upgrade_packages() {
     __inspect_install_arguments "$@"
 
-    if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
-        USER_SPECIFIED_PACKAGES="$(__list__outdated_packages)"
+    if [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] ; then
+        USER_SPECIFIED_PACKAGE_NAME_LIST="$(__list__outdated_packages)"
 
-        if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
+        if [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] ; then
             return 0
         fi
     else
-        for PACKAGE_NAME in $USER_SPECIFIED_PACKAGES
+        for PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_NAME_LIST
         do
             is_package__outdated "$PACKAGE_NAME" || abort 1 "package [$PACKAGE_NAME] is not outdated."
         done
@@ -2811,7 +2836,7 @@ __upgrade_packages() {
 
     unset STACK
 
-    for item in $USER_SPECIFIED_PACKAGES
+    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
         if [ -z "$STACK" ] ; then
             STACK="$item"
@@ -2839,7 +2864,7 @@ __upgrade_packages() {
 
         PACKAGE_NAME_IS_USER_SPECIFIED=no
 
-        for item in $USER_SPECIFIED_PACKAGES
+        for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
         do
             [ "$item" = "$PACKAGE_NAME" ] && {
                 PACKAGE_NAME_IS_USER_SPECIFIED=yes
@@ -2896,7 +2921,7 @@ __upgrade_packages() {
 
     for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
     do
-        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$PACKAGE_NAME"
+        PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
 
         if [ -d "$PACKAGE_INSTALLED_DIR" ] ; then
             mv  "$PACKAGE_INSTALLED_DIR" "$PPKG_BACKUP_DIR/$PACKAGE_NAME-$TIMESTAMP_UNIX"
@@ -2914,7 +2939,7 @@ __inspect_install_arguments() {
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
-    unset USER_SPECIFIED_PACKAGES
+    unset USER_SPECIFIED_PACKAGE_NAME_LIST
 
     unset DRYRUN
 
@@ -3024,10 +3049,10 @@ __inspect_install_arguments() {
             -*) abort 1 "unrecognized option: $1"
                 ;;
             *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
-                    if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
-                        USER_SPECIFIED_PACKAGES="$1"
+                    if [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] ; then
+                        USER_SPECIFIED_PACKAGE_NAME_LIST="$1"
                     else
-                        USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
+                        USER_SPECIFIED_PACKAGE_NAME_LIST="$USER_SPECIFIED_PACKAGE_NAME_LIST $1"
                     fi
                 else
                     abort 1 "invalid package name: $1"
@@ -3137,7 +3162,7 @@ EOF
 __install_the_given_packages() {
     __inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGES" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
+    [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] && abort 1 "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is unspecified."
 
     #########################################################################################
 
@@ -3152,7 +3177,7 @@ __install_the_given_packages() {
 
     unset STACK
 
-    for item in $USER_SPECIFIED_PACKAGES
+    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
         if [ -z "$STACK" ] ; then
             STACK="$item"
@@ -3626,7 +3651,7 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
 
             if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
@@ -4115,7 +4140,7 @@ $DOT_CONTENT
         unset DEPENDENT_PACKAGE_LIBRARY_DIR
         unset DEPENDENT_PACKAGE_PKGCONF_DIR
 
-        DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME"
+        DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
         DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
@@ -4961,7 +4986,7 @@ EOF
     __generate_receipt_of_the_given_package "$1"
 
     [ "$PACKAGE_SYMLINK" = yes ] && {
-        step "symlink installed files to $PPKG_PACKAGE_SYMLINKED_DIR"
+        step "symlink installed files to $PPKG_PACKAGE_SYMLINKED_ROOT"
         __symlink_installed_files_of_the_given_package "$1"
     }
 
@@ -5361,10 +5386,10 @@ install_pc_file() {
     #         D)  ;;
     #         *)  case $Y in
     #                 share/info/dir) ;;
-    #                 *)  if [ -L "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] || [ -e "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] ; then
-    #                         abort 1 "$PPKG_PACKAGE_SYMLINKED_DIR/$Y already exists."
+    #                 *)  if [ -L "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y" ] || [ -e "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y" ] ; then
+    #                         abort 1 "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y already exists."
     #                     # else
-    #                     #     echo "$PPKG_PACKAGE_SYMLINKED_DIR/$Y"
+    #                     #     echo "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y"
     #                     fi
     #             esac
     #     esac
@@ -5372,11 +5397,11 @@ install_pc_file() {
 
     # ############################################################################
 
-    if [ !      -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry" ] ; then
-        install -d "$PPKG_PACKAGE_SYMLINKED_DIR/.registry"
+    if [ !      -d "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry" ] ; then
+        install -d "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry"
     fi
 
-    exec 7> "$PPKG_PACKAGE_SYMLINKED_DIR/.registry/$1"
+    exec 7> "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1"
 
     while read -r item
     do
@@ -5385,13 +5410,13 @@ install_pc_file() {
 
         case $X in
             d|D)
-                if [ !      -d "$PPKG_PACKAGE_SYMLINKED_DIR/$Y" ] ; then
-                    install -d "$PPKG_PACKAGE_SYMLINKED_DIR/$Y"
+                if [ !      -d "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y" ] ; then
+                    install -d "$PPKG_PACKAGE_SYMLINKED_ROOT/$Y"
                 fi
                 ;;
             *)  case $Y in
                     share/info/dir) ;;
-                    *)  run ln -sfr "\"$PPKG_PACKAGE_INSTALLED_DIR/$1/$Y\"" "\"$PPKG_PACKAGE_SYMLINKED_DIR/$Y\""
+                    *)  run ln -sfr "\"$PPKG_PACKAGE_INSTALLED_ROOT/$1/$Y\"" "\"$PPKG_PACKAGE_SYMLINKED_ROOT/$Y\""
                         printf '%s\n' "$Y" >&7
                 esac
         esac
@@ -5540,7 +5565,7 @@ EOF
 
     #######################################################################################################
 
-    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$1"
+    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$1"
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/receipt.yml"
 
     unset PACKAGE_RECEIPT_SIGNATURE
@@ -6685,8 +6710,8 @@ main() {
     PPKG_HOME="$HOME/.ppkg"
 
     PPKG_FORMULA_REPO_DIR="$PPKG_HOME/repos.d"
-    PPKG_PACKAGE_INSTALLED_DIR="$PPKG_HOME/installed"
-    PPKG_PACKAGE_SYMLINKED_DIR="$PPKG_HOME/symlinked"
+    PPKG_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/installed"
+    PPKG_PACKAGE_SYMLINKED_ROOT="$PPKG_HOME/symlinked"
     PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
     PPKG_BACKUP_DIR="$PPKG_HOME/backup.d"
 
