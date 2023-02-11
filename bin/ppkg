@@ -2500,7 +2500,7 @@ __show_packages_depended_by_the_given_package() {
 
     unset DOT_CONTENT
 
-    unset DIRECTED_EDGE_LIST
+    unset DIRECTED_PATH_LIST
 
     STACK="$PACKAGE_NAME"
 
@@ -2511,9 +2511,15 @@ __show_packages_depended_by_the_given_package() {
             *)    PACKAGE_NAME="${STACK}"     ; STACK=
         esac
 
+        ################################################################
+
         __load_formula_of_the_given_package "$PACKAGE_NAME"
 
+        ################################################################
+
         [ -z "$PACKAGE_DEP_PKG" ] && continue
+
+        ################################################################
 
         unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
         unset Y; Y="$(printf '    "%s" -> { %s}\n' "$PACKAGE_NAME" "$X")"
@@ -2524,30 +2530,57 @@ __show_packages_depended_by_the_given_package() {
             DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
         fi
 
+        ################################################################
+
+        DIRECTED_PATH_LIST_PART1=
+        DIRECTED_PATH_LIST_PART2=
+
+        for DIRECTED_PATH in $DIRECTED_PATH_LIST
+        do
+            case $DIRECTED_PATH in
+                *\>"$PACKAGE_NAME")
+                    DIRECTED_PATH_LIST_PART1="$DIRECTED_PATH_LIST_PART1 $DIRECTED_PATH" ;;
+                *)  DIRECTED_PATH_LIST_PART2="$DIRECTED_PATH_LIST_PART2 $DIRECTED_PATH" ;;
+            esac
+        done
+
+        ################################################################
+
+        # it will be recalculated
+        DIRECTED_PATH_LIST=
+
+        ################################################################
+
         for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
             if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
                 abort 1 "package [$PACKAGE_NAME] depends itself."
             fi
 
-            ###################################################
+            ############################################################
 
-            DIRECTED_EDGE="$PACKAGE_NAME->$DEPENDENT_PACKAGE_NAME"
+            if [ -z "$DIRECTED_PATH_LIST_PART1" ] ; then
+                DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $PACKAGE_NAME>$DEPENDENT_PACKAGE_NAME"
+            else
+                for DIRECTED_PATH in $DIRECTED_PATH_LIST_PART1
+                do
+                    export IFS='>'
 
-            # check if has duplicate directed edge
+                    # check if have duplicate nodes in every directed path
+                    for node in $DIRECTED_PATH
+                    do
+                        if [ "$node" = "$DEPENDENT_PACKAGE_NAME" ] ; then
+                            abort 1 "depends has circle: $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                        fi
+                    done
 
-            for item in $DIRECTED_EDGE_LIST
-            do
-                if [ "$DIRECTED_EDGE" = "$item" ] ; then
-                    error "package [$PACKAGE_NAME] depends has circle."
-                    printf '    %s\n' $DIRECTED_EDGE_LIST
-                    exit 1
-                fi
-            done
+                    unset IFS
 
-            DIRECTED_EDGE_LIST="$DIRECTED_EDGE_LIST $DIRECTED_EDGE"
+                    DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                done
+            fi
 
-            ###################################################
+            ############################################################
 
             if [ -z "$STACK" ] ; then
                 STACK="$DEPENDENT_PACKAGE_NAME"
@@ -2555,6 +2588,8 @@ __show_packages_depended_by_the_given_package() {
                 STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
             fi
         done
+
+        DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
     done
 
     ###########################################################################################
@@ -2704,84 +2739,135 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    unset TO_BE_INSTALLED_PACKAGE_NAMES
+    TO_BE_INSTALLED_PACKAGE_NAMES=
 
-    unset STACK
-
-    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
+    for USER_SPECIFIED_PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
-        if [ -z "$STACK" ] ; then
-            STACK="$item"
-        else
-            STACK="$STACK;$item"
-        fi
-    done
+        DIRECTED_PATH_LIST=
 
-    while [ -n "$STACK" ]
-    do
-        case $STACK in
-            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-            *)    PACKAGE_NAME="${STACK}"     ; STACK=
-        esac
+        STACK="$USER_SPECIFIED_PACKAGE_NAME"
 
-        #################################################################
-
-        __load_formula_of_the_given_package "$PACKAGE_NAME"
-
-        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
-
-        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
-
-        #################################################################
-
-        PACKAGE_NAME_IS_USER_SPECIFIED=no
-
-        for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
+        while [ -n "$STACK" ]
         do
-            [ "$item" = "$PACKAGE_NAME" ] && {
-                PACKAGE_NAME_IS_USER_SPECIFIED=yes
-                break;
-            }
-        done
+            case $STACK in
+                *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+                *)    PACKAGE_NAME="${STACK}"     ; STACK=
+            esac
 
-        #################################################################
+            #################################################################
 
-        NEED_RERANK=no
-
-        if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
-            NEED_RERANK=yes
-        else
-            if is_package_installed "$PACKAGE_NAME" ; then
-                NEED_RERANK=no
+            if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
+                PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
+                PACKAGE_DEP_PKG="$(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")"
             else
-                NEED_RERANK=yes
+                __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+                cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+                eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
             fi
-        fi
 
-        #################################################################
+            #################################################################
 
-        if [ "$NEED_RERANK" = yes ] ; then
-            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+            PACKAGE_NAME_IS_USER_SPECIFIED=no
 
-            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
             do
-                if [ "$item" != "$PACKAGE_NAME" ] ; then
-                    TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                [ "$item" = "$PACKAGE_NAME" ] && {
+                    PACKAGE_NAME_IS_USER_SPECIFIED=yes
+                    break;
+                }
+            done
+
+            #################################################################
+
+            NEED_RERANK=no
+
+            if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
+                NEED_RERANK=yes
+            else
+                if is_package_installed "$PACKAGE_NAME" ; then
+                    NEED_RERANK=no
+                else
+                    NEED_RERANK=yes
+                fi
+            fi
+
+            #################################################################
+
+            if [ "$NEED_RERANK" = yes ] ; then
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+                for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+                do
+                    if [ "$item" != "$PACKAGE_NAME" ] ; then
+                        TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                    fi
+                done
+
+                TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            fi
+
+            #################################################################
+
+            DIRECTED_PATH_LIST_PART1=
+            DIRECTED_PATH_LIST_PART2=
+
+            for DIRECTED_PATH in $DIRECTED_PATH_LIST
+            do
+                case $DIRECTED_PATH in
+                    *\>"$PACKAGE_NAME")
+                        DIRECTED_PATH_LIST_PART1="$DIRECTED_PATH_LIST_PART1 $DIRECTED_PATH" ;;
+                    *)  DIRECTED_PATH_LIST_PART2="$DIRECTED_PATH_LIST_PART2 $DIRECTED_PATH" ;;
+                esac
+            done
+
+            ################################################################
+
+            # it will be recalculated
+            DIRECTED_PATH_LIST=
+
+            ################################################################
+
+            for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+            do
+                if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                    abort 1 "package [$PACKAGE_NAME] depends itself."
+                fi
+
+                ############################################################
+
+                if [ -z "$DIRECTED_PATH_LIST_PART1" ] ; then
+                    DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $PACKAGE_NAME>$DEPENDENT_PACKAGE_NAME"
+                else
+                    for DIRECTED_PATH in $DIRECTED_PATH_LIST_PART1
+                    do
+                        export IFS='>'
+
+                        # check if have duplicate nodes in every directed path
+                        for node in $DIRECTED_PATH
+                        do
+                            if [ "$node" = "$DEPENDENT_PACKAGE_NAME" ] ; then
+                                abort 1 "depends has circle: $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                            fi
+                        done
+
+                        unset IFS
+
+                        DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                    done
+                fi
+
+                ############################################################
+
+                if [ -z "$STACK" ] ; then
+                    STACK="$DEPENDENT_PACKAGE_NAME"
+                else
+                    STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
                 fi
             done
 
-            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
-        fi
-
-        #################################################################
-
-        for item in $PACKAGE_DEP_PKG
-        do
-            if [ -z "$STACK" ] ; then
-                STACK="$item"
-            else
-                STACK="$STACK;$item"
-            fi
+            DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
         done
     done
 
@@ -2832,84 +2918,135 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    unset TO_BE_INSTALLED_PACKAGE_NAMES
+    TO_BE_INSTALLED_PACKAGE_NAMES=
 
-    unset STACK
-
-    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
+    for USER_SPECIFIED_PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
-        if [ -z "$STACK" ] ; then
-            STACK="$item"
-        else
-            STACK="$STACK;$item"
-        fi
-    done
+        DIRECTED_PATH_LIST=
 
-    while [ -n "$STACK" ]
-    do
-        case $STACK in
-            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-            *)    PACKAGE_NAME="${STACK}"     ; STACK=
-        esac
+        STACK="$USER_SPECIFIED_PACKAGE_NAME"
 
-        #################################################################
-
-        __load_formula_of_the_given_package "$PACKAGE_NAME"
-
-        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
-
-        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
-
-        #################################################################
-
-        PACKAGE_NAME_IS_USER_SPECIFIED=no
-
-        for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
+        while [ -n "$STACK" ]
         do
-            [ "$item" = "$PACKAGE_NAME" ] && {
-                PACKAGE_NAME_IS_USER_SPECIFIED=yes
-                break;
-            }
-        done
+            case $STACK in
+                *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+                *)    PACKAGE_NAME="${STACK}"     ; STACK=
+            esac
 
-        #################################################################
+            ################################################################
 
-        NEED_RERANK=no
-
-        if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
-            NEED_RERANK=yes
-        else
-            if is_package_installed "$PACKAGE_NAME" ; then
-                NEED_RERANK=no
+            if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
+                PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
+                PACKAGE_DEP_PKG="$(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")"
             else
-                NEED_RERANK=yes
+                __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+                cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+                eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
             fi
-        fi
 
-        #################################################################
+            ################################################################
 
-        if [ "$NEED_RERANK" = yes ] ; then
-            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+            PACKAGE_NAME_IS_USER_SPECIFIED=no
 
-            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
             do
-                if [ "$item" != "$PACKAGE_NAME" ] ; then
-                    TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                [ "$item" = "$PACKAGE_NAME" ] && {
+                    PACKAGE_NAME_IS_USER_SPECIFIED=yes
+                    break;
+                }
+            done
+
+            #################################################################
+
+            NEED_RERANK=no
+
+            if [ "$PACKAGE_NAME_IS_USER_SPECIFIED" = yes ] ; then
+                NEED_RERANK=yes
+            else
+                if is_package_installed "$PACKAGE_NAME" ; then
+                    NEED_RERANK=no
+                else
+                    NEED_RERANK=yes
+                fi
+            fi
+
+            #################################################################
+
+            if [ "$NEED_RERANK" = yes ] ; then
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+                for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+                do
+                    if [ "$item" != "$PACKAGE_NAME" ] ; then
+                        TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                    fi
+                done
+
+                TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            fi
+
+            #################################################################
+
+            DIRECTED_PATH_LIST_PART1=
+            DIRECTED_PATH_LIST_PART2=
+
+            for DIRECTED_PATH in $DIRECTED_PATH_LIST
+            do
+                case $DIRECTED_PATH in
+                    *\>"$PACKAGE_NAME")
+                        DIRECTED_PATH_LIST_PART1="$DIRECTED_PATH_LIST_PART1 $DIRECTED_PATH" ;;
+                    *)  DIRECTED_PATH_LIST_PART2="$DIRECTED_PATH_LIST_PART2 $DIRECTED_PATH" ;;
+                esac
+            done
+
+            ################################################################
+
+            # it will be recalculated
+            DIRECTED_PATH_LIST=
+
+            ################################################################
+
+            for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+            do
+                if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                    abort 1 "package [$PACKAGE_NAME] depends itself."
+                fi
+
+                ############################################################
+
+                if [ -z "$DIRECTED_PATH_LIST_PART1" ] ; then
+                    DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $PACKAGE_NAME>$DEPENDENT_PACKAGE_NAME"
+                else
+                    for DIRECTED_PATH in $DIRECTED_PATH_LIST_PART1
+                    do
+                        export IFS='>'
+
+                        # check if have duplicate nodes in every directed path
+                        for node in $DIRECTED_PATH
+                        do
+                            if [ "$node" = "$DEPENDENT_PACKAGE_NAME" ] ; then
+                                abort 1 "depends has circle: $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                            fi
+                        done
+
+                        unset IFS
+
+                        DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                    done
+                fi
+
+                ############################################################
+
+                if [ -z "$STACK" ] ; then
+                    STACK="$DEPENDENT_PACKAGE_NAME"
+                else
+                    STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
                 fi
             done
 
-            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
-        fi
-
-        #################################################################
-
-        for item in $PACKAGE_DEP_PKG
-        do
-            if [ -z "$STACK" ] ; then
-                STACK="$item"
-            else
-                STACK="$STACK;$item"
-            fi
+            DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
         done
     done
 
@@ -3173,50 +3310,107 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    unset TO_BE_INSTALLED_PACKAGE_NAMES
+    TO_BE_INSTALLED_PACKAGE_NAMES=
 
-    unset STACK
-
-    for item in $USER_SPECIFIED_PACKAGE_NAME_LIST
+    for USER_SPECIFIED_PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_NAME_LIST
     do
-        if [ -z "$STACK" ] ; then
-            STACK="$item"
-        else
-            STACK="$STACK;$item"
-        fi
-    done
+        DIRECTED_PATH_LIST=
 
-    while [ -n "$STACK" ]
-    do
-        case $STACK in
-            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-            *)    PACKAGE_NAME="${STACK}"     ; STACK=
-        esac
+        STACK="$USER_SPECIFIED_PACKAGE_NAME"
 
-        __load_formula_of_the_given_package "$PACKAGE_NAME"
-
-        cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
-
-        TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
-
-        for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+        while [ -n "$STACK" ]
         do
-            if [ "$item" != "$PACKAGE_NAME" ] ; then
-                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
-            fi
-        done
+            case $STACK in
+                *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
+                *)    PACKAGE_NAME="${STACK}"     ; STACK=
+            esac
 
-        TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            ################################################################
 
-        eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
-
-        for item in $PACKAGE_DEP_PKG
-        do
-            if [ -z "$STACK" ] ; then
-                STACK="$item"
+            if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
+                PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
+                PACKAGE_DEP_PKG="$(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")"
             else
-                STACK="$STACK;$item"
+                __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+                cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+                eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
             fi
+
+            ################################################################
+
+            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            do
+                if [ "$item" != "$PACKAGE_NAME" ] ; then
+                    TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                fi
+            done
+
+            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+
+            ################################################################
+
+            DIRECTED_PATH_LIST_PART1=
+            DIRECTED_PATH_LIST_PART2=
+
+            for DIRECTED_PATH in $DIRECTED_PATH_LIST
+            do
+                case $DIRECTED_PATH in
+                    *\>"$PACKAGE_NAME")
+                        DIRECTED_PATH_LIST_PART1="$DIRECTED_PATH_LIST_PART1 $DIRECTED_PATH" ;;
+                    *)  DIRECTED_PATH_LIST_PART2="$DIRECTED_PATH_LIST_PART2 $DIRECTED_PATH" ;;
+                esac
+            done
+
+            ################################################################
+
+            # it will be recalculated
+            DIRECTED_PATH_LIST=
+
+            ################################################################
+
+            for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+            do
+                if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                    abort 1 "package [$PACKAGE_NAME] depends itself."
+                fi
+
+                ############################################################
+
+                if [ -z "$DIRECTED_PATH_LIST_PART1" ] ; then
+                    DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $PACKAGE_NAME>$DEPENDENT_PACKAGE_NAME"
+                else
+                    for DIRECTED_PATH in $DIRECTED_PATH_LIST_PART1
+                    do
+                        export IFS='>'
+
+                        # check if have duplicate nodes in every directed path
+                        for node in $DIRECTED_PATH
+                        do
+                            if [ "$node" = "$DEPENDENT_PACKAGE_NAME" ] ; then
+                                abort 1 "depends has circle: $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                            fi
+                        done
+
+                        unset IFS
+
+                        DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
+                    done
+                fi
+
+                ############################################################
+
+                if [ -z "$STACK" ] ; then
+                    STACK="$DEPENDENT_PACKAGE_NAME"
+                else
+                    STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
+                fi
+            done
+
+            DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
         done
     done
 
@@ -4940,7 +5134,7 @@ $PACKAGE_INSTALL_ACTIONS
 
         install -v -d "$PACKAGE_METAINF_DIR/formula"
 
-        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME
         do
             install -v -m 644 "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
         done
