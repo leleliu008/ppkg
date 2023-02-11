@@ -4155,6 +4155,13 @@ $DOT_CONTENT
 
     [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
         XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+
+        # error: Running xmake as root is extremely dangerous and no longer supported.
+        # As xmake does not drop privileges on installation you would be giving all
+        # build scripts full access to your system.
+        # Or you can add `--root` option or XMAKE_ROOT=y to allow run as root temporarily.
+        export XMAKE_ROOT=y
+
         run "$XMAKE"      --version
         printf '\n'
     }
@@ -6236,8 +6243,6 @@ EOF
 # https://github.com/xmake-io/xmake/issues/2003
 # run in a subshell
 xmakew() {
-    export XMAKE_ROOT=y
-
     XMAKE_CONFIG_OPTIONS="$*"
 
     XMAKE_CONFIG_OPTION_CLEAN=
