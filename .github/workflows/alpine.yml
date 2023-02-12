@@ -52,7 +52,6 @@ jobs:
       - run: bin/ppkg pack libzip
       - run: bin/ppkg pack libzip -t tar.xz
 
-      - run: bin/ppkg formula-repo-list
 
       - run: bin/ppkg ls-available
       - run: bin/ppkg ls-installed
@@ -67,3 +66,32 @@ jobs:
       - run: bin/ppkg fetch curl
 
       - run: bin/ppkg upgrade-self
+
+      - run: bin/ppkg formula-repo-list
+
+      - run: bin/ppkg formula-repo-add my_repo1 https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: bin/ppkg formula-repo-add my_repo2 https://github.com/leleliu008/ppkg-formula-repository-offical-core --branch=master
+      - run: bin/ppkg formula-repo-add my_repo3 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin
+      - run: bin/ppkg formula-repo-add my_repo4 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin --disable
+
+      - run: bin/ppkg formula-repo-list
+
+      - run: bin/ppkg formula-repo-init my_repo10 https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: bin/ppkg formula-repo-init my_repo11 https://github.com/leleliu008/ppkg-formula-repository-offical-core --branch=main
+      - run: bin/ppkg formula-repo-init my_repo12 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin
+      - run: bin/ppkg formula-repo-init my_repo13 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin --disable
+
+      - run: bin/ppkg formula-repo-list
+
+      - run: bin/ppkg formula-repo-conf my_repo1 --url=https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: bin/ppkg formula-repo-conf my_repo2 --branch=master --unpin
+      - run: bin/ppkg formula-repo-conf my_repo3 --pin
+      - run: bin/ppkg formula-repo-conf my_repo4 --pin --enable
+
+      - run: bin/ppkg formula-repo-list
+
+      - run: bin/ppkg formula-repo-sync my_repo2
+
+      - run: bin/ppkg formula-repo-info my_repo2
+
+      - run: bin/ppkg formula-repo-del my_repo1

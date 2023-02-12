@@ -14,9 +14,15 @@ _commands=(
     'search:search packages can be installed.'
     'tree:list files of the given installed package in a tree-like format.'
     'info:show infomation of the given package or all available packages.'
-    'formula-repo-add:add a new formula-repo.'
-    'formula-repo-del:delete a existing formula-repo.'
-    'formula-repo-list: list all the registed formula-repos.'
+    'formula-view:view the formula of the given package.'
+    'formula-edit:edit the formula of the given package.'
+    'formula-repo-init:create a new empty formula repository.'
+    'formula-repo-add:create a new empty formula repository then sync with server.'
+    'formula-repo-del:delete the given formula repository from your local cache.'
+    'formula-repo-sync:sync the given formula repository.'
+    'formula-repo-conf:change the config of the given formula repository.'
+    'formula-repo-info:show infomation of the given formula repository.'
+    'formula-repo-list:list all available formula repositories.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -67,8 +73,50 @@ function _ppkg() {
     case $state in
         option)
             case $words[1] in
+                formula-repo-add)
+                    _arguments \
+                        '1:formula-repo-name:(name)' \
+                        '2:formula-repo-url:(https://)' \
+                        '--branch=-[set the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to 1]' \
+                        '--unpin[set pinned to 0]' \
+                        + '(enable)' \
+                        '--enable[set enabled to 1]' \
+                        '--disable[set enabled to 0]'
+                    ;;
+                formula-repo-init)
+                    _arguments \
+                        '1:formula-repo-name:(name)' \
+                        '2:formula-repo-url:(https://)' \
+                        '--branch=-[set the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to 1]' \
+                        '--unpin[set pinned to 0]' \
+                        + '(enable)' \
+                        '--enable[set enabled to 1]' \
+                        '--disable[set enabled to 0]'
+                    ;;
+                formula-repo-conf)
+                    _arguments \
+                        '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))' \
+                        '--url=-[change the formula repo url]' \
+                        '--branch=-[change the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to yes]' \
+                        '--unpin[set pinned to no]' \
+                        + '(enable)' \
+                        '--enable[set enabled to yes]' \
+                        '--disable[set enabled to no]'
+                    ;;
                 formula-repo-del)
-                    _arguments '1:repo-name:($(ppkg formula-repo-list | cut -d "|" -f1))'
+                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    ;;
+                formula-repo-sync)
+                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    ;;
+                formula-repo-info)
+                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh)'
@@ -128,7 +176,7 @@ function _ppkg() {
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
                     ;;
@@ -148,7 +196,7 @@ function _ppkg() {
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
                     ;;
@@ -167,7 +215,7 @@ function _ppkg() {
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
                     ;;

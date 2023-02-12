@@ -499,49 +499,205 @@ version_match() {
 
 # }}}
 ##############################################################################
+# {{{ __load_formula_repository_config
+
+# __load_formula_repository_config <REPO-NAME> [REPO-PATH]
+  __load_formula_repository_config() {
+    PPKG_FORMULA_REPO_NAME="$1"
+    PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$1"
+    PPKG_FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_PATH/.ppkg-formula-repo.yml"
+
+    [ -d "$PPKG_FORMULA_REPO_PATH" ] || abort 1 "$1 named formula repository does not exist."
+    [ -f "$PPKG_FORMULA_REPO_CONFIG_FILEPATH" ] || abort 1 "$1 formula repository is broken."
+
+    PPKG_FORMULA_REPO_URL=
+    PPKG_FORMULA_REPO_BRANCH=
+    PPKG_FORMULA_REPO_PINNED=
+    PPKG_FORMULA_REPO_ENABLED=
+    PPKG_FORMULA_REPO_TIMESTAMP_ADDED=
+    PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED=
+
+    PPKG_FORMULA_REPO_URL="$(yq .url "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    [ "$PPKG_FORMULA_REPO_URL" = null ] && abort 1 "$1 formula repository is broken."
+
+    PPKG_FORMULA_REPO_BRANCH="$(yq .branch "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    [ "$PPKG_FORMULA_REPO_BRANCH" = null ] && abort 1 "$1 formula repository is broken."
+
+    PPKG_FORMULA_REPO_PINNED="$(yq .pinned "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    case $PPKG_FORMULA_REPO_PINNED in
+        0)  PPKG_FORMULA_REPO_PINNED=no  ;;
+        1)  PPKG_FORMULA_REPO_PINNED=yes ;;
+        *)  abort 1 "$1 formula repository is broken."
+    esac
+
+    PPKG_FORMULA_REPO_ENABLED="$(yq .enabled "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    case $PPKG_FORMULA_REPO_ENABLED in
+        0)  PPKG_FORMULA_REPO_ENABLED=no  ;;
+        1)  PPKG_FORMULA_REPO_ENABLED=yes ;;
+        *)  abort 1 "$1 formula repository is broken."
+    esac
+
+    PPKG_FORMULA_REPO_TIMESTAMP_ADDED="$(yq .timestamp-added "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    [ "${#PPKG_FORMULA_REPO_TIMESTAMP_ADDED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+
+    PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED="$(yq .timestamp-last-updated "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+
+    if [ "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" = null ] ; then
+        PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED=
+    else
+        [ "${#PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+    fi
+}
+
+# }}}
+##############################################################################
 # {{{ ppkg formula-repo-add
 
-# __add_a_formula_repo <REPO-NAME> <REPO-URL> <GIT-BRANCH-NAME>
-__add_a_formula_repo() {
-    [ -z "$1" ] && abort 1 "please specify a repo name."
-    [ -z "$2" ] && abort 1 "please specify a repo url."
+# __add_a_formula_repository <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]
+  __add_a_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
+    [ -z "$2" ] && abort 1 "please specify a repository url."
+
+    PPKG_FORMULA_REPO_NAME="$1"
 
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-        GIT_FETCH_URL="$2"
+        PPKG_FORMULA_REPO_URL="$2"
     else
-        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$2")" || return 1
+        PPKG_FORMULA_REPO_URL="$("$PPKG_URL_TRANSFORM" "$2")"
     fi
 
-    if [ -z "$3" ] ; then
-        GIT_BRANCH_NAME=master
-    else
-        GIT_BRANCH_NAME="$3"
-    fi
+    shift 2
 
-    FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$1"
+    PPKG_FORMULA_REPO_BRANCH=
+    PPKG_FORMULA_REPO_PINNED=
+    PPKG_FORMULA_REPO_ENABLED=
 
-    if [ -d "$FORMULA_REPO_PATH" ] ; then
-        if git -C "$FORMULA_REPO_PATH" rev-parse HEAD > /dev/null 2>&1; then
-            success "$1 formula repo already have been added."
-            return 0
-        else
-            run rm -rf     "$FORMULA_REPO_PATH" || return 1
-            run install -d "$FORMULA_REPO_PATH" || return 1
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --branch=*)
+                PPKG_FORMULA_REPO_BRANCH="${1#*=}"
+                ;;
+            --pin)
+                PPKG_FORMULA_REPO_PINNED=1
+                ;;
+            --unpin)
+                PPKG_FORMULA_REPO_PINNED=0
+                ;;
+            --enable)
+                PPKG_FORMULA_REPO_ENABLED=1
+                ;;
+            --disable)
+                PPKG_FORMULA_REPO_ENABLED=0
+                ;;
+            *)  abort 1 "unrecognized argument: $1"
+        esac
+    done
+
+    PPKG_FORMULA_REPO_BRANCH="${PPKG_FORMULA_REPO_BRANCH:-master}"
+    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-0}"
+    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_BRANCH:-1}"
+
+    PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$PPKG_FORMULA_REPO_NAME"
+
+    [ -d "$PPKG_FORMULA_REPO_PATH" ] && abort 1 "$PPKG_FORMULA_REPO_NAME named formula repository already exists."
+
+    run install -d "$PPKG_FORMULA_REPO_PATH"
+
+    __add_a_formula_repository() {
+        if [ ! -f  "$PPKG_FORMULA_REPO_PATH/.ppkg-formula-repo.yml" ] ; then
+            rm -rf "$PPKG_FORMULA_REPO_PATH/"
         fi
+    }
+
+    trap __add_a_formula_repository EXIT
+
+    run cd "$PPKG_FORMULA_REPO_PATH"
+
+    run git -c init.defaultBranch=master init
+    run git remote add origin "$PPKG_FORMULA_REPO_URL"
+    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$PPKG_FORMULA_REPO_BRANCH:refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
+    run git checkout --progress --force -B "$PPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
+
+    cat > .ppkg-formula-repo.yml <<EOF
+url: $PPKG_FORMULA_REPO_NAME
+branch: $PPKG_FORMULA_REPO_BRANCH
+pinned: $PPKG_FORMULA_REPO_PINNED
+enabled: $PPKG_FORMULA_REPO_ENABLED
+timestamp-added: $(date +%s)
+EOF
+}
+
+# }}}
+##############################################################################
+# {{{ ppkg formula-repo-init
+
+# __create_a_formula_repository <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]
+  __create_a_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
+    [ -z "$2" ] && abort 1 "please specify a repository url."
+
+    PPKG_FORMULA_REPO_NAME="$1"
+
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        PPKG_FORMULA_REPO_URL="$2"
     else
-        run install -d "$FORMULA_REPO_PATH" || return 1
+        PPKG_FORMULA_REPO_URL="$("$PPKG_URL_TRANSFORM" "$2")"
     fi
 
-    run git -C "$FORMULA_REPO_PATH" -c init.defaultBranch=master init || return 1
-    run git -C "$FORMULA_REPO_PATH" remote add origin "$GIT_FETCH_URL" || return 1
-    run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
-    run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
+    shift 2
 
-    cat > "$FORMULA_REPO_PATH/.ppkg-formula-repo.yml" <<EOF
-url: $2
-branch: $3
-pinned: 0
-enabled: 1
+    PPKG_FORMULA_REPO_BRANCH=
+    PPKG_FORMULA_REPO_PINNED=
+    PPKG_FORMULA_REPO_ENABLED=
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --branch=*)
+                PPKG_FORMULA_REPO_BRANCH="${1#*=}"
+                ;;
+            --pin)
+                PPKG_FORMULA_REPO_PINNED=1
+                ;;
+            --unpin)
+                PPKG_FORMULA_REPO_PINNED=0
+                ;;
+            --enable)
+                PPKG_FORMULA_REPO_ENABLED=1
+                ;;
+            --disable)
+                PPKG_FORMULA_REPO_ENABLED=0
+                ;;
+            *)  abort 1 "unrecognized argument: $1"
+        esac
+    done
+
+    PPKG_FORMULA_REPO_BRANCH="${PPKG_FORMULA_REPO_BRANCH:-master}"
+    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-1}"
+    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_BRANCH:-1}"
+
+    PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$PPKG_FORMULA_REPO_NAME"
+
+    [ -d "$PPKG_FORMULA_REPO_PATH" ] && abort 1 "$PPKG_FORMULA_REPO_NAME named formula repository already exists."
+
+    run install -d "$PPKG_FORMULA_REPO_PATH"
+
+    run cd "$PPKG_FORMULA_REPO_PATH"
+
+    run git -c init.defaultBranch=master init
+    run git remote add origin "$PPKG_FORMULA_REPO_URL"
+
+    cat > .ppkg-formula-repo.yml <<EOF
+url: $PPKG_FORMULA_REPO_NAME
+branch: $PPKG_FORMULA_REPO_BRANCH
+pinned: $PPKG_FORMULA_REPO_PINNED
+enabled: $PPKG_FORMULA_REPO_ENABLED
 timestamp-added: $(date +%s)
 EOF
 }
@@ -550,16 +706,120 @@ EOF
 ##############################################################################
 # {{{ ppkg formula-repo-del
 
-# __del_a_formula_repo <REPO-NAME>
-  __del_a_formula_repo() {
-    [ -z "$1" ] && abort 1 "please specify a repo name."
+# __delete_a_formula_repository <REPO-NAME>
+  __delete_a_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
 
-    [ "$1" = 'offical-core' ] && abort 1 "offical-core formula repo is not allowed to delete."
+    [ "$1" = 'offical-core' ] && abort 1 "offical-core formula repository is not allowed to delete."
 
     if [ -d    "$PPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$PPKG_HOME/repos.d/$1"
     else
-        warn "$1 named formula repo does not exist."
+        warn "$1 named formula repository does not exist."
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ ppkg formula-repo-sync
+
+# __update_the_given_formula_repository <REPO-NAME>
+  __update_the_given_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
+
+    __load_formula_repository_config "$1"
+
+    run cd "$PPKG_FORMULA_REPO_PATH"
+    run git remote set-url origin "$PPKG_FORMULA_REPO_URL"
+    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$PPKG_FORMULA_REPO_BRANCH:refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
+    run git checkout --progress --force -B "$PPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
+}
+
+# }}}
+##############################################################################
+# {{{ ppkg formula-repo-conf
+
+# __change_config_of_the_given_formula_repository <REPO-NAME> [--url=VALUE --branch=VALUE --pin/--unpin --enable/--disable]
+  __change_config_of_the_given_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
+
+    __load_formula_repository_config "$1"
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --url=*)
+                FORMULA_REPO_URL="${1#*=}"
+
+                if [ -z "$FORMULA_REPO_URL" ] ; then
+                    abort 1 "--url=<VALUE> , <VALUE> should be non-empty."
+                else
+                    PPKG_FORMULA_REPO_URL="$FORMULA_REPO_URL"
+                fi
+                ;;
+            --branch=*)
+                FORMULA_REPO_BRANCH="${1#*=}"
+
+                if [ -z "$FORMULA_REPO_BRANCH" ] ; then
+                    abort 1 "--branch=<VALUE> , <VALUE> should be non-empty."
+                else
+                    PPKG_FORMULA_REPO_BRANCH="$FORMULA_REPO_BRANCH"
+                fi
+                ;;
+            --pin)
+                PPKG_FORMULA_REPO_PINNED=1
+                ;;
+            --unpin)
+                PPKG_FORMULA_REPO_PINNED=0
+                ;;
+            --enable)
+                PPKG_FORMULA_REPO_ENABLED=1
+                ;;
+            --disable)
+                PPKG_FORMULA_REPO_ENABLED=0
+                ;;
+            *)  abort 1 "unrecognized argument: $1"
+        esac
+    done
+
+    cat <<EOF
+name: $PPKG_FORMULA_REPO_NAME
+path: $PPKG_FORMULA_REPO_PATH
+url:  $PPKG_FORMULA_REPO_URL
+branch: $PPKG_FORMULA_REPO_BRANCH
+pinned:  $PPKG_FORMULA_REPO_PINNED
+enabled: $PPKG_FORMULA_REPO_ENABLED
+timestamp-added:   $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')
+EOF
+
+    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" ] ; then
+        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
+    fi
+}
+
+
+# }}}
+##############################################################################
+# {{{ ppkg formula-repo-info
+
+# __show_information_of_the_given_formula_repository <REPO-NAME>
+  __show_information_of_the_given_formula_repository() {
+    [ -z "$1" ] && abort 1 "please specify a repository name."
+
+    __load_formula_repository_config "$1"
+
+    cat <<EOF
+name: $PPKG_FORMULA_REPO_NAME
+path: $PPKG_FORMULA_REPO_PATH
+url:  $PPKG_FORMULA_REPO_URL
+branch: $PPKG_FORMULA_REPO_BRANCH
+pinned:  $PPKG_FORMULA_REPO_PINNED
+enabled: $PPKG_FORMULA_REPO_ENABLED
+timestamp-added:   $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_ADDED" '+%Y-%m-%d %H:%M:%S%:z')
+EOF
+
+    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" ] ; then
+        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
     fi
 }
 
@@ -567,7 +827,7 @@ EOF
 ##############################################################################
 # {{{ ppkg update
 
-__update_formula_repositories() {
+__update_available_formula_repositories() {
     if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
         for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
         do
@@ -608,11 +868,11 @@ __update_formula_repositories() {
 
     if [ ! -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] ; then
         printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
-        __add_a_formula_repo offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL" master
+        __add_a_formula_repository offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL" master
     fi
 }
 
-__list_available_formula_repository_items() {
+__list_available_formula_repositories() {
     if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
         for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
         do
@@ -1411,18 +1671,18 @@ __fetch_resources_of_the_given_package() {
 ##############################################################################
 # {{{ ppkg info
 
-# __show_infomation_of_all_available_packages [--json|--yaml|--shell]
-  __show_infomation_of_all_available_packages() {
+# __show_information_of_available_packages [--json|--yaml|--shell]
+  __show_information_of_available_packages() {
     case $1 in
-        --json) __show_infomation_as_json__of_all_available_packages ;;
-        --yaml) __show_infomation_as_yaml__of_all_available_packages ;;
-        --shell)__show_infomation_as_shell_of_all_available_packages ;;
-        '')     __show_infomation_as_mixed_of_all_available_packages ;;
-        *)    abort 1 "__show_infomation_of_all_available_packages [--json|--yaml|--shell], unrecognized option: $1"
+        --json) __show_information_as_json__of_available_packages ;;
+        --yaml) __show_information_as_yaml__of_available_packages ;;
+        --shell)__show_information_as_shell_of_available_packages ;;
+        '')     __show_information_as_mixed_of_available_packages ;;
+        *)    abort 1 "__show_information_of_available_packages [--json|--yaml|--shell], unrecognized option: $1"
     esac
 }
 
-__show_infomation_as_mixed_of_all_available_packages() {
+__show_information_as_mixed_of_available_packages() {
     FIRST=yes
 
     for PACKAGE in $(__list_available_packages)
@@ -1432,11 +1692,11 @@ __show_infomation_as_mixed_of_all_available_packages() {
         else
             printf '%s\n' '========'
         fi
-        __show_infomation_of_the_given_package "$PACKAGE"
+        __show_information_of_the_given_package "$PACKAGE"
     done
 }
 
-__show_infomation_as_json__of_all_available_packages() {
+__show_information_as_json__of_available_packages() {
     printf '%s\n' '['
 
     FIRST=yes
@@ -1448,13 +1708,13 @@ __show_infomation_as_json__of_all_available_packages() {
         else
             printf '%s\n' ','
         fi
-        __show_infomation_as_json__of_the_given_package "$PACKAGE"
+        __show_information_as_json__of_the_given_package "$PACKAGE"
     done
 
     printf '%s\n' ']'
 }
 
-__show_infomation_as_yaml__of_all_available_packages() {
+__show_information_as_yaml__of_available_packages() {
     FIRST=yes
 
     for PACKAGE in $(__list_available_packages)
@@ -1464,11 +1724,11 @@ __show_infomation_as_yaml__of_all_available_packages() {
         else
             printf '%s\n' '---'
         fi
-        __show_infomation_as_yaml__of_the_given_package "$PACKAGE"
+        __show_information_as_yaml__of_the_given_package "$PACKAGE"
     done
 }
 
-__show_infomation_as_shell_of_all_available_packages() {
+__show_information_as_shell_of_available_packages() {
     FIRST=yes
 
     for PACKAGE in $(__list_available_packages)
@@ -1478,12 +1738,12 @@ __show_infomation_as_shell_of_all_available_packages() {
         else
             printf '%s\n' '#---'
         fi
-        __show_infomation_as_shell_of_the_given_package "$PACKAGE"
+        __show_information_as_shell_of_the_given_package "$PACKAGE"
     done
 }
 
-# __show_infomation_as_json__of_the_given_package <PACKAGE-NAME>
-  __show_infomation_as_json__of_the_given_package() {
+# __show_information_as_json__of_the_given_package <PACKAGE-NAME>
+  __show_information_as_json__of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
@@ -1549,13 +1809,13 @@ __show_infomation_as_shell_of_all_available_packages() {
 }' | jq 'with_entries(select(.value != ""))'
 }
 
-# __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
-  __show_infomation_as_yaml__of_the_given_package() {
+# __show_information_as_yaml__of_the_given_package <PACKAGE-NAME>
+  __show_information_as_yaml__of_the_given_package() {
     __view_formula_of_the_given_package "$1" --paging=never
 }
 
-# __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
-  __show_infomation_as_shell_of_the_given_package() {
+# __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
+  __show_information_as_shell_of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
     while read -r KEY
@@ -1612,17 +1872,17 @@ PACKAGE_FORMULA_FILEPATH
 EOF
 }
 
-# __show_infomation_of_the_given_package <PACKAGE-NAME> [OPTIONS]
+# __show_information_of_the_given_package <PACKAGE-NAME> [OPTIONS]
 #
-# __show_infomation_of_the_given_package curl
+# __show_information_of_the_given_package curl
 #
-# __show_infomation_of_the_given_package curl version
-# __show_infomation_of_the_given_package curl web-url
-  __show_infomation_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_infomation_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is unspecified."
+# __show_information_of_the_given_package curl version
+# __show_information_of_the_given_package curl web-url
+  __show_information_of_the_given_package() {
+    [ -z "$1" ] && abort 1 "__show_information_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is unspecified."
 
     case $1 in
-        @all) shift ; __show_infomation_of_all_available_packages "$@" ; return 0
+        @all) shift ; __show_information_of_available_packages "$@" ; return 0
     esac
 
     unset SHOW_INFOMATION_ARGS
@@ -1642,10 +1902,10 @@ EOF
 
     case $SHOW_INFOMATION_ARGS in
         formula-yaml|'')
-            __show_infomation_as_yaml__of_the_given_package "$1"
+            __show_information_as_yaml__of_the_given_package "$1"
             ;;
         formula-json)
-            __show_infomation_as_json__of_the_given_package "$1"
+            __show_information_as_json__of_the_given_package "$1"
             ;;
         formula-path)
             __path_of_formula_of_the_given_package "$1"
@@ -2319,7 +2579,7 @@ __gen_github_workflows() {
     GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$PPKG_HOME/repos.d/offical-core/.github/workflows/template"
 
     if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
-        __update_formula_repositories
+        __update_available_formula_repositories
     fi
 
     unset AVAILABLE_PACKAGES
@@ -4709,9 +4969,12 @@ $DOT_CONTENT
         do
             case $item in
                 openssl)
-                    unset OPENSSL_DIR
                     # https://docs.rs/openssl/0.10.35/openssl/
                     export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                    ;;
+                openssl@1.1)
+                    # https://docs.rs/openssl/0.10.35/openssl/
+                    export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
                     ;;
             esac
         done
@@ -5136,16 +5399,14 @@ $PACKAGE_INSTALL_ACTIONS
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "install dependency formulas"
+    step "install relevant formulas"
 
-        install -v -d "$PACKAGE_METAINF_DIR/formula"
+    install -v -d "$PACKAGE_METAINF_DIR/formula"
 
-        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME
-        do
-            install -v -m 644 "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
-        done
-    }
+    for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES $PACKAGE_NAME
+    do
+        install -v -m 644 "$SESSION_DIR/$item.yml" "$PACKAGE_METAINF_DIR/formula"
+    done
 
     #########################################################################################
 
@@ -6780,10 +7041,10 @@ ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ppkg sysinfo${COLOR_OFF}
-    show your system's infomation.
+    show your system's information.
 
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
-    show your system's infomation and other information.
+    show your system's information and other information.
 
 ${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
@@ -7067,20 +7328,51 @@ EOF
         formula-view) shift; __view_formula_of_the_given_package "$@" ;;
         formula-edit) shift; __edit_formula_of_the_given_package "$@" ;;
 
-        formula-repo-list) shift; __list_available_formula_repository_items ;;
-        formula-repo-add)
-            shift;
+        formula-repo-list)
+            shift
+            __list_available_formula_repositories "$@"
+            ;;
+        formula-repo-info)
+            shift
+            __show_information_of_the_given_formula_repository "$@"
+            ;;
+        formula-repo-conf)
+            shift
+            __change_config_of_the_given_formula_repository "$@"
+            ;;
+        formula-repo-sync)
+            shift
+            __update_the_given_formula_repository "$@"
+            ;;
+        formula-repo-init)
+            shift
 
             case $1 in
-                offical-*) abort 1 "offical-* named formula repo name is reserved for ppkg offical formula repo, please use other names."
+                offical-*) abort 1 "'offical-*' is reserved for ppkg offical formula repository, please use other name."
             esac
 
-            __add_a_formula_repo "$@"
+            __create_a_formula_repository "$@"
             ;;
-        formula-repo-del)  shift; __del_a_formula_repo "$@" ;;
+        formula-repo-add)
+            shift
 
-        update)  __update_formula_repositories ;;
-        cleanup) __cleanup ;;
+            case $1 in
+                offical-*) abort 1 "'offical-*' is reserved for ppkg offical formula repository, please use other name."
+            esac
+
+            __add_a_formula_repository "$@"
+            ;;
+        formula-repo-del)
+            shift
+            __delete_a_formula_repository "$@"
+            ;;
+
+        update)
+            shift
+            __update_available_formula_repositories "$@"
+            ;;
+
+        cleanup) shift; __cleanup "$@" ;;
 
         search)  shift; __search_packages "$@" ;;
  
@@ -7112,7 +7404,7 @@ EOF
 
         info)
             shift
-            __show_infomation_of_the_given_package "$@"
+            __show_information_of_the_given_package "$@"
             ;;
         gen-github-workflows)
             shift

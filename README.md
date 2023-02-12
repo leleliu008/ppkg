@@ -127,7 +127,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg install curl
         ppkg install curl bzip2 -v
         
-**Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
+    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
 
 *   **reinstall packages**
         
@@ -154,15 +154,42 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
         ppkg formula-repo-list
 
-*   **add a new formula repository**
+*   **create a new empty formula repository**
 
-        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
-        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo master
-        ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo main
+        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+
+*   **create a new empty formula repository then sync with server**
+
+        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
         
-*   **delete a existing formula repository**
+*   **delete the given formula repository**
 
-        ppkg formula-repo-del my_repo
+        uppm formula-repo-del my_repo
+
+*   **sync the given formula repository with server**
+
+        uppm formula-repo-sync my_repo
+
+*   **show information of the given formula repository**
+
+        uppm formula-repo-info my_repo
+
+*   **change the config of the given formula repository**
+
+        uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
+        uppm formula-repo-conf my_repo --branch=main
+        uppm formula-repo-conf my_repo --pin
+        uppm formula-repo-conf my_repo --unpin
+        uppm formula-repo-conf my_repo --enable
+        uppm formula-repo-conf my_repo --disable
 
 *   **list all available packages**
         
