@@ -514,8 +514,8 @@ version_match() {
     PPKG_FORMULA_REPO_BRANCH=
     PPKG_FORMULA_REPO_PINNED=
     PPKG_FORMULA_REPO_ENABLED=
-    PPKG_FORMULA_REPO_TIMESTAMP_ADDED=
-    PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED=
+    PPKG_FORMULA_REPO_TIMESTAMP_CREATED=
+    PPKG_FORMULA_REPO_TIMESTAMP_UPDATED=
 
     PPKG_FORMULA_REPO_URL="$(yq .url "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
 
@@ -541,16 +541,16 @@ version_match() {
         *)  abort 1 "$1 formula repository is broken."
     esac
 
-    PPKG_FORMULA_REPO_TIMESTAMP_ADDED="$(yq .timestamp-added "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    PPKG_FORMULA_REPO_TIMESTAMP_CREATED="$(yq .timestamp-created "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "${#PPKG_FORMULA_REPO_TIMESTAMP_ADDED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+    [ "${#PPKG_FORMULA_REPO_TIMESTAMP_CREATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
 
-    PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED="$(yq .timestamp-last-updated "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    PPKG_FORMULA_REPO_TIMESTAMP_UPDATED="$(yq .timestamp-updated "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
 
-    if [ "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" = null ] ; then
-        PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED=
+    if [ "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" = null ] ; then
+           PPKG_FORMULA_REPO_TIMESTAMP_UPDATED=
     else
-        [ "${#PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+        [ "${#PPKG_FORMULA_REPO_TIMESTAMP_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
     fi
 }
 
@@ -607,15 +607,17 @@ version_match() {
 
     [ -d "$PPKG_FORMULA_REPO_PATH" ] && abort 1 "$PPKG_FORMULA_REPO_NAME named formula repository already exists."
 
+    printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$PPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+
     run install -d "$PPKG_FORMULA_REPO_PATH"
 
-    __add_a_formula_repository() {
+    __add_a_formula_repository_onexit() {
         if [ ! -f  "$PPKG_FORMULA_REPO_PATH/.ppkg-formula-repo.yml" ] ; then
             rm -rf "$PPKG_FORMULA_REPO_PATH/"
         fi
     }
 
-    trap __add_a_formula_repository EXIT
+    trap __add_a_formula_repository_onexit EXIT
 
     run cd "$PPKG_FORMULA_REPO_PATH"
 
@@ -625,11 +627,11 @@ version_match() {
     run git checkout --progress --force -B "$PPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
 
     cat > .ppkg-formula-repo.yml <<EOF
-url: $PPKG_FORMULA_REPO_NAME
+url: $PPKG_FORMULA_REPO_URL
 branch: $PPKG_FORMULA_REPO_BRANCH
 pinned: $PPKG_FORMULA_REPO_PINNED
 enabled: $PPKG_FORMULA_REPO_ENABLED
-timestamp-added: $(date +%s)
+timestamp-created: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -686,6 +688,8 @@ EOF
 
     [ -d "$PPKG_FORMULA_REPO_PATH" ] && abort 1 "$PPKG_FORMULA_REPO_NAME named formula repository already exists."
 
+    printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$PPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+
     run install -d "$PPKG_FORMULA_REPO_PATH"
 
     run cd "$PPKG_FORMULA_REPO_PATH"
@@ -694,11 +698,11 @@ EOF
     run git remote add origin "$PPKG_FORMULA_REPO_URL"
 
     cat > .ppkg-formula-repo.yml <<EOF
-url: $PPKG_FORMULA_REPO_NAME
+url: $PPKG_FORMULA_REPO_URL
 branch: $PPKG_FORMULA_REPO_BRANCH
 pinned: $PPKG_FORMULA_REPO_PINNED
 enabled: $PPKG_FORMULA_REPO_ENABLED
-timestamp-added: $(date +%s)
+timestamp-created: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -710,7 +714,7 @@ EOF
   __delete_a_formula_repository() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
 
-    [ "$1" = 'offical-core' ] && abort 1 "offical-core formula repository is not allowed to delete."
+    [ "$1" = 'offical-core' ] && abort 1 "'offical-core' formula repository is not allowed to delete."
 
     if [ -d    "$PPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$PPKG_HOME/repos.d/$1"
@@ -729,10 +733,21 @@ EOF
 
     __load_formula_repository_config "$1"
 
+    printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$PPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+
     run cd "$PPKG_FORMULA_REPO_PATH"
     run git remote set-url origin "$PPKG_FORMULA_REPO_URL"
     run git -c protocol.version=2 fetch --progress origin "+refs/heads/$PPKG_FORMULA_REPO_BRANCH:refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
     run git checkout --progress --force -B "$PPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$PPKG_FORMULA_REPO_BRANCH"
+
+    cat > .ppkg-formula-repo.yml <<EOF
+url: $PPKG_FORMULA_REPO_URL
+branch: $PPKG_FORMULA_REPO_BRANCH
+pinned: $PPKG_FORMULA_REPO_PINNED
+enabled: $PPKG_FORMULA_REPO_ENABLED
+timestamp-created: $PPKG_FORMULA_REPO_TIMESTAMP_CREATED
+timestamp-updated: $TIMESTAMP_UNIX
+EOF
 }
 
 # }}}
@@ -789,11 +804,11 @@ url:  $PPKG_FORMULA_REPO_URL
 branch: $PPKG_FORMULA_REPO_BRANCH
 pinned:  $PPKG_FORMULA_REPO_PINNED
 enabled: $PPKG_FORMULA_REPO_ENABLED
-timestamp-added:   $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')
+timestamp-created:   $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')
 EOF
 
-    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" ] ; then
-        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
+    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
+        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
     fi
 }
 
@@ -815,11 +830,11 @@ url:  $PPKG_FORMULA_REPO_URL
 branch: $PPKG_FORMULA_REPO_BRANCH
 pinned:  $PPKG_FORMULA_REPO_PINNED
 enabled: $PPKG_FORMULA_REPO_ENABLED
-timestamp-added:   $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_ADDED" '+%Y-%m-%d %H:%M:%S%:z')
+timestamp-created: $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_CREATED" '+%Y-%m-%d %H:%M:%S%:z')
 EOF
 
-    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" ] ; then
-        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_LAST_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
+    if [ -n "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
+        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
     fi
 }
 
@@ -828,79 +843,40 @@ EOF
 # {{{ ppkg update
 
 __update_available_formula_repositories() {
-    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
-        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
-        do
-            FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml"
-
-            if [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] ; then
-                unset GIT_FETCH_URL
-                unset GIT_BRANCH_NAME
-
-                GIT_BRANCH_NAME="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
-                GIT_FETCH_URL="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
-
-                if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$GIT_FETCH_URL")" || return 1
-                fi
-
-                printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$item${COLOR_OFF}"
-
-                FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_DIR/$item"
-
-                if [ -z "$(git config remote.origin.url || true)" ] ; then
-                    run git -C "$FORMULA_REPO_PATH" remote add     origin "$GIT_FETCH_URL" || return 1
-                else
-                    run git -C "$FORMULA_REPO_PATH" remote set-url origin "$GIT_FETCH_URL" || return 1
-                fi
-
-                run git -C "$FORMULA_REPO_PATH" -c protocol.version=2 fetch --progress origin "+refs/heads/$GIT_BRANCH_NAME:refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
-                run git -C "$FORMULA_REPO_PATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
-
-                if grep -q '^timestamp-last-updated: ' "$FORMULA_REPO_CONFIG_FILEPATH" ; then
-                    sed -i "/timestamp-last-updated: /c timestamp-last-updated: $(date +%s)" "$FORMULA_REPO_CONFIG_FILEPATH"
-                else
-                    printf '%s\n' "timestamp-last-updated: $(date +%s)" >> "$FORMULA_REPO_CONFIG_FILEPATH"
-                fi
-            fi
-        done
-    fi
-
-    if [ ! -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] ; then
-        printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
-        __add_a_formula_repository offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL"
-    fi
-}
-
-__list_available_formula_repositories() {
-    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
-        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
-        do
-            FORMULA_REPO_CONFIG_FILEPATH="$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml"
-
-            if [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] ; then
-                unset FORMULA_REPO_NAME
-                unset FORMULA_REPO_URL_
-                unset FORMULA_REPO_BRANCH
-
-                FORMULA_REPO_URL_="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
-                FORMULA_REPO_BRANCH="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
-
-                printf '%s|%s|%s\n' "$item" "$FORMULA_REPO_URL_" "$FORMULA_REPO_BRANCH"
-            fi
-        done
-    fi
-}
-
-__list_available_formula_repository_names() {
-    if [ -d "$PPKG_FORMULA_REPO_DIR" ] ; then
+    [ -d "$PPKG_FORMULA_REPO_DIR" ] && {
         for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
         do
             if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
-                printf '%s\n' "$item"
+                __update_the_given_formula_repository "$item"
             fi
         done
-    fi
+    }
+
+    [ -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] || {
+        __add_a_formula_repository offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL"
+    }
+}
+
+__list_available_formula_repositories() {
+    [ -d "$PPKG_FORMULA_REPO_DIR" ] || return 0
+
+    for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+    do
+        if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
+            __show_information_of_the_given_formula_repository "$item"
+        fi
+    done
+}
+
+__list_available_formula_repository_names() {
+    [ -d "$PPKG_FORMULA_REPO_DIR" ] || return 0
+
+    for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+    do
+        if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
+            printf '%s\n' "$item"
+        fi
+    done
 }
 
 # __list_available_formula_search_dirs
@@ -7079,11 +7055,26 @@ ${COLOR_GREEN}ppkg search <REGULAR-EXPRESS-PARTTEN>${COLOR_OFF}
 ${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
+${COLOR_GREEN}ppkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-BRANCH-NAME]${COLOR_OFF}
+    create a new empty formula repository.
+
 ${COLOR_GREEN}ppkg formula-repo-add <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [GIT-BRANCH-NAME]${COLOR_OFF}
-    add a new formula repositories.
+    create a new empty formula repository then sync with server.
 
 ${COLOR_GREEN}ppkg formula-repo-del <FORMULA-REPO-NAME>${COLOR_OFF}
-    delete a exist formula repositories.
+    delete the given formula repository.
+
+${COLOR_GREEN}ppkg formula-repo-sync <FORMULA-REPO-NAME>${COLOR_OFF}
+    update the given formula repository.
+
+${COLOR_GREEN}ppkg formula-repo-info <FORMULA-REPO-NAME>${COLOR_OFF}
+    show information of the given formula repository.
+
+${COLOR_GREEN}ppkg formula-repo-conf <FORMULA-REPO-NAME>${COLOR_OFF}
+    change the config of the given formula repository.
+
+${COLOR_GREEN}ppkg formula-repo-list <FORMULA-REPO-NAME>${COLOR_OFF}
+    list all available formula repositories.
 
 ${COLOR_GREEN}ppkg tree <PACKAGE-NAME> [-a | --dirsfirst | -L N]${COLOR_OFF}
     list installed files of the given installed package in a tree-like format.
