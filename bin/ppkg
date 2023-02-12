@@ -868,7 +868,7 @@ __update_available_formula_repositories() {
 
     if [ ! -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] ; then
         printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}offical-core${COLOR_OFF}"
-        __add_a_formula_repository offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL" master
+        __add_a_formula_repository offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL"
     fi
 }
 
