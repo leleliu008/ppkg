@@ -349,15 +349,15 @@ a typical ppkg formula repository's config as following:
 ```
 url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 branch: master
-pinned: 0
-enabled: 1
+pinned: no
+enabled: yes
 timestamp-created: 1673684639
 timestamp-updated: 1673684767
 ```
 
-If a ppkg formula repository is pinned, which means it would not be updated.
+If a ppkg formula repository is `pinned`, which means it would not be updated.
 
-If a ppkg formula repository is disabled, which means ppkg would not search formulas in this formula repository.
+If a ppkg formula repository is `disabled`, which means ppkg would not search formulas in this formula repository.
 
 ## ppkg offical formula repository
 
