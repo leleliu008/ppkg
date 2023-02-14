@@ -685,7 +685,7 @@ EOF
 
     PPKG_FORMULA_REPO_BRANCH="${PPKG_FORMULA_REPO_BRANCH:-master}"
     PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-yes}"
-    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_BRANCH:-yes}"
+    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_ENABLED:-yes}"
 
     PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$PPKG_FORMULA_REPO_NAME"
 
@@ -889,9 +889,15 @@ __sync_available_formula_repositories() {
 __list_available_formula_repositories() {
     [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
 
+    I=0
+
     for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
     do
         if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
+            I="$(expr "$I" + 1)"
+
+            [ "$I" -gt 1 ] && printf '\n'
+
             __info_the_given_formula_repository "$item"
         fi
     done
@@ -1496,11 +1502,15 @@ __list_available_packages() {
         do
             FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE"
 
-            [ -d "$FORMULA_SEARCH_DIR" ] && find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            if [ -d "$FORMULA_SEARCH_DIR" ] ; then
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            fi
 
             FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
 
-            [ -d "$FORMULA_SEARCH_DIR" ] && find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            if [ -d "$FORMULA_SEARCH_DIR" ] ; then
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            fi
         done
     } | sort | uniq
 }
