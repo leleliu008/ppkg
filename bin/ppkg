@@ -868,16 +868,16 @@ EOF
 # {{{ ppkg update
 
 __sync_available_formula_repositories() {
-    [ -d "$PPKG_FORMULA_REPO_DIR" ] && {
-        for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+    [ -d "$PPKG_FORMULA_REPO_ROOT" ] && {
+        for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
         do
-            if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
+            if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
                 __sync_the_given_formula_repository "$item"
             fi
         done
     }
 
-    [ -d "$PPKG_FORMULA_REPO_DIR/offical-core" ] || {
+    [ -d "$PPKG_FORMULA_REPO_ROOT/offical-core" ] || {
         __create_a_formula_repository_then_sync_it offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL"
     }
 }
@@ -887,36 +887,13 @@ __sync_available_formula_repositories() {
 # {{{ ppkg formula-repo-list
 
 __list_available_formula_repositories() {
-    [ -d "$PPKG_FORMULA_REPO_DIR" ] || return 0
+    [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
 
-    for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
+    for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
     do
-        if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
+        if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
             __info_the_given_formula_repository "$item"
         fi
-    done
-}
-
-__list_available_formula_repository_names() {
-    [ -d "$PPKG_FORMULA_REPO_DIR" ] || return 0
-
-    for item in $(cd "$PPKG_FORMULA_REPO_DIR" && ls)
-    do
-        if [ -f "$PPKG_FORMULA_REPO_DIR/$item/.ppkg-formula-repo.yml" ] ; then
-            printf '%s\n' "$item"
-        fi
-    done
-}
-
-# __list_available_formula_search_dirs
-  __list_available_formula_search_dirs() {
-    for repoName in $(__list_available_formula_repository_names)
-    do
-        if [ -d           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE" ] ; then
-            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE"
-        fi
-
-        printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula"
     done
 }
 
@@ -924,14 +901,26 @@ __list_available_formula_repository_names() {
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    for repoName in $(__list_available_formula_repository_names)
+    [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
+
+    AVAILABLE_FORMULA_REPOSITORY_NAMES=
+
+    for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
     do
-        if [ -e           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
-            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$NATIVE_OS_TYPE/$1.yml"
+        if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
+            AVAILABLE_FORMULA_REPOSITORY_NAMES="$AVAILABLE_FORMULA_REPOSITORY_NAMES $item"
+        fi
+    done
+
+    for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
+    do
+        if [ -e           "$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
+            printf '%s\n' "$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE/$1.yml"
             return 0
         fi
-        if [ -e           "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$1.yml" ] ; then
-            printf '%s\n' "$PPKG_FORMULA_REPO_DIR/$repoName/formula/$1.yml"
+
+        if [ -e           "$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$1.yml" ] ; then
+            printf '%s\n' "$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$1.yml"
             return 0
         fi
     done
@@ -1491,10 +1480,27 @@ prompt_user_to_install_bat() {
 # {{{ ppkg ls-available
 
 __list_available_packages() {
+    [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
+
     {
-        for FORMULA_SEARCH_DIR in $(__list_available_formula_search_dirs)
+        AVAILABLE_FORMULA_REPOSITORY_NAMES=
+
+        for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
         do
-            find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
+                AVAILABLE_FORMULA_REPOSITORY_NAMES="$AVAILABLE_FORMULA_REPOSITORY_NAMES $item"
+            fi
+        done
+
+        for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
+        do
+            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE"
+
+            [ -d "$FORMULA_SEARCH_DIR" ] && find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+
+            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
+
+            [ -d "$FORMULA_SEARCH_DIR" ] && find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
         done
     } | sort | uniq
 }
@@ -7184,7 +7190,7 @@ main() {
 
     PPKG_HOME="$HOME/.ppkg"
 
-    PPKG_FORMULA_REPO_DIR="$PPKG_HOME/repos.d"
+    PPKG_FORMULA_REPO_ROOT="$PPKG_HOME/repos.d"
     PPKG_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/installed"
     PPKG_PACKAGE_SYMLINKED_ROOT="$PPKG_HOME/symlinked"
     PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"

@@ -33,6 +33,10 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg -V
         ppkg --version
         
+*   **show your system's information**
+
+        xcpkg sysinfo
+
 *   **show your system's infomation**
 
         ppkg env
