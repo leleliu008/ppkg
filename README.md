@@ -156,15 +156,15 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         
 *   **view the formula of the given package**
 
-        xcpkg formula-view curl
-        xcpkg formula-view curl --no-color
+        ppkg formula-view curl
+        ppkg formula-view curl --no-color
 
 *   **edit the formula of the given package**
 
-        xcpkg formula-edit curl
-        xcpkg formula-edit curl --editor=/usr/local/bin/vim
+        ppkg formula-edit curl
+        ppkg formula-edit curl --editor=/usr/local/bin/vim
 
-    **Note**: xcpkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
+    **Note**: ppkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
 *   **list all avaliable formula repositories**
 
@@ -290,7 +290,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     `/path/of/url-transform` command must output a `<URL>`
 
-    you can generate a url-transform sample via `xcpkg gen-url-transform-sample`
+    you can generate a url-transform sample via `ppkg gen-url-transform-sample`
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
