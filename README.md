@@ -35,7 +35,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         
 *   **show your system's information**
 
-        xcpkg sysinfo
+        ppkg sysinfo
 
 *   **show your system's infomation**
 
@@ -244,6 +244,10 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         
         ppkg cleanup
         
+*   **generate url-transform sample**
+
+        ppkg gen-url-transform-sample
+
 
 ## environment variables
 

@@ -73,6 +73,16 @@ function _ppkg() {
     case $state in
         option)
             case $words[1] in
+                formula-view)
+                    _arguments \
+                        '1:package-name:_ppkg_available_packages' \
+                        '--no-color[disables color highlighting]'
+                    ;;
+                formula-edit)
+                    _arguments \
+                        '1:package-name:_ppkg_available_packages' \
+                        '--editor=-[specify editor]'
+                    ;;
                 formula-repo-add)
                     _arguments \
                         '1:formula-repo-name:(name)' \
@@ -99,7 +109,7 @@ function _ppkg() {
                     ;;
                 formula-repo-conf)
                     _arguments \
-                        '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))' \
+                        '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))' \
                         '--url=-[change the formula repo url]' \
                         '--branch=-[change the formula repo branch]' \
                         + '(pin)' \
@@ -110,13 +120,13 @@ function _ppkg() {
                         '--disable[set enabled to no]'
                     ;;
                 formula-repo-del)
-                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
                 formula-repo-sync)
-                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
                 formula-repo-info)
-                    _arguments '1:formula-repo-name:($(uppm formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh)'
@@ -170,9 +180,6 @@ function _ppkg() {
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
-                        '--install-exe[install executable programs]' \
-                        '--install-doc[install documents]' \
-                        '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -190,9 +197,6 @@ function _ppkg() {
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
-                        '--install-exe[install executable programs]' \
-                        '--install-doc[install documents]' \
-                        '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -209,9 +213,6 @@ function _ppkg() {
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
-                        '--install-exe[install executable programs]' \
-                        '--install-doc[install documents]' \
-                        '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \

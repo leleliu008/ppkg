@@ -1328,84 +1328,65 @@ filetype_from_url() {
 ##############################################################################
 # {{{ ppkg formula-view
 
-# examples:
-# __view_formula_of_the_given_package curl
-# __view_formula_of_the_given_package curl --paging=never
+# __view_formula_of_the_given_package curl <PACKAGE-NAME> [--no-color]
   __view_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")" || abort 1 "package [$1] is not available."
+    unset  PACKAGE_FORMULA_FILEPATH; PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
+
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
 
     shift
 
-    unset VIEW_FORMULA_PAGING
+    NO_COLOR=no
 
     while [ -n "$1" ]
     do
         case $1 in
-            --paging=*)
-                VIEW_FORMULA_PAGING="${1#*=}"
-                case $VIEW_FORMULA_PAGING in
-                    auto|always|never) ;;
-                    *) abort 1 "--paging=<VALUE>, <VALUE> must be one of auto, always, never"
-                esac
+            --no-color)
+                NO_COLOR=yes
                 ;;
-            *)  abort 1 "unrecognized argument: $1"
+            *)  abort 1 "unrecognized option: $1"
         esac
         shift
     done
 
-    case $VIEW_FORMULA_PAGING in
-        ''|auto)
-            if command -v bat > /dev/null ; then
-                bat --language=yaml --paging=auto "$PACKAGE_FORMULA_FILEPATH"
-            else
-                cat "$PACKAGE_FORMULA_FILEPATH"
-                echo
-                prompt_user_to_install_bat
-            fi
-            ;;
-        always)
-            if command -v bat > /dev/null ; then
-                bat --language=yaml --paging=always "$PACKAGE_FORMULA_FILEPATH"
-            else
-                more "$PACKAGE_FORMULA_FILEPATH"
-                echo
-                prompt_user_to_install_bat
-            fi
-            ;;
-        never)
-            if command -v bat > /dev/null ; then
-                bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
-            else
-                cat "$PACKAGE_FORMULA_FILEPATH"
-                echo
-                prompt_user_to_install_bat
-            fi
-            ;;
-    esac
-}
-
-prompt_user_to_install_bat() {
-    echo
-    note "${COLOR_YELLOW}if you want to have a better experience, I strongly recommend you to install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on this machine. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
+    if [ "$NO_COLOR" = yes ] ; then
+        cat "$PACKAGE_FORMULA_FILEPATH"
+    else
+        yq  "$PACKAGE_FORMULA_FILEPATH"
+    fi
 }
 
 # }}}
 ##############################################################################
 # {{{ ppkg formula-edit
 
-# __edit_formula_of_the_given_package <PACKAGE-NAME>
+# __edit_formula_of_the_given_package <PACKAGE-NAME> [--editor=<EDITOR>]
   __edit_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-    [ -z "$2" ] || warn "edit action accept only one argument."
 
-    unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")" || abort 1 "package [$1] is not available."
+    unset  PACKAGE_FORMULA_FILEPATH; PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
+
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
+
+    shift
+
+    EDITOR=
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --editor=*)
+                EDITOR="${1#*=}"
+                ;;
+            *)  abort 1 "unrecognized option: $1"
+        esac
+        shift
+    done
 
     [ -z "$EDITOR" ] && {
-        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || abort 1 "please set EDITOR environment variable."
+        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || abort 1 "please sepecify editor via [--editor=<EDITOR> option."
     }
 
     "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
@@ -2080,35 +2061,23 @@ mark_is_package_installed_or_not() {
   __logs_the_given_installed_package() {
     [ -z "$1" ] && abort 1 "$_0 logs <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    if command -v bat > /dev/null ; then
-        VIEWER=bat
-    else
-        VIEWER=less
-    fi
+    unset FILEPATHS; FILEPATHS="$(find "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg" -type f)"
 
-    for item in $(ls "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg")
+    for filepath in $FILEPATHS
     do
-        item="$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/$item"
+        [ -d "$filepath" ] && continue
 
-        if [ -d "$item" ] ; then
-            continue
-        fi
-
-        if [ "$VIEWER" = 'bat' ] ; then
-            case $item in
-                *.png) ;;
-                */receipt.yml)
-                    bat -l yaml "$item" ;;
-                *)  bat "$item"
-            esac
-        else
-            "$VIEWER" "$item"
-        fi
+        case $filepath in
+            *.png)  ;;
+            *.yml)  run yq . "$filepath" ;;
+            *.json) run jq . "$filepath" ;;
+            *)  if command -v bat > /dev/null ; then
+                    bat  "$filepath"
+                else
+                    less "$filepath"
+                fi
+        esac
     done
-
-    if [ "$VIEWER" != 'bat' ] ; then
-        prompt_user_to_install_bat
-    fi
 }
 
 # }}}
@@ -3354,10 +3323,9 @@ __inspect_install_arguments() {
 
     # 0 : quiet
     # 1 : normal
-    # 2 : more
-    # 3 : debug
-    # 4 : trace
-    VERBOSE_LEVEL=1
+    # 2 : vebose
+    # 3 : very verbose
+    LOG_LEVEL=1
 
     BUILD_NJOBS=$NATIVE_OS_NCPU
 
@@ -3365,9 +3333,6 @@ __inspect_install_arguments() {
 
     LINK_TYPE=shared-prefered
 
-    INSTALL_EXE=yes
-    INSTALL_MAN=yes
-    INSTALL_DOC=yes
     INSTALL_LIB=yes
 
     KEEP_INSTALLING_DIR=no
@@ -3377,9 +3342,9 @@ __inspect_install_arguments() {
     while [ -n "$1" ]
     do
         case "$1" in
-            -vv)VERBOSE_LEVEL=3 ;;
-            -v) VERBOSE_LEVEL=2 ;;
-            -q) VERBOSE_LEVEL=0 ;;
+            -vv)LOG_LEVEL=3 ;;
+            -v) LOG_LEVEL=2 ;;
+            -q) LOG_LEVEL=0 ;;
             --dry-run)
                 DRYRUN=yes
                 ;;
@@ -3418,15 +3383,6 @@ __inspect_install_arguments() {
                     *)  abort 1 "--build-type=<VALUE>, VALUE must be one of debug|release"
                 esac
 
-                ;;
-            --install-doc)
-                INSTALL_DOC=yes
-                ;;
-            --install-man)
-                INSTALL_MAN=yes
-                ;;
-            --install-exe)
-                INSTALL_EXE=yes
                 ;;
             --install-lib=*)
                 INSTALL_LIB="${1#*=}"
@@ -3471,15 +3427,13 @@ __inspect_install_arguments() {
         shift
     done
 
-    if [ "$INSTALL_LIB" = yes ] ; then
-        INSTALL_LIB=both
-    fi
+    [ "$INSTALL_LIB" = yes ] && INSTALL_LIB=both
 
 
-    if [ "$VERBOSE_LEVEL" -eq 0 ] ; then
+    [ "$LOG_LEVEL" -eq 0 ] && {
         exec 1>/dev/null
         exec 2>&1
-    fi
+    }
 
     STATIC_LIBRARY_SUFFIX=.a
 
@@ -3693,7 +3647,7 @@ __install_the_given_packages() {
     for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
     do
         if is_package_installed "$PACKAGE_NAME" ; then
-            if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+            if [ "$LOG_LEVEL" -gt 0 ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_NAME"
             fi
         else
@@ -4048,12 +4002,7 @@ EOF
     #########################################################################################
 
     step "view formula"
-
-    if command -v bat > /dev/null ; then
-        run bat --language=yaml --paging=never "$SESSION_DIR/$1.yml"
-    else
-        run cat "$SESSION_DIR/$1.yml"
-    fi
+    run yq "$SESSION_DIR/$1.yml"
    
     step "load formula"
     __load_formula_of_the_given_package "$1" "$SESSION_DIR/$1.yml"
@@ -4590,7 +4539,7 @@ $DOT_CONTENT
         LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
         CCFLAGS="$CCFLAGS -v"
         XXFLAGS="$XXFLAGS -v"
         LDFLAGS="$LDFLAGS -Wl,-v"
@@ -4733,9 +4682,9 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "config pkg-config variables"
+    step "config environment variables for pkg-config"
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
         export PKG_CONFIG_DEBUG_SPEW='set'
     fi
 
@@ -4789,7 +4738,7 @@ $DOT_CONTENT
     #########################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
-        step "config cmake variables"
+        step "config environment variables for cmake"
 
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
 
@@ -4848,7 +4797,7 @@ $DOT_CONTENT
             *)       BUILD_SHARED_LIBS=ON
         esac
 
-        if [ "$VERBOSE_LEVEL" -eq 0 ] ; then
+        if [ "$LOG_LEVEL" -eq 0 ] ; then
             CMAKE_VERBOSE_MAKEFILE=OFF
             CMAKE_COLOR_MAKEFILE=OFF
         else
@@ -4857,7 +4806,7 @@ $DOT_CONTENT
         fi
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
             CMAKE_FIND_DEBUG_MODE=ON
         else
             CMAKE_FIND_DEBUG_MODE=OFF
@@ -4878,7 +4827,7 @@ $DOT_CONTENT
     #########################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        step "config cargo and rustc variables"
+        step "config environment variables for cargo and rustc"
 
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
@@ -5001,7 +4950,7 @@ $DOT_CONTENT
     #########################################################################################
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        step "config go variables"
+        step "config environment variables for go"
 
         # https://golang.org/doc/install/source#environment
         export CGO_ENABLED=0
@@ -5033,7 +4982,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$VERBOSE_LEVEL" -ge 3 ] && {
+    [ "$LOG_LEVEL" -ge 3 ] && {
         step "show export variables"
         run export -p
         echo
@@ -6151,7 +6100,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+        if [ "$LOG_LEVEL" -gt 0 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -6159,7 +6108,7 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_X" ] ; then
-        if [ "$VERBOSE_LEVEL" -ge 2 ] ; then
+        if [ "$LOG_LEVEL" -ge 2 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
         fi
     else
@@ -6358,7 +6307,7 @@ configure_only() {
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
 
-    if [ "$VERBOSE_LEVEL" -eq 4 ] ; then
+    if [ "$LOG_LEVEL" -eq 4 ] ; then
         sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
@@ -6374,7 +6323,7 @@ configure_only() {
         return 1
     fi
 
-    if [ "$VERBOSE_LEVEL" -ge 2 ] ; then
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -6398,7 +6347,7 @@ configure() {
 # {{{ gmakew
 
 gmakew() {
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
         run "$GMAKE" "-j$BUILD_NJOBS" --debug "$@"
     else
         run "$GMAKE" "-j$BUILD_NJOBS" "$@"
@@ -6466,7 +6415,7 @@ set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
-    if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+    if [ "$LOG_LEVEL" -gt 0 ] ; then
         run cat "$CMAKE_TOOLCHAIN_FILE"
     fi
 
@@ -6492,7 +6441,7 @@ EOF
         esac
     fi
 
-    if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+    if [ "$LOG_LEVEL" -gt 0 ] ; then
         run cat "$CMAKE_PROJECT_INCLUDE"
     fi
 
@@ -6532,7 +6481,7 @@ xmakew() {
         esac
     done
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+    if [ "$LOG_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -7089,10 +7038,10 @@ ${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg search <REGULAR-EXPRESS-PARTTEN>${COLOR_OFF}
     search all available packages whose name matches the given regular express partten
  
-${COLOR_GREEN}xcpkg formula-view <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ppkg formula-view <PACKAGE-NAME> --no-color${COLOR_OFF}
     view the formula of the given package.
 
-${COLOR_GREEN}xcpkg formula-edit <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ppkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
     edit the formula of the given package.
 
 ${COLOR_GREEN}ppkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
@@ -7162,14 +7111,14 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
-${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg install   <PACKAGE-NAME>... [--jobs=N -q -v -vv --dry-run --keep-installing-dir]${COLOR_OFF}
     install the given packages.
     ${COLOR_RED}C and C++ compiler should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
-${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v -vv --dry-run --keep-installing-dir]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]${COLOR_OFF}
+${COLOR_GREEN}ppkg upgrade   [PACKAGE-NAME]... [--jobs=N -q -v -vv --dry-run --keep-installing-dir]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ppkg upgrade-self${COLOR_OFF}
@@ -7177,7 +7126,9 @@ ${COLOR_GREEN}ppkg upgrade-self${COLOR_OFF}
 
 ${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
     uninstall the given packages.
-    "
+
+${COLOR_GREEN}ppkg gen-url-transform-sample${COLOR_OFF}
+    generate url-transform sample."
 }
 
 # }}}
