@@ -1804,7 +1804,7 @@ __show_information_as_shell_of_available_packages() {
 
 # __show_information_as_yaml__of_the_given_package <PACKAGE-NAME>
   __show_information_as_yaml__of_the_given_package() {
-    __view_formula_of_the_given_package "$1" --paging=never
+    __view_formula_of_the_given_package "$1"
 }
 
 # __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
