@@ -37,7 +37,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
         ppkg sysinfo
 
-*   **show your system's infomation**
+*   **show your system's information**
 
         ppkg env
         
@@ -60,7 +60,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg search curl
         ppkg search lib
         
-*   **show infomation of the given package**
+*   **show information of the given package**
         
         ppkg info curl
         ppkg info curl summary
@@ -154,6 +154,18 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg upgrade-self
         ppkg upgrade-self -v
         
+*   **view the formula of the given package**
+
+        xcpkg formula-view curl
+        xcpkg formula-view curl --no-color
+
+*   **edit the formula of the given package**
+
+        xcpkg formula-edit curl
+        xcpkg formula-edit curl --editor=/usr/local/bin/vim
+
+    **Note**: xcpkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
+
 *   **list all avaliable formula repositories**
 
         ppkg formula-repo-list
@@ -278,22 +290,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     `/path/of/url-transform` command must output a `<URL>`
 
-    following is a example of `/path/of/url-transform` command implementation:
-
-    ```bash
-    #!/bin/sh
-
-    case $1 in
-        *githubusercontent.com/*)
-            printf 'https://ghproxy.com/%s\n' "$1"
-            ;;
-        https://github.com/*)
-            printf 'https://ghproxy.com/%s\n' "$1"
-            ;;
-        '') printf '%s\n' "$0 <URL>, <URL> is unspecified." >&2 ;;
-        *)  printf '%s\n' "$1"
-    esac
-    ```
+    you can generate a url-transform sample via `xcpkg gen-url-transform-sample`
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
@@ -328,7 +325,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
 ## ppkg formula
 
-a ppkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ppkg package's meta-infomation including one sentence description, package version, installation instructions, etc.
+a ppkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ppkg package's meta-information including one sentence description, package version, installation instructions, etc.
 
 a ppkg formula's filename suffix must be `.yml`
 
