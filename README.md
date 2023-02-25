@@ -1,8 +1,9 @@
 # ppkg
 portable package manager for Unix-like system.
 
-## project status
-This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+<br>
+
+**Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
 ## two implementations
 This project provides two implementations:
@@ -22,6 +23,8 @@ ppkg setup
 ## ~/.ppkg
 all relevant dirs and files are located in `~/.ppkg` directory.
 
+**Note**: Please do NOT place your own files in `~/.xcpkg` directory, as `xcpkg` will change files in `~/.xcpkg` directory without notice.
+
 ## ppkg command usage
 *   **show help of this command**
         
@@ -37,7 +40,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
         ppkg sysinfo
 
-*   **show your system's information**
+*   **show your system's information and other information**
 
         ppkg env
         

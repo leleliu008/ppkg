@@ -2061,6 +2061,8 @@ mark_is_package_installed_or_not() {
   __logs_the_given_installed_package() {
     [ -z "$1" ] && abort 1 "$_0 logs <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
+    is_package_installed "$1" || abort 1 "package [$1] is not installed."
+
     unset FILEPATHS; FILEPATHS="$(find "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg" -type f)"
 
     for filepath in $FILEPATHS
@@ -3694,11 +3696,14 @@ PPKG_HOME           = $PPKG_HOME
 PPKG                = $PPKG
 PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
 
-        BUILD_NJOBS = $BUILD_NJOBS
-        BUILD_TYPE  = $BUILD_TYPE
+          LOG_LEVEL = $LOG_LEVEL
+          LINK_TYPE = $LINK_TYPE
+         BUILD_TYPE = $BUILD_TYPE
 
-STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
-SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
+             DRYRUN = $DRYRUN
+     CCACHE_ENABLED = $CCACHE_ENABLED
+   KEEP_PACKING_DIR = $KEEP_WORKING_DIR
+EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
     "
 
     #########################################################################################
@@ -3957,15 +3962,13 @@ int main(int argc, char * argv[]) {
     // printf("\n");
 
     if (PROXIED_PROGRAM[0] == '/') {
-        if (execv(PROXIED_PROGRAM, argv) == -1) {
-            perror(PROXIED_PROGRAM);
-            return 1;
-        }
+        execv (PROXIED_PROGRAM, argv);
+        perror(PROXIED_PROGRAM);
+        return -1;
     } else {
-        if (execvp(PROXIED_PROGRAM, argv) == -1) {
-            fprintf(stderr, "command not found: %s\b", PROXIED_PROGRAM);
-            return 1;
-        }
+        execvp(PROXIED_PROGRAM, argv);
+        perror(PROXIED_PROGRAM);
+        return -1;
     }
 
     return 0;
@@ -4001,11 +4004,23 @@ EOF
 
     #########################################################################################
 
+    PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
+
     step "view formula"
-    run yq "$SESSION_DIR/$1.yml"
+    run yq "$PACKAGE_FORMULA_FILEPATH"
    
     step "load formula"
-    __load_formula_of_the_given_package "$1" "$SESSION_DIR/$1.yml"
+    __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
+
+    #########################################################################################
+
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
+        BUILD_NJOBS=1
+    fi
+
+    printf '%s\n' "
+        BUILD_NJOBS = $BUILD_NJOBS
+    "
 
     #########################################################################################
 
@@ -4839,14 +4854,14 @@ $DOT_CONTENT
                 case $NATIVE_OS_LIBC in
                     glibc) RUST_TARGET=x86_64-unknown-linux-gnu  ;;
                     musl)  RUST_TARGET=x86_64-unknown-linux-musl ;;
-                    *)     abort 1 "unrecognized libc."
+                    *)     abort 1 "unrecognized libc: $NATIVE_OS_LIBC"
                 esac
                 ;;
             linux-aarch64)
                 case $NATIVE_OS_LIBC in
                     glibc) RUST_TARGET=aarch64-unknown-linux-gnu  ;;
                     musl)  RUST_TARGET=aarch64-unknown-linux-musl ;;
-                    *)     abort 1 "unrecognized libc."
+                    *)     abort 1 "unrecognized libc: $NATIVE_OS_LIBC"
                 esac
                 ;;
             darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin  ;;
@@ -6284,7 +6299,6 @@ cargow() {
 ##############################################################################
 # {{{ configure
 
-# run in a subshell
 configure_only() {
     export FORCE_UNSAFE_CONFIGURE=1
 
@@ -6307,12 +6321,12 @@ configure_only() {
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
 
-    if [ "$LOG_LEVEL" -eq 4 ] ; then
+    if [ -n "$PPKG_XTRACE" ] ; then
         sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
     if run "$PACKAGE_BSCRIPT_DIR/configure" "$CONFIGURE_ARGS" "$@" ; then
-        echo
+        printf '\n'
     else
         if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
             run cat "$PACKAGE_BCACHED_DIR/config.log"
@@ -6334,7 +6348,6 @@ configure_only() {
     fi
 }
 
-# run in a subshell
 configure() {
     configure_only "$@" &&
     gmakew clean &&
@@ -6368,9 +6381,13 @@ gmakew() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmakew() {
+        echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
 message(STATUS "CMake command: \${CMAKE_COMMAND}")
 message(STATUS "CMake version: \${CMAKE_VERSION}")
+
+message(STATUS "CMAKE_HOST_SYSTEM_NAME: \${CMAKE_HOST_SYSTEM_NAME}")
+message(STATUS "     CMAKE_SYSTEM_NAME: \${CMAKE_SYSTEM_NAME}")
 
 if ("\${BUILD_SHARED_LIBS}" STREQUAL "")
     set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
@@ -6416,7 +6433,11 @@ set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
     if [ "$LOG_LEVEL" -gt 0 ] ; then
-        run cat "$CMAKE_TOOLCHAIN_FILE"
+        if command -v bat > /dev/null ; then
+            run bat --language=cmake --paging=never "$CMAKE_TOOLCHAIN_FILE"
+        else
+            run cat "$CMAKE_TOOLCHAIN_FILE"
+        fi
     fi
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
@@ -7357,7 +7378,7 @@ EOF
         integrate)
             shift
             case $1 in
-                zsh) __integrate_zsh_completions 'https://raw.githubusercontent.com/leleliu008/ppkg/master/zsh-completion/_ppkg' ;;
+                zsh) __integrate_zsh_completions 'https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg-zsh-completion' ;;
                 *)   abort 1 "ppkg integrate $1: not support."
             esac
             ;;

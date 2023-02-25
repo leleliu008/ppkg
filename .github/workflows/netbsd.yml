@@ -30,47 +30,47 @@ jobs:
           mem: 2048
           box: generic/netbsd${{ matrix.version }}
           run: |
-            run bin/ppkg --help
-            run bin/ppkg --version
+            run ./ppkg --help
+            run ./ppkg --version
 
-            run bin/ppkg setup --use-system-package-manager
+            run ./ppkg setup --use-system-package-manager
 
-            run bin/ppkg env
+            run ./ppkg env
 
-            run bin/ppkg integrate zsh
+            run ./ppkg integrate zsh
 
-            run bin/ppkg update
+            run ./ppkg update
 
-            run bin/ppkg search lib
-            run bin/ppkg search libzip
+            run ./ppkg search lib
+            run ./ppkg search libzip
 
-            run bin/ppkg info libzip
-            run bin/ppkg info libzip summary
-            run bin/ppkg info libzip webpage
-            run bin/ppkg info libzip version
+            run ./ppkg info libzip
+            run ./ppkg info libzip summary
+            run ./ppkg info libzip webpage
+            run ./ppkg info libzip version
 
-            run bin/ppkg depends libzip
-
-
-            run bin/ppkg install libzip
+            run ./ppkg depends libzip
 
 
-            run bin/ppkg tree libzip
-            run bin/ppkg pack libzip -t tar.xz
-
-            run bin/ppkg formula-repo-list
+            run ./ppkg install libzip
 
 
-            run bin/ppkg ls-available
-            run bin/ppkg ls-installed
-            run bin/ppkg ls-outdated
+            run ./ppkg tree libzip
+            run ./ppkg pack libzip -t tar.xz
 
-            run bin/ppkg is-available libzip
-            run bin/ppkg is-installed libzip
-            run bin/ppkg is-outdated libzip || echo "not outdated"
+            run ./ppkg formula-repo-list
 
-            run bin/ppkg uninstall libzip
 
-            run bin/ppkg fetch curl
+            run ./ppkg ls-available
+            run ./ppkg ls-installed
+            run ./ppkg ls-outdated
 
-            run bin/ppkg upgrade-self
+            run ./ppkg is-available libzip
+            run ./ppkg is-installed libzip
+            run ./ppkg is-outdated libzip || echo "not outdated"
+
+            run ./ppkg uninstall libzip
+
+            run ./ppkg fetch curl
+
+            run ./ppkg upgrade-self

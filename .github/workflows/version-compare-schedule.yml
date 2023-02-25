@@ -20,9 +20,9 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - run: bin/ppkg --help
-      - run: bin/ppkg setup --use-system-package-manager
-      - run: bin/ppkg env
-      - run: bin/ppkg update
+      - run: ./ppkg --help
+      - run: ./ppkg setup --use-system-package-manager
+      - run: ./ppkg env
+      - run: ./ppkg update
       - run: git -C ~/.ppkg/repos.d/offical-core checkout ${{ github.ref_name }}
-      - run: bin/ppkg compare-versions brew
+      - run: ./ppkg compare-versions brew

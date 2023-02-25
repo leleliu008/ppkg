@@ -24,97 +24,97 @@ jobs:
       - uses: actions/checkout@v3
 
 
-      - run: bin/ppkg
+      - run: ./ppkg
 
-      - run: bin/ppkg --help
-      - run: bin/ppkg -h
+      - run: ./ppkg --help
+      - run: ./ppkg -h
 
-      - run: bin/ppkg --version
-      - run: bin/ppkg -V
+      - run: ./ppkg --version
+      - run: ./ppkg -V
 
-      - run: bin/ppkg setup -v
+      - run: ./ppkg setup -v
 
-      - run: bin/ppkg env
-      - run: bin/ppkg env -v
+      - run: ./ppkg env
+      - run: ./ppkg env -v
 
-      - run: bin/ppkg integrate zsh
-      - run: bin/ppkg integrate zsh -v
+      - run: ./ppkg integrate zsh
+      - run: ./ppkg integrate zsh -v
 
-      - run: bin/ppkg update
+      - run: ./ppkg update
 
-      - run: bin/ppkg search lib
-      - run: bin/ppkg search zip
+      - run: ./ppkg search lib
+      - run: ./ppkg search zip
 
-      - run: bin/ppkg info @all
-      - run: bin/ppkg info libzip
-      - run: bin/ppkg info libzip formula-path
-      - run: bin/ppkg info libzip formula-yaml
-      - run: bin/ppkg info libzip formula-json
-      - run: bin/ppkg info libzip summary
-      - run: bin/ppkg info libzip version
-      - run: bin/ppkg info libzip license
-      - run: bin/ppkg info libzip web-url
-      - run: bin/ppkg info libzip git-url
-      - run: bin/ppkg info libzip git-sha
-      - run: bin/ppkg info libzip git-ref
-      - run: bin/ppkg info libzip src-url
-      - run: bin/ppkg info libzip src-sha
+      - run: ./ppkg info @all
+      - run: ./ppkg info libzip
+      - run: ./ppkg info libzip formula-path
+      - run: ./ppkg info libzip formula-yaml
+      - run: ./ppkg info libzip formula-json
+      - run: ./ppkg info libzip summary
+      - run: ./ppkg info libzip version
+      - run: ./ppkg info libzip license
+      - run: ./ppkg info libzip web-url
+      - run: ./ppkg info libzip git-url
+      - run: ./ppkg info libzip git-sha
+      - run: ./ppkg info libzip git-ref
+      - run: ./ppkg info libzip src-url
+      - run: ./ppkg info libzip src-sha
 
-      - run: bin/ppkg depends libzip
-      - run: bin/ppkg depends libzip -t dot
-      - run: bin/ppkg depends libzip -t box
-      - run: bin/ppkg depends libzip -t dot -o .
-      - run: bin/ppkg depends libzip -t box -o .
-      - run: bin/ppkg depends libzip -o a/
-      - run: bin/ppkg depends libzip -o b/
-      - run: bin/ppkg depends libzip -o a.dot
-      - run: bin/ppkg depends libzip -o b.box
+      - run: ./ppkg depends libzip
+      - run: ./ppkg depends libzip -t dot
+      - run: ./ppkg depends libzip -t box
+      - run: ./ppkg depends libzip -t dot -o .
+      - run: ./ppkg depends libzip -t box -o .
+      - run: ./ppkg depends libzip -o a/
+      - run: ./ppkg depends libzip -o b/
+      - run: ./ppkg depends libzip -o a.dot
+      - run: ./ppkg depends libzip -o b.box
 
-      - run: bin/ppkg fetch gzip
-      - run: bin/ppkg fetch gsed -v
+      - run: ./ppkg fetch gzip
+      - run: ./ppkg fetch gsed -v
 
-      - run: bin/ppkg install libzip
+      - run: ./ppkg install libzip
 
-      - run: bin/ppkg tree libzip
+      - run: ./ppkg tree libzip
 
-      - run: bin/ppkg info libzip installed-dir
-      - run: bin/ppkg info libzip installed-files
-      - run: bin/ppkg info libzip receipt-path
-      - run: bin/ppkg info libzip receipt-json
-      - run: bin/ppkg info libzip receipt-yaml
-      - run: bin/ppkg info libzip installed-timestamp-unix
-      - run: bin/ppkg info libzip installed-timestamp-iso-8601
-      - run: bin/ppkg info libzip installed-timestamp-rfc-3339
-      - run: bin/ppkg info libzip installed-timestamp-iso-8601-utc
-      - run: bin/ppkg info libzip installed-timestamp-rfc-3339-utc
-      - run: bin/ppkg info libzip installed-version
+      - run: ./ppkg info libzip installed-dir
+      - run: ./ppkg info libzip installed-files
+      - run: ./ppkg info libzip receipt-path
+      - run: ./ppkg info libzip receipt-json
+      - run: ./ppkg info libzip receipt-yaml
+      - run: ./ppkg info libzip installed-timestamp-unix
+      - run: ./ppkg info libzip installed-timestamp-iso-8601
+      - run: ./ppkg info libzip installed-timestamp-rfc-3339
+      - run: ./ppkg info libzip installed-timestamp-iso-8601-utc
+      - run: ./ppkg info libzip installed-timestamp-rfc-3339-utc
+      - run: ./ppkg info libzip installed-version
 
-      - run: bin/ppkg pack libzip
-      - run: bin/ppkg pack libzip -t tar.gz
-      - run: bin/ppkg pack libzip -t tar.lz
-      - run: bin/ppkg pack libzip -t tar.xz
-      - run: bin/ppkg pack libzip -t tar.bz2
-      - run: bin/ppkg pack libzip -t zip
+      - run: ./ppkg pack libzip
+      - run: ./ppkg pack libzip -t tar.gz
+      - run: ./ppkg pack libzip -t tar.lz
+      - run: ./ppkg pack libzip -t tar.xz
+      - run: ./ppkg pack libzip -t tar.bz2
+      - run: ./ppkg pack libzip -t zip
 
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
 
-      - run: bin/ppkg ls-available
-      - run: bin/ppkg ls-installed
-      - run: bin/ppkg ls-outdated
+      - run: ./ppkg ls-available
+      - run: ./ppkg ls-installed
+      - run: ./ppkg ls-outdated
 
-      - run: bin/ppkg is-available libzip
-      - run: bin/ppkg is-installed libzip
-      - run: bin/ppkg is-outdated  libzip
+      - run: ./ppkg is-available libzip
+      - run: ./ppkg is-installed libzip
+      - run: ./ppkg is-outdated  libzip
 
-      - run: bin/ppkg upgrade   libzip
-      - run: bin/ppkg reinstall libzip
-      - run: bin/ppkg uninstall libzip
+      - run: ./ppkg upgrade   libzip
+      - run: ./ppkg reinstall libzip
+      - run: ./ppkg uninstall libzip
 
-      - run: bin/ppkg formula-repo-list
-      - run: bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
-      - run: bin/ppkg formula-repo-del my_repo
+      - run: ./ppkg formula-repo-list
+      - run: ./ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: ./ppkg formula-repo-del my_repo
 
-      - run: bin/ppkg cleanup
+      - run: ./ppkg cleanup
 
-      - run: bin/ppkg upgrade-self
+      - run: ./ppkg upgrade-self

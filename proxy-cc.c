@@ -79,15 +79,13 @@ int main(int argc, char * argv[]) {
     // printf("\n");
 
     if (PROXIED_PROGRAM[0] == '/') {
-        if (execv(PROXIED_PROGRAM, argv) == -1) {
-            perror(PROXIED_PROGRAM);
-            return 1;
-        }
+        execv (PROXIED_PROGRAM, argv);
+        perror(PROXIED_PROGRAM);
+        return -1;
     } else {
-        if (execvp(PROXIED_PROGRAM, argv) == -1) {
-            fprintf(stderr, "command not found: %s\b", PROXIED_PROGRAM);
-            return 1;
-        }
+        execvp(PROXIED_PROGRAM, argv);
+        perror(PROXIED_PROGRAM);
+        return -1;
     }
 
     return 0;

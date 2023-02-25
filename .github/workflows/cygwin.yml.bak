@@ -30,48 +30,48 @@ jobs:
     
       - run: printf 'cd %s' "$(cygpath '${{ github.workspace }}')" >> ~/.bashrc
 
-      - run: bin/ppkg --help
-      - run: bin/ppkg --version
+      - run: ./ppkg --help
+      - run: ./ppkg --version
 
-      - run: bin/ppkg env
+      - run: ./ppkg env
 
       - run: command -v curl
 
-      - run: bin/ppkg integrate zsh
+      - run: ./ppkg integrate zsh
 
-      - run: bin/ppkg update
+      - run: ./ppkg update
 
-      - run: bin/ppkg search lib
-      - run: bin/ppkg search base64
+      - run: ./ppkg search lib
+      - run: ./ppkg search base64
 
-      - run: bin/ppkg info base64
-      - run: bin/ppkg info base64 version
-      - run: bin/ppkg info base64 webpage
-      - run: bin/ppkg info base64
+      - run: ./ppkg info base64
+      - run: ./ppkg info base64 version
+      - run: ./ppkg info base64 webpage
+      - run: ./ppkg info base64
 
-      - run: bin/ppkg depends base64
-
-
-      - run: bin/ppkg install base64
+      - run: ./ppkg depends base64
 
 
-      - run: bin/ppkg tree base64
-      - run: bin/ppkg pack base64
-
-      - run: bin/ppkg formula-repo list
-      - run: bin/ppkg formula view curl
+      - run: ./ppkg install base64
 
 
-      - run: bin/ppkg ls-available
-      - run: bin/ppkg ls-installed
-      - run: bin/ppkg ls-outdated
+      - run: ./ppkg tree base64
+      - run: ./ppkg pack base64
 
-      - run: bin/ppkg is-available base64
-      - run: bin/ppkg is-installed base64
-      - run: bin/ppkg is-outdated base64 || echo "not outdated"
+      - run: ./ppkg formula-repo list
+      - run: ./ppkg formula view curl
 
-      - run: bin/ppkg uninstall base64
 
-      - run: bin/ppkg fetch curl
+      - run: ./ppkg ls-available
+      - run: ./ppkg ls-installed
+      - run: ./ppkg ls-outdated
 
-      - run: bin/ppkg upgrade @self
+      - run: ./ppkg is-available base64
+      - run: ./ppkg is-installed base64
+      - run: ./ppkg is-outdated base64 || echo "not outdated"
+
+      - run: ./ppkg uninstall base64
+
+      - run: ./ppkg fetch curl
+
+      - run: ./ppkg upgrade @self
