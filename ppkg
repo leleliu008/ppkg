@@ -7168,7 +7168,7 @@ main() {
     PPKG_VERSION=0.1.3
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
-    PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg'
+    PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
 
     PPKG_HOME="$HOME/.ppkg"
 
