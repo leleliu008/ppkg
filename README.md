@@ -23,7 +23,7 @@ ppkg setup
 ## ~/.ppkg
 all relevant dirs and files are located in `~/.ppkg` directory.
 
-**Note**: Please do NOT place your own files in `~/.xcpkg` directory, as `xcpkg` will change files in `~/.xcpkg` directory without notice.
+**Note**: Please do NOT place your own files in `~/.ppkg` directory, as `ppkg` will change files in `~/.ppkg` directory without notice.
 
 ## ppkg command usage
 *   **show help of this command**
