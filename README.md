@@ -357,8 +357,8 @@ a typical ppkg formula repository's config as following:
 ```
 url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 branch: master
-pinned: no
-enabled: yes
+pinned: 0
+enabled: 1
 timestamp-created: 1673684639
 timestamp-updated: 1673684767
 ```

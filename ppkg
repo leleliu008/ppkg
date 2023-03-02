@@ -528,15 +528,15 @@ version_match() {
     PPKG_FORMULA_REPO_PINNED="$(yq .pinned "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
 
     case $PPKG_FORMULA_REPO_PINNED in
-        yes|no) ;;
-        *)      abort 1 "$1 formula repository is broken."
+        0|1) ;;
+        *)   abort 1 "$1 formula repository is broken."
     esac
 
     PPKG_FORMULA_REPO_ENABLED="$(yq .enabled "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
 
     case $PPKG_FORMULA_REPO_ENABLED in
-        yes|no) ;;
-        *)      abort 1 "$1 formula repository is broken."
+        0|1) ;;
+        *)   abort 1 "$1 formula repository is broken."
     esac
 
     PPKG_FORMULA_REPO_TIMESTAMP_CREATED="$(yq .timestamp-created "$PPKG_FORMULA_REPO_CONFIG_FILEPATH")"
@@ -564,8 +564,6 @@ version_match() {
     PPKG_FORMULA_REPO_NAME="$1"
     PPKG_FORMULA_REPO_URL="$2"
 
-    unset GIT_FETCH_URL
-
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         GIT_FETCH_URL="$PPKG_FORMULA_REPO_URL"
     else
@@ -585,16 +583,16 @@ version_match() {
                 PPKG_FORMULA_REPO_BRANCH="${1#*=}"
                 ;;
             --pin)
-                PPKG_FORMULA_REPO_PINNED=yes
+                PPKG_FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                PPKG_FORMULA_REPO_PINNED=no
+                PPKG_FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                PPKG_FORMULA_REPO_ENABLED=yes
+                PPKG_FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                PPKG_FORMULA_REPO_ENABLED=no
+                PPKG_FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
@@ -602,8 +600,8 @@ version_match() {
     done
 
     PPKG_FORMULA_REPO_BRANCH="${PPKG_FORMULA_REPO_BRANCH:-master}"
-    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-no}"
-    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_ENABLED:-yes}"
+    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-0}"
+    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_ENABLED:-1}"
 
     PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$PPKG_FORMULA_REPO_NAME"
 
@@ -667,16 +665,16 @@ EOF
                 PPKG_FORMULA_REPO_BRANCH="${1#*=}"
                 ;;
             --pin)
-                PPKG_FORMULA_REPO_PINNED=yes
+                PPKG_FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                PPKG_FORMULA_REPO_PINNED=no
+                PPKG_FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                PPKG_FORMULA_REPO_ENABLED=yes
+                PPKG_FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                PPKG_FORMULA_REPO_ENABLED=no
+                PPKG_FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
@@ -684,8 +682,8 @@ EOF
     done
 
     PPKG_FORMULA_REPO_BRANCH="${PPKG_FORMULA_REPO_BRANCH:-master}"
-    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-yes}"
-    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_ENABLED:-yes}"
+    PPKG_FORMULA_REPO_PINNED="${PPKG_FORMULA_REPO_PINNED:-1}"
+    PPKG_FORMULA_REPO_ENABLED="${PPKG_FORMULA_REPO_ENABLED:-1}"
 
     PPKG_FORMULA_REPO_PATH="$PPKG_HOME/repos.d/$PPKG_FORMULA_REPO_NAME"
 
@@ -722,7 +720,7 @@ EOF
     if [ -d    "$PPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$PPKG_HOME/repos.d/$1"
     else
-        warn "$1 named formula repository does not exist."
+        warn "'$1' named formula repository does not exist."
     fi
 }
 
@@ -736,12 +734,7 @@ EOF
 
     __load_formula_repository_config "$1"
 
-    [ "$PPKG_FORMULA_REPO_PINNED" = yes ] && {
-        info "'$PPKG_FORMULA_REPO_NAME' named formula repository is pinned."
-        return 0
-    }
-
-    unset GIT_FETCH_URL
+    [ "$PPKG_FORMULA_REPO_PINNED" = 1 ] && abort 1 "'$PPKG_FORMULA_REPO_NAME' named formula repository is pinned."
 
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         GIT_FETCH_URL="$PPKG_FORMULA_REPO_URL"
@@ -801,16 +794,16 @@ EOF
                 fi
                 ;;
             --pin)
-                PPKG_FORMULA_REPO_PINNED=yes
+                PPKG_FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                PPKG_FORMULA_REPO_PINNED=no
+                PPKG_FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                PPKG_FORMULA_REPO_ENABLED=yes
+                PPKG_FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                PPKG_FORMULA_REPO_ENABLED=no
+                PPKG_FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
@@ -837,7 +830,6 @@ EOF
 fi
 }
 
-
 # }}}
 ##############################################################################
 # {{{ ppkg formula-repo-info
@@ -848,12 +840,22 @@ fi
 
     __load_formula_repository_config "$1"
 
+    case $PPKG_FORMULA_REPO_PINNED in
+        0)  PPKG_FORMULA_REPO_PINNED=no ;;
+        1)  PPKG_FORMULA_REPO_PINNED=yes ;;
+    esac
+
+    case $PPKG_FORMULA_REPO_ENABLED in
+        0)  PPKG_FORMULA_REPO_ENABLED=no ;;
+        1)  PPKG_FORMULA_REPO_ENABLED=yes ;;
+    esac
+
     cat <<EOF
 name: $PPKG_FORMULA_REPO_NAME
 path: $PPKG_FORMULA_REPO_PATH
 url:  $PPKG_FORMULA_REPO_URL
 branch: $PPKG_FORMULA_REPO_BRANCH
-pinned:  $PPKG_FORMULA_REPO_PINNED
+pinned: $PPKG_FORMULA_REPO_PINNED
 enabled: $PPKG_FORMULA_REPO_ENABLED
 timestamp-created: $(format_unix_timestamp "$PPKG_FORMULA_REPO_TIMESTAMP_CREATED" '+%Y-%m-%d %H:%M:%S%:z')
 EOF
@@ -6954,7 +6956,7 @@ __setup_uppm() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for item in bash coreutils findutils util-linux gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree
+    for item in bash coreutils findutils base16 gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree
     do
         run "$UPPM" install "$item"
 
