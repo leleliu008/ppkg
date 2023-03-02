@@ -6624,6 +6624,7 @@ __setup() {
         export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
         __setup_yq
+        __setup_base16
     else
         __setup_uppm
     fi
@@ -6766,6 +6767,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gtar     "$PPKG_CORE_BIN_DIR/tar"
     run ln -sf /usr/local/bin/gsed     "$PPKG_CORE_BIN_DIR/sed"
     run ln -sf /usr/local/bin/gawk     "$PPKG_CORE_BIN_DIR/awk"
+    run ln -sf /usr/local/bin/ghead    "$PPKG_CORE_BIN_DIR/head"
     run ln -sf /usr/local/bin/ggrep    "$PPKG_CORE_BIN_DIR/grep"
     run ln -sf /usr/local/bin/gfind    "$PPKG_CORE_BIN_DIR/find"
     run ln -sf /usr/local/bin/gmake    "$PPKG_CORE_BIN_DIR/make"
@@ -6821,11 +6823,47 @@ __setup__netbsd() {
     fi
 }
 
+# https://github.com/leleliu008/test/releases/tag/2023.03.02
+__setup_base16() {
+    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        linux-x86_64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-linux-x86_64.tar.xz'
+            BASE16_SHA='ecd55a75cebe9b0c5d9563efe3186f998c19a65008e4ea6a195cd205016947ba'
+            ;;
+        linux-aarch64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-linux-aarch64.tar.xz'
+            BASE16_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+            ;;
+        darwin-x86_64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-MacOSX11.0-x86_64.tar.xz'
+            BASE16_SHA='55b9df6e65de186d9a09bad876ce2e23ca7e2de357f009f1854a517fe71e748e'
+            ;;
+        darwin-arm64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-MacOSX11.0-arm64.tar.xz'
+            BASE16_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+            ;;
+        freebsd-amd64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-freebsd-amd64.tar.xz'
+            BASE16_SHA='7ccb6e893587d5b3600320fcd7a97e17de5609429199f12bc1f964d9c5ef2f06'
+            ;;
+        openbsd-amd64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-openbsd-amd64.tar.xz'
+            BASE16_SHA='b5bc233e9235fa10065be7af455928cb44afa34e749383002198857cb02ced24'
+            ;;
+        netbsd-amd64)
+            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-netbsd-amd64.tar.xz'
+            BASE16_SHA='05ea4bb31c30b1351494b739b6891c3feba65c9bbc597ca4d6bd456058e04410'
+            ;;
+        *)  abort 1 "$NATIVE_OS_KIND-$NATIVE_OS_ARCH is not supported yet."
+    esac
+
+    wfetch "$BASE16_URL" --sha256=$BASE16_SHA --output-dir="$SETUP_WORKING_DIR"
+    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
+}
+
+
 __setup_yq() {
     # https://github.com/mikefarah/yq/releases
-
-    unset YQ_URL
-    unset YQ_SHA
 
     case $NATIVE_OS_KIND in
         linux)
@@ -6833,6 +6871,8 @@ __setup_yq() {
             YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
             ;;
         darwin)
+            YQ_URL=
+            YQ_SHA=
             ;;
         freebsd)
             YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
