@@ -126,39 +126,8 @@ bppend_to_ACLOCAL_PATH() {
 }
 
 sed_in_place() {
-    if command -v gsed > /dev/null ; then
-        unset SED_IN_PLACE_ACTION
-        SED_IN_PLACE_ACTION="$1"
-        shift
-        # contains ' but not contains \'
-        if printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-            run gsed -i "\"$SED_IN_PLACE_ACTION\"" "$@"
-        else
-            run gsed -i "'$SED_IN_PLACE_ACTION'" "$@"
-        fi
-    elif command -v sed  > /dev/null ; then
-        if sed -i 's/a/b/g' "$(mktemp)" 2> /dev/null ; then
-            unset SED_IN_PLACE_ACTION
-            SED_IN_PLACE_ACTION="$1"
-            shift
-            if printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-                run sed -i "\"$SED_IN_PLACE_ACTION\"" "$@"
-            else
-                run sed -i "'$SED_IN_PLACE_ACTION'" "$@"
-            fi
-        else
-            unset SED_IN_PLACE_ACTION
-            SED_IN_PLACE_ACTION="$1"
-            shift
-            if printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf '%s' "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" "$@"
-            else
-                run sed -i '""' "'$SED_IN_PLACE_ACTION'" "$@"
-            fi
-        fi
-    else
-        abort 1 "please install sed utility."
-    fi
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}sed -i $@${COLOR_OFF}"
+    sed -i "$@"
 }
 
 git() {
@@ -2157,7 +2126,7 @@ mark_is_package_installed_or_not() {
                 do
                     unset FILE_MAGIC
 
-                    FILE_MAGIC="$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+                    FILE_MAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
 
                     if [ "$FILE_MAGIC" = '7F454C46' ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
@@ -5477,7 +5446,7 @@ __adjust_elf_files_for_the_given_target() {
 
             unset FILE_HEADER_ACTUAL
 
-            FILE_HEADER_ACTUAL="$(hexdump -n 18 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+            FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | base16-encode)"
 
             ELF_EXECUTABLE=no
             ELF_SHAREDABLE=no
@@ -5602,7 +5571,7 @@ __adjust_mach_o_files_for_the_given_target() {
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
             unset FILE_HEADER_ACTUAL
-            FILE_HEADER_ACTUAL="$(hexdump -n 16 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+            FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | base16-encode)"
 
             # https://github.com/aidansteele/osx-abi-macho-file-format-reference
             case $FILE_HEADER_ACTUAL in
