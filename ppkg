@@ -6832,7 +6832,7 @@ __setup_base16() {
             ;;
         linux-aarch64)
             BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-linux-aarch64.tar.xz'
-            BASE16_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+            BASE16_SHA='4123d277d51717f02fe45b215aa66953d6f189277812d2e86096620c4346fd6f'
             ;;
         darwin-x86_64)
             BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-MacOSX11.0-x86_64.tar.xz'
@@ -7046,9 +7046,6 @@ ${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
 ${COLOR_GREEN}ppkg update${COLOR_OFF}
     update all available formula repositories.
 
-${COLOR_GREEN}ppkg cleanup${COLOR_OFF}
-    delete the unused cached files.
-
 ${COLOR_GREEN}ppkg ls-available${COLOR_OFF}
     list all available packages.
 
@@ -7160,7 +7157,11 @@ ${COLOR_GREEN}ppkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
     uninstall the given packages.
 
 ${COLOR_GREEN}ppkg gen-url-transform-sample${COLOR_OFF}
-    generate url-transform sample."
+    generate url-transform sample.
+
+${COLOR_GREEN}ppkg cleanup${COLOR_OFF}
+    delete the unused cached files.
+"
 }
 
 # }}}
