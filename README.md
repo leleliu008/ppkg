@@ -14,7 +14,7 @@ In theroy, these two implementations should have the same behaver except for hav
 
 ## Install POSIX-Shell-based ppkg
 ```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
 mv ppkg /usr/local/bin/
 ppkg setup
