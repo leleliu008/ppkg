@@ -2946,7 +2946,7 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/var/run/$$"
+    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -3125,7 +3125,7 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/var/run/$$"
+    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -3502,7 +3502,7 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/var/run/$$"
+    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -6563,9 +6563,6 @@ __setup() {
 
     #################################################################################
 
-    unset NATIVE_OS_KIND
-    unset NATIVE_OS_ARCH
-
     NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
     NATIVE_OS_ARCH="$(uname -m)"
 
@@ -6575,8 +6572,7 @@ __setup() {
         unset sudo
     fi
 
-    unset SETUP_WORKING_DIR
-    SETUP_WORKING_DIR=$(mktemp -d)
+    SETUP_WORKING_DIR="$(mktemp -d)"
 
     #################################################################################
 
@@ -6624,7 +6620,12 @@ __setup() {
         export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
         __setup_yq
-        __setup_base16
+
+        run cd "$SETUP_WORKING_DIR"
+        run git clone --depth 1 --no-tags https://github.com/leleliu008/C-examples
+        run cmake -S C-examples/algorithm/base16 -B C-examples/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples/build.d
+        run cmake --install C-examples/build.d
     else
         __setup_uppm
     fi
@@ -6822,45 +6823,6 @@ __setup__netbsd() {
         export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
     fi
 }
-
-# https://github.com/leleliu008/test/releases/tag/2023.03.02
-__setup_base16() {
-    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-        linux-x86_64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-linux-x86_64.tar.xz'
-            BASE16_SHA='ecd55a75cebe9b0c5d9563efe3186f998c19a65008e4ea6a195cd205016947ba'
-            ;;
-        linux-aarch64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-linux-aarch64.tar.xz'
-            BASE16_SHA='4123d277d51717f02fe45b215aa66953d6f189277812d2e86096620c4346fd6f'
-            ;;
-        darwin-x86_64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-MacOSX11.0-x86_64.tar.xz'
-            BASE16_SHA='55b9df6e65de186d9a09bad876ce2e23ca7e2de357f009f1854a517fe71e748e'
-            ;;
-        darwin-arm64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-MacOSX11.0-arm64.tar.xz'
-            BASE16_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
-            ;;
-        freebsd-amd64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-freebsd-amd64.tar.xz'
-            BASE16_SHA='7ccb6e893587d5b3600320fcd7a97e17de5609429199f12bc1f964d9c5ef2f06'
-            ;;
-        openbsd-amd64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-openbsd-amd64.tar.xz'
-            BASE16_SHA='b5bc233e9235fa10065be7af455928cb44afa34e749383002198857cb02ced24'
-            ;;
-        netbsd-amd64)
-            BASE16_URL='https://github.com/leleliu008/test/releases/download/2023.03.02/base16-2023.03.02-netbsd-amd64.tar.xz'
-            BASE16_SHA='05ea4bb31c30b1351494b739b6891c3feba65c9bbc597ca4d6bd456058e04410'
-            ;;
-        *)  abort 1 "$NATIVE_OS_KIND-$NATIVE_OS_ARCH is not supported yet."
-    esac
-
-    wfetch "$BASE16_URL" --sha256=$BASE16_SHA --output-dir="$SETUP_WORKING_DIR"
-    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
-}
-
 
 __setup_yq() {
     # https://github.com/mikefarah/yq/releases
