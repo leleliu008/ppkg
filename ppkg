@@ -5426,7 +5426,7 @@ __adjust_elf_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \; -printf '\n')
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
             BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
@@ -5550,7 +5550,7 @@ __adjust_mach_o_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \; -printf '\n')
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
             BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
