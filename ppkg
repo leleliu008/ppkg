@@ -3658,7 +3658,6 @@ __install_the_given_package() {
      NATIVE_OS_ARCH = $NATIVE_OS_ARCH
      NATIVE_OS_NCPU = $NATIVE_OS_NCPU
      NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
      NATIVE_OS_EUID = $NATIVE_OS_EUID
      NATIVE_OS_EGID = $NATIVE_OS_EGID
 
@@ -5423,22 +5422,14 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
-    # run patchelf --version
-    # run command -v patchelf
-
-    unset  BASE64_COMMAND
-    export BASE64_COMMAND="$(command -v base64)"
-
-    BASE64_ENCODE_STRING_COMMAND="$PPKG_CORE_BIN_DIR/base64-encode-string"
-
     for x in bin sbin lib libexec
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $BASE64_ENCODE_STRING_COMMAND '{}' \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
+            BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -5555,18 +5546,14 @@ __adjust_elf_files_for_the_given_target() {
 }
 
 __adjust_mach_o_files_for_the_given_target() {
-    unset BASE64_COMMAND; export BASE64_COMMAND="$(command -v base64)"
-
-    BASE64_ENCODE_STRING_COMMAND="$PPKG_CORE_BIN_DIR/base64-encode-string"
-
     for x in bin sbin lib libexec
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $BASE64_ENCODE_STRING_COMMAND {} \;)
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \;)
         do
             unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$(printf '%s\n' "$BASE64_ENCODED_RELATIVE_FILEPATH" | base64 -d)"
+            BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
@@ -6577,6 +6564,8 @@ __setup() {
     #################################################################################
 
     if [ "$1" = '--use-system-package-manager' ] ; then
+        step "install needed packages via your system's package manager"
+
         case $NATIVE_OS_KIND in
             linux)
                 if [ -e /etc/os-release ] ; then
@@ -6611,6 +6600,7 @@ __setup() {
 
         export PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
+        step "install CA Certificate"
         # https://curl.se/docs/caextract.html
         wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
@@ -6619,38 +6609,29 @@ __setup() {
 
         export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
+        step "install yq"
         __setup_yq
 
+        step "install base16-encode and base16-decode"
         run cd "$SETUP_WORKING_DIR"
         run git clone --depth 1 --no-tags https://github.com/leleliu008/C-examples
-        run cmake -S C-examples/algorithm/base16 -B C-examples/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples/build.d
-        run cmake --install C-examples/build.d
+
+        run cmake -S C-examples/algorithm/base16 -B C-examples/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples/algorithm/base16/build.d
+        run cmake --install C-examples/algorithm/base16/build.d
+
+        step "install base64-encode and base64-decode"
+        run cmake -S C-examples/library/mbedTLS/base64 -B C-examples/library/mbedTLS/base64/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples/library/mbedTLS/base64/build.d
+        run cmake --install C-examples/library/mbedTLS/base64/build.d
+
+        step "install sysinfo"
+        run cmake -S C-examples/utils/sysinfo -B C-examples/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples/utils/sysinfo/build.d
+        run cmake --install C-examples/utils/sysinfo/build.d
     else
         __setup_uppm
     fi
-
-    #################################################################################
-
-    wfetch 'https://raw.githubusercontent.com/leleliu008/os/master/bin/os' --output-path="$SETUP_WORKING_DIR/os"
-    run chmod +x "$SETUP_WORKING_DIR/os"
-    run mv "$SETUP_WORKING_DIR/os" "$PPKG_CORE_BIN_DIR/os"
-
-    #################################################################################
-
-    cat > "$PPKG_CORE_BIN_DIR/base64-encode-string" <<EOF
-#!/bin/sh
-set -e
-
-if [ -z "\$BASE64_COMMAND" ] ; then
-    BASE64_COMMAND=base64
-fi
-
-printf '%s\n' "\$@" | "\$BASE64_COMMAND" -w 0
-printf '\n'
-EOF
-
-    chmod +x "$PPKG_CORE_BIN_DIR/base64-encode-string"
 
     #################################################################################
 
@@ -6879,17 +6860,11 @@ __setup_uppm() {
 
     ##################################################################################
 
-    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
-        linux-x86_64)   TUPLE=linux-x86_64  ;;
-        linux-aarch64)  TUPLE=linux-aarch64 ;;
-        linux-s390x)    TUPLE=linux-s390x   ;;
-        darwin-x86_64)  TUPLE=macos-x86_64  ;;
-        darwin-arm64)   TUPLE=macos-arm64   ;;
-        freebsd-amd64)  TUPLE=freebsd-amd64 ;;
-        openbsd-amd64)  TUPLE=openbsd-amd64 ;;
-         netbsd-amd64)  TUPLE=netbsd-amd64  ;;
-        *) abort 1 "$NATIVE_OS_KIND-$NATIVE_OS_ARCH has not been supported yet."
-    esac
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        TUPLE="macos-$NATIVE_OS_ARCH"
+    else
+        TUPLE="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    fi
 
     JSON_FILEPATH="$SETUP_WORKING_DIR/latest.json"
 
@@ -6927,7 +6902,7 @@ __setup_uppm() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for item in bash coreutils findutils base16 gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree
+    for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree
     do
         run "$UPPM" install "$item"
 
@@ -7174,6 +7149,7 @@ main() {
             return 0
             ;;
         gen-url-transform-sample)
+            shift
             __gen_url_transform_sample "$@"
             return 0
             ;;
@@ -7215,7 +7191,7 @@ main() {
     #########################################################################################
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
-    if [ -z "$ACLOCAL_PATH" ] ; then
+    if [ -z  "$ACLOCAL_PATH" ] ; then
         export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal"
     else
         export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
@@ -7237,18 +7213,15 @@ main() {
     unset NATIVE_OS_ARCH
     unset NATIVE_OS_NCPU
     unset NATIVE_OS_LIBC
-    unset NATIVE_OS_SUBS
 
-    OS_COMMAND_PATH="$PPKG_CORE_BIN_DIR/os"
-
-    NATIVE_OS_KIND=$($OS_COMMAND_PATH kind)
-    NATIVE_OS_TYPE=$($OS_COMMAND_PATH type)
-    NATIVE_OS_NAME=$($OS_COMMAND_PATH name)
-    NATIVE_OS_VERS=$($OS_COMMAND_PATH vers)
-    NATIVE_OS_ARCH=$($OS_COMMAND_PATH arch)
-    NATIVE_OS_NCPU=$($OS_COMMAND_PATH ncpu)
-    NATIVE_OS_LIBC=$($OS_COMMAND_PATH libc)
-    NATIVE_OS_SUBS=$($OS_COMMAND_PATH subs)
+    NATIVE_OS_KIND=$(sysinfo kind)
+    NATIVE_OS_TYPE=$(sysinfo type)
+    NATIVE_OS_CODE=$(sysinfo code)
+    NATIVE_OS_NAME=$(sysinfo name)
+    NATIVE_OS_VERS=$(sysinfo vers)
+    NATIVE_OS_ARCH=$(sysinfo arch)
+    NATIVE_OS_NCPU=$(sysinfo ncpu)
+    NATIVE_OS_LIBC=$(sysinfo libc)
     NATIVE_OS_EUID=$(id -u)
     NATIVE_OS_EGID=$(id -g)
 
