@@ -5426,17 +5426,19 @@ __adjust_elf_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \; -printf '\n')
+        BASE64_DECODED_RELATIVE_FILEPATH_LIST=
+        BASE64_DECODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \;)"
+
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_DECODED_RELATIVE_FILEPATH_LIST
         do
-            unset BASE64_DECODED_RELATIVE_FILEPATH
+            BASE64_DECODED_RELATIVE_FILEPATH=
             BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
             [ -w "$FILEPATH" ] || continue
 
-            unset FILE_HEADER_ACTUAL
-
+            FILE_HEADER_ACTUAL=
             FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | base16-encode)"
 
             ELF_EXECUTABLE=no
@@ -5484,10 +5486,10 @@ __adjust_elf_files_for_the_given_target() {
             fi
 
             if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
-                unset DT_NEEDED
+                DT_NEEDED=
                 DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
 
-                unset DT_RUNPATH
+                DT_RUNPATH=
                 DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
 
                 if [ -n "$DT_RUNPATH" ] ; then
@@ -5550,14 +5552,17 @@ __adjust_mach_o_files_for_the_given_target() {
     do
         [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \; -printf '\n')
+        BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+        BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \;)"
+
+        for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
         do
-            unset BASE64_DECODED_RELATIVE_FILEPATH
+            BASE64_DECODED_RELATIVE_FILEPATH=
             BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
             FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
-            unset FILE_HEADER_ACTUAL
+            FILE_HEADER_ACTUAL=
             FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | base16-encode)"
 
             # https://github.com/aidansteele/osx-abi-macho-file-format-reference
@@ -5571,13 +5576,13 @@ __adjust_mach_o_files_for_the_given_target() {
                 *)  continue
             esac
 
-            unset DT_SONAME
+            DT_SONAME=
             DT_SONAME=$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
-            unset DT_NEEDED
+            DT_NEEDED=
             DT_NEEDED=$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
-            unset DT_RUNPATH
+            DT_RUNPATH=
             DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
             if [ -z "$DT_NEEDED" ] ; then
