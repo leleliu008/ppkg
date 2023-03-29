@@ -6620,12 +6620,14 @@ __setup() {
         step "install yq"
         __setup_yq
 
-        step "install patchelf"
-        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' --output-dir="$SETUP_WORKING_DIR"
-        run install -d patchelf-src
-        run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C patchelf-src
-        run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o patchelf  patchelf-src/src/patchelf.cc
-        run mv patchelf "$PPKG_CORE_BIN_DIR"
+        [ "$NATIVE_OS_KIND" != darwin ] && {
+            step "install patchelf"
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' --output-dir="$SETUP_WORKING_DIR"
+            run install -d patchelf-src
+            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C patchelf-src
+            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o patchelf  patchelf-src/src/patchelf.cc
+            run mv patchelf "$PPKG_CORE_BIN_DIR"
+        }
 
         step "install base16-encode and base16-decode"
         run git clone --depth 1 --no-tags https://github.com/leleliu008/C-examples
