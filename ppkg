@@ -6610,7 +6610,7 @@ __setup() {
 
         step "install CA Certificate"
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem'
+        wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
 
         run install -d    "$PPKG_CORE_DIR/etc/ssl/certs"
         run mv cacert.pem "$PPKG_CORE_DIR/etc/ssl/certs"
@@ -6621,7 +6621,7 @@ __setup() {
         __setup_yq
 
         step "install patchelf"
-        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz'
+        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' --output-dir="$SETUP_WORKING_DIR"
         run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C patchelf-src
         run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o patchelf  patchelf-src/src/patchelf.cc
         run mv patchelf "$PPKG_CORE_BIN_DIR"
