@@ -4601,6 +4601,8 @@ $DOT_CONTENT
 
                     esac
                 }
+
+                :
             )
         fi
     }
