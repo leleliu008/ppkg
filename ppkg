@@ -3740,9 +3740,6 @@ EOF
           STRIP="$(xcrun --sdk macosx --find strip)"
         STRINGS="$(xcrun --sdk macosx --find strings)"
         OBJDUMP="$(xcrun --sdk macosx --find objdump)"
-        OBJCOPY=
-        READELF=
-        ADDR2LINE=
     else
              CC="$(command -v cc || command -v clang || command -v gcc || error "C Compiler not found.")"
             CXX="$(command -v c++ || command -v clang++ || command -v g++ || error "C++ Compiler not found.")"
@@ -3785,18 +3782,46 @@ EOF
 
     #########################################################################################
 
+    # https://keith.github.io/xcode-man-pages/xcrun.1.html
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
+    unset SDKROOT
     unset SYSROOT
+
+    #########################################################################################
+
+    step "initialize CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
-        # https://keith.github.io/xcode-man-pages/xcrun.1.html
-        # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
-        export SDKROOT="$SYSROOT"
-
-        printf "  SDKROOT = $SDKROOT\n"
-        printf "  SYSROOT = $SYSROOT\n"
+        PPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+        CCFLAGS="-isysroot $SYSROOT -Qunused-arguments -fPIC -fno-common"
+        XXFLAGS="-isysroot $SYSROOT -Qunused-arguments -fPIC -fno-common"
+        LDFLAGS="-isysroot $SYSROOT -Wl,-search_paths_first"
+    else
+        CCFLAGS="-fPIC -fno-common"
+        XXFLAGS="-fPIC -fno-common"
+        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+        LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        CCFLAGS="$CCFLAGS -v"
+        XXFLAGS="$XXFLAGS -v"
+        LDFLAGS="$LDFLAGS -Wl,-v"
+    fi
+
+    if [ "$BUILD_TYPE" = release ] ; then
+        PPFLAGS="$PPFLAGS -DNDEBUG"
+        CCFLAGS="$CCFLAGS -Os"
+        XXFLAGS="$XXFLAGS -Os"
+        LDFLAGS="$LDFLAGS -Wl,-S"
+    fi
+
+    case $NATIVE_OS_KIND in
+        netbsd)  LDFLAGS="$LDFLAGS -pthread" ;;
+        openbsd) LDFLAGS="$LDFLAGS -pthread" ;;
+    esac
 
     #########################################################################################
 
@@ -3843,6 +3868,13 @@ EOF
     else
         error "NO"
     fi
+
+    ##################################################################################
+
+    export   CFLAGS="$CCFLAGS"
+    export CXXFLAGS="$XXFLAGS"
+    export CPPFLAGS="$PPFLAGS"
+    export  LDFLAGS="$LDFLAGS"
 
     ##################################################################################
 
@@ -4252,38 +4284,11 @@ $DOT_CONTENT
             done
 
             (
-                CCFLAGS="-fPIC -fno-common"
-                XXFLAGS="-fPIC -fno-common"
-                PPFLAGS="-I$PPKG_CORE_DIR/include"
-                LDFLAGS="-L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
+                PPFLAGS="$PPFLAGS -I$PPKG_CORE_DIR/include"
+                LDFLAGS="$LDFLAGS -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
 
-                if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-                    PPFLAGS="-isysroot $SYSROOT -Qunused-arguments $PPFLAGS"
-                    CCFLAGS="-isysroot $SYSROOT -Qunused-arguments $CCFLAGS"
-                    XXFLAGS="-isysroot $SYSROOT -Qunused-arguments $XXFLAGS"
-                    LDFLAGS="-isysroot $SYSROOT -Wl,-search_paths_first $LDFLAGS"
-                else
-                    # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-                    LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
-                fi
-
-                if [ "$LOG_LEVEL" -ge 3 ] ; then
-                    CCFLAGS="$CCFLAGS -v"
-                    XXFLAGS="$XXFLAGS -v"
-                    LDFLAGS="$LDFLAGS -Wl,-v"
-                fi
-
-                if [ "$BUILD_TYPE" = release ] ; then
-                    PPFLAGS="$PPFLAGS -DNDEBUG"
-                    CCFLAGS="$CCFLAGS -Os"
-                    XXFLAGS="$XXFLAGS -Os"
-                    LDFLAGS="$LDFLAGS -Wl,-S"
-                fi
-
-                export CFLAGS="$CCFLAGS"
-                export CXXFLAGS="$XXFLAGS"
                 export CPPFLAGS="$PPFLAGS"
-                export LDFLAGS="$LDFLAGS"
+                export  LDFLAGS="$LDFLAGS"
 
                 export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
 
@@ -4873,8 +4878,8 @@ $DOT_CONTENT
 
     step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
-    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS -fPIC -fno-common"
-    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS -fPIC -fno-common"
+    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
+    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
     PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
     LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
 
@@ -4882,31 +4887,10 @@ $DOT_CONTENT
     XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
     LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        PPFLAGS="-isysroot $SYSROOT -Qunused-arguments $PPFLAGS"
-        CCFLAGS="-isysroot $SYSROOT -Qunused-arguments $CCFLAGS"
-        XXFLAGS="-isysroot $SYSROOT -Qunused-arguments $XXFLAGS"
-        LDFLAGS="-isysroot $SYSROOT -Wl,-search_paths_first $LDFLAGS"
-    else
+    if [ "$NATIVE_OS_KIND" != 'darwin' ] ; then
         if [ "$LINK_TYPE" = static-only ] ; then
             LDFLAGS="-static --static $LDFLAGS"
         fi
-
-        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-        LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
-    fi
-
-    if [ "$LOG_LEVEL" -ge 3 ] ; then
-        CCFLAGS="$CCFLAGS -v"
-        XXFLAGS="$XXFLAGS -v"
-        LDFLAGS="$LDFLAGS -Wl,-v"
-    fi
-
-    if [ "$BUILD_TYPE" = release ] ; then
-        PPFLAGS="$PPFLAGS -DNDEBUG"
-        CCFLAGS="$CCFLAGS -Os"
-        XXFLAGS="$XXFLAGS -Os"
-        LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
@@ -4935,11 +4919,6 @@ $DOT_CONTENT
 
     PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
-
-    case $NATIVE_OS_KIND in
-        netbsd)  LDFLAGS="$LDFLAGS -pthread" ;;
-        openbsd) LDFLAGS="$LDFLAGS -pthread" ;;
-    esac
 
     export   CFLAGS="$CCFLAGS"
     export CXXFLAGS="$XXFLAGS"
@@ -7017,17 +6996,17 @@ __setup() {
 
 __setup_ubuntu() {
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip zip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ linux-headers-generic flex bison m4 jq
+    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree unzip zip tar gzip lzip xz-utils bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make automake autoconf libtool g++ linux-headers-generic flex bison m4 jq
 }
 
 __setup_fedora() {
     run $sudo dnf -y update
-    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make libtool g++ flex bison m4 jq
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkg-config golang git curl cmake ninja-build make automake autoconf libtool g++ flex bison m4 jq
 }
 
 __setup_alpine() {
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go jq yq git curl cmake ninja make libtool g++ libc-dev linux-headers flex bison m4
+    run $sudo apk add bash coreutils findutils gawk sed grep tree unzip zip tar gzip lzip xz bzip2 patch patchelf pkgconf go jq yq git curl cmake ninja make automake autoconf libtool g++ libc-dev linux-headers flex bison m4
 
     run ln -s /usr/bin/make "$PPKG_CORE_BIN_DIR/gmake"
 

@@ -1,4 +1,5 @@
 # ppkg
+
 portable package manager for Unix-like system.
 
 <br>
@@ -6,13 +7,16 @@ portable package manager for Unix-like system.
 **Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
 ## two implementations
+
 This project provides two implementations:
+
 1. implemented in `POSIX Shell`, the source code is on `master` branch.
 2. implemented in `C`, the source code is on `dev` branch.
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 
 ## Install POSIX-Shell-based ppkg
+
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
@@ -21,89 +25,107 @@ ppkg setup
 ```
 
 ## ~/.ppkg
+
 all relevant dirs and files are located in `~/.ppkg` directory.
 
 **Note**: Please do NOT place your own files in `~/.ppkg` directory, as `ppkg` will change files in `~/.ppkg` directory without notice.
 
 ## ppkg command usage
-*   **show help of this command**
-        
-        ppkg -h
-        ppkg --help
-        
-*   **show version of this command**
 
-        ppkg -V
-        ppkg --version
-        
-*   **show your system's information**
+* **show help of this command**
 
-        ppkg sysinfo
+    ```bash
+    ppkg -h
+    ppkg --help
+    ```
 
-*   **show your system's information and other information**
+* **show version of this command**
 
-        ppkg env
-        
-*   **integrate `zsh-completion` script**
+    ```bash
+    ppkg -V
+    ppkg --version
+    ```
 
-        ppkg integrate zsh
-        ppkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
-        ppkg integrate zsh -v
-        
+* **show your system's information**
+
+    ```bash
+    ppkg sysinfo
+    ```
+
+* **show your system's information and other information**
+
+    ```bash
+    ppkg env
+    ```
+
+* **integrate `zsh-completion` script**
+
+    ```bash
+    ppkg integrate zsh
+    ppkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
+    ppkg integrate zsh -v
+    ```
+
     This project provides a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 
-*   **update all available formula repositories**
+* **update all available formula repositories**
 
-        ppkg update
-        
-*   **search all available packages whose name matches the given regular express partten**
-        
-        ppkg search curl
-        ppkg search lib
-        
-*   **show information of the given package**
-        
-        ppkg info curl
-        ppkg info curl summary
-        ppkg info curl version
-        ppkg info curl web-url
-        ppkg info curl git-url
-        ppkg info curl git-sha
-        ppkg info curl git-ref
-        ppkg info curl src-url
-        ppkg info curl src-sha
+    ```bash
+    ppkg update
+    ```
 
-        ppkg info curl formula-path
+* **search all available packages whose name matches the given regular express partten**
 
-        ppkg info curl formula-json
-        ppkg info curl formula-yaml
+    ```bash
+    ppkg search curl
+    ppkg search lib
+    ```
 
-        ppkg info curl formula-json | jq .
-        ppkg info curl formula-yaml | yq .
+* **show information of the given package**
 
-        ppkg info curl receipt-path
+    ```bash
+    ppkg info curl
+    ppkg info curl summary
+    ppkg info curl version
+    ppkg info curl web-url
+    ppkg info curl git-url
+    ppkg info curl git-sha
+    ppkg info curl git-ref
+    ppkg info curl src-url
+    ppkg info curl src-sha
 
-        ppkg info curl receipt-json
-        ppkg info curl receipt-yaml
+    ppkg info curl formula-path
 
-        ppkg info curl receipt-json | jq .
-        ppkg info curl receipt-yaml | yq .
+    ppkg info curl formula-json
+    ppkg info curl formula-yaml
 
-        ppkg info curl installed-dir
-        ppkg info curl installed-files
-        ppkg info curl installed-timestamp-unix
-        ppkg info curl installed-timestamp-iso-8601
-        ppkg info curl installed-timestamp-rfc-3339
-        ppkg info curl installed-timestamp-iso-8601-utc
-        ppkg info curl installed-timestamp-rfc-3339-utc
-        ppkg info curl installed-version
+    ppkg info curl formula-json | jq .
+    ppkg info curl formula-yaml | yq .
 
-        ppkg info @all
-        
-*   **show packages that are depended by the given package**
-        
+    ppkg info curl receipt-path
+
+    ppkg info curl receipt-json
+    ppkg info curl receipt-yaml
+
+    ppkg info curl receipt-json | jq .
+    ppkg info curl receipt-yaml | yq .
+
+    ppkg info curl installed-dir
+    ppkg info curl installed-files
+    ppkg info curl installed-timestamp-unix
+    ppkg info curl installed-timestamp-iso-8601
+    ppkg info curl installed-timestamp-rfc-3339
+    ppkg info curl installed-timestamp-iso-8601-utc
+    ppkg info curl installed-timestamp-rfc-3339-utc
+    ppkg info curl installed-version
+
+    ppkg info @all
+    ```
+
+* **show packages that are depended by the given package**
+
         ppkg depends curl
 
         ppkg depends curl -t dot
@@ -120,60 +142,60 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         ppkg depends curl -t box -o dependencies/
         ppkg depends curl -t png -o dependencies/
         ppkg depends curl -t svg -o dependencies/
-        
-*   **download resources of the given package to the local cache**
-        
+
+* **download resources of the given package to the local cache**
+
         ppkg fetch curl
         ppkg fetch @all
 
         ppkg fetch curl -v
         ppkg fetch @all -v
 
-*   **install packages**
-        
+* **install packages**
+
         ppkg install curl
         ppkg install curl bzip2 -v
-        
+
     **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
 
-*   **reinstall packages**
-        
+* **reinstall packages**
+
         ppkg reinstall curl
         ppkg reinstall curl bzip2 -v
-        
-*   **uninstall packages**
+
+* **uninstall packages**
 
         ppkg uninstall curl
         ppkg uninstall curl bzip2 -v
-        
-*   **upgrade the outdated packages**
+
+* **upgrade the outdated packages**
 
         ppkg upgrade
         ppkg upgrade curl
         ppkg upgrade curl bzip2 -v
-        
-*   **upgrade this software**
+
+* **upgrade this software**
 
         ppkg upgrade-self
         ppkg upgrade-self -v
-        
-*   **view the formula of the given package**
+
+* **view the formula of the given package**
 
         ppkg formula-view curl
         ppkg formula-view curl --no-color
 
-*   **edit the formula of the given package**
+* **edit the formula of the given package**
 
         ppkg formula-edit curl
         ppkg formula-edit curl --editor=/usr/local/bin/vim
 
     **Note**: ppkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
-*   **list all avaliable formula repositories**
+* **list all avaliable formula repositories**
 
         ppkg formula-repo-list
 
-*   **create a new empty formula repository**
+* **create a new empty formula repository**
 
         uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
         uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
@@ -181,27 +203,27 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
         uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
 
-*   **create a new empty formula repository then sync with server**
+* **create a new empty formula repository then sync with server**
 
         uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
         uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
         uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
         uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
         uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
-        
-*   **delete the given formula repository**
+
+* **delete the given formula repository**
 
         uppm formula-repo-del my_repo
 
-*   **sync the given formula repository with server**
+* **sync the given formula repository with server**
 
         uppm formula-repo-sync my_repo
 
-*   **show information of the given formula repository**
+* **show information of the given formula repository**
 
         uppm formula-repo-info my_repo
 
-*   **change the config of the given formula repository**
+* **change the config of the given formula repository**
 
         uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
         uppm formula-repo-conf my_repo --branch=main
@@ -210,41 +232,41 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         uppm formula-repo-conf my_repo --enable
         uppm formula-repo-conf my_repo --disable
 
-*   **list all available packages**
-        
+* **list all available packages**
+
         ppkg ls-available
-        
-*   **list all installed packages**
-        
+
+* **list all installed packages**
+
         ppkg ls-installed
-        
-*   **list all outdated packages**
-        
+
+* **list all outdated packages**
+
         ppkg ls-outdated
-        
-*   **check if the given package is available**
-        
+
+* **check if the given package is available**
+
         ppkg is-available curl
-        
-*   **check if the given package is installed**
-        
+
+* **check if the given package is installed**
+
         ppkg is-installed curl
-        
-*   **check if the given package is outdated**
-        
+
+* **check if the given package is outdated**
+
         ppkg is-outdated  curl
-        
-*   **list installed files of the given installed package in a tree-like format**
-        
+
+* **list installed files of the given installed package in a tree-like format**
+
         ppkg tree curl
         ppkg tree curl -L 3
-        
-*   **show logs of the given installed package**
-        
+
+* **show logs of the given installed package**
+
         ppkg logs curl
-        
-*   **pack the given installed package**
-        
+
+* **pack the given installed package**
+
         ppkg pack curl
         ppkg pack curl -t tar.xz
         ppkg pack curl -t tar.gz
@@ -254,27 +276,26 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
         ppkg pack curl -t zip -o a/
         ppkg pack curl -o a/xx.zip
-        
-*   **delete the unused cached files**
-        
+
+* **delete the unused cached files**
+
         ppkg cleanup
-        
-*   **generate url-transform sample**
+
+* **generate url-transform sample**
 
         ppkg gen-url-transform-sample
 
-
 ## environment variables
 
-*   **HOME**
+* **HOME**
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
-*   **PATH**
+* **PATH**
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
-*   **SSL_CERT_FILE**
+* **SSL_CERT_FILE**
 
     ```bash
     curl -LO https://curl.se/ca/cacert.pem
@@ -283,7 +304,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
-*   **PPKG_URL_TRANSFORM**
+* **PPKG_URL_TRANSFORM**
 
     ```bash
     export PPKG_URL_TRANSFORM=/path/of/url-transform
@@ -297,8 +318,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
-
-*   **PPKG_XTRACE**
+* **PPKG_XTRACE**
 
     for debugging purposes.
 
@@ -310,7 +330,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     export PPKG_XTRACE=1
     ```
 
-*   **other relevant environment variables**
+* **other relevant environment variables**
 
     |utility|reference|
     |-|-|
@@ -339,6 +359,7 @@ a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z
 a ppkg formula's file content must follow [the ppkg formula scheme](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
 
 ## ppkg formula repository
+
 a ppkg formula repository is a git repository.
 
 a ppkg formula repository's root dir should have a `formula` named sub dir, this repository's formulas all should be located in this dir.
@@ -346,15 +367,17 @@ a ppkg formula repository's root dir should have a `formula` named sub dir, this
 a ppkg formula repository's local path is `~/.ppkg/repos.d/${PPKGFormulaRepoName}`
 
 **Note:**
- - please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
- - ppkg supports multiple formula repositories.
+
+* please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
+* ppkg supports multiple formula repositories.
 
 ## ppkg formula repository's config
+
 After a ppkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
 
 a typical ppkg formula repository's config as following:
 
-```
+```yml
 url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 branch: master
 pinned: 0
@@ -369,9 +392,8 @@ If a ppkg formula repository is `disabled`, which means ppkg would not search fo
 
 ## ppkg offical formula repository
 
-ppkg offical formula repository's url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
+ppkg offical formula repository's url: <https://github.com/leleliu008/ppkg-formula-repository-offical-core>
 
 ppkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ppkg update` command.
 
 **Note:** If you find that a package is not in ppkg offical formula repository yet, PR is welcomed.
-
