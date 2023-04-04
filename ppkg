@@ -7094,7 +7094,7 @@ EOF
 
 __setup_freebsd() {
     run $sudo pkg update
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq jq git curl cmake ninja gmake libtool gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree unzip zip gtar gzip lzip patch patchelf pkgconf go go-yq jq git curl cmake ninja gmake automake autoconf libtool gcc flex bison m4
 
     run ln -sf /usr/local/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
     run ln -sf /usr/local/bin/gm4      "$PPKG_CORE_BIN_DIR/m4"
@@ -7152,7 +7152,7 @@ EOF
 
 __setup__netbsd() {
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake libtool llvm flex bison m4 jq
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree unzip zip gtar gzip lzip patch patchelf pkg-config go git curl cmake ninja-build gmake automake autoconf libtool llvm flex bison m4 jq
 
     run ln -sf /usr/pkg/go118/bin/go "$PPKG_CORE_BIN_DIR/go"
     run ln -sf /usr/pkg/bin/gln      "$PPKG_CORE_BIN_DIR/ln"
