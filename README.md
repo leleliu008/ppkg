@@ -126,164 +126,218 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
 * **show packages that are depended by the given package**
 
-        ppkg depends curl
+    ```bash
+    ppkg depends curl
 
-        ppkg depends curl -t dot
-        ppkg depends curl -t box
-        ppkg depends curl -t png
-        ppkg depends curl -t svg
+    ppkg depends curl -t dot
+    ppkg depends curl -t box
+    ppkg depends curl -t png
+    ppkg depends curl -t svg
 
-        ppkg depends curl -o curl-dependencies.dot
-        ppkg depends curl -o curl-dependencies.txt
-        ppkg depends curl -o curl-dependencies.png
-        ppkg depends curl -o curl-dependencies.svg
+    ppkg depends curl -o curl-dependencies.dot
+    ppkg depends curl -o curl-dependencies.txt
+    ppkg depends curl -o curl-dependencies.png
+    ppkg depends curl -o curl-dependencies.svg
 
-        ppkg depends curl -t dot -o dependencies/
-        ppkg depends curl -t box -o dependencies/
-        ppkg depends curl -t png -o dependencies/
-        ppkg depends curl -t svg -o dependencies/
+    ppkg depends curl -t dot -o dependencies/
+    ppkg depends curl -t box -o dependencies/
+    ppkg depends curl -t png -o dependencies/
+    ppkg depends curl -t svg -o dependencies/
+    ```
 
 * **download resources of the given package to the local cache**
 
-        ppkg fetch curl
-        ppkg fetch @all
+    ```bash
+    ppkg fetch curl
+    ppkg fetch @all
 
-        ppkg fetch curl -v
-        ppkg fetch @all -v
+    ppkg fetch curl -v
+    ppkg fetch @all -v
+    ```
 
 * **install packages**
 
-        ppkg install curl
-        ppkg install curl bzip2 -v
+    ```bash
+    ppkg install curl
+    ppkg install curl bzip2 -v
+    ```
 
     **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
 
 * **reinstall packages**
 
-        ppkg reinstall curl
-        ppkg reinstall curl bzip2 -v
+    ```bash
+    ppkg reinstall curl
+    ppkg reinstall curl bzip2 -v
+    ```
 
 * **uninstall packages**
 
-        ppkg uninstall curl
-        ppkg uninstall curl bzip2 -v
+    ```bash
+    ppkg uninstall curl
+    ppkg uninstall curl bzip2 -v
+    ```
 
 * **upgrade the outdated packages**
 
-        ppkg upgrade
-        ppkg upgrade curl
-        ppkg upgrade curl bzip2 -v
+    ```bash
+    ppkg upgrade
+    ppkg upgrade curl
+    ppkg upgrade curl bzip2 -v
+    ```
 
 * **upgrade this software**
 
-        ppkg upgrade-self
-        ppkg upgrade-self -v
+    ```bash
+    ppkg upgrade-self
+    ppkg upgrade-self -v
+    ```
 
 * **view the formula of the given package**
 
-        ppkg formula-view curl
-        ppkg formula-view curl --no-color
+    ```bash
+    ppkg formula-view curl
+    ppkg formula-view curl --no-color
+    ```
 
 * **edit the formula of the given package**
 
-        ppkg formula-edit curl
-        ppkg formula-edit curl --editor=/usr/local/bin/vim
+    ```bash
+    ppkg formula-edit curl
+    ppkg formula-edit curl --editor=/usr/local/bin/vim
+    ```
 
     **Note**: ppkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
 * **list all avaliable formula repositories**
 
-        ppkg formula-repo-list
+    ```bash
+    ppkg formula-repo-list
+    ```
 
 * **create a new empty formula repository**
 
-        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-        uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```bash
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```
 
 * **create a new empty formula repository then sync with server**
 
-        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-        uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```bash
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```
 
 * **delete the given formula repository**
 
-        uppm formula-repo-del my_repo
+    ```bash
+    uppm formula-repo-del my_repo
+    ```
 
 * **sync the given formula repository with server**
 
-        uppm formula-repo-sync my_repo
+    ```bash
+    uppm formula-repo-sync my_repo
+    ```
 
 * **show information of the given formula repository**
 
-        uppm formula-repo-info my_repo
+    ```bash
+    uppm formula-repo-info my_repo
+    ```
 
 * **change the config of the given formula repository**
 
-        uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
-        uppm formula-repo-conf my_repo --branch=main
-        uppm formula-repo-conf my_repo --pin
-        uppm formula-repo-conf my_repo --unpin
-        uppm formula-repo-conf my_repo --enable
-        uppm formula-repo-conf my_repo --disable
+    ```bash
+    uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-conf my_repo --branch=main
+    uppm formula-repo-conf my_repo --pin
+    uppm formula-repo-conf my_repo --unpin
+    uppm formula-repo-conf my_repo --enable
+    uppm formula-repo-conf my_repo --disable
+    ```
 
 * **list all available packages**
 
-        ppkg ls-available
+    ```bash
+    ppkg ls-available
+    ```
 
 * **list all installed packages**
 
-        ppkg ls-installed
+    ```bash
+    ppkg ls-installed
+    ```
 
 * **list all outdated packages**
 
-        ppkg ls-outdated
+    ```bash
+    ppkg ls-outdated
+    ```
 
 * **check if the given package is available**
 
-        ppkg is-available curl
+    ```bash
+    ppkg is-available curl
+    ```
 
 * **check if the given package is installed**
 
-        ppkg is-installed curl
+    ```bash
+    ppkg is-installed curl
+    ```
 
 * **check if the given package is outdated**
 
-        ppkg is-outdated  curl
+    ```bash
+    ppkg is-outdated  curl
+    ```
 
 * **list installed files of the given installed package in a tree-like format**
 
-        ppkg tree curl
-        ppkg tree curl -L 3
+    ```bash
+    ppkg tree curl
+    ppkg tree curl -L 3
+    ```
 
 * **show logs of the given installed package**
 
-        ppkg logs curl
+    ```bash
+    ppkg logs curl
+    ```
 
 * **pack the given installed package**
 
-        ppkg pack curl
-        ppkg pack curl -t tar.xz
-        ppkg pack curl -t tar.gz
-        ppkg pack curl -t tar.lz
-        ppkg pack curl -t tar.bz2
-        ppkg pack curl -t zip
+    ```bash
+    ppkg pack curl
+    ppkg pack curl -t tar.xz
+    ppkg pack curl -t tar.gz
+    ppkg pack curl -t tar.lz
+    ppkg pack curl -t tar.bz2
+    ppkg pack curl -t zip
 
-        ppkg pack curl -t zip -o a/
-        ppkg pack curl -o a/xx.zip
+    ppkg pack curl -t zip -o a/
+    ppkg pack curl -o a/xx.zip
+    ```
 
 * **delete the unused cached files**
 
-        ppkg cleanup
+    ```bash
+    ppkg cleanup
+    ```
 
 * **generate url-transform sample**
 
-        ppkg gen-url-transform-sample
+    ```bash
+    ppkg gen-url-transform-sample
+    ```
 
 ## environment variables
 

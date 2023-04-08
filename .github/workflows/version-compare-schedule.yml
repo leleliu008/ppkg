@@ -14,15 +14,14 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - run: brew update
-      - run: brew uninstall go@1.17
-      - run: brew install --overwrite python@3.10 python@3.11
-
       - uses: actions/checkout@v3
 
-      - run: ./ppkg --help
-      - run: ./ppkg setup --use-system-package-manager
+      - run: brew update
+
+      - run: ./ppkg setup
       - run: ./ppkg env
       - run: ./ppkg update
+
       - run: git -C ~/.ppkg/repos.d/offical-core checkout ${{ github.ref_name }}
+
       - run: ./ppkg compare-versions brew
