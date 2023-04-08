@@ -7233,15 +7233,15 @@ __setup_uppm() {
     UPPM_LATEST_RELEASE_VERSION="$(printf '%s\n' "$UPPM_LATEST_RELEASE_TAGNAME" | cut -d+ -f1)"
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        case $NATIVE_OS_VERS in
-            10.*) X='10.15' ;;
-            11.*) X='11.0'  ;;
-            12.*) X='12.0'  ;;
-            13.*) X='13.0'  ;;
-            *.*)  X='13.0'  ;;
+        case $(sw_vers -productVersion | cut -d. -f1) in
+            10) X='10.15' ;;
+            11) X='11.0'  ;;
+            12) X='12.0'  ;;
+            13) X='13.0'  ;;
+            *)  X='13.0'  ;;
         esac
 
-        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}${X}-${NATIVE_OS_ARCH}.tar.xz"
+        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-macos${X}-${NATIVE_OS_ARCH}.tar.xz"
     else
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
