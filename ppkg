@@ -7202,7 +7202,7 @@ __setup_yq() {
     fi
 }
 
-# use commands: uname curl tar gzip xz sed
+# use commands: uname curl|wget tar xz cut
 __setup_uppm() {
     unset FETCH_TOOL
 
@@ -7223,27 +7223,32 @@ __setup_uppm() {
 
     ##################################################################################
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        TUPLE="macos-$NATIVE_OS_ARCH"
-    else
-        TUPLE="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    fi
+    run cd "$SETUP_WORKING_DIR"
 
-    JSON_FILEPATH="$SETUP_WORKING_DIR/latest.json"
-
-    wfetch "https://api.github.com/repos/leleliu008/uppm-package-repository-$TUPLE/releases/latest" --output-path="$JSON_FILEPATH"
-
-    FETCH_BASE_URL="https://github.com/leleliu008/uppm-package-repository-$TUPLE/releases/download/$(sed -n '/"tag_name":/p' "$JSON_FILEPATH" | sed 's|  "tag_name": "\(.*\)",|\1|')"
+    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' --output-name=uppm-latest-release
 
     ##################################################################################
 
-    unset UPPM_ARCHIVE_FILENAME
-    UPPM_ARCHIVE_FILENAME=$(sed -n '/"name":/p' "$JSON_FILEPATH" | sed -e 's|[[:space:]]||g' -e 's|"name":"\(.*\)",|\1|' | sed -n '/^uppm-/p')
-    UPPM_ARCHIVE_FILEPATH="$SETUP_WORKING_DIR/$UPPM_ARCHIVE_FILENAME"
+    UPPM_LATEST_RELEASE_TAGNAME="$(cat uppm-latest-release)"
+    UPPM_LATEST_RELEASE_VERSION="$(printf '%s\n' "$UPPM_LATEST_RELEASE_TAGNAME" | cut -d+ -f1)"
 
-    wfetch "${FETCH_BASE_URL}/${UPPM_ARCHIVE_FILENAME}" --output-path="$UPPM_ARCHIVE_FILEPATH"
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        case $NATIVE_OS_VERS in
+            10.*) X='10.15' ;;
+            11.*) X='11.0'  ;;
+            12.*) X='12.0'  ;;
+            13.*) X='13.0'  ;;
+            *.*)  X='13.0'  ;;
+        esac
 
-    run tar vxf "$UPPM_ARCHIVE_FILEPATH" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
+        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}${X}-${NATIVE_OS_ARCH}.tar.xz"
+    else
+        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
+    fi
+
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-name="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+
+    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
 
     ##################################################################################
 
