@@ -17,6 +17,7 @@
 
 # https://github.com/leleliu008/ppkg
 
+
 ######################################################################################
 ####################################  convention  ####################################
 # 1. The variable/function name starts with underscore "_" means that it is a private variable/function.
@@ -1043,7 +1044,8 @@ filetype_from_url() {
 
     for KEY in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ppflags ccflags xxflags ldflags parallel toolset cstdlib exetype symlink
     do
-        unset VALUE; VALUE="$(yq ".$KEY" "$PACKAGE_FORMULA_FILEPATH")"
+        VALUE=
+        VALUE="$(yq ".$KEY" "$PACKAGE_FORMULA_FILEPATH")"
 
         if [ "$VALUE" != null ] ; then
             unset KEY_UPPERCASE_UNDERSCORE
@@ -1054,19 +1056,16 @@ filetype_from_url() {
 
     #########################################################################################
 
-    unset PACKAGE_DOPATCH_ACTIONS
-    unset PACKAGE_INSTALL_ACTIONS
+    PACKAGE_DOPATCH_ACTIONS=
+    PACKAGE_DOBUILD_ACTIONS=
 
-    PACKAGE_DOPATCH_ACTIONS="$(yq .dopatch "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_INSTALL_ACTIONS="$(yq .install "$PACKAGE_FORMULA_FILEPATH")"
-
-    [ "$PACKAGE_DOPATCH_ACTIONS" = null ] && unset PACKAGE_DOPATCH_ACTIONS
-    [ "$PACKAGE_INSTALL_ACTIONS" = null ] && unset PACKAGE_INSTALL_ACTIONS
+    PACKAGE_DOPATCH_ACTIONS="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOBUILD_ACTIONS="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
-        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_INSTALL_ACTIONS" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD_ACTIONS" ] ; then
+        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
         do
             case "$FirstWordOfLineInInstallActions" in
                 configure)    PACKAGE_BSYSTEM=configure ; break ;;
@@ -1245,9 +1244,9 @@ filetype_from_url() {
             autogen)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             autotools)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"        ;;
-            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake cmake"  ;;
-            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja cmake"  ;;
-            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja cmake"  ;;
+            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
+            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
+            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
             xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
             meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
             ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
@@ -1256,6 +1255,24 @@ filetype_from_url() {
             go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
         esac
     done
+
+    #########################################################################################
+
+    [ -z "$PACKAGE_DOBUILD_ACTIONS" ] && {
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)   PACKAGE_DOBUILD_ACTIONS='configure' ;;
+            autotools) PACKAGE_DOBUILD_ACTIONS='configure' ;;
+            configure) PACKAGE_DOBUILD_ACTIONS='configure' ;;
+            cmake*)    PACKAGE_DOBUILD_ACTIONS='cmakew' ;;
+            xmake)     PACKAGE_DOBUILD_ACTIONS='xmakew' ;;
+            meson)     PACKAGE_DOBUILD_ACTIONS='mesonw' ;;
+            ninja)     PACKAGE_DOBUILD_ACTIONS='ninjaw clean && ninjaw && ninjaw install' ;;
+            gmake)     PACKAGE_DOBUILD_ACTIONS='gmakew clean && gmakew && gmakew install' ;;
+            cargo)     PACKAGE_DOBUILD_ACTIONS='cargow install' ;;
+            go)        PACKAGE_DOBUILD_ACTIONS='gow' ;;
+            *)         abort 1 "install mapping not found in $PACKAGE_FORMULA_FILEPATH"
+        esac
+    }
 
     #########################################################################################
 
@@ -1290,41 +1307,68 @@ filetype_from_url() {
         PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     }
 
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+
     PACKAGE_FORMULA_LOADED=yes
 }
 
 # }}}
 ##############################################################################
-# {{{ ppkg formula-view
+# {{{ ppkg formula
 
-# __view_formula_of_the_given_package curl <PACKAGE-NAME> [--no-color]
-  __view_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+# __show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>]
+  __show_formula_of_the_given_package() {
+    [ -z "$1" ] && abort 1 "__show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
 
-    unset  PACKAGE_FORMULA_FILEPATH; PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
+    PACKAGE_FORMULA_FILEPATH=
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
 
     [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
 
-    shift
+    case $2 in
+        --yaml|'')
+            if [ -t 1 ] ; then
+                yq  "$PACKAGE_FORMULA_FILEPATH"
+            else
+                cat "$PACKAGE_FORMULA_FILEPATH"
+            fi
+            ;;
+        --json)
+            yq -o=json "$PACKAGE_FORMULA_FILEPATH"
+            ;;
+        --path)
+            printf '%s\n' "$PACKAGE_FORMULA_FILEPATH"
+            ;;
+        *)  yq ".$2 | select(. != null)" "$PACKAGE_FORMULA_FILEPATH"
+    esac
+}
 
-    NO_COLOR=no
+# }}}
+##############################################################################
+# {{{ ppkg receipt
 
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --no-color)
-                NO_COLOR=yes
-                ;;
-            *)  abort 1 "unrecognized option: $1"
-        esac
-        shift
-    done
+# __show_receipt_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>]
+  __show_receipt_of_the_given_package() {
+    [ -z "$1" ] && abort 1 "__show_receipt_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
 
-    if [ "$NO_COLOR" = yes ] ; then
-        cat "$PACKAGE_FORMULA_FILEPATH"
-    else
-        yq  "$PACKAGE_FORMULA_FILEPATH"
-    fi
+    __load_receipt_of_the_given_package "$1"
+
+    case $2 in
+        --yaml|'')
+            if [ -t 1 ] ; then
+                yq  "$PACKAGE_RECEIPT_FILEPATH"
+            else
+                cat "$PACKAGE_RECEIPT_FILEPATH"
+            fi
+            ;;
+        --json)
+            yq -o=json "$PACKAGE_RECEIPT_FILEPATH"
+            ;;
+        --path)
+            printf '%s\n' "$PACKAGE_RECEIPT_FILEPATH"
+            ;;
+        *)  yq ".$2 | select(. != null)" "$PACKAGE_RECEIPT_FILEPATH"
+    esac
 }
 
 # }}}
@@ -1732,7 +1776,7 @@ __show_information_as_shell_of_available_packages() {
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
         --arg dopatch "$PACKAGE_DOPATCH_ACTIONS" \
-        --arg install "$PACKAGE_INSTALL_ACTIONS" \
+        --arg install "$PACKAGE_DOBUILD_ACTIONS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
@@ -1773,7 +1817,71 @@ __show_information_as_shell_of_available_packages() {
 
 # __show_information_as_yaml__of_the_given_package <PACKAGE-NAME>
   __show_information_as_yaml__of_the_given_package() {
-    __view_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1"
+
+    if [ -z "$PACKAGE_WEB_URL" ] ; then
+        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
+    fi
+
+    {
+    cat <<EOF
+pkgname: $PACKAGE_NAME
+version: $PACKAGE_VERSION
+license: $PACKAGE_LICENSE
+summary: $PACKAGE_SUMMARY
+web-url: $PACKAGE_WEB_URL
+git-url: $PACKAGE_GIT_URL
+git-sha: $PACKAGE_GIT_SHA
+git-ref: $PACKAGE_GIT_REF
+src-url: $PACKAGE_SRC_URL
+src-sha: $PACKAGE_SRC_SHA
+fix-url: $PACKAGE_FIX_URL
+fix-sha: $PACKAGE_FIX_SHA
+res-url: $PACKAGE_RES_URL
+res-sha: $PACKAGE_RES_SHA
+dep-pkg: $PACKAGE_DEP_PKG
+dep-upp: $PACKAGE_DEP_UPP
+dep-pym: $PACKAGE_DEP_PYM
+dep-plm: $PACKAGE_DEP_PLM
+bsystem: $PACKAGE_BSYSTEM
+binbstd: $PACKAGE_BINBSTD
+ppflags: $PACKAGE_PPFLAGS
+ccflags: $PACKAGE_CCFLAGS
+xxflags: $PACKAGE_XXFLAGS
+ldflags: $PACKAGE_LDFLAGS
+parallel: $PACKAGE_BUILD_IN_PARALLEL
+EOF
+    } | yq eval '. | with_entries(select(.value != null))'
+return 0
+    yq  --null-input "
+        .pkgname = \"$PACKAGE_NAME\" |
+        .version = \"$PACKAGE_VERSION\" |
+        .summary = \"$PACKAGE_SUMMARY\" |
+        .license = \"$PACKAGE_LICENSE\" |
+        .web_url = \"$PACKAGE_WEB_URL\" |
+        .git_url = \"$PACKAGE_GIT_URL\" |
+        .git_sha = \"$PACKAGE_GIT_SHA\" |
+        .git_ref = \"$PACKAGE_GIT_REF\" |
+        .src_url = \"$PACKAGE_SRC_URL\" |
+        .src_sha = \"$PACKAGE_SRC_SHA\" |
+        .fix_url = \"$PACKAGE_FIX_URL\" |
+        .fix_sha = \"$PACKAGE_FIX_SHA\" |
+        .res_url = \"$PACKAGE_RES_URL\" |
+        .res_sha = \"$PACKAGE_RES_SHA\" |
+        .dep_pkg = \"$PACKAGE_DEP_PKG\" |
+        .dep_upp = \"$PACKAGE_DEP_UPP\" |
+        .dep_pym = \"$PACKAGE_DEP_PYM\" |
+        .dep_plm = \"$PACKAGE_DEP_PLM\" |
+        .dopatch = \"$PACKAGE_DOPATCH_ACTIONS\" |
+        .install = \"$PACKAGE_DOBUILD_ACTIONS\" |
+        .bsystem = \"$PACKAGE_BSYSTEM\" |
+        .binbstd = \"$PACKAGE_BINBSTD\" |
+        .ppflags = \"$PACKAGE_PPFLAGS\" |
+        .ccflags = \"$PACKAGE_CCFLAGS\" |
+        .xxflags = \"$PACKAGE_XXFLAGS\" |
+        .ldflags = \"$PACKAGE_LDFLAGS\" |
+        .parallel = \"$PACKAGE_BUILD_IN_PARALLEL\" |
+        with_entries(select(.value != ""))"
 }
 
 # __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
@@ -1834,119 +1942,25 @@ PACKAGE_FORMULA_FILEPATH
 EOF
 }
 
-# __show_information_of_the_given_package <PACKAGE-NAME> [OPTIONS]
+# __show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>]
 #
 # __show_information_of_the_given_package curl
 #
 # __show_information_of_the_given_package curl version
 # __show_information_of_the_given_package curl web-url
   __show_information_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_information_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is unspecified."
+    [ -z "$1" ] && abort 1 "__show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>], <PACKAGE-NAME> is unspecified."
 
     case $1 in
         @all) shift ; __show_information_of_available_packages "$@" ; return 0
     esac
 
-    unset SHOW_INFOMATION_ARGS
-
-    for arg in "$@"
-    do
-        case $arg in
-            "$1")
-                ;;
-            *)  if [ -z "$SHOW_INFOMATION_ARGS" ] ; then
-                    SHOW_INFOMATION_ARGS="$arg"
-                else
-                    SHOW_INFOMATION_ARGS="$SHOW_INFOMATION_ARGS $arg"
-                fi
-        esac
-    done
-
-    case $SHOW_INFOMATION_ARGS in
-        formula-yaml|'')
+    case $2 in
+        --yaml|'')
             __show_information_as_yaml__of_the_given_package "$1"
             ;;
-        formula-json)
+        --json)
             __show_information_as_json__of_the_given_package "$1"
-            ;;
-        formula-path)
-            __path_of_formula_of_the_given_package "$1"
-            ;;
-        receipt-yaml)
-            if is_package_installed "$1" ; then
-                cat "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml"
-            else
-                abort 1 "package [$1] is not installed."
-            fi
-            ;;
-        receipt-json)
-            __load_receipt_of_the_given_package "$1"
-
-            jq  --null-input \
-                --arg pkgname "$1" \
-                --arg version "$RECEIPT_PACKAGE_VERSION" \
-                --arg summary "$RECEIPT_PACKAGE_SUMMARY" \
-                --arg license "$RECEIPT_PACKAGE_LICENSE" \
-                --arg web_url "$RECEIPT_PACKAGE_WEB_URL" \
-                --arg git_url "$RECEIPT_PACKAGE_GIT_URL" \
-                --arg git_sha "$RECEIPT_PACKAGE_GIT_SHA" \
-                --arg git_ref "$RECEIPT_PACKAGE_GIT_REF" \
-                --arg src_url "$RECEIPT_PACKAGE_SRC_URL" \
-                --arg src_sha "$RECEIPT_PACKAGE_SRC_SHA" \
-                --arg fix_url "$RECEIPT_PACKAGE_FIX_URL" \
-                --arg fix_sha "$RECEIPT_PACKAGE_FIX_SHA" \
-                --arg res_url "$RECEIPT_PACKAGE_RES_URL" \
-                --arg res_sha "$RECEIPT_PACKAGE_RES_SHA" \
-                --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
-                --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
-                --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
-                --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
-                --arg ppflags "$RECEIPT_PACKAGE_PPFLAGS" \
-                --arg ccflags "$RECEIPT_PACKAGE_CCFLAGS" \
-                --arg xxflags "$RECEIPT_PACKAGE_XXFLAGS" \
-                --arg ldflags "$RECEIPT_PACKAGE_LDFLAGS" \
-                --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
-                --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
-                --arg parallel "$RECEIPT_PACKAGE_PARALLEL" \
-                --arg signature "$PACKAGE_RECEIPT_SIGNATURE" \
-                --arg timestamp "$PACKAGE_RECEIPT_TIMESTAMP" \
-'{
-    "pkgname":$pkgname,
-    "version":$version,
-    "license":$license,
-    "summary":$summary,
-    "web-url":$web_url,
-    "git-url":$git_url,
-    "git-sha":$git_sha,
-    "git-ref":$git_ref,
-    "src-url":$src_url,
-    "src-sha":$src_sha,
-    "fix-url":$fix_url,
-    "fix-sha":$fix_sha,
-    "res-url":$res_url,
-    "res-sha":$res_sha,
-    "dep-pkg":$dep_pkg,
-    "dep-upp":$dep_upp,
-    "dep-pym":$dep_pym,
-    "dep-plm":$dep_plm,
-    "bsystem":$bsystem,
-    "binbstd":$binbstd,
-    "ppflags":$ppflags,
-    "ccflags":$ccflags,
-    "xxflags":$xxflags,
-    "ldflags":$ldflags,
-    "parallel":$parallel,
-    "signature":$signature,
-    "timestamp":$timestamp,
-}' | jq 'with_entries(select(.value != ""))'
-
-            ;;
-        receipt-path)
-            if is_package_installed "$1" ; then
-                printf '%s\n' "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml"
-            else
-                abort 1 "package [$1] is not installed."
-            fi
             ;;
         symlinked-files)
             if [ -f "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1" ] ; then
@@ -1990,6 +2004,14 @@ EOF
         installed-version)
             __load_receipt_of_the_given_package "$1"
             printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
+            ;;
+        dopatch)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DOPATCH_ACTIONS"
+            ;;
+        install)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS"
             ;;
         *)  __load_formula_of_the_given_package "$1"
             __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
@@ -3454,7 +3476,8 @@ __inspect_toolchain_config_file() {
 
     for KEY in cc cxx cpp as ar ranlib ld nm size strip strings objdump objcopy readelf addr2line ccflags xxflags ppflags ldflags
     do
-        unset VALUE; VALUE="$(yq ".$KEY" "$TOOLCHAIN_CONFIG_FILEPATH")"
+        VALUE=
+        VALUE="$(yq ".$KEY" "$TOOLCHAIN_CONFIG_FILEPATH")"
 
         if [ "$VALUE" != null ] ; then
             case $KEY in
@@ -5445,37 +5468,21 @@ $PACKAGE_DOPATCH_ACTIONS
     step "building"
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
-        fi
+        run cd "$PACKAGE_BSCRIPT_DIR"
     else
-            run cd "$PACKAGE_BCACHED_DIR"
+        run cd "$PACKAGE_BCACHED_DIR"
     fi
 
     if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
         run rm -rf "$PACKAGE_INSTALL_DIR"
     fi
 
-    if [ -n "$PACKAGE_INSTALL_ACTIONS" ] ; then
-        eval "
+    eval "
 dobuild() {
-$PACKAGE_INSTALL_ACTIONS
+$PACKAGE_DOBUILD_ACTIONS
 }"
 
-        dobuild "$1"
-    else
-        case $PACKAGE_BUILD_SYSTEM in
-            autogen)   configure ;;
-            autotools) configure ;;
-            configure) configure ;;
-            cmake*)    cmakew ;;
-            meson)     mesonw ;;
-            ninja)     ninjaw clean && ninjaw && ninjaw install ;;
-            gmake)     gmakew clean && gmakew && gmakew install ;;
-            cargo)     cargow install ;;
-            go)        gow ;;
-        esac
-    fi
+    dobuild "$1"
 
     #########################################################################################
 
@@ -6315,8 +6322,8 @@ EOF
     PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$1"
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/receipt.yml"
 
-    unset PACKAGE_RECEIPT_SIGNATURE
-    unset PACKAGE_RECEIPT_TIMESTAMP
+    PACKAGE_RECEIPT_SIGNATURE=
+    PACKAGE_RECEIPT_TIMESTAMP=
 
     PACKAGE_RECEIPT_SIGNATURE="$(yq .signature "$PACKAGE_RECEIPT_FILEPATH")"
     PACKAGE_RECEIPT_TIMESTAMP="$(yq .timestamp "$PACKAGE_RECEIPT_FILEPATH")"
@@ -6328,7 +6335,8 @@ EOF
 
     for KEY in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ppflags ccflags xxflags ldflags parallel exetype symlink
     do
-        unset VALUE; VALUE="$(yq ".$KEY" "$PACKAGE_RECEIPT_FILEPATH")"
+        VALUE=
+        VALUE="$(yq ".$KEY" "$PACKAGE_RECEIPT_FILEPATH")"
 
         if [ "$VALUE" != null ] ; then
             unset KEY_UPPERCASE_UNDERSCORE
@@ -7498,7 +7506,7 @@ main() {
     PPKG_CORE_DIR="$PPKG_HOME/core"
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
 
-    unset TIMESTAMP_UNIX; TIMESTAMP_UNIX="$(date +%s)"
+    TIMESTAMP_UNIX="$(date +%s)"
 
     #########################################################################################
 
@@ -7574,24 +7582,16 @@ main() {
 
     #########################################################################################
 
-    unset NATIVE_OS_KIND
-    unset NATIVE_OS_TYPE
-    unset NATIVE_OS_NAME
-    unset NATIVE_OS_VERS
-    unset NATIVE_OS_ARCH
-    unset NATIVE_OS_NCPU
-    unset NATIVE_OS_LIBC
-
-    NATIVE_OS_KIND=$(sysinfo kind)
-    NATIVE_OS_TYPE=$(sysinfo type)
-    NATIVE_OS_CODE=$(sysinfo code)
-    NATIVE_OS_NAME=$(sysinfo name)
-    NATIVE_OS_VERS=$(sysinfo vers)
-    NATIVE_OS_ARCH=$(sysinfo arch)
-    NATIVE_OS_NCPU=$(sysinfo ncpu)
-    NATIVE_OS_LIBC=$(sysinfo libc)
-    NATIVE_OS_EUID=$(id -u)
-    NATIVE_OS_EGID=$(id -g)
+    NATIVE_OS_KIND="$(sysinfo kind)"
+    NATIVE_OS_TYPE="$(sysinfo type)"
+    NATIVE_OS_CODE="$(sysinfo code)"
+    NATIVE_OS_NAME="$(sysinfo name)"
+    NATIVE_OS_VERS="$(sysinfo vers)"
+    NATIVE_OS_ARCH="$(sysinfo arch)"
+    NATIVE_OS_NCPU="$(sysinfo ncpu)"
+    NATIVE_OS_LIBC="$(sysinfo libc)"
+    NATIVE_OS_EUID="$(id -u)"
+    NATIVE_OS_EGID="$(id -g)"
 
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
@@ -7601,30 +7601,13 @@ main() {
 
     case $1 in
         sysinfo)
-            cat <<EOF
-sysinfo.ncpu: $NATIVE_OS_NCPU
-sysinfo.arch: $NATIVE_OS_ARCH
-sysinfo.kind: $NATIVE_OS_KIND
-sysinfo.type: $NATIVE_OS_TYPE
-sysinfo.name: $NATIVE_OS_NAME
-sysinfo.vers: $NATIVE_OS_VERS
-sysinfo.libc: $NATIVE_OS_LIBC
-sysinfo.euid: $NATIVE_OS_EUID
-sysinfo.egid: $NATIVE_OS_EGID
-EOF
+            sysinfo
             return 0
             ;;
         env)
+            sysinfo
+
             cat <<EOF
-sysinfo.ncpu: $NATIVE_OS_NCPU
-sysinfo.arch: $NATIVE_OS_ARCH
-sysinfo.kind: $NATIVE_OS_KIND
-sysinfo.type: $NATIVE_OS_TYPE
-sysinfo.name: $NATIVE_OS_NAME
-sysinfo.vers: $NATIVE_OS_VERS
-sysinfo.libc: $NATIVE_OS_LIBC
-sysinfo.euid: $NATIVE_OS_EUID
-sysinfo.egid: $NATIVE_OS_EGID
 
 ppkg.vers : $PPKG_VERSION
 ppkg.home : $PPKG_HOME
@@ -7643,7 +7626,6 @@ EOF
         is-symlinked) shift; is_package_symlinked "$@" ;;
         is-outdated)  shift; is_package__outdated "$@" ;;
 
-        formula-view) shift; __view_formula_of_the_given_package "$@" ;;
         formula-edit) shift; __edit_formula_of_the_given_package "$@" ;;
 
         update)            shift; __sync_available_formula_repositories "$@" ;;
@@ -7708,6 +7690,17 @@ EOF
             shift
             __show_information_of_the_given_package "$@"
             ;;
+
+        formula)
+            shift
+            __show_formula_of_the_given_package "$@"
+            ;;
+
+        receipt)
+            shift
+            __show_receipt_of_the_given_package "$@"
+            ;;
+
         gen-github-workflows)
             shift
             __gen_github_workflows "$@"

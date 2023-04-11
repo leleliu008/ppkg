@@ -87,30 +87,17 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     ```bash
     ppkg info curl
+    ppkg info curl --yaml
+    ppkg info curl --json
     ppkg info curl summary
     ppkg info curl version
+    ppkg info curl license
     ppkg info curl web-url
     ppkg info curl git-url
     ppkg info curl git-sha
     ppkg info curl git-ref
     ppkg info curl src-url
     ppkg info curl src-sha
-
-    ppkg info curl formula-path
-
-    ppkg info curl formula-json
-    ppkg info curl formula-yaml
-
-    ppkg info curl formula-json | jq .
-    ppkg info curl formula-yaml | yq .
-
-    ppkg info curl receipt-path
-
-    ppkg info curl receipt-json
-    ppkg info curl receipt-yaml
-
-    ppkg info curl receipt-json | jq .
-    ppkg info curl receipt-yaml | yq .
 
     ppkg info curl installed-dir
     ppkg info curl installed-files
@@ -122,6 +109,42 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg info curl installed-version
 
     ppkg info @all
+    ```
+
+* **show formula of the given package**
+
+    ```bash
+    ppkg formula curl
+    ppkg formula curl --yaml
+    ppkg formula curl --json
+    ppkg formula curl --path
+    ppkg formula curl summary
+    ppkg formula curl version
+    ppkg formula curl license
+    ppkg formula curl web-url
+    ppkg formula curl git-url
+    ppkg formula curl git-sha
+    ppkg formula curl git-ref
+    ppkg formula curl src-url
+    ppkg formula curl src-sha
+    ```
+
+* **show receipt of the given installed package**
+
+    ```bash
+    ppkg receipt curl
+    ppkg receipt curl --yaml
+    ppkg receipt curl --json
+    ppkg receipt curl --path
+    ppkg receipt curl summary
+    ppkg receipt curl version
+    ppkg receipt curl license
+    ppkg receipt curl web-url
+    ppkg receipt curl git-url
+    ppkg receipt curl git-sha
+    ppkg receipt curl git-ref
+    ppkg receipt curl src-url
+    ppkg receipt curl src-sha
     ```
 
 * **show packages that are depended by the given package**
@@ -192,22 +215,6 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg upgrade-self
     ppkg upgrade-self -v
     ```
-
-* **view the formula of the given package**
-
-    ```bash
-    ppkg formula-view curl
-    ppkg formula-view curl --no-color
-    ```
-
-* **edit the formula of the given package**
-
-    ```bash
-    ppkg formula-edit curl
-    ppkg formula-edit curl --editor=/usr/local/bin/vim
-    ```
-
-    **Note**: ppkg do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
 * **list all avaliable formula repositories**
 
