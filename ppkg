@@ -6960,8 +6960,8 @@ to_meson_array() {
 # {{{ ppkg setup
 
 __setup() {
-    if [ -d    "$PPKG_CORE_BIN_DIR" ] ; then
-        rm -rf "$PPKG_CORE_BIN_DIR"
+    if [ -d    "$PPKG_CORE_DIR" ] ; then
+        rm -rf "$PPKG_CORE_DIR"
     fi
 
     install -d "$PPKG_CORE_BIN_DIR"
