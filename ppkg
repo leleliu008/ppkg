@@ -1086,7 +1086,12 @@ filetype_from_url() {
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
-    PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
+    if [ -z "$PACKAGE_BINBSTD" ] ; then
+        PACKAGE_BINBSTD=no
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=no
+    else
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
+    fi
 
     if [ -z "$PACKAGE_PARALLEL" ] ; then
         PACKAGE_PARALLEL=yes
@@ -1450,7 +1455,6 @@ filetype_from_url() {
 
     [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$1" ]                    || return 10
     [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg" ]              || return 11
-    [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/buildon.yml" ]  || return 12
     [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/manifest.txt" ] || return 13
     [ -f "$PPKG_PACKAGE_INSTALLED_ROOT/$1/.ppkg/receipt.yml" ]  || return 14
 }
@@ -1852,36 +1856,12 @@ ldflags: $PACKAGE_LDFLAGS
 parallel: $PACKAGE_BUILD_IN_PARALLEL
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
-return 0
-    yq  --null-input "
-        .pkgname = \"$PACKAGE_NAME\" |
-        .version = \"$PACKAGE_VERSION\" |
-        .summary = \"$PACKAGE_SUMMARY\" |
-        .license = \"$PACKAGE_LICENSE\" |
-        .web_url = \"$PACKAGE_WEB_URL\" |
-        .git_url = \"$PACKAGE_GIT_URL\" |
-        .git_sha = \"$PACKAGE_GIT_SHA\" |
-        .git_ref = \"$PACKAGE_GIT_REF\" |
-        .src_url = \"$PACKAGE_SRC_URL\" |
-        .src_sha = \"$PACKAGE_SRC_SHA\" |
-        .fix_url = \"$PACKAGE_FIX_URL\" |
-        .fix_sha = \"$PACKAGE_FIX_SHA\" |
-        .res_url = \"$PACKAGE_RES_URL\" |
-        .res_sha = \"$PACKAGE_RES_SHA\" |
-        .dep_pkg = \"$PACKAGE_DEP_PKG\" |
-        .dep_upp = \"$PACKAGE_DEP_UPP\" |
-        .dep_pym = \"$PACKAGE_DEP_PYM\" |
-        .dep_plm = \"$PACKAGE_DEP_PLM\" |
-        .dopatch = \"$PACKAGE_DOPATCH_ACTIONS\" |
-        .install = \"$PACKAGE_DOBUILD_ACTIONS\" |
-        .bsystem = \"$PACKAGE_BSYSTEM\" |
-        .binbstd = \"$PACKAGE_BINBSTD\" |
-        .ppflags = \"$PACKAGE_PPFLAGS\" |
-        .ccflags = \"$PACKAGE_CCFLAGS\" |
-        .xxflags = \"$PACKAGE_XXFLAGS\" |
-        .ldflags = \"$PACKAGE_LDFLAGS\" |
-        .parallel = \"$PACKAGE_BUILD_IN_PARALLEL\" |
-        with_entries(select(.value != ""))"
+
+    if is_package_installed "$1" ; then
+        yq eval --null-input '.installed = "yes"'
+    else
+        yq eval --null-input '.installed = "no"'
+    fi
 }
 
 # __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
@@ -2144,13 +2124,12 @@ mark_is_package_installed_or_not() {
             if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/bin" ] ; then
                 for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_NAME/bin" -type f)
                 do
-                    unset FILE_MAGIC
+                    FILEMAGIC=
+                    FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
 
-                    FILE_MAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
-
-                    if [ "$FILE_MAGIC" = '7F454C46' ] ; then
+                    if [ "$FILEMAGIC" = '7F454C46' ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                        unset PT_INTERP
+                        PT_INTERP=
                         PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                         if [ -n "$PT_INTERP" ] ; then
@@ -4217,423 +4196,431 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+
+    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP pkg-config"
+
     if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
+        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL bear"
     fi
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
+        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL ccache"
     fi
 
-    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '} pkg-config patchelf tree"
+    if [ "$NATIVE_OS_KIND" != darwin ] ; then
+        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL patchelf"
+    fi
+
+    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL tree"
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_UPP" ] && {
-        if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
-            step "install needed packages via brew"
+    if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
+        step "install needed packages via brew"
 
-            BREW="$(command -v brew)"
+        BREW="$(command -v brew)" || abort 1 "command not found: brew"
 
-            run "$BREW" update
-            run "$BREW" --env
+        run "$BREW" update
+        run "$BREW" --env
 
-            for item in $PACKAGE_DEP_UPP
-            do
-                unset BREW_PACKAGE_NAME; BREW_PACKAGE_NAME=$(package_name_transform_from_uppm_to_brew "$item")
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            BREW_PACKAGE_NAME=
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$item")"
 
-                run "$BREW" install "$BREW_PACKAGE_NAME"
+            run "$BREW" install "$BREW_PACKAGE_NAME"
 
-                unset BREW_PACKAGE_INSTALLED_DIR; BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
+            BREW_PACKAGE_INSTALLED_DIR=
+            BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
 
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
+            fi
+        done
+    elif [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
+        step "install needed packages via uppm"
+
+        UPPM="$PPKG_CORE_BIN_DIR/uppm"
+
+        run "$UPPM" env
+        run "$UPPM" update
+
+        # these packages are not relocatable, we should build them from source locally.
+        PACKAGE_USE_PERL=no
+        PACKAGE_USE_PYTHON3=no
+        PACKAGE_USE_LIBTOOL=no
+        PACKAGE_USE_AUTOMAKE=no
+        PACKAGE_USE_AUTOCONF=no
+
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            case $item in
+                perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
+                python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_PERL=yes  ;;
+                libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_LIBTOOL=yes  ;;
+                autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_AUTOCONF=yes ;;
+                automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
+            esac
+        done
+
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            run "$UPPM" install "$item"
+
+            UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
+
+        (
+            PPFLAGS="$PPFLAGS -I$PPKG_CORE_DIR/include"
+            LDFLAGS="$LDFLAGS -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
+
+            export CPPFLAGS="$PPFLAGS"
+            export  LDFLAGS="$LDFLAGS"
+
+            export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
+
+            unset MACOSX_DEPLOYMENT_TARGET
+
+            GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
+            CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+
+            [ "$PACKAGE_USE_PERL" = yes ] && {
+                step "install perl"
+
+                SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
+                SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.perl"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "perl already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./Configure "-Dprefix=$PPKG_CORE_DIR" "-Dman1dir=$PPKG_CORE_DIR/share/man/man1" "-Dman3dir=$PPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
                 fi
+            }
 
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
+                step "install libtool"
+
+                SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+                SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libtool"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "libtool already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libtool"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR" --enable-ltdl-install
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
                 fi
+            }
 
-                if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
-                    PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
+            [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
+                step "install autoconf"
+
+                SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+                SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.autoconf"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "autoconf already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/autoconf"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR"
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
                 fi
-            done
-        elif [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
-            step "install needed packages via uppm"
+            }
 
-            UPPM="$PPKG_CORE_BIN_DIR/uppm"
+            [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
+                step "install automake"
 
-            run "$UPPM" env
-            run "$UPPM" update
+                SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+                SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
 
-            # these packages are not relocatable, we should build them from source locally.
-            PACKAGE_USE_PERL=no
-            PACKAGE_USE_PYTHON3=no
-            PACKAGE_USE_LIBTOOL=no
-            PACKAGE_USE_AUTOMAKE=no
-            PACKAGE_USE_AUTOCONF=no
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.automake"
 
-            PACKAGE_DEP_UPP2=
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "automake already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
 
-            for item in $PACKAGE_DEP_UPP
-            do
-                case $item in
-                    perl)     PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 gmake"       ; PACKAGE_USE_PERL=yes ;;
-                    python3)  PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 gmake cmake" ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_PERL=yes  ;;
-                    libtool)  PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 gmake gm4"   ; PACKAGE_USE_LIBTOOL=yes  ;;
-                    autoconf) PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 gmake"       ; PACKAGE_USE_AUTOCONF=yes ;;
-                    automake) PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 gmake"       ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
-                    *)        PACKAGE_DEP_UPP2="$PACKAGE_DEP_UPP2 $item"
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/automake"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR"
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                fi
+            }
+
+            [ "$PACKAGE_USE_PYTHON3" = yes ] && {
+                case $NATIVE_OS_KIND in
+                    openbsd)
+                        step "install python3 via pkg_add"
+                        run sudo pkg_add python3
+                        ;;
+                    netbsd)
+                        step "install python3 via pkgin"
+                        run sudo pkgin -y install python3
+                        ;;
+                    freebsd)
+                        step "install python3 via pkg"
+                        run sudo pkg install -y python3
+                        ;;
+                    *)
+                        step "install zlib"
+
+                        ZLIB_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
+
+                        SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
+                        SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.zlib"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "zlib already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/zlib"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+
+                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -S . -B build.d
+                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+                            run "$CMAKE" --install build.d
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install sqlite3"
+
+                        SQLITE_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/sqlite.yml"
+
+                        SRC_URL="$(yq .src-url "$SQLITE_FORMULA_FILEPATH")"
+                        SRC_SHA="$(yq .src-sha "$SQLITE_FORMULA_FILEPATH")"
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.sqlite"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "sqlite3 already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/sqlite"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install libffi"
+
+                        SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+                        SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libffi"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "libffi already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libffi"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install expat"
+
+                        SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+                        SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.expat"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "expat already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/expat"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF -S . -B build.d
+                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+                            run "$CMAKE" --install build.d
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install openssl"
+
+                        SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+                        SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.openssl"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "openssl already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/openssl"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            # https://github.com/openssl/openssl/issues/19232
+                            if [ "$NATIVE_OS_KIND" = openbsd ] ; then
+                                run sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl
+                            fi
+
+                            run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$PPKG_CORE_DIR --libdir=$PPKG_CORE_DIR/lib --openssldir=$PPKG_CORE_DIR/etc/ssl
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install python3"
+
+                        SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+                        SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.python3"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "python3 already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/python3"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            unset PYTHONHOME
+                            unset PYTHONPATH
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --with-system-expat --with-system-ffi --with-openssl=$PPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
                 esac
-            done
+            }
 
-            for item in $PACKAGE_DEP_UPP2
-            do
-                run "$UPPM" install "$item"
+            :
+        )
+    fi
 
-                UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
-
-                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-                fi
-
-                if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-                fi
-            done
-
-            (
-                PPFLAGS="$PPFLAGS -I$PPKG_CORE_DIR/include"
-                LDFLAGS="$LDFLAGS -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
-
-                export CPPFLAGS="$PPFLAGS"
-                export  LDFLAGS="$LDFLAGS"
-
-                export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
-
-                unset MACOSX_DEPLOYMENT_TARGET
-
-                GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
-                CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
-
-                [ "$PACKAGE_USE_PERL" = yes ] && {
-                    step "install perl"
-
-                    SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
-                    SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
-
-                    RECEIPT_FILEPATH="$PPKG_CORE_DIR/.perl"
-
-                    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                        note "perl already has been built, skipped."
-                    else
-                        wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                        SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl"
-
-                        run install -d "$SRC_DIR"
-                        run cd         "$SRC_DIR"
-
-                        run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                        run ./Configure "-Dprefix=$PPKG_CORE_DIR" "-Dman1dir=$PPKG_CORE_DIR/share/man/man1" "-Dman3dir=$PPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
-                        run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                        run "$GMAKE" install
-
-                        printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                    fi
-                }
-
-                [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
-                    step "install libtool"
-
-                    SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-                    SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-
-                    RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libtool"
-
-                    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                        note "libtool already has been built, skipped."
-                    else
-                        wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                        SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libtool"
-
-                        run install -d "$SRC_DIR"
-                        run cd         "$SRC_DIR"
-
-                        run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                        run ./configure "--prefix=$PPKG_CORE_DIR" --enable-ltdl-install
-                        run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                        run "$GMAKE" install
-
-                        printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                    fi
-                }
-
-                [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
-                    step "install autoconf"
-
-                    SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-                    SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-
-                    RECEIPT_FILEPATH="$PPKG_CORE_DIR/.autoconf"
-
-                    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                        note "autoconf already has been built, skipped."
-                    else
-                        wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                        SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/autoconf"
-
-                        run install -d "$SRC_DIR"
-                        run cd         "$SRC_DIR"
-
-                        run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                        run ./configure "--prefix=$PPKG_CORE_DIR"
-                        run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                        run "$GMAKE" install
-
-                        printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                    fi
-                }
-
-                [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
-                    step "install automake"
-
-                    SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-                    SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-
-                    RECEIPT_FILEPATH="$PPKG_CORE_DIR/.automake"
-
-                    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                        note "automake already has been built, skipped."
-                    else
-                        wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                        SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/automake"
-
-                        run install -d "$SRC_DIR"
-                        run cd         "$SRC_DIR"
-
-                        run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                        run ./configure "--prefix=$PPKG_CORE_DIR"
-                        run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                        run "$GMAKE" install
-
-                        printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                    fi
-                }
-
-                [ "$PACKAGE_USE_PYTHON3" = yes ] && {
-                    case $NATIVE_OS_KIND in
-                        openbsd)
-                            step "install python3 via pkg_add"
-                            run sudo pkg_add python3
-                            ;;
-                        netbsd)
-                            step "install python3 via pkgin"
-                            run sudo pkgin -y install python3
-                            ;;
-                        freebsd)
-                            step "install python3 via pkg"
-                            run sudo pkg install -y python3
-                            ;;
-                        *)
-                            step "install zlib"
-
-                            ZLIB_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
-
-                            SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
-                            SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.zlib"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "zlib already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/zlib"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
-
-                                run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -S . -B build.d
-                                run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
-                                run "$CMAKE" --install build.d
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                            ################################################################################################
-
-                            step "install sqlite3"
-
-                            SQLITE_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/sqlite.yml"
-
-                            SRC_URL="$(yq .src-url "$SQLITE_FORMULA_FILEPATH")"
-                            SRC_SHA="$(yq .src-sha "$SQLITE_FORMULA_FILEPATH")"
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.sqlite"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "sqlite3 already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/sqlite"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
-                                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                                run "$GMAKE" install
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                            ################################################################################################
-
-                            step "install libffi"
-
-                            SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
-                            SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libffi"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "libffi already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libffi"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
-                                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                                run "$GMAKE" install
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                            ################################################################################################
-
-                            step "install expat"
-
-                            SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-                            SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.expat"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "expat already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/expat"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF -S . -B build.d
-                                run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
-                                run "$CMAKE" --install build.d
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                            ################################################################################################
-
-                            step "install openssl"
-
-                            SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-                            SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.openssl"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "openssl already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/openssl"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                # https://github.com/openssl/openssl/issues/19232
-                                if [ "$NATIVE_OS_KIND" = openbsd ] ; then
-                                    run sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl
-                                fi
-
-                                run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$PPKG_CORE_DIR --libdir=$PPKG_CORE_DIR/lib --openssldir=$PPKG_CORE_DIR/etc/ssl
-                                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                                run "$GMAKE" install
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                            ################################################################################################
-
-                            step "install python3"
-
-                            SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-                            SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-
-                            RECEIPT_FILEPATH="$PPKG_CORE_DIR/.python3"
-
-                            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                                note "python3 already has been built, skipped."
-                            else
-                                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
-
-                                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/python3"
-
-                                run install -d "$SRC_DIR"
-                                run cd         "$SRC_DIR"
-
-                                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                                unset PYTHONHOME
-                                unset PYTHONPATH
-
-                                run ./configure "--prefix=$PPKG_CORE_DIR" --with-system-expat --with-system-ffi --with-openssl=$PPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
-                                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                                run "$GMAKE" install
-
-                                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                            fi
-
-                    esac
-                }
-
-                :
-            )
-        fi
-    }
+    PATH="$(printf '%s\n' "$PATH" | sed "s|:$PPKG_CORE_BIN_DIR||g")"
+    PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
     #########################################################################################
 
@@ -5727,19 +5714,6 @@ $PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
-    step "generate buildon.yml"
-    cat > "$PACKAGE_METAINF_DIR/buildon.yml" <<EOF
-os-kind: $NATIVE_OS_KIND
-os-type: $NATIVE_OS_TYPE
-os-name: $NATIVE_OS_NAME
-os-arch: $NATIVE_OS_ARCH
-os-vers: $NATIVE_OS_VERS
-os-ncpu: $NATIVE_OS_NCPU
-os-libc: $NATIVE_OS_LIBC
-os-euid: $NATIVE_OS_EUID
-os-egid: $NATIVE_OS_EGID
-EOF
-
     step "generate manifest.txt"
     __generate_installed_manifest_of_the_given_package "$1"
 
@@ -6212,6 +6186,65 @@ install_pc_file() {
     unset IFS
 }
 
+__check_if_build_for_specific_linux_libc() {
+    BUILD_FOR_SPECIFIC_LIBC=no
+
+    if [ "$NATIVE_OS_KIND" != linux ] ; then
+        return 0
+    fi
+
+    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+
+    PACKAGE_INSTALLED_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib"
+
+    if [ -d "$PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
+        for FILEPATH in $(find "$PACKAGE_INSTALLED_LIBRARY_DIR" -type f)
+        do
+            case $FILEPATH in
+                */lib*.a)   BUILD_FOR_SPECIFIC_LIBC=yes; return 0 ;;
+                */lib*.so*) BUILD_FOR_SPECIFIC_LIBC=yes; return 0 ;;
+                */*.o)      BUILD_FOR_SPECIFIC_LIBC=yes; return 0 ;;
+            esac
+        done
+    fi
+
+    for item in bin sbin
+    do
+        PACKAGE_INSTALLED_BINARY_DIR="$PACKAGE_INSTALLED_DIR/$item"
+
+        if [ -d "$PACKAGE_INSTALLED_BINARY_DIR" ] ; then
+            for FILEPATH in $(find "$PACKAGE_INSTALLED_BINARY_DIR" -type f)
+            do
+                FILEMAGIC=
+                FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
+
+                if [ "$FILEMAGIC" = '7F454C46' ] ; then
+                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                    PT_INTERP=
+                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                    if [ -n "$PT_INTERP" ] ; then
+                        BUILD_FOR_SPECIFIC_LIBC=yes
+                        return 0
+                    fi
+                fi
+            done
+        fi
+    done
+
+    for FILEPATH in $(find "$PACKAGE_INSTALLED_DIR" -type f -a -name "*.a")
+    do
+        BUILD_FOR_SPECIFIC_LIBC=yes
+        return 0
+    done
+
+    for FILEPATH in $(find "$PACKAGE_INSTALLED_DIR" -type f -a -name "*.so")
+    do
+        BUILD_FOR_SPECIFIC_LIBC=yes
+        return 0
+    done
+}
+
 # }}}
 ##############################################################################
 # {{{ operation of receipt
@@ -6219,6 +6252,8 @@ install_pc_file() {
 # __generate_receipt_of_the_given_package <PACKAGE-NAME>
   __generate_receipt_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+
+    __check_if_build_for_specific_linux_libc
 
     run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
 
@@ -6236,6 +6271,10 @@ install_pc_file() {
 
     grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || {
         sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
+    }
+
+    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || {
+        sed_in_place "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || {
@@ -6262,16 +6301,31 @@ install_pc_file() {
 
     case $NATIVE_OS_KIND in
         darwin)
-            printf '\n%s\n' "built-for: $NATIVE_OS_TYPE/$NATIVE_OS_ARCH/$MACOSX_DEPLOYMENT_TARGET" >> "$PACKAGE_RECEIPT_FILEPATH"
+            TARGET_TRIPLE="$NATIVE_OS_ARCH-$NATIVE_OS_TYPE$MACOSX_DEPLOYMENT_TARGET-apple"
             ;;
         linux)
-            printf '\n%s\n' "built-for: $NATIVE_OS_TYPE/$NATIVE_OS_ARCH" >> "$PACKAGE_RECEIPT_FILEPATH"
+            if [ "$BUILD_FOR_SPECIFIC_LIBC" =  yes ] ; then
+                TARGET_TRIPLE="$NATIVE_OS_ARCH-$NATIVE_OS_TYPE-$NATIVE_OS_LIBC"
+            else
+                TARGET_TRIPLE="$NATIVE_OS_ARCH-$NATIVE_OS_TYPE-unknown"
+            fi
             ;;
-        *)  printf '\n%s\n' "built-for: $NATIVE_OS_TYPE/$NATIVE_OS_ARCH/$NATIVE_OS_VERS" >> "$PACKAGE_RECEIPT_FILEPATH"
+        *)  TARGET_TRIPLE="$NATIVE_OS_ARCH-$NATIVE_OS_TYPE-unknown"
     esac
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
-signature: $PPKG_VERSION
+build-on:
+    os-arch: $NATIVE_OS_ARCH
+    os-kind: $NATIVE_OS_KIND
+    os-type: $NATIVE_OS_TYPE
+    os-libc: $NATIVE_OS_LIBC
+    os-name: $NATIVE_OS_NAME
+    os-vers: $NATIVE_OS_VERS
+    os-ncpu: $NATIVE_OS_NCPU
+    os-euid: $NATIVE_OS_EUID
+    os-egid: $NATIVE_OS_EGID
+build-for: $TARGET_TRIPLE
+signature: ppkg-$PPKG_VERSION
 timestamp: $TIMESTAMP_UNIX
 EOF
 }
@@ -6757,7 +6811,7 @@ EOF
 
     if [ "$LOG_LEVEL" -gt 0 ] ; then
         if command -v bat > /dev/null ; then
-            run bat --language=cmake --paging=never "$CMAKE_TOOLCHAIN_FILE"
+            run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
         else
             run cat "$CMAKE_TOOLCHAIN_FILE"
         fi
@@ -7046,7 +7100,7 @@ __setup_macos() {
     do
         run "$BREW" install "$item"
 
-        unset BREW_PACKAGE_INSTALLED_DIR
+        BREW_PACKAGE_INSTALLED_DIR=
         BREW_PACKAGE_INSTALLED_DIR="$(brew --prefix "$item")"
 
         if [ -d "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
@@ -7282,7 +7336,7 @@ __setup_uppm() {
     do
         run "$UPPM" install "$item"
 
-        unset UPPM_PACKAGE_INSTALLED_DIR
+        UPPM_PACKAGE_INSTALLED_DIR=
         UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
