@@ -4274,6 +4274,10 @@ $DOT_CONTENT
 
         for item in $PACKAGE_DEP_UPP_ALL
         do
+            case $item in
+                perl|python3|libtool|autoconf|automake) continue
+            esac
+
             run "$UPPM" install "$item"
 
             UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
