@@ -126,8 +126,10 @@ jobs:
       - run: ./ppkg pack libzip -t tar.bz2
       - run: ./ppkg pack libzip -t zip
 
+
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+
 
       - run: ./ppkg ls-available
       - run: ./ppkg ls-installed
