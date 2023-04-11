@@ -7380,11 +7380,20 @@ ${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ppkg search <REGULAR-EXPRESS-PARTTEN>${COLOR_OFF}
     search all available packages whose name matches the given regular express partten
  
-${COLOR_GREEN}ppkg formula-view <PACKAGE-NAME> --no-color${COLOR_OFF}
-    view the formula of the given package.
+${COLOR_GREEN}ppkg info <PACKAGE-NAME> [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show information of the given available package.
+
+${COLOR_GREEN}ppkg info @all [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show information of all the available packages.
+
+${COLOR_GREEN}ppkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show formula of the given available package.
+
+${COLOR_GREEN}ppkg receipt <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show receipt of the given installed package.
 
 ${COLOR_GREEN}ppkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
-    edit the formula of the given package.
+    edit formula of the given package.
 
 ${COLOR_GREEN}ppkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
     create a new empty formula repository.
@@ -7425,12 +7434,6 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-NAME> [--keep-packing-dir] [-t <OUTPUT-TYPE>] [
 
 ${COLOR_GREEN}ppkg logs <PACKAGE-NAME>${COLOR_OFF}
     show logs of the given installed package.
-
-${COLOR_GREEN}ppkg info <PACKAGE-NAME> [KEY]${COLOR_OFF}
-    show information of the given package.
-
-${COLOR_GREEN}ppkg info @all [KEY]${COLOR_OFF}
-    show information of all the available packages.
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download resources of the given package to the local cache.

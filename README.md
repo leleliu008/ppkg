@@ -89,9 +89,9 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg info curl
     ppkg info curl --yaml
     ppkg info curl --json
-    ppkg info curl summary
     ppkg info curl version
     ppkg info curl license
+    ppkg info curl summary
     ppkg info curl web-url
     ppkg info curl git-url
     ppkg info curl git-sha
@@ -101,12 +101,12 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 
     ppkg info curl installed-dir
     ppkg info curl installed-files
+    ppkg info curl installed-version
     ppkg info curl installed-timestamp-unix
     ppkg info curl installed-timestamp-iso-8601
     ppkg info curl installed-timestamp-rfc-3339
     ppkg info curl installed-timestamp-iso-8601-utc
     ppkg info curl installed-timestamp-rfc-3339-utc
-    ppkg info curl installed-version
 
     ppkg info @all
     ```
@@ -118,9 +118,9 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg formula curl --yaml
     ppkg formula curl --json
     ppkg formula curl --path
-    ppkg formula curl summary
     ppkg formula curl version
     ppkg formula curl license
+    ppkg formula curl summary
     ppkg formula curl web-url
     ppkg formula curl git-url
     ppkg formula curl git-sha
@@ -136,9 +136,9 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg receipt curl --yaml
     ppkg receipt curl --json
     ppkg receipt curl --path
-    ppkg receipt curl summary
     ppkg receipt curl version
     ppkg receipt curl license
+    ppkg receipt curl summary
     ppkg receipt curl web-url
     ppkg receipt curl git-url
     ppkg receipt curl git-sha
