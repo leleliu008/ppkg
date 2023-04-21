@@ -6323,6 +6323,7 @@ build-on:
     os-kind: $NATIVE_OS_KIND
     os-type: $NATIVE_OS_TYPE
     os-libc: $NATIVE_OS_LIBC
+    os-code: $NATIVE_OS_CODE
     os-name: $NATIVE_OS_NAME
     os-vers: $NATIVE_OS_VERS
     os-ncpu: $NATIVE_OS_NCPU
