@@ -7668,15 +7668,17 @@ main() {
             return 0
             ;;
         env)
-            sysinfo
-
             cat <<EOF
-
 ppkg.vers : $PPKG_VERSION
 ppkg.home : $PPKG_HOME
 ppkg.path : $PPKG
 ppkg.link : https://github.com/leleliu008/ppkg
 EOF
+            if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
+                printf '\n'
+                uppm env | grep '^uppm\.'
+            fi
+
             return 0
             ;;
         ls-available) shift; __list_available_packages ;;
