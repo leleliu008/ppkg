@@ -46,13 +46,13 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg --version
     ```
 
-* **show your system's information**
+* **show basic information about your current running operation system**
 
     ```bash
     ppkg sysinfo
     ```
 
-* **show your system's information and other information**
+* **show basic information about this software**
 
     ```bash
     ppkg env
@@ -76,7 +76,7 @@ all relevant dirs and files are located in `~/.ppkg` directory.
     ppkg update
     ```
 
-* **search all available packages whose name matches the given regular express partten**
+* **search all available packages whose name matches the given regular expression partten**
 
     ```bash
     ppkg search curl

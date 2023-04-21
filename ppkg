@@ -6913,9 +6913,9 @@ mesonw() {
         static|shared|both) MESON_BUILD_DEFAULT_LIBRARY="$INSTALL_LIB"
     esac
 
-        MESON_CROSS_FILE="$PACKAGE_BCACHED_DIR/cross-file"
+    MESON_NATIVE_FILE="$PACKAGE_BCACHED_DIR/native-file.ini"
 
-    cat > "$MESON_CROSS_FILE" <<EOF
+    cat > "$MESON_NATIVE_FILE" <<EOF
 [binaries]
 c = '$CC'
 cpp = '$CXX'
@@ -6931,10 +6931,10 @@ EOF
 
     run "$MESON" setup \
         --prefix="$PACKAGE_INSTALL_DIR" \
-        --buildtype=release \
+        --buildtype="$BUILD_TYPE" \
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
-        --build.pkg-config-path="$PKG_CONFIG_PATH" \
+        --native-file="$MESON_NATIVE_FILE" \
         -Ddefault_library="$MESON_BUILD_DEFAULT_LIBRARY" \
         -Dlibdir=lib \
         "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
@@ -6943,16 +6943,18 @@ EOF
 }
 
 to_meson_array() {
-    RESULT="[''"
+    RESULT=
 
     for item in "$@"
     do
-        RESULT="$RESULT, '$item'"
+        if [ -z "$RESULT" ] ; then
+            RESULT="'$item'"
+        else
+            RESULT="$RESULT, '$item'"
+        fi
     done
 
-    RESULT="$RESULT]"
-
-    printf '%s\n' "$RESULT"
+    printf '[%s]\n' "$RESULT"
 }
 
 # }}}
@@ -7415,16 +7417,16 @@ ${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
 ${COLOR_GREEN}ppkg update${COLOR_OFF}
-    update all available formula repositories.
+    update all the available formula repositories.
 
 ${COLOR_GREEN}ppkg ls-available${COLOR_OFF}
-    list all available packages.
+    list all the available packages.
 
 ${COLOR_GREEN}ppkg ls-installed${COLOR_OFF}
-    list all installed packages.
+    list all the installed packages.
 
 ${COLOR_GREEN}ppkg ls-outdated${COLOR_OFF}
-    list all outdated  packages.
+    list all the outdated  packages.
 
 ${COLOR_GREEN}ppkg is-available <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is available
@@ -7436,7 +7438,7 @@ ${COLOR_GREEN}ppkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is outdated
 
 ${COLOR_GREEN}ppkg search <REGULAR-EXPRESS-PARTTEN>${COLOR_OFF}
-    search all available packages whose name matches the given regular express partten
+    search all available packages whose name matches the given regular expression partten
  
 ${COLOR_GREEN}ppkg info <PACKAGE-NAME> [--yaml] [--json] [<KEY>]${COLOR_OFF}
     show information of the given available package.
