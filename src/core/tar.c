@@ -1,12 +1,14 @@
 #include <string.h>
 #include <locale.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
 #include "tar.h"
 
 int tar_list(const char * inputFilePath, int flags) {
-	if (inputFilePath != NULL && strcmp(inputFilePath, "-") == 0) {
+	if ((inputFilePath != NULL) && (strcmp(inputFilePath, "-") == 0)) {
 		inputFilePath = NULL;
     }
 
@@ -20,28 +22,28 @@ int tar_list(const char * inputFilePath, int flags) {
 
     struct archive_entry *entry = NULL;
 
-    int resultCode = 0;
+    int ret = 0;
 
-	if ((resultCode = archive_read_open_filename(ar, inputFilePath, 10240))) {
-        goto clean;
+	if ((ret = archive_read_open_filename(ar, inputFilePath, 10240))) {
+        goto finalize;
     }
 
 	for (;;) {
-		resultCode = archive_read_next_header(ar, &entry);
+		ret = archive_read_next_header(ar, &entry);
 
-		if (resultCode == ARCHIVE_EOF) {
+		if (ret == ARCHIVE_EOF) {
 			break;
         }
 
-		if (resultCode == ARCHIVE_OK) {
+		if (ret == ARCHIVE_OK) {
 		    printf("%s\n", archive_entry_pathname(entry));
         } else {
-            goto clean;
+            goto finalize;
         }
 	}
 
-clean:
-    if (resultCode != ARCHIVE_OK) {
+finalize:
+    if (ret != ARCHIVE_OK) {
         fprintf(stdout, "%s\n", archive_error_string(ar));
     }
 
@@ -51,11 +53,11 @@ clean:
 	archive_write_close(aw);
   	archive_write_free(aw);
 
-    return resultCode;
+    return ret;
 }
 
 int tar_extract(const char * outputDir, const char * inputFilePath, int flags, bool verbose, size_t stripComponentsNumber) {
-    if (inputFilePath != NULL && strcmp(inputFilePath, "-") == 0) {
+    if ((inputFilePath != NULL) && (strcmp(inputFilePath, "-") == 0)) {
 		inputFilePath = NULL;
     }
 
@@ -72,39 +74,39 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
 
 	struct archive_entry *entry = NULL;
 
-	int resultCode = 0;
+	int ret = 0;
 
-	if ((resultCode = archive_read_open_filename(ar, inputFilePath, 10240))) {
-        goto clean;
+	if ((ret = archive_read_open_filename(ar, inputFilePath, 10240))) {
+        goto finalize;
     }
 
 	for (;;) {
-		resultCode = archive_read_next_header(ar, &entry);
+		ret = archive_read_next_header(ar, &entry);
 
-		if (resultCode == ARCHIVE_EOF) {
-            resultCode =  ARCHIVE_OK;
+		if (ret == ARCHIVE_EOF) {
+            ret =  ARCHIVE_OK;
 			break;
         }
 
-		if (resultCode != ARCHIVE_OK) {
-            goto clean;
+		if (ret != ARCHIVE_OK) {
+            goto finalize;
         }
 
         ////////////////////////////////////////////////////////////////////////////////////
 
         const char * entry_pathname = archive_entry_pathname(entry);
 
-        if (stripComponentsNumber > 0) {
+        if (stripComponentsNumber > 0U) {
             size_t entry_pathname_length = strlen(entry_pathname);
 
             for (size_t i = 0; i < entry_pathname_length; i++) {
                 if (entry_pathname[i] == '/') {
-                    entry_pathname = entry_pathname + i + 1;
+                    entry_pathname = entry_pathname + i + 1U;
                     break;
                 }
             }
 
-            if (strcmp(entry_pathname, "") == 0) {
+            if (entry_pathname[0] == '\0') {
                 continue;
             }
         }
@@ -113,10 +115,9 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
 			printf("x %s\n", entry_pathname);
         }
 
-        if ((outputDir != NULL) && (strcmp(outputDir, "") != 0)) {
-            size_t outputFilePathLength = strlen(outputDir) + strlen(entry_pathname) + 2;
+        if ((outputDir != NULL) && (outputDir[0] != '\0')) {
+            size_t outputFilePathLength = strlen(outputDir) + strlen(entry_pathname) + 2U;
             char   outputFilePath[outputFilePathLength];
-            memset(outputFilePath, 0, outputFilePathLength);
             snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, entry_pathname);
 
             archive_entry_set_pathname(entry, outputFilePath);
@@ -129,19 +130,18 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
         const char * hardlinkname = archive_entry_hardlink(entry);
 
         if (hardlinkname != NULL) {
-            if (stripComponentsNumber > 0) {
+            if (stripComponentsNumber > 0U) {
                 size_t hardlinkname_length = strlen(hardlinkname);
                 for (size_t i = 0; i < hardlinkname_length; i++) {
                     if (hardlinkname[i] == '/') {
-                        hardlinkname = hardlinkname + i + 1;
+                        hardlinkname = hardlinkname + i + 1U;
                         break;
                     }
                 }
 
-                if ((outputDir != NULL) && (strcmp(outputDir, "") != 0)) {
-                    size_t outputFilePathLength = strlen(outputDir) + strlen(hardlinkname) + 2;
+                if ((outputDir != NULL) && (outputDir[0] != '\0')) {
+                    size_t outputFilePathLength = strlen(outputDir) + strlen(hardlinkname) + 2U;
                     char   outputFilePath[outputFilePathLength];
-                    memset(outputFilePath, 0, outputFilePathLength);
                     snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, hardlinkname);
 
                     archive_entry_set_hardlink_utf8(entry, outputFilePath);
@@ -153,10 +153,10 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
 
         ////////////////////////////////////////////////////////////////////////////////////
 
-        resultCode = archive_write_header(aw, entry);
+        ret = archive_write_header(aw, entry);
 
-        if (resultCode != ARCHIVE_OK) {
-            goto clean;
+        if (ret != ARCHIVE_OK) {
+            goto finalize;
         }
 
         const void * dataBuff;
@@ -168,32 +168,32 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
 #endif
 
         for (;;) {
-            resultCode = archive_read_data_block(ar, &dataBuff, &dataSize, &offset);
+            ret = archive_read_data_block(ar, &dataBuff, &dataSize, &offset);
 
-            if (resultCode == ARCHIVE_EOF) {
+            if (ret == ARCHIVE_EOF) {
                 break;
             }
 
-            if (resultCode != ARCHIVE_OK) {
-                goto clean;
+            if (ret != ARCHIVE_OK) {
+                goto finalize;
             }
 
-            resultCode = archive_write_data_block(aw, dataBuff, dataSize, offset);
+            ret = archive_write_data_block(aw, dataBuff, dataSize, offset);
 
-            if (resultCode != ARCHIVE_OK) {
-                goto clean;
+            if (ret != ARCHIVE_OK) {
+                goto finalize;
             }
         }
 
-        resultCode = archive_write_finish_entry(aw);
+        ret = archive_write_finish_entry(aw);
 
-        if (resultCode != ARCHIVE_OK) {
-            goto clean;
+        if (ret != ARCHIVE_OK) {
+            goto finalize;
         }
 	}
 
-clean:
-    if (resultCode != ARCHIVE_OK) {
+finalize:
+    if (ret != ARCHIVE_OK) {
         fprintf(stdout, "%s\n", archive_error_string(ar));
     }
 
@@ -203,7 +203,7 @@ clean:
 	archive_write_close(aw);
   	archive_write_free(aw);
 
-    return resultCode;
+    return ret;
 }
 
 typedef struct {
@@ -213,82 +213,118 @@ typedef struct {
 } StringArrayList;
 
 int list_files(const char * dirPath, bool verbose, StringArrayList * stringArrayList) {
-    if ((dirPath == NULL) || (strcmp(dirPath, "") == 0)) {
+    if ((dirPath == NULL) || (dirPath[0] == '\0')) {
         return -1;
     }
 
-    DIR * dir;
-    struct dirent * dir_entry;
-
-    dir = opendir(dirPath);
+    DIR * dir = opendir(dirPath);
 
     if (dir == NULL) {
         perror(dirPath);
         return -2;
     }
 
-    int r = 0;
+    int ret = 0;
 
-    while ((dir_entry = readdir(dir))) {
+    struct stat st;
+
+    for (;;) {
+        errno = 0;
+
+        struct dirent * dir_entry = readdir(dir);
+
+        if (dir_entry == NULL) {
+            if (errno == 0) {
+                closedir(dir);
+                return 0;
+            } else {
+                perror(dirPath);
+                closedir(dir);
+                return -3;
+            }
+        }
+
         if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
             continue;
         }
 
-        size_t filePathLength = strlen(dirPath) + strlen(dir_entry->d_name) + 2;
+        size_t filePathLength = strlen(dirPath) + strlen(dir_entry->d_name) + 2U;
         char   filePath[filePathLength];
-        memset(filePath, 0, filePathLength);
         snprintf(filePath, filePathLength, "%s/%s", dirPath, dir_entry->d_name);
 
         //if (verbose) printf("%s\n", filePath);
 
-        struct stat st;
-
-        r = stat(filePath, &st);
-
-        if (r == 0) {
+        if (stat(filePath, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
-                r = list_files(filePath, verbose, stringArrayList);
+                ret = list_files(filePath, verbose, stringArrayList);
 
-                if (r != 0) {
-                    break;
+                if (ret != 0) {
+                    return ret;
                 }
             } else {
                 if (stringArrayList->size == stringArrayList->capcity) {
-                    stringArrayList->capcity += 10;
-                    stringArrayList->array = (char**)realloc(stringArrayList->array, (stringArrayList->capcity) * sizeof(char*));
+                    size_t  newCapcity = stringArrayList->capcity + 10U;
+                    char ** p = (char**)realloc(stringArrayList->array, newCapcity * sizeof(char*));
 
-                    if (stringArrayList->array == NULL) {
-                        r = -3;
-                        break;
+                    if (p == NULL) {
+                        if (stringArrayList->array != NULL) {
+                            for (size_t i = 0; i < stringArrayList->size; i++) {
+                                free(stringArrayList->array[i]);
+                                stringArrayList->array[i] = NULL;
+                            }
+
+                            free(stringArrayList->array);
+                            stringArrayList->array = NULL;
+                        }
+
+                        return -4;
                     }
+
+                    if (stringArrayList->array != NULL) {
+                        memset(p + stringArrayList->size, 0, 10);
+                    }
+
+                    stringArrayList->array   = p;
+                    stringArrayList->capcity = newCapcity;
                 }
-                stringArrayList->array[stringArrayList->size] = strdup(filePath);
-                stringArrayList->size += 1;
+
+                char * p2 = strdup(filePath);
+
+                if (p2 == NULL) {
+                    for (size_t i = 0; i < stringArrayList->size; i++) {
+                        free(stringArrayList->array[i]);
+                        stringArrayList->array[i] = NULL;
+                    }
+
+                    free(stringArrayList->array);
+                    stringArrayList->array = NULL;
+
+                    return -4;
+                }
+
+                stringArrayList->array[stringArrayList->size] = p2;
+                stringArrayList->size += 1U;
             }
         } else {
-            break;
+            return -5;
         }
     }
-
-    closedir(dir);
-
-    return r;
 }
 
 int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType type, bool verbose) {
     StringArrayList stringArrayList = {0};
 
-    int resultCode = list_files(inputDir, verbose, &stringArrayList);
+    int ret = list_files(inputDir, verbose, &stringArrayList);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
-    if (stringArrayList.size == 0) {
+    if (stringArrayList.size == 0U) {
         return 1;
     }
 
-    if (outputFilePath != NULL && strcmp(outputFilePath, "-") == 0) {
+    if ((outputFilePath != NULL) && (strcmp(outputFilePath, "-") == 0)) {
 		outputFilePath = NULL;
     }
 
@@ -329,26 +365,26 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
     for (size_t i = 0; i < stringArrayList.size; i++) {
         ar = archive_read_disk_new();
 
-        resultCode = archive_read_disk_open(ar, stringArrayList.array[i]);
+        ret = archive_read_disk_open(ar, stringArrayList.array[i]);
 
-        if (resultCode != ARCHIVE_OK) {
-            goto clean;
+        if (ret != ARCHIVE_OK) {
+            goto finalize;
         }
 
         for (;;) {
             entry = archive_entry_new();
 
-            resultCode = archive_read_next_header2(ar, entry);
+            ret = archive_read_next_header2(ar, entry);
 
-            if (resultCode == ARCHIVE_EOF) {
-                resultCode =  ARCHIVE_OK;
+            if (ret == ARCHIVE_EOF) {
+                ret =  ARCHIVE_OK;
                 archive_entry_free(entry);
                 break;
             }
 
-            if (resultCode != ARCHIVE_OK) {
+            if (ret != ARCHIVE_OK) {
                 archive_entry_free(entry);
-                goto clean;
+                goto finalize;
             }
 
             archive_read_disk_descend(ar);
@@ -357,15 +393,15 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
                 fprintf(stderr, "a %s\n", archive_entry_pathname(entry));
             }
 
-            resultCode = archive_write_header(aw, entry);
+            ret = archive_write_header(aw, entry);
 
-            if (resultCode == ARCHIVE_RETRY || resultCode == ARCHIVE_WARN) {
-                resultCode =  ARCHIVE_OK;
+            if ((ret == ARCHIVE_RETRY) || (ret == ARCHIVE_WARN)) {
+                ret =  ARCHIVE_OK;
             }
 
-            if (resultCode != ARCHIVE_OK) {
+            if (ret != ARCHIVE_OK) {
                 archive_entry_free(entry);
-                goto clean;
+                goto finalize;
             }
 
             fd = open(archive_entry_sourcepath(entry), O_RDONLY);
@@ -375,7 +411,7 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
 
             len = read(fd, buff, sizeof(buff));
 
-            while (len > 0) {
+            while (len > 0U) {
                 archive_write_data(aw, buff, len);
                 len = read(fd, buff, sizeof(buff));
             }
@@ -389,8 +425,8 @@ int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType t
         archive_read_free(ar);
     }
 
-clean:
-    if (resultCode != ARCHIVE_OK) {
+finalize:
+    if (ret != ARCHIVE_OK) {
         fprintf(stdout, "%s\n", archive_error_string(ar));
         archive_read_close(ar);
         archive_read_free(ar);
@@ -399,7 +435,7 @@ clean:
 	archive_write_close(aw);
   	archive_write_free(aw);
 
-    if (stringArrayList.size > 0) {
+    if (stringArrayList.size > 0U) {
         for (size_t i = 0; i < stringArrayList.size; i++) {
             free(stringArrayList.array[i]);
             stringArrayList.array[i] = NULL;
@@ -408,5 +444,5 @@ clean:
         stringArrayList.array = NULL;
     }
 
-    return resultCode;
+    return ret;
 }

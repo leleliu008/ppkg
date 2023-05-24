@@ -1,3 +1,24 @@
+# Copyright (c) 2021-2023 刘富频
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# https://github.com/leleliu008/ppkg
+
+# If IFS is not set, the deault value will be <space><tab><newline>
+# https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+unset IFS
+
 
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
@@ -30,9 +51,33 @@ error() {
     printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
 }
 
-die() {
+abort() {
+    EXIT_STATUS_CODE="$1"
+    shift
     printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
-    exit 1
+    exit "$EXIT_STATUS_CODE"
+}
+
+step() {
+    STEP_NUM=$(expr ${STEP_NUM-0} + 1)
+    STEP_MESSAGE="$*"
+    printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+}
+
+run() {
+    if [ "$RUN_SILENT" != yes ] ; then
+        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    fi
+
+    eval "$@"
+}
+
+is_integer() {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
 }
 
 bppend_to_PATH() {
@@ -42,85 +87,228 @@ bppend_to_PATH() {
     esac
 }
 
-step() {
-    STEP_NUM=$(expr ${STEP_NUM-0} + 1)
-    STEP_MESSAGE="$@"
-    printf '%s\n'
-    printf '%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
-}
-
-step2() {
-    STEP2_NUM=$(expr ${STEP2_NUM-0} + 1)
-    STEP2_MESSAGE="$@"
-    printf '%s\n'
-    printf '%b\n' "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
-}
-
-run() {
-    if [ "$RUN_SILENT" != yes ] ; then
-        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
-    fi
-
-    eval "$*"
-}
-
-list() {
-    for item in $@
-    do
-        printf '%s\n' "$item"
-    done
+bppend_to_ACLOCAL_PATH() {
+    case ":${ACLOCAL_PATH}:" in
+        *:"$1":*) ;;
+        *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
+    esac
 }
 
 sed_in_place() {
-    if command -v gsed > /dev/null ; then
-        unset SED_IN_PLACE_ACTION
-        SED_IN_PLACE_ACTION="$1"
-        shift
-        # contains ' but not contains \'
-        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-            run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
-        else
-            run gsed -i "'$SED_IN_PLACE_ACTION'" $@
-        fi
-    elif command -v sed  > /dev/null ; then
-        if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
-            unset SED_IN_PLACE_ACTION
-            SED_IN_PLACE_ACTION="$1"
-            shift
-            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-                run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
-            else
-                run sed -i "'$SED_IN_PLACE_ACTION'" $@
-            fi
-        else
-            unset SED_IN_PLACE_ACTION
-            SED_IN_PLACE_ACTION="$1"
-            shift
-            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q '5C 27' ; then
-                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
-            else
-                run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
-            fi
-        fi
-    else
-        error "please install sed utility."
-        return 1
-    fi
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}sed -i $@${COLOR_OFF}"
+    sed -i "$@"
 }
 
 git() {
-    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$PPKG_HOME/cacert.pem" $*
+    if [ -f "$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+        command git -c http.sslCAInfo="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem" "$@"
     else
-        command git $*
+        command git "$@"
     fi
 }
 
-is_integer() {
-    case "${1#[+-]}" in
-        (*[!0123456789]*) return 1 ;;
-        ('')              return 1 ;;
-        (*)               return 0 ;;
+# }}}
+##############################################################################
+# {{{ wfetch
+
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-path=PATH>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+
+# influential environment variable:
+# PPKG_URL_TRANSFORM
+wfetch() {
+    unset FETCH_URL
+    unset FETCH_URI
+    unset FETCH_SHA256
+    unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_NAME
+    unset FETCH_OUTPUT_PATH
+    unset FETCH_SILENT
+
+    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        FETCH_URL="$1"
+    else
+        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")" || return 1
+    fi
+
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --silent)
+                FETCH_SILENT=yes
+                RUN_SILENT=yes
+                ;;
+            --sha256=*)
+                FETCH_SHA256="${1#*=}"
+                ;;
+            --uri=*)
+                FETCH_URI="${1#*=}"
+                if [ -z "$FETCH_URI" ] ; then
+                    abort 1 "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must be non-empty."
+                fi
+                if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+                fi
+                ;;
+            --output-dir=*)
+                FETCH_OUTPUT_DIR="${1#*=}"
+                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                    abort 1 "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
+                fi
+                ;;
+            --output-name=*)
+                FETCH_OUTPUT_NAME="${1#*=}"
+                if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                    abort 1 "wfetch <URL> --output-name=<NAME> , <NAME> must be non-empty."
+                fi
+                ;;
+            --output-path=*)
+                FETCH_OUTPUT_PATH="${1#*=}"
+                if [ -z "$FETCH_OUTPUT_PATH" ] ; then
+                    abort 1 "wfetch <URL> --output-path=<FILEPATH> , <FILEPATH> must be non-empty."
+                fi
+                ;;
+            *)  abort 1 "wfetch <URL> [OPTION]..., unrecognized option: $1
+
+    wfetch command usage:
+
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-path=PATH>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+        esac
+        shift
+    done
+
+    if [ -z "$FETCH_URI" ] ; then
+        FETCH_URI="$FETCH_URL"
+    fi
+
+    if [ -z "$FETCH_OUTPUT_PATH" ] ; then
+        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
+            FETCH_OUTPUT_PATH='-'
+        else
+            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                FETCH_OUTPUT_DIR="$PWD"
+            fi
+
+            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
+            fi
+
+            FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+
+            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR" || return 1
+            fi
+        fi
+    elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
+        unset FETCH_OUTPUT_DIR
+        unset FETCH_OUTPUT_NAME
+    else
+        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_PATH")"
+        FETCH_OUTPUT_NAME="$(basename "$FETCH_OUTPUT_PATH")"
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+    fi
+
+    case $FETCH_URL in
+        *.git)
+            if [    -d "$FETCH_OUTPUT_PATH" ] ; then
+                run cd "$FETCH_OUTPUT_PATH" || return 1
+                if      git rev-parse HEAD > /dev/null 2>&1 ; then
+                    run git pull || return 1
+                    run git submodule update --recursive || return 1
+                else
+                    run cd .. || return 1
+                    run rm -rf "$FETCH_OUTPUT_NAME" || return 1
+                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
+                fi
+            else
+                if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                    run install -d "$FETCH_OUTPUT_DIR" || return 1
+                fi
+                run cd "$FETCH_OUTPUT_DIR" || return 1
+                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
+            fi
+            ;;
+        *)
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
+                if [ -n "$FETCH_SHA256" ] ; then
+                    if [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] ; then
+                        success "$FETCH_OUTPUT_PATH already have been fetched."
+                        return 0
+                    fi
+                fi
+                rm -f "$FETCH_OUTPUT_PATH" || return 1
+            fi
+
+            for FETCH_TOOL in curl wget http lynx aria2c axel
+            do
+                if command -v "$FETCH_TOOL" > /dev/null ; then
+                    break
+                else
+                    unset FETCH_TOOL
+                fi
+            done
+
+            if [ -z "$FETCH_TOOL" ] ; then
+                abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
+            fi
+
+            case $FETCH_TOOL in
+                curl)
+                    unset FETCH_TOOL_CURL_EXTRA_OPTIONS
+
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
+                    fi
+
+                    if [ -f "$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+                        FETCH_TOOL_CURL_OPTIONS="--cacert $PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
+                    fi
+
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
+                    ;;
+                wget)
+                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
+                    ;;
+                http)
+                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
+                    ;;
+                lynx)
+                    run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'" ||
+                    run "lynx -source '$FETCH_URI' > '$FETCH_OUTPUT_PATH'"
+                    ;;
+                aria2c)
+                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'" ||
+                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URI'"
+                    ;;
+                axel)
+                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
+                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
+                    ;;
+                *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
+                    ;;
+            esac
+
+            [ $? -eq 0 ] || return 1
+
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
+                [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] || {
+                    abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)"
+                }
+            fi
     esac
 }
 
@@ -135,10 +323,10 @@ version_sort() {
     # sort: unrecognized option: V
     # BusyBox v1.29.3 (2019-01-24 07:45:07 UTC) multi-call binary.
     # Usage: sort [-nrugMcszbdfiokt] [-o FILE] [-k start[.offset][opts][,end[.offset][opts]] [-t CHAR] [FILE]...
-    if  printf '%s\n' | (sort -V > /dev/null 2>&1) ; then
-        printf '%s\n' "$@" | tr ' ' '\n' | sort -V
+    if  printf '\n' | (sort -V > /dev/null 2>&1) ; then
+        printf '%s\n' "$*" | tr ' ' '\n' | sort -V
     else
-        printf '%s\n' "$@" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
+        printf '%s\n' "$*" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
     fi
 }
 
@@ -186,360 +374,211 @@ version_match() {
             fi
             [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
             ;;
-        *)  error "version_compare: $2: not supported operator." ; return 1
+        *)  abort 1 "version_compare: $2: not supported operator."
     esac
 }
 
-__adjust_elf_files_for_the_given_target() {
-    # run patchelf --version
-    # run command -v patchelf
-
-    for x in bin sbin lib libexec
-    do
-        [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
-
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec $PPKG_EXECUTABLE util-base64-encode-of-string '{}' \;)
-        do
-            unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
-
-            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
-
-            [ -w "$FILEPATH" ] || continue
-
-            unset FILE_HEADER_ACTUAL
-
-            FILE_HEADER_ACTUAL="$(hexdump -n 18 -v -e '1/1 "%02X" ""' "$FILEPATH")"
-
-            ELF_EXECUTABLE=no
-            ELF_SHAREDABLE=no
-
-            # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-            case $FILE_HEADER_ACTUAL in
-                7F454C460[12]01010[039]00000000000000000100)
-                    continue
-                    ;;
-                7F454C460[12]01010[039]00000000000000000200)
-                    # little-endian mode
-                    ELF_EXECUTABLE=yes
-                    ;;
-                7F454C460[12]01010[039]00000000000000000300)
-                    # little-endian mode
-                    ELF_SHAREDABLE=yes
-                    ;;
-                7F454C460[12]02010[039]00000000000000000001)
-                    continue
-                    ;;
-                7F454C460[12]02010[039]00000000000000000002)
-                    # big-endian mode
-                    ELF_EXECUTABLE=yes
-                    ;;
-                7F454C460[12]02010[039]00000000000000000003)
-                    # big-endian mode
-                    ELF_SHAREDABLE=yes
-                    ;;
-                7F454C46*)
-                    die "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
-                    ;;
-                *)  continue
-            esac
-
-            # https://github.com/NixOS/patchelf/issues/371
-
-            if [ "$BUILD_TYPE" = release ] ; then
-                if [ "$x" != lib ] ; then
-                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                fi
-            fi
-
-            if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
-                unset DT_NEEDED
-                DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
-
-                unset DT_RUNPATH
-                DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
-
-                if [ -n "$DT_RUNPATH" ] ; then
-                    run patchelf --remove-rpath "$FILEPATH"
-                fi
-
-                unset RUNPATH
-
-                PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
-
-                if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-                    for NEEDED in $DT_NEEDED
-                    do
-                        if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
-                            RUNPATH="$PACKAGE_LIBRARY_DIR"
-                            break
-                        fi
-                    done
-                fi
-
-                for NEEDED in $DT_NEEDED
-                do
-                    case $NEEDED in
-                        libc.so.6) ;;
-                        libm.so.6) ;;
-                        libgcc_s.so.1) ;;
-                        ld-linux-x86-64.so.2) ;;
-                        *)  for LIBDIR in $DT_RUNPATH
-                            do
-                                if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
-                                    continue
-                                fi
-
-                                if [ "$LIBDIR" = "$PACKAGE_INSTALLING_LIB_DIR" ] ; then
-                                    continue
-                                fi
-
-                                if [ -e "$LIBDIR/$NEEDED" ] ; then
-                                    if [ -z "$RUNPATH" ] ; then
-                                        RUNPATH="$LIBDIR"
-                                    else
-                                        RUNPATH="$RUNPATH:$LIBDIR"
-                                    fi
-                                    break
-                                fi
-                            done
-                    esac
-                done
-
-                if [ -n "$RUNPATH" ] ; then
-                    run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
-                fi
-            fi
-        done
-    done
+package_name_transform_from_uppm_to_brew() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        file)     printf '%s\n' 'file-formula' ;;
+        xattr)    printf '%s\n' 'attr'      ;;
+        patch)    printf '%s\n' 'gpatch'    ;;
+        delta)    printf '%s\n' 'git-delta' ;;
+        gmake)    printf '%s\n' 'make'      ;;
+        gtar)     printf '%s\n' 'gnu-tar'   ;;
+        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+        blake3)   printf '%s\n' 'b3sum'     ;;
+        libwebp)  printf '%s\n' 'webp'      ;;
+        proj7)    printf '%s\n' 'proj@7'    ;;
+        openssl)  printf '%s\n' 'openssl@1.1';;
+        freetype2)printf '%s\n' 'freetype'  ;;
+        freetype2-with-harfbuzz)
+                  printf '%s\n' 'freetype'  ;;
+        libmediainfo|mediainfo)
+                  printf '%s\n' 'media-info';;
+        tcl-core) printf '%s\n' 'tcl-tk'    ;;
+        openssl1.1.x)
+                  printf '%s\n' 'openssl@1.1';;
+        gnu-binutils)
+                  printf '%s\n' 'binutils'  ;;
+        *)        printf '%s\n' "$1"
+    esac
 }
 
-__adjust_mach_o_files_for_the_given_target() {
-    for x in bin sbin lib libexec
-    do
-        [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
+__install_the_given_package() {
+    step "locate C/C++ toolchain"
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec $PPKG_EXECUTABLE $PPKG_EXECUTABLE util-base64-encode-of-string '{}' \;)
-        do
-            unset BASE64_DECODED_RELATIVE_FILEPATH
-            BASE64_DECODED_RELATIVE_FILEPATH="$($PPKG_EXECUTABLE util-base64-decode-to-string "$BASE64_ENCODED_RELATIVE_FILEPATH")"
-
-            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
-
-            unset FILE_HEADER_ACTUAL
-            FILE_HEADER_ACTUAL="$(hexdump -n 16 -v -e '1/1 "%02X" ""' "$FILEPATH")"
-
-            # https://github.com/aidansteele/osx-abi-macho-file-format-reference
-            case $FILE_HEADER_ACTUAL in
-                CFFAEDFE0C000001000000000[26]000000)
-                    # arm64
-                    ;;
-                CFFAEDFE07000001030000000[26]000000)
-                    # x86_64
-                    ;;
-                *)  continue
-            esac
-
-            unset DT_SONAME
-            DT_SONAME=$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
-
-            unset DT_NEEDED
-            DT_NEEDED=$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
-
-            unset DT_RUNPATH
-            DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
-
-            if [ -z "$DT_NEEDED" ] ; then
-                die "no dependent shared libraries found in $FILEPATH"
-            fi
-
-            echo "DT_SONAME=\n$DT_SONAME"
-            echo "DT_NEEDED=\n$DT_NEEDED"
-            echo "DT_RUNPATH=\n$DT_RUNPATH"
-
-            case $DT_SONAME in
-                '') ;;
-                @*) ;;
-                /*) ;;
-                lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
-            esac
-
-            for NEEDED in $DT_NEEDED
-            do
-                case $NEEDED in
-                    lib*.dylib)
-                        run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
-                esac
-            done
-
-            if [ "$BUILD_TYPE" = release ] ; then
-                if [ "$x" != lib ] ; then
-                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                fi
-            fi
-        done
-    done
-}
-
-__export_relevant_environment_variables() {
-    step "export relevant environment variables"
-
-    STATIC_LIBRARY_SUFFIX=.a
+    unset CC
+    unset CXX
+    unset CPP
+    unset AS
+    unset AR
+    unset RANLIB
+    unset LD
+    unset NM
+    unset SIZE
+    unset STRIP
+    unset STRINGS
+    unset OBJDUMP
+    unset OBJCOPY
+    unset READELF
+    unset ADDR2LINE
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        SHARED_LIBRARY_SUFFIX=.dylib
+             CC="$(xcrun --sdk macosx --find clang)"
+            CXX="$(xcrun --sdk macosx --find clang++)"
+             AS="$(xcrun --sdk macosx --find as)"
+             AR="$(xcrun --sdk macosx --find ar)"
+         RANLIB="$(xcrun --sdk macosx --find ranlib)"
+             LD="$(xcrun --sdk macosx --find ld)"
+             NM="$(xcrun --sdk macosx --find nm)"
+           SIZE="$(xcrun --sdk macosx --find size)"
+          STRIP="$(xcrun --sdk macosx --find strip)"
+        STRINGS="$(xcrun --sdk macosx --find strings)"
+        OBJDUMP="$(xcrun --sdk macosx --find objdump)"
     else
-        SHARED_LIBRARY_SUFFIX=.so
+             CC="$(command -v cc || command -v clang || command -v gcc || error "C Compiler not found.")"
+            CXX="$(command -v c++ || command -v clang++ || command -v g++ || error "C++ Compiler not found.")"
+             AS="$(command -v as)"
+             AR="$(command -v ar)"
+         RANLIB="$(command -v ranlib)"
+             LD="$(command -v ld)"
+             NM="$(command -v nm)"
+           SIZE="$(command -v size)"
+          STRIP="$(command -v strip)"
+        STRINGS="$(command -v strings)"
+        OBJDUMP="$(command -v objdump)"
+        OBJCOPY="$(command -v objcopy)"
+        READELF="$(command -v readelf)"
+        ADDR2LINE="$(command -v addr2line || true)"
     fi
 
-    CCFLAGS="-fPIC -fno-common $CFLAGS"
-    XXFLAGS="-fPIC -fno-common $CXXFLAGS"
+    CPP="$CC -E"
 
-    for item in $PACKAGE_CDEFINE
+    for TOOL in CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
     do
-        CPPFLAGS="$CPPFLAGS -D$item"
+        printf "%9s = %s\n" "$TOOL" "$(eval echo \$"$TOOL")"
     done
 
-    if [ -n "$PACKAGE_CCFLAGS" ] ; then
-        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
-    fi
+    export CC
+    export CXX
+    export CPP
+    export AS
+    export AR
+    export RANLIB
+    export LD
+    export NM
+    export SIZE
+    export STRIP
+    export STRINGS
+    export OBJDUMP
+    export OBJCOPY
+    export READELF
+    export ADDR2LINE
 
-    if [ -n "$PACKAGE_XXFLAGS" ] ; then
-        XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
-    fi
+    #########################################################################################
 
-    if [ -n "$PACKAGE_LDFLAGS" ] ; then
-        LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
-    fi
+    # https://keith.github.io/xcode-man-pages/xcrun.1.html
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
+    unset SDKROOT
+    unset SYSROOT
 
-    CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+    #########################################################################################
 
-    ##################################################################################
+    step "initialize CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        unset DEVELOPER_DIR; DEVELOPER_DIR="$(xcode-select -p)"
+        SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
-        if [ -d  "$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin" ] ; then
-            PATH="$DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
-        else
-            PATH="$DEVELOPER_DIR/usr/bin:$PATH"
-        fi
-
-        # $PPKG_CORE_BIN_DIR must before DEVELOPER_DIR/bin , because some tools shipped with sdk are too old.
-        PATH="$PPKG_CORE_BIN_DIR:$PATH"
-
-        # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
-        # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
-        # https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-mmacosx-version-min
-        if [ -z "$MACOSX_DEPLOYMENT_TARGET" ] ; then
-            MACOSX_DEPLOYMENT_TARGET="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f1).$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f2)"
-        fi
-
-        export MACOSX_DEPLOYMENT_TARGET
-
-        if [ -d     "$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ] ; then
-            SDKROOT="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-        else
-            SDKROOT="$DEVELOPER_DIR/SDKs/MacOSX.sdk"
-        fi
-
-        # https://keith.github.io/xcode-man-pages/xcrun.1.html
-        # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
-        export SDKROOT
-
-        CPPFLAGS="-isysroot $SDKROOT -Qunused-arguments $CPPFLAGS"
-         CCFLAGS="-isysroot $SDKROOT -Qunused-arguments  $CCFLAGS"
-         XXFLAGS="-isysroot $SDKROOT -Qunused-arguments  $XXFLAGS"
-         LDFLAGS="-isysroot $SDKROOT -Wl,-search_paths_first $LDFLAGS"
+        PPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+        CCFLAGS="-isysroot $SYSROOT -Qunused-arguments -fPIC -fno-common"
+        XXFLAGS="-isysroot $SYSROOT -Qunused-arguments -fPIC -fno-common"
+        LDFLAGS="-isysroot $SYSROOT -Wl,-search_paths_first"
     else
-        if [ "$LINK_TYPE" = static-only ] ; then
-            LDFLAGS="-static --static $LDFLAGS"
-        fi
+        PPFLAGS=
+        CCFLAGS="-fPIC -fno-common"
+        XXFLAGS="-fPIC -fno-common"
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-        LDFLAGS="$LDFLAGS -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+        LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
         CCFLAGS="$CCFLAGS -v"
         XXFLAGS="$XXFLAGS -v"
         LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
-       CPPFLAGS="$CPPFLAGS -DNDEBUG"
+        PPFLAGS="$PPFLAGS -DNDEBUG"
         CCFLAGS="$CCFLAGS -Os"
         XXFLAGS="$XXFLAGS -Os"
         LDFLAGS="$LDFLAGS -Wl,-S"
     fi
 
-    for TOOLNAME in $(list_tools_in_the_toolchain)
-    do
-        unset TOOLNAME_UPPERCASE
-        TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
+    case $NATIVE_OS_KIND in
+        netbsd)  LDFLAGS="$LDFLAGS -pthread" ;;
+        openbsd) LDFLAGS="$LDFLAGS -pthread" ;;
+    esac
 
-        unset TOOLPATH
-        TOOLPATH="$(eval echo \$${TOOLNAME_UPPERCASE})"
+    #########################################################################################
 
-        if [ -z "$TOOLPATH" ] ; then
-            case $TOOLNAME in
-                cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
-                cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
-                cpp) TOOLPATH="$CC -E" ;;
-                *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
-            esac
-        fi
+    step "check if C compiler supports -Wno-error=unused-command-line-argument option"
 
-        # if [ -z "$TOOLPATH" ] ; then
-        #     die "$TOOLNAME is not found."
-        # fi
-
-        # if [ "$TOOLNAME" != cpp ] ; then
-        #     [ -e "$TOOLPATH" ] || die "file is not exist: $TOOLPATH"
-        #     [ -x "$TOOLPATH" ] || die "file is not executable: $TOOLPATH"
-        # fi
-
-        eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
-    done
-
-    unset TOOLNAME_UPPERCASE
-    unset TOOLNAME
-    unset TOOLPATH
-
-    [ -z "$CC" ]  && die "C Compiler not found."
-    [ -z "$CXX" ] && die "C++ Compiler not found."
-
-    ##################################################################################
-
-    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.c" <<EOF
-int main() {
-    return 0;
-}
-EOF
-    cat > "$PACKAGE_INSTALLING_BIN_DIR/test.cc" <<EOF
+    cat > test.c <<EOF
 int main() {
     return 0;
 }
 EOF
 
-    if $CC  $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.c" 2>/dev/null ; then
+    if [ -z "$SYSROOT" ] ; then
+        TEST_CCFLAGS='-Wno-error=unused-command-line-argument'
+    else
+        TEST_CCFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
+    fi
+
+    if $CC $TEST_CCFLAGS test.c 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
+        success "YES"
+    else
+        error "NO"
     fi
 
-    if $CXX $CPPFLAGS -Wno-error=unused-command-line-argument -o "$PACKAGE_INSTALLING_BIN_DIR/a.out" "$PACKAGE_INSTALLING_BIN_DIR/test.cc" 2>/dev/null ; then
+    #########################################################################################
+
+    step "check if C++ compiler supports -Wno-error=unused-command-line-argument option"
+
+    cat > test.cc <<EOF
+int main() {
+    return 0;
+}
+EOF
+
+    if [ -z "$SYSROOT" ] ; then
+        TEST_XXFLAGS='-Wno-error=unused-command-line-argument'
+    else
+        TEST_XXFLAGS="-Wno-error=unused-command-line-argument -isysroot $SYSROOT"
+    fi
+
+    if $CXX $TEST_XXFLAGS test.cc 2>/dev/null ; then
         XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
+        success "YES"
+    else
+        error "NO"
     fi
 
     ##################################################################################
 
-    export PROXIED_CC="$CC"
-    export PROXIED_CXX="$CXX"
+    export   CFLAGS="$CCFLAGS"
+    export CXXFLAGS="$XXFLAGS"
+    export CPPFLAGS="$PPFLAGS"
+    export  LDFLAGS="$LDFLAGS"
 
-     CC="$PPKG_CORE_BIN_DIR/proxy-cc"
-    CXX="$PPKG_CORE_BIN_DIR/proxy-c++"
+    ##################################################################################
 
-    cat > "$CC.c" <<EOF
+    step "create proxy for C/C++ compiler"
+
+    cat > proxy-cc.c <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -620,160 +659,824 @@ int main(int argc, char * argv[]) {
     // }
     // printf("\n");
 
-    if (PROXIED_PROGRAM[0] == '/') {
-        if (execv(PROXIED_PROGRAM, argv) == -1) {
-            perror(PROXIED_PROGRAM);
-            return 1;
-        }
-    } else {
-        if (execvp(PROXIED_PROGRAM, argv) == -1) {
-            fprintf(stderr, "command not found: %s\b", PROXIED_PROGRAM);
-            return 1;
-        }
-    }
-
-    return 0;
+    execv (PROXIED_PROGRAM, argv);
+    perror(PROXIED_PROGRAM);
+    return -1;
 }
 EOF
 
-    run $PROXIED_CC $CPPFLAGS -std=c99 -o "$CC" "$CC.c"
-    run ln -sf "$CC" "$CXX"
+    PROXY_CC="$PPKG_CORE_BIN_DIR/proxy-cc"
+    PROXY_CXX="$PPKG_CORE_BIN_DIR/proxy-c++"
 
-    ##################################################################################
+    if [ -z "$SYSROOT" ] ; then
+        TMP_CCFLAGS='-std=c99'
+    else
+        TMP_CCFLAGS="-std=c99 -isysroot $SYSROOT"
+    fi
 
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
-    unset CMAKE_FIND_ROOT_PATH
+    run $CC $TMP_CCFLAGS -o "$PROXY_CC" proxy-cc.c
 
-    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-    unset RUSTFLAGS
+    run ln -sfr "$PROXY_CC" "$PROXY_CXX"
 
-    for DEP_PKG_NAME in $PACKAGE_DEP_PKG_R
-    do
-        DEP_PKG_NAME_UNDERSCORE=$(printf "$DEP_PKG_NAME" | tr '@+-.' '_')
+    export PROXIED_CC="$CC"
+    export PROXIED_CXX="$CXX"
 
-        unset DEP_PKG_INSTALL_DIR
-        unset DEP_PKG_BINARY__DIR
-        unset DEP_PKG_INCLUDE_DIR
-        unset DEP_PKG_LIBRARY_DIR
-        unset DEP_PKG_PKGCONF_DIR
+    export CC="$PROXY_CC"
+    export CXX="$PROXY_CXX"
 
-        DEP_PKG_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEP_PKG_NAME"
-        DEP_PKG_BINARY__DIR="$DEP_PKG_INSTALL_DIR/bin"
-        DEP_PKG_INCLUDE_DIR="$DEP_PKG_INSTALL_DIR/include"
-        DEP_PKG_LIBRARY_DIR="$DEP_PKG_INSTALL_DIR/lib"
-        DEP_PKG_PKGCONF_DIR="$DEP_PKG_INSTALL_DIR/lib/pkgconfig"
+cat <<EOF
+PROXIED_CC  = $PROXIED_CC
+PROXIED_CXX = $PROXIED_CXX
 
-        eval "${DEP_PKG_NAME_UNDERSCORE}_INSTALL_DIR='$DEP_PKG_INSTALL_DIR'"
-        eval "${DEP_PKG_NAME_UNDERSCORE}_BINARY__DIR='$DEP_PKG_BINARY__DIR'"
-        eval "${DEP_PKG_NAME_UNDERSCORE}_INCLUDE_DIR='$DEP_PKG_INCLUDE_DIR'"
-        eval "${DEP_PKG_NAME_UNDERSCORE}_LIBRARY_DIR='$DEP_PKG_LIBRARY_DIR'"
+        CC  = $CC
+        CXX = $CXX
+EOF
 
-        if [ -d  "$DEP_PKG_BINARY__DIR" ] ; then
-            PATH="$DEP_PKG_BINARY__DIR:$PATH"
-        fi
+    #########################################################################################
 
-        if [ -d "$DEP_PKG_INCLUDE_DIR" ] ; then
-            CPPFLAGS="-I$DEP_PKG_INCLUDE_DIR $CPPFLAGS"
-        fi
+    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
 
-        if [ -d "$DEP_PKG_LIBRARY_DIR" ] ; then
-            LDFLAGS="-L$DEP_PKG_LIBRARY_DIR -Wl,-rpath,$DEP_PKG_LIBRARY_DIR $LDFLAGS"
-            RUSTFLAGS="-Clink-arg=-L$DEP_PKG_LIBRARY_DIR -Clink-arg=-Wl,-rpath,$DEP_PKG_LIBRARY_DIR $RUSTFLAGS"
-        fi
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        do
+            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
 
-        if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
-            if [ -z "$PKG_CONFIG_PATH" ] ; then
-                PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR"
+            if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
             else
-                PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR:$PKG_CONFIG_PATH"
+                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
             fi
-        else
-            DEP_PKG_PKGCONF_DIR="$DEP_PKG_INSTALL_DIR/share/pkgconfig"
 
-            if [ -d "$DEP_PKG_PKGCONF_DIR" ] ; then
-                if [ -z "$PKG_CONFIG_PATH" ] ; then
-                    PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR"
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/sbin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$DEPENDENT_PACKAGE_INSTALL_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            fi
+        done
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "generate  dependency tree of $1"
+
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
+
+        run "$PPKG" depends "$PACKAGE_NAME" -t dot -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+        run "$PPKG" depends "$PACKAGE_NAME" -t box -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
+
+        if command -v dot > /dev/null ; then
+            run "$PPKG" depends "$PACKAGE_NAME" -t svg -o "$PACKAGE_WORKING_DIR/dependencies.svg" || true
+            run "$PPKG" depends "$PACKAGE_NAME" -t dot -o "$PACKAGE_WORKING_DIR/dependencies.png" || true
+        fi
+
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
+        else
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+        fi
+    }
+
+    #########################################################################################
+
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+
+    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP"
+
+    #########################################################################################
+
+    if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
+        step "install needed packages via brew"
+
+        BREW="$(command -v brew)" || abort 1 "command not found: brew"
+
+        run "$BREW" update
+        run "$BREW" --env
+
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            BREW_PACKAGE_NAME=
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$item")"
+
+            run "$BREW" install "$BREW_PACKAGE_NAME"
+
+            BREW_PACKAGE_INSTALLED_DIR=
+            BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
+
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
+                PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
+            fi
+        done
+    elif [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
+        step "install needed packages via uppm"
+
+        UPPM="$PPKG_CORE_BIN_DIR/uppm"
+
+        run "$UPPM" env
+        run "$UPPM" update
+
+        # these packages are not relocatable, we should build them from source locally.
+        PACKAGE_USE_PERL=no
+        PACKAGE_USE_PYTHON3=no
+        PACKAGE_USE_LIBTOOL=no
+        PACKAGE_USE_AUTOMAKE=no
+        PACKAGE_USE_AUTOCONF=no
+
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            case $item in
+                perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
+                python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_PERL=yes  ;;
+                libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_LIBTOOL=yes  ;;
+                autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_AUTOCONF=yes ;;
+                automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
+            esac
+        done
+
+        for item in $PACKAGE_DEP_UPP_ALL
+        do
+            case $item in
+                perl|python3|libtool|autoconf|automake) continue
+            esac
+
+            run "$UPPM" install "$item"
+
+            UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
+
+        (
+            PPFLAGS="$PPFLAGS -I$PPKG_CORE_DIR/include"
+            LDFLAGS="$LDFLAGS -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
+
+            export CPPFLAGS="$PPFLAGS"
+            export  LDFLAGS="$LDFLAGS"
+
+            export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
+
+            unset MACOSX_DEPLOYMENT_TARGET
+
+            GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
+            CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+
+            [ "$PACKAGE_USE_PERL" = yes ] && {
+                step "install perl"
+
+                SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
+                SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.perl"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "perl already has been built, skipped."
                 else
-                    PKG_CONFIG_PATH="$DEP_PKG_PKGCONF_DIR:$PKG_CONFIG_PATH"
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./Configure "-Dprefix=$PPKG_CORE_DIR" "-Dman1dir=$PPKG_CORE_DIR/share/man/man1" "-Dman3dir=$PPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
                 fi
-            fi
-        fi
+            }
 
-        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
-            CMAKE_FIND_ROOT_PATH="$DEP_PKG_INSTALL_DIR"
-        else
-            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$DEP_PKG_INSTALL_DIR"
-        fi
+            [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
+                step "install libtool"
 
-        DEP_PKG_ACLOCAL_PATH="$DEP_PKG_INSTALL_DIR/share/aclocal"
+                SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+                SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
 
-        if [ -d "$DEP_PKG_ACLOCAL_PATH" ] ; then
-            if [ -z "$ACLOCAL_PATH" ] ; then
-                ACLOCAL_PATH="$DEP_PKG_ACLOCAL_PATH"
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libtool"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "libtool already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libtool"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR" --enable-ltdl-install
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                fi
+            }
+
+            [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
+                step "install autoconf"
+
+                SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+                SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.autoconf"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "autoconf already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/autoconf"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR"
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                fi
+            }
+
+            [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
+                step "install automake"
+
+                SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+                SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+
+                RECEIPT_FILEPATH="$PPKG_CORE_DIR/.automake"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "automake already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/automake"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run ./configure "--prefix=$PPKG_CORE_DIR"
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                fi
+            }
+
+            [ "$PACKAGE_USE_PYTHON3" = yes ] && {
+                case $NATIVE_OS_KIND in
+                    openbsd)
+                        step "install python3 via pkg_add"
+                        run sudo pkg_add python3
+                        ;;
+                    netbsd)
+                        step "install python3 via pkgin"
+                        run sudo pkgin -y install python3
+                        ;;
+                    freebsd)
+                        step "install python3 via pkg"
+                        run sudo pkg install -y python3
+                        ;;
+                    *)
+                        step "install zlib"
+
+                        ZLIB_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
+
+                        SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
+                        SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.zlib"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "zlib already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/zlib"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+
+                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -S . -B build.d
+                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+                            run "$CMAKE" --install build.d
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install sqlite3"
+
+                        SQLITE_FORMULA_FILEPATH="$PPKG_FORMULA_REPO_ROOT/offical-core/formula/sqlite.yml"
+
+                        SRC_URL="$(yq .src-url "$SQLITE_FORMULA_FILEPATH")"
+                        SRC_SHA="$(yq .src-sha "$SQLITE_FORMULA_FILEPATH")"
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.sqlite"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "sqlite3 already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/sqlite"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install libffi"
+
+                        SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+                        SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.libffi"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "libffi already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libffi"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install expat"
+
+                        SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+                        SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.expat"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "expat already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/expat"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF -S . -B build.d
+                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+                            run "$CMAKE" --install build.d
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install openssl"
+
+                        SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+                        SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.openssl"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "openssl already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/openssl"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            # https://github.com/openssl/openssl/issues/19232
+                            if [ "$NATIVE_OS_KIND" = openbsd ] ; then
+                                run sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl
+                            fi
+
+                            run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$PPKG_CORE_DIR --libdir=$PPKG_CORE_DIR/lib --openssldir=$PPKG_CORE_DIR/etc/ssl
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                        ################################################################################################
+
+                        step "install python3"
+
+                        SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+                        SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+
+                        RECEIPT_FILEPATH="$PPKG_CORE_DIR/.python3"
+
+                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                            note "python3 already has been built, skipped."
+                        else
+                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$PPKG_DOWNLOADS_DIR"
+
+                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/python3"
+
+                            run install -d "$SRC_DIR"
+                            run cd         "$SRC_DIR"
+
+                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                            unset PYTHONHOME
+                            unset PYTHONPATH
+
+                            run ./configure "--prefix=$PPKG_CORE_DIR" --with-system-expat --with-system-ffi --with-openssl=$PPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
+                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                            run "$GMAKE" install
+
+                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                        fi
+
+                esac
+            }
+
+            :
+        )
+    fi
+
+    PATH="$(printf '%s\n' "$PATH" | sed "s|:$PPKG_CORE_BIN_DIR||g")"
+    PATH="$PPKG_CORE_BIN_DIR:$PATH"
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PYM" ] && {
+        step "install needed python packages via pip3"
+
+        run pip3 --version
+        run pip3 install --upgrade pip setuptools wheel
+        run pip3 --version
+
+        for item in $PACKAGE_DEP_PYM
+        do
+            run pip3 install "$item" --upgrade
+        done
+    }
+
+    #########################################################################################
+
+    # cpan use the C/C++ compiler same as perl was built with
+    # so make sure C/C++ compiler be found before reaching here
+
+    [ -n "$PACKAGE_DEP_PLM" ] && {
+        step "install needed perl modules via cpan"
+
+        for item in $PACKAGE_DEP_PLM
+        do
+            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
+                note "perl module $item has been already installed."
             else
-                ACLOCAL_PATH="$DEP_PKG_ACLOCAL_PATH:$ACLOCAL_PATH"
+                case $item in
+                    XML::Parser)
+                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
+                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
+                        export EXPATINCPATH="$expat_INCLUDE_DIR"
+                        echo EXPATLIBPATH=$EXPATLIBPATH
+                        echo EXPATINCPATH=$EXPATINCPATH
+                        ;;
+                esac
+
+                # Would you like to configure as much as possible automatically? [yes]
+                run "printf '%s\n' 'yes' | cpan $item"
             fi
-        fi
+        done
 
-        # https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
-        if [ -d "$DEP_PKG_INSTALL_DIR/share/gir-1.0" ] ; then
-            if [ -z "$XDG_DATA_DIRS" ] ; then
-                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share"
-            else
-                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share:$XDG_DATA_DIRS"
+        if [ -d "$HOME/perl5/bin" ] ; then
+            # cpan install to default local location
+            bppend_to_PATH "$HOME/perl5/bin"
+        fi
+    }
+
+    #########################################################################################
+
+    step "locate build tools"
+
+    unset AUTORECONF
+    unset AUTOCONF
+    unset AUTOMAKE
+    unset ACLOCAL
+    unset PERL
+    unset M4
+
+    unset MESON
+    unset CMAKE
+    unset XMAKE
+    unset GMAKE
+    unset NINJA
+
+    unset BEAR
+    unset CCACHE
+    unset PKG_CONFIG
+
+    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ; then
+        AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
+        AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
+        AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
+        ACLOCAL=$(command -v aclocal)       || abort 1 "command not found: aclocal"
+        PERL=$(command -v perl)             || abort 1 "command not found: perl"
+        M4=$(command -v m4)                 || abort 1 "command not found: m4"
+
+        run "$AUTORECONF" --version
+        printf '\n'
+        run "$AUTOCONF"   --version
+        printf '\n'
+        run "$AUTOMAKE"   --version
+        printf '\n'
+        run "$ACLOCAL"    --version
+        printf '\n'
+        run "$PERL"       --version
+        printf '\n'
+        run "$M4"         --version
+        printf '\n'
+    fi
+
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
+        MESON=$(command -v meson) || abort 1 "command not found: meson"
+        run "$MESON"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
+        CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
+        run "$CMAKE"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
+        XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+
+        # error: Running xmake as root is extremely dangerous and no longer supported.
+        # As xmake does not drop privileges on installation you would be giving all
+        # build scripts full access to your system.
+        # Or you can add `--root` option or XMAKE_ROOT=y to allow run as root temporarily.
+        export XMAKE_ROOT=y
+
+        run "$XMAKE"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
+        GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
+        run "$GMAKE"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
+        NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
+        run "$NINJA"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
+        CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
+        run "$RUSTUP"     --version
+        printf '\n'
+        run "$CARGO"      --version
+        printf '\n'
+    }
+
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
+        GO=$(command -v go) || abort 1 "command not found: go"
+        run "$GO"      version
+        printf '\n'
+    }
+
+    [ "$CCACHE_ENABLED" = yes ] && {
+        CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
+        run "$CCACHE"    --version
+        printf '\n'
+    }
+
+    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf) || abort 1 "command not found: pkg-config"
+
+    run "$PKG_CONFIG"    --version
+    printf '\n'
+
+    unset  M4
+    export M4="$(command -v m4 || true)"
+
+    #########################################################################################
+
+    step "create symbolic link for ccache"
+
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CC")"
+        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CXX")"
+
+        "$CCACHE" -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
+    else
+        note "ccache is disabled, skipped."
+    fi
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "create symbolic links for dependent libraries"
+
+        unset libFileNameSuffix
+
+        case $LINK_TYPE in
+            static-only|static-prefered)
+                libFileNameSuffix='.a'
+                ;;
+            shared-only|shared-prefered)
+                if [ "$NATIVE_OS_KIND" = darwin ] ; then
+                    libFileNameSuffix='.dylib'
+                else
+                    libFileNameSuffix='.so'
+                fi
+                ;;
+            *)  die "unrecognized link type: $LINK_TYPE"
+        esac
+
+        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        do
+            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
+                for libFileName in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*$libFileNameSuffix" -exec basename {} \;)
+                do
+                    if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$libFileName" ] ; then
+                        run ln -s "$DEPENDENT_PACKAGE_LIBRARY_DIR/$libFileName" "$PACKAGE_INSTALLING_LIB_DIR/$libFileName"
+                    fi
+                done
             fi
-        fi
+        done
+    }
 
-        # https://help.gnome.org/admin//system-admin-guide/2.32/mimetypes-database.html.en
-        if [ -d "$DEP_PKG_INSTALL_DIR/share/mime" ] ; then
-            if [ -z "$XDG_DATA_DIRS" ] ; then
-                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share"
-            else
-                XDG_DATA_DIRS="$DEP_PKG_INSTALL_DIR/share:$XDG_DATA_DIRS"
-            fi
-        fi
-
-        if [ "$DEP_PKG_NAME" = docbook ] ; then
-            # http://xmlsoft.org/xslt/xsltproc.html
-            export XML_CATALOG_FILES="$docbook_INSTALL_DIR/catalog.xml"
-        fi
-    done
-
-    CPPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $CPPFLAGS"
-     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
-
-    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR/lib $RUSTFLAGS"
-
-    export PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
-
-    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
-    export ACLOCAL_PATH
-    export PKG_CONFIG_PATH
-
-    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-    export XDG_DATA_DIRS
+    #########################################################################################
 
     case $NATIVE_OS_KIND in
         netbsd)
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
-
-            LDFLAGS="$LDFLAGS -pthread"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
             ;;
         openbsd)
             # https://github.com/mesonbuild/meson/issues/5390
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libdl.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/librt.a"
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_INSTALLING_TOP_DIR/lib/libcrypt.a"
-
-            LDFLAGS="$LDFLAGS -pthread"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/librt.a"
+            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libcrypt.a"
             ;;
     esac
 
+    #########################################################################################
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        step "determine which version would be built for"
+
+        # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
+        # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
+        # https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-mmacosx-version-min
+        if [ -z "$MACOSX_DEPLOYMENT_TARGET" ] ; then
+            unset NATIVE_OS_VERS_MAJOR
+            unset NATIVE_OS_VERS_MINOR
+
+            NATIVE_OS_VERS_MAJOR="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f1)"
+            NATIVE_OS_VERS_MINOR="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f2)"
+
+            export MACOSX_DEPLOYMENT_TARGET="$NATIVE_OS_VERS_MAJOR.$NATIVE_OS_VERS_MINOR"
+        fi
+
+        printf '%s\n' "$MACOSX_DEPLOYMENT_TARGET"
+    fi
+
+    #########################################################################################
+
+    step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
+
+    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
+    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
+    PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
+    LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+
+    CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+    XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+    LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
+
+    if [ "$NATIVE_OS_KIND" != 'darwin' ] ; then
+        if [ "$LINK_TYPE" = static-only ] ; then
+            LDFLAGS="-static --static $LDFLAGS"
+        fi
+    fi
+
+    for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+    do
+        DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
+
+        DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+        DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
+        DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
+        DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+        DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
+
+        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
+        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_BINARY__DIR='$DEPENDENT_PACKAGE_BINARY__DIR'"
+        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INCLUDE_DIR'"
+        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_LIBRARY_DIR'"
+
+        if [ -d "$DEPENDENT_PACKAGE_INCLUDE_DIR" ] ; then
+            PPFLAGS="-I$DEPENDENT_PACKAGE_INCLUDE_DIR $PPFLAGS"
+        fi
+
+        if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
+            LDFLAGS="-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $LDFLAGS"
+        fi
+    done
+
+    PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
+    LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+
     export   CFLAGS="$CCFLAGS"
     export CXXFLAGS="$XXFLAGS"
-    export CPPFLAGS="$CPPFLAGS"
+    export CPPFLAGS="$PPFLAGS"
     export  LDFLAGS="$LDFLAGS"
+
+    printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} CFLAGS"
+    printf '%s\n' "$CFLAGS" | xargs printf '        %s\n'
+    printf '\n'
+
+    printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} CXXFLAGS"
+    printf '%s\n' "$CXXFLAGS" | xargs printf '        %s\n'
+    printf '\n'
+
+    printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} CPPFLAGS"
+    printf '%s\n' "$CPPFLAGS" | xargs printf '        %s\n'
+    printf '\n'
+
+    printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} LDFLAGS"
+    printf '%s\n' "$LDFLAGS" | xargs printf '        %s\n'
+
+    #########################################################################################
 
     export       CC_FOR_BUILD="$CC"
     export      CXX_FOR_BUILD="$CXX"
@@ -783,20 +1486,128 @@ EOF
     export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
     export  LDFLAGS_FOR_BUILD="$LDFLAGS"
 
-    unset PKG_CONFIG
+    #########################################################################################
 
-    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf || true)
+    step "list XDG_DATA_DIRS"
 
-    export PKG_CONFIG
+    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    export XDG_DATA_DIRS
 
-    unset M4
+    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    do
+        # https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
+        if [ -d "$DEPENDENT_PACKAGE_INSTALL_DIR/share/gir-1.0" ] ; then
+            if [ -z "$XDG_DATA_DIRS" ] ; then
+                XDG_DATA_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR/share"
+            else
+                XDG_DATA_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR/share:$XDG_DATA_DIRS"
+            fi
+        fi
 
-    M4=$(command -v m4 || true)
+        # https://help.gnome.org/admin//system-admin-guide/2.32/mimetypes-database.html.en
+        if [ -d "$DEPENDENT_PACKAGE_INSTALL_DIR/share/mime" ] ; then
+            if [ -z "$XDG_DATA_DIRS" ] ; then
+                XDG_DATA_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR/share"
+            else
+                XDG_DATA_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR/share:$XDG_DATA_DIRS"
+            fi
+        fi
+    done
 
-    export M4
+    printf '%s\n' "$XDG_DATA_DIRS" | tr : '\n'
 
-    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+    #########################################################################################
+
+    step "list ACLOCAL_PATH"
+
+    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
+    export ACLOCAL_PATH
+
+   for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    do
+        DEPENDENT_PACKAGE_ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALL_DIR/share/aclocal"
+
+        if [ -d "$DEPENDENT_PACKAGE_ACLOCAL_PATH" ] ; then
+            if [ -z "$ACLOCAL_PATH" ] ; then
+                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH"
+            else
+                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH:$ACLOCAL_PATH"
+            fi
+        fi
+    done
+
+    printf '%s\n' "$ACLOCAL_PATH" | tr : '\n'
+
+    #########################################################################################
+
+    step "list PATH"
+
+    PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+
+    printf '%s\n' "$PATH" | tr : '\n'
+
+    #########################################################################################
+
+    step "config environment variables for pkg-config"
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        export PKG_CONFIG_DEBUG_SPEW='set'
+    fi
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
+
+    if [ -z "$PKG_CONFIG_PATH" ] ; then
+        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    else
+        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+    fi
+
+    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    do
+        DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
+
+        if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+            PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+        else
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/share/pkgconfig"
+
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+            fi
+        fi
+    done
+
+    printf 'PKG_CONFIG_DEBUG_SPEW = %s\n' "$PKG_CONFIG_DEBUG_SPEW"
+
+    printf 'PKG_CONFIG          = %s\n' "$PKG_CONFIG"
+
+    printf 'PKG_CONFIG_LIBDIR   = %s\n' "$PKG_CONFIG_LIBDIR"
+
+    export IFS=':'
+
+    FIRST=yes
+
+    for item in $(printf '%s\n' "$PKG_CONFIG_PATH")
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+            printf 'PKG_CONFIG_PATH     = %s\n' "$item"
+        else
+            printf '%s\n' "                      $item"
+        fi
+    done
+
+    unset IFS
+
+    #########################################################################################
+
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        step "config environment variables for cmake"
+
+        # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+
         unset CMAKE_PREFIX_PATH
         unset CMAKE_APPLE_SILICON_PROCESSOR
         unset CMAKE_BUILD_PARALLEL_LEVEL
@@ -852,7 +1663,7 @@ EOF
             *)       BUILD_SHARED_LIBS=ON
         esac
 
-        if [ "$VERBOSE_LEVEL" -eq 0 ] ; then
+        if [ "$LOG_LEVEL" -eq 0 ] ; then
             CMAKE_VERBOSE_MAKEFILE=OFF
             CMAKE_COLOR_MAKEFILE=OFF
         else
@@ -861,16 +1672,29 @@ EOF
         fi
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
             CMAKE_FIND_DEBUG_MODE=ON
         else
             CMAKE_FIND_DEBUG_MODE=OFF
         fi
 
-        CMAKE_TOOLCHAIN_FILE="$PACKAGE_INSTALLING_TOP_DIR/toolchain.cmake"
+        CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+        unset CMAKE_FIND_ROOT_PATH
+
+        if [ -n "$PACKAGE_DEP_PKG" ] ; then
+            CMAKE_FIND_ROOT_PATH="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" | tr ' ' ';')"
+        fi
+
+        env | sed -n '/^CMAKE_/p'
     fi
 
+    #########################################################################################
+
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        step "config environment variables for cargo and rustc"
+
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
@@ -881,14 +1705,14 @@ EOF
                 case $NATIVE_OS_LIBC in
                     glibc) RUST_TARGET=x86_64-unknown-linux-gnu  ;;
                     musl)  RUST_TARGET=x86_64-unknown-linux-musl ;;
-                    *)     die "unrecognized libc."
+                    *)     abort 1 "unrecognized libc: $NATIVE_OS_LIBC"
                 esac
                 ;;
             linux-aarch64)
                 case $NATIVE_OS_LIBC in
                     glibc) RUST_TARGET=aarch64-unknown-linux-gnu  ;;
                     musl)  RUST_TARGET=aarch64-unknown-linux-musl ;;
-                    *)     die "unrecognized libc."
+                    *)     abort 1 "unrecognized libc: $NATIVE_OS_LIBC"
                 esac
                 ;;
             darwin-x86_64)  RUST_TARGET=x86_64-apple-darwin  ;;
@@ -899,7 +1723,6 @@ EOF
             netbsd-amd64)   RUST_TARGET=x86_64-unknown-netbsd  ;;
         esac
 
-        
         RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
 
         # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
@@ -907,15 +1730,27 @@ EOF
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
 
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
         export RUST_TARGET
 
-        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        do
+            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
+                RUSTFLAGS="-Clink-arg=-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Clink-arg=-Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $RUSTFLAGS"
+            fi
+        done
+
+        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
 
         if [ "$LINK_TYPE" = 'static-only' ] ; then
             if [ "$NATIVE_OS_KIND" != darwin ] ; then
                 if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-                    echo 'INPUT(-l:libgcc_eh.a)' > $PACKAGE_INSTALLING_TOP_DIR/lib/libgcc_s.a
+                    printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
                 fi
             fi
@@ -957,22 +1792,33 @@ EOF
         # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
 
 
-        for item in $PACKAGE_DEP_PKG_R
+        for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
             case $item in
                 openssl)
-                    unset OPENSSL_DIR
                     # https://docs.rs/openssl/0.10.35/openssl/
                     export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                    ;;
+                openssl@1.1)
+                    # https://docs.rs/openssl/0.10.35/openssl/
+                    export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
                     ;;
             esac
         done
 
         env | grep CARGO_
+        env | grep RUST_
+
+        printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} RUSTFLAGS"
+        printf '%s\n' "$RUSTFLAGS" | xargs printf '        %s\n'
     fi
 
+    #########################################################################################
+
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        # https://golang.org/doc/install/source#environment
+        step "config environment variables for go"
+
+        # https://pkg.go.dev/cmd/cgo
         export CGO_ENABLED=0
         export CGO_CFLAGS="$CFLAGS"
         export CGO_CXXFLAGS="$CXXFLAGS"
@@ -981,8 +1827,11 @@ EOF
 
         export GO111MODULE='auto'
 
-        #export GOPROXY='https://goproxy.cn'
+        if [ "$COUNTRY" = china ] ; then
+            export GOPROXY='https://goproxy.cn'
+        fi
 
+        # https://golang.org/doc/install/source#environment
         unset GOOS
         unset GOARCH
 
@@ -998,164 +1847,282 @@ EOF
         # esac
     fi
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        export PKG_CONFIG_DEBUG_SPEW=set
-    fi
-}
+    #########################################################################################
 
-__printf_relevant_environment_variables() {
-    step "printf relevant environment variables"
-
-    printf '%s\n' "
-PPKG_VERSION    = $PPKG_VERSION
-PPKG_HOME       = $PPKG_HOME
-PPKG_EXECUTABLE = $PPKG_EXECUTABLE
-
-TIMESTAMP_UNIX  = $TIMESTAMP_UNIX
-
-NATIVE_OS_KIND  = $NATIVE_OS_KIND
-NATIVE_OS_TYPE  = $NATIVE_OS_TYPE
-NATIVE_OS_NAME  = $NATIVE_OS_NAME
-NATIVE_OS_VERS  = $NATIVE_OS_VERS
-NATIVE_OS_ARCH  = $NATIVE_OS_ARCH
-NATIVE_OS_NCPU  = $NATIVE_OS_NCPU
-NATIVE_OS_LIBC  = $NATIVE_OS_LIBC
-
-PACKAGE_NAME    = $PACKAGE_NAME
-PACKAGE_SUMMARY = $PACKAGE_SUMMARY
-PACKAGE_VERSION = $PACKAGE_VERSION
-PACKAGE_LICENSE = $PACKAGE_LICENSE
-PACKAGE_WEB_URL = $PACKAGE_WEB_URL
-PACKAGE_GIT_URL = $PACKAGE_GIT_URL
-PACKAGE_GIT_SHA = $PACKAGE_GIT_SHA
-PACKAGE_GIT_REF = $PACKAGE_GIT_REF
-PACKAGE_SHALLOW = $PACKAGE_SHALLOW
-PACKAGE_SRC_URL = $PACKAGE_SRC_URL
-PACKAGE_SRC_SHA = $PACKAGE_SRC_SHA
-PACKAGE_FIX_URL = $PACKAGE_FIX_URL
-PACKAGE_FIX_SHA = $PACKAGE_FIX_SHA
-PACKAGE_RES_URL = $PACKAGE_RES_URL
-PACKAGE_RES_SHA = $PACKAGE_RES_SHA
-PACKAGE_DEP_PKG_R=$PACKAGE_DEP_PKG_R
-PACKAGE_DEP_PKG = $PACKAGE_DEP_PKG
-PACKAGE_DEP_UPP = $PACKAGE_DEP_UPP
-PACKAGE_DEP_PYM = $PACKAGE_DEP_PYM
-PACKAGE_DEP_PLM = $PACKAGE_DEP_PLM
-PACKAGE_BSYSTEM = $PACKAGE_BSYSTEM
-PACKAGE_BSCRIPT = $PACKAGE_BSCRIPT
-PACKAGE_CDEFINE = $PACKAGE_CDEFINE
-PACKAGE_CCFLAGS = $PACKAGE_CCFLAGS
-PACKAGE_XXFLAGS = $PACKAGE_XXFLAGS
-PACKAGE_LDFLAGS = $PACKAGE_LDFLAGS
-PACKAGE_BINBSTD = $PACKAGE_BINBSTD
-PACKAGE_SYMLINK = $PACKAGE_SYMLINK
-PACKAGE_PARALLEL= $PACKAGE_PARALLEL
-PACKAGE_FORMULA_FILEPATH=$PACKAGE_FORMULA_FILEPATH
-
-PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
-PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
-PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
-PACKAGE_INSTALLING_FIX_DIR = $PACKAGE_INSTALLING_FIX_DIR
-PACKAGE_INSTALLING_RES_DIR = $PACKAGE_INSTALLING_RES_DIR
-PACKAGE_INSTALLING_BIN_DIR = $PACKAGE_INSTALLING_BIN_DIR
-PACKAGE_INSTALLING_LIB_DIR = $PACKAGE_INSTALLING_LIB_DIR
-PACKAGE_INSTALLING_INC_DIR = $PACKAGE_INSTALLING_INC_DIR
-PACKAGE_INSTALLING_TMP_DIR = $PACKAGE_INSTALLING_TMP_DIR
-
-PACKAGE_INSTALL_DIR        = $PACKAGE_INSTALL_DIR
-
-STATIC_LIBRARY_SUFFIX  = $STATIC_LIBRARY_SUFFIX
-SHARED_LIBRARY_SUFFIX  = $SHARED_LIBRARY_SUFFIX
-
-        BUILD_NJOBS = $BUILD_NJOBS
-        BUILD_TYPE  = $BUILD_TYPE
-
-        PROXIED_CC  = $PROXIED_CC
-        PROXIED_CXX = $PROXIED_CXX
-    "
-
-    for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
-    do
-        eval export "$TOOL=\"\$$TOOL\""
-        printf "%19s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
-    done
-
-    echo
-
-    for FLAG in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
-    do
-        eval export "$FLAG=\"\$$FLAG\""
-        printf "\n%19s = " "$FLAG"
-        FIRST=yes
-        for item in $(eval echo \$$FLAG | tr ':' ' ')
-        do
-            if [ "$FIRST" = yes ] ; then
-                FIRST=no
-                printf '%s\n' "$item"
-            else
-                printf '%s\n' "                      $item"
-            fi
-        done
-    done
-
-    printf '%s\n'
-
-    printf 'PKG_CONFIG          = %s\n' "$PKG_CONFIG"
-
-    printf 'PKG_CONFIG_PATH     = '
-    __printf_colon_separated_list "$PKG_CONFIG_PATH"
-
-    printf '%s\n'
-
-    printf 'PKG_CONFIG_LIBDIR   = '
-    __printf_colon_separated_list "$PKG_CONFIG_LIBDIR"
-
-    printf '%s\n'
-
-    printf 'PKG_CONFIG_DEBUG_SPEW= %s\n\n' "$PKG_CONFIG_DEBUG_SPEW"
-
-    printf '    LD_LIBRARY_PATH = '
-    __printf_colon_separated_list "$LD_LIBRARY_PATH"
-
-    printf "\n%19s = " PATH
-    __printf_colon_separated_list "$PATH"
-
-    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
-        printf '%s\n'
-        env | sed -n '/^CMAKE_/p'
-    fi
-
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        printf "\n%19s = " RUSTFLAGS
-        FIRST=yes
-        for item in $RUSTFLAGS
-        do
-            if [ "$FIRST" = yes ] ; then
-                FIRST=no
-                printf '%s\n' "$item"
-            else
-                printf '%s\n' "                      $item"
-            fi
-        done
-    fi
-
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
+    [ "$LOG_LEVEL" -ge 3 ] && {
         step "show export variables"
         run export -p
         echo
+    }
+
+    #########################################################################################
+
+    step "tree files of the installing top directory"
+    run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
+
+    step "list files of the installing src directory"
+    run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
+
+    if [ -n "$PACKAGE_BSCRIPT" ] ; then
+        step "list files of the installing build script directory"
+        run ls -l "$PACKAGE_BSCRIPT_DIR"
+    fi
+
+    #########################################################################################
+
+    [ "$DRYRUN" = yes ] && {
+        [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh) || abort 1 "none of zsh|bash|sh shell found in your system."
+        exec "$SHELL"
+    }
+
+    #########################################################################################
+
+    step "do some preparation works"
+
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run cd "$PACKAGE_BSCRIPT_DIR"
+    fi
+
+    if command -v dopatch > /dev/null ; then
+        dopatch "$1"
+    else
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)
+                note "dopatch mapping was not found in formula."
+                run NOCONFIGURE=yes ./autogen.sh
+                ;;
+            autotools)
+                note "dopatch mapping was not found in formula."
+                run autoreconf -ivf
+                ;;
+            *)  note "dopatch mapping was not found in formula, skipped."
+        esac
+    fi
+
+    #########################################################################################
+
+    step "building"
+
+    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
+        run cd "$PACKAGE_BSCRIPT_DIR"
+    else
+        run install -d "$PACKAGE_BCACHED_DIR"
+        run cd "$PACKAGE_BCACHED_DIR"
+    fi
+
+    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+        run rm -rf "$PACKAGE_INSTALL_DIR"
+    fi
+
+    dobuild "$1"
+
+    #########################################################################################
+
+    cd "$PACKAGE_INSTALL_DIR" || abort 1 "nothing is installed."
+
+    [ -z "$(ls)" ]            && abort 1 "nothing is installed."
+
+    #########################################################################################
+
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        step "adjust Mach-O files for ${COLOR_GREEN}$*${COLOR_OFF}"
+        __adjust_mach_o_files_for_the_given_target "$@"
+    else
+        step "adjust ELF files for ${COLOR_GREEN}$*${COLOR_OFF}"
+        __adjust_elf_files_for_the_given_target "$@"
+    fi
+
+    if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
+        step "adjust .la files for ${COLOR_GREEN}$*${COLOR_OFF}"
+        __adjust_la_files_for_the_given_target "$@"
+
+        step "adjust .pc files for ${COLOR_GREEN}$*${COLOR_OFF}"
+        __adjust_pc_files_for_the_given_target "$@"
     fi
 }
 
-__printf_colon_separated_list() {
-    FIRST=yes
+__adjust_elf_files_for_the_given_target() {
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec "$PPKG" util base64-encode '{}' \; -printf '\n')"
 
-    for item in $(printf '%s\n' "$@" | tr ' ' '|' | tr ':' ' ')
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
     do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
-            printf '%s\n' "$item" | tr '|' ' '
-        else
-            printf '%s\n' "                      $item" | tr '|' ' '
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$("$PPKG" util base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        [ -w "$FILEPATH" ] || continue
+
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | "$PPKG" util base16-encode)"
+
+        #echo "$FILE_HEADER_ACTUAL : $FILEPATH"
+
+        ELF_TYPE_EXECUTABLE=no
+        ELF_TYPE_SHAREDABLE=no
+
+        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+        case $FILE_HEADER_ACTUAL in
+            7F454C460[12]01010[039]00000000000000000100)
+                continue
+                ;;
+            7F454C460[12]01010[039]00000000000000000200)
+                # little-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]01010[039]00000000000000000300)
+                # little-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000001)
+                continue
+                ;;
+            7F454C460[12]02010[039]00000000000000000002)
+                # big-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000003)
+                # big-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C46*)
+                abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                ;;
+            *)  continue
+        esac
+
+        # https://github.com/NixOS/patchelf/issues/371
+
+        if [ "$BUILD_TYPE" = release ] ; then
+            if [ "$ELF_TYPE_EXECUTABLE" = yes ] ; then
+                # freebsd's strip has problem
+                if [ "$NATIVE_OS_KIND" != freebsd ] ; then
+                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                fi
+            fi
+        fi
+
+        if [ "$ELF_TYPE_EXECUTABLE" = yes ] || [ "$ELF_TYPE_SHAREDABLE" = yes ] ; then
+            DT_NEEDED=
+            DT_NEEDED="$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)"
+
+            DT_RUNPATH=
+            DT_RUNPATH="$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')"
+
+            if [ -n "$DT_RUNPATH" ] ; then
+                run patchelf --remove-rpath "$FILEPATH"
+            fi
+
+            unset RUNPATH
+
+            PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+                for NEEDED in $DT_NEEDED
+                do
+                    if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
+                        RUNPATH="$PACKAGE_LIBRARY_DIR"
+                        break
+                    fi
+                done
+            fi
+
+            for NEEDED in $DT_NEEDED
+            do
+                case $NEEDED in
+                    libc.so.6) ;;
+                    libm.so.6) ;;
+                    libgcc_s.so.1) ;;
+                    ld-linux-x86-64.so.2) ;;
+                    *)  for LIBDIR in $DT_RUNPATH
+                        do
+                            if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
+                                continue
+                            fi
+
+                            if [ "$LIBDIR" = "$PACKAGE_WORKING_DIR/lib" ] ; then
+                                continue
+                            fi
+
+                            if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                if [ -z "$RUNPATH" ] ; then
+                                    RUNPATH="$LIBDIR"
+                                else
+                                    RUNPATH="$RUNPATH:$LIBDIR"
+                                fi
+                                break
+                            fi
+                        done
+                esac
+            done
+
+            if [ -n "$RUNPATH" ] ; then
+                run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
+            fi
+        fi
+    done
+}
+
+__adjust_mach_o_files_for_the_given_target() {
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec "$PPKG" util base64-encode '{}' \; -printf '\n')"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$("$PPKG" util base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | "$PPKG" util base16-encode)"
+
+        # https://github.com/aidansteele/osx-abi-macho-file-format-reference
+        case $FILE_HEADER_ACTUAL in
+            CFFAEDFE0C000001000000000[26]000000)
+                # arm64
+                ;;
+            CFFAEDFE07000001030000000[26]000000)
+                # x86_64
+                ;;
+            *)  continue
+        esac
+
+        DT_SONAME=
+        DT_SONAME="$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_NEEDED=
+        DT_NEEDED="$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_RUNPATH=
+        DT_RUNPATH="$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        if [ -z "$DT_NEEDED" ] ; then
+            abort 1 "no dependent shared libraries found in $FILEPATH"
+        fi
+
+        echo "DT_SONAME=\n$DT_SONAME"
+        echo "DT_NEEDED=\n$DT_NEEDED"
+        echo "DT_RUNPATH=\n$DT_RUNPATH"
+
+        case $DT_SONAME in
+            '') ;;
+            @*) ;;
+            /*) ;;
+            lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
+        esac
+
+        for NEEDED in $DT_NEEDED
+        do
+            case $NEEDED in
+                lib*.dylib)
+                    run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
+            esac
+        done
+
+        if [ "$BUILD_TYPE" = release ] ; then
+            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
         fi
     done
 }
@@ -1176,7 +2143,7 @@ __adjust_la_files_for_the_given_target() {
     for lafile in $LA_FILES
     do
         sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
-        sed_in_place "s|-L$PPKG_HOME[^' ]*||g"   "$lafile"
+        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$lafile"
         sed_in_place "s|-R[^' ]*||g"               "$lafile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
         #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
@@ -1201,7 +2168,7 @@ __adjust_pc_files_for_the_given_target() {
     do
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
-        sed_in_place "s|-L$PPKG_HOME[^' ]*||g"   "$pcfile"
+        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
         sed_in_place "s|-R[^' ]*||g"               "$pcfile"
         sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
@@ -1248,8 +2215,8 @@ install_incs() {
             unset X2
         fi
 
-        install -v -d         "$PACKAGE_INSTALL_DIR/include/$X2"
-        install -v -m 644 $X1 "$PACKAGE_INSTALL_DIR/include/$X2"
+        install -v -d           "$PACKAGE_INSTALL_DIR/include/$X2"
+        install -v -m 644 "$X1" "$PACKAGE_INSTALL_DIR/include/$X2"
 
         shift
     done
@@ -1257,41 +2224,41 @@ install_incs() {
 
 install_libs() {
     install -v -d "$PACKAGE_INSTALL_DIR/lib"
-    for item in $@
+    for item in "$@"
     do
         case $item in
-            *.a) install -v -m 644 $item "$PACKAGE_INSTALL_DIR/lib" ;;
-            *)   install -v -m 755 $item "$PACKAGE_INSTALL_DIR/lib" ;;
+            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
+            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
         esac
     done
 }
 
 install_pcfs() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    install -v -m 644 $@ "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
+    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
 }
 
 install_bins() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/bin" &&
-    install -v -m 755 $@ "$PACKAGE_INSTALL_DIR/bin"
+    install -v -d          "$PACKAGE_INSTALL_DIR/bin" &&
+    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin"
 }
 
 install_etcs() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/etc" &&
-    install -v -m 644 $@ "$PACKAGE_INSTALL_DIR/etc"
+    install -v -d          "$PACKAGE_INSTALL_DIR/etc" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc"
 }
 
 install_mans() {
-    for item in $@
+    for item in "$@"
     do
         unset NUMBER
         NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
         case $NUMBER in
             [1-8]);;
-            *)    die "$item: not a manpage."
+            *)    abort 1 "$item: not a manpage."
         esac
-        install -v -d           "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
-        install -v -m 644 $item "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
+        install -v -d             "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
     done
 }
 
@@ -1310,7 +2277,7 @@ install_mans() {
             install -v -d          "$PACKAGE_INSTALL_DIR/share/zsh/site-functions" &&
             install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/zsh/site-functions/_$2"
             ;;
-        *)  die "install_completion unsupported shell: $1"
+        *)  abort 1 "install_completion unsupported shell: $1"
     esac
 }
 
@@ -1318,6 +2285,10 @@ install_pc_file() {
     install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
     cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
+
+# }}}
+##############################################################################
+# {{{ gow
 
 gow() {
     if command -v bat > /dev/null ; then
@@ -1330,12 +2301,12 @@ gow() {
 
     # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        GOMOD="$PACKAGE_INSTALLING_BST_DIR/go.mod"
+        GOMOD="$PACKAGE_BSCRIPT_DIR/go.mod"
 
         if [ -f "$GOMOD" ] && go mod graph | grep -q 'golang\.org/x/sys' ; then
             run go get -u golang.org/x/sys
 
-            if [ -d "$PACKAGE_INSTALLING_BST_DIR/vendor" ] ; then
+            if [ -d "$PACKAGE_BSCRIPT_DIR/vendor" ] ; then
                 unset GO_VERSION_MAJOR
                 unset GO_VERSION_MINOR
 
@@ -1393,7 +2364,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+        if [ "$LOG_LEVEL" -gt 0 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -1401,7 +2372,7 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_X" ] ; then
-        if [ "$VERBOSE_LEVEL" -ge 2 ] ; then
+        if [ "$LOG_LEVEL" -ge 2 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
         fi
     else
@@ -1421,24 +2392,29 @@ gow() {
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
 
     if [ -z "$GO_BUILD_ARGV_O" ] ; then
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/"
     else
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_INSTALLING_TMP_DIR/$GO_BUILD_ARGV_O"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/$GO_BUILD_ARGV_O"
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
+    # shellcheck disable=SC2086
     run go build $GO_BUILD_ARGS
 
-    for item in $(ls "$PACKAGE_INSTALLING_TMP_DIR")
+    for item in $(ls "$PACKAGE_BCACHED_DIR")
     do
         case $item in
-            *.a)  run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
-            *.so) run install_libs "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
-            *)    run install_bins "$PACKAGE_INSTALLING_TMP_DIR/$item" ;;
+            *.a)  run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *.so) run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *)    run install_bins "$PACKAGE_BCACHED_DIR/$item" ;;
         esac
     done
 }
+
+# }}}
+##############################################################################
+# {{{ cargow
 
 cargow() {
     run rustup target add "$RUST_TARGET"
@@ -1453,16 +2429,16 @@ cargow() {
             unset CARGO_BUILD_ARG_TARGET
             unset CARGO_BUILD_ARG_RELEASE
 
-            for arg in $@
+            for arg in "$@"
             do
                 case $arg in
-                    --vv)      CARGO_BUILD_ARG_VV=set      ;;
-                    --target)  CARGO_BUILD_ARG_TARGET=set  ;;
-                    --release) CARGO_BUILD_ARG_RELEASE=set ;;
+                    --vv)      CARGO_BUILD_ARG_VV='set'      ;;
+                    --target)  CARGO_BUILD_ARG_TARGET='set'  ;;
+                    --release) CARGO_BUILD_ARG_RELEASE='set' ;;
                 esac
             done
 
-            CARGO_BUILD_ARGS="$@"
+            CARGO_BUILD_ARGS="$*"
 
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
@@ -1476,6 +2452,7 @@ cargow() {
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
             fi
 
+            # shellcheck disable=SC2086
             run cargo clean && run cargo $CARGO_BUILD_ARGS
             ;;
         install)
@@ -1488,17 +2465,17 @@ cargow() {
             unset CARGO_INSTALL_ARG_ROOT
             unset CARGO_INSTALL_ARG_VV
 
-            for arg in $@
+            for arg in "$@"
             do
                 case $arg in
-                    --target) CARGO_INSTALL_ARG_TARGET=set ;;
-                    --path)   CARGO_INSTALL_ARG_PATH=set   ;;
-                    --root)   CARGO_INSTALL_ARG_ROOT=set   ;;
-                    --vv)     CARGO_INSTALL_ARG_VV=set     ;;
+                    --target) CARGO_INSTALL_ARG_TARGET='set' ;;
+                    --path)   CARGO_INSTALL_ARG_PATH='set'   ;;
+                    --root)   CARGO_INSTALL_ARG_ROOT='set'   ;;
+                    --vv)     CARGO_INSTALL_ARG_VV='set'     ;;
                 esac
             done
 
-            CARGO_INSTALL_ARGS="$@"
+            CARGO_INSTALL_ARGS="$*"
 
             if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
@@ -1509,13 +2486,14 @@ cargow() {
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_INSTALLING_BST_DIR"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_BSCRIPT_DIR"
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$PACKAGE_INSTALL_DIR"
             fi
 
+            # shellcheck disable=SC2086
             run cargo clean && run cargo $CARGO_INSTALL_ARGS
             ;;
         cbuild|cinstall)
@@ -1528,20 +2506,20 @@ cargow() {
             unset CARGO_CINSTALL_ARG_TARGET
             unset CARGO_CINSTALL_ARG_PREFIX
 
-            for arg in $@
+            for arg in "$@"
             do
                 case $arg in
-                    -q|--quiet)   CARGO_CINSTALL_ARG_Q=set       ;;
-                    -v|--verbose) CARGO_CINSTALL_ARG_V=set       ;;
-                    -vv)          CARGO_CINSTALL_ARG_VV=set      ;;
-                    --debug)      CARGO_CINSTALL_ARG_DEBUG=set   ;;
-                    --release)    CARGO_CINSTALL_ARG_RELEASE=set ;;
-                    --target)     CARGO_CINSTALL_ARG_TARGET=set  ;;
-                    --prefix)     CARGO_CINSTALL_ARG_PREFIX=set  ;;
+                    -q|--quiet)   CARGO_CINSTALL_ARG_Q='set'       ;;
+                    -v|--verbose) CARGO_CINSTALL_ARG_V='set'       ;;
+                    -vv)          CARGO_CINSTALL_ARG_VV='set'      ;;
+                    --debug)      CARGO_CINSTALL_ARG_DEBUG='set'   ;;
+                    --release)    CARGO_CINSTALL_ARG_RELEASE='set' ;;
+                    --target)     CARGO_CINSTALL_ARG_TARGET='set'  ;;
+                    --prefix)     CARGO_CINSTALL_ARG_PREFIX='set'  ;;
                 esac
             done
 
-            CARGO_CINSTALL_ARGS="$@"
+            CARGO_CINSTALL_ARGS="$*"
 
             if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
                 CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
@@ -1559,13 +2537,17 @@ cargow() {
                 CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $PACKAGE_INSTALL_DIR"
             fi
 
+            # shellcheck disable=SC2086
             run cargo $CARGO_CINSTALL_ARGS
             ;;
-        *) cargo $@
+        *) cargo "$@"
     esac
 }
 
-# run in a subshell
+# }}}
+##############################################################################
+# {{{ configure
+
 configure_only() {
     export FORCE_UNSAFE_CONFIGURE=1
 
@@ -1573,24 +2555,7 @@ configure_only() {
     export ac_cv_func_calloc_0_nonnull=yes
     export ac_cv_func_realloc_0_nonnull=yes
 
-    CONFIGURE_ARGS="
-        --prefix='$PACKAGE_INSTALL_DIR'
-        --disable-option-checking
-        --enable-rpath
-        --disable-nls
-        --enable-largefile
-        CC='$CC'
-        CFLAGS='$CFLAGS'
-        CXX='$CXX'
-        CXXFLAGS='$CXXFLAGS'
-        CPP='$CPP'
-        CPPFLAGS='$CPPFLAGS'
-        LDFLAGS='$LDFLAGS'
-        AR='$AR'
-        RANLIB='$RANLIB'
-        PKG_CONFIG='$PKG_CONFIG'
-        PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
-        PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'"
+    CONFIGURE_ARGS="--prefix='$PACKAGE_INSTALL_DIR' --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
 
     if [ "$BUILD_TYPE" = release ] ; then
         CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
@@ -1605,32 +2570,33 @@ configure_only() {
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
 
-    if [ "$VERBOSE_LEVEL" -eq 4 ] ; then
-        sed_in_place '1a set -x' "$PACKAGE_INSTALLING_BST_DIR/configure"
+    if [ -n "$PPKG_XTRACE" ] ; then
+        sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
-    if run $PACKAGE_INSTALLING_BST_DIR/configure $CONFIGURE_ARGS $@ ; then
-        echo
+    if run "$PACKAGE_BSCRIPT_DIR/configure" "$CONFIGURE_ARGS" "$@" ; then
+        printf '\n'
     else
-        if [ -f "$PACKAGE_INSTALLING_TMP_DIR/config.log" ] ; then
-            run cat "$PACKAGE_INSTALLING_TMP_DIR/config.log"
-        elif [ -f "$PACKAGE_INSTALLING_BST_DIR/config.log" ] ; then
-            run cat "$PACKAGE_INSTALLING_BST_DIR/config.log"
+        if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BCACHED_DIR/config.log"
+        elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BSCRIPT_DIR/config.log"
         fi
+
         return 1
     fi
 
-    if [ "$VERBOSE_LEVEL" -ge 2 ] ; then
-        for Makefile in $(find "$PACKAGE_INSTALLING_BST_DIR" -name Makefile)
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
             sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
         done
+
         unset Makefile
     fi
 }
 
-# run in a subshell
 configure() {
     configure_only "$@" &&
     gmakew clean &&
@@ -1638,30 +2604,46 @@ configure() {
     gmakew install
 }
 
-# gmake wrapper
-gmakew() {
-    run gmake --version
+# }}}
+##############################################################################
+# {{{ gmakew
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        run gmake "-j$BUILD_NJOBS --debug $*"
+gmakew() {
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        run "$GMAKE" "-j$BUILD_NJOBS" --debug "$@"
     else
-        run gmake "-j$BUILD_NJOBS $*"
+        run "$GMAKE" "-j$BUILD_NJOBS" "$@"
     fi
 }
 
+# }}}
+##############################################################################
+# {{{ cmakew
+
+# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
 # https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
 # https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
-# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+#
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_IGNORE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_MODULE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PROGRAM_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_LIBRARY_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+#
 # run in a subshell
 cmakew() {
+        echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
 message(STATUS "CMake command: \${CMAKE_COMMAND}")
 message(STATUS "CMake version: \${CMAKE_VERSION}")
+
+message(STATUS "CMAKE_HOST_SYSTEM_NAME: \${CMAKE_HOST_SYSTEM_NAME}")
+message(STATUS "     CMAKE_SYSTEM_NAME: \${CMAKE_SYSTEM_NAME}")
 
 if ("\${BUILD_SHARED_LIBS}" STREQUAL "")
     set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
@@ -1699,8 +2681,6 @@ set(CMAKE_OBJDUMP "$OBJDUMP")
 
 set(CMAKE_STRIP   "$STRIP")
 
-set(CMAKE_DLLTOOL "$DLLTOOL")
-
 set(CMAKE_ADDR2LINE "$ADDR2LINE")
 
 set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
@@ -1708,13 +2688,17 @@ set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
-    if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
-        run cat "$CMAKE_TOOLCHAIN_FILE"
+    if [ "$LOG_LEVEL" -gt 0 ] ; then
+        if command -v bat > /dev/null ; then
+            run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+        else
+            run cat "$CMAKE_TOOLCHAIN_FILE"
+        fi
     fi
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
 
-    CMAKE_PROJECT_INCLUDE="$PACKAGE_INSTALLING_TOP_DIR/project-after.cmake"
+    CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
 
@@ -1734,51 +2718,47 @@ EOF
         esac
     fi
 
-    if [ "$VERBOSE_LEVEL" -gt 0 ] ; then
+    if [ "$LOG_LEVEL" -gt 0 ] ; then
         run cat "$CMAKE_PROJECT_INCLUDE"
     fi
 
-    run cmake \
+    run "$CMAKE" \
         -Wno-dev \
         -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR \
-        -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
-        -DCMAKE_PROJECT_INCLUDE=$CMAKE_PROJECT_INCLUDE \
-        -DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE \
-        -DCMAKE_COLOR_MAKEFILE=$CMAKE_COLOR_MAKEFILE \
-        -S $PACKAGE_INSTALLING_BST_DIR \
-        -B $PACKAGE_INSTALLING_TMP_DIR $@ &&
-    run cmake --build   "$PACKAGE_INSTALLING_TMP_DIR" -- -j$BUILD_NJOBS &&
-    run cmake --install "$PACKAGE_INSTALLING_TMP_DIR"
+        -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
+        -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+        -DCMAKE_PROJECT_INCLUDE="$CMAKE_PROJECT_INCLUDE" \
+        -DCMAKE_VERBOSE_MAKEFILE="$CMAKE_VERBOSE_MAKEFILE" \
+        -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
+        -S "$PACKAGE_BSCRIPT_DIR" \
+        -B "$PACKAGE_BCACHED_DIR" "$@" &&
+    run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
+    run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
 }
+
+# }}}
+##############################################################################
+# {{{ xmakew
 
 # https://github.com/xmake-io/xmake/issues/2003
 # run in a subshell
 xmakew() {
-    export XMAKE_ROOT=y
-
-    XMAKE=$(command -v xmake)
-
-    [ -z "$XMAKE" ] && die "command not found: xmake"
-
-    run xmake --version
-
-    XMAKE_CONFIG_OPTIONS="$@"
+    XMAKE_CONFIG_OPTIONS="$*"
 
     XMAKE_CONFIG_OPTION_CLEAN=
     XMAKE_CONFIG_OPTION_MODE=
     XMAKE_CONFIG_OPTION_vD=
 
-    for arg in $@
+    for arg in "$@"
     do
         case $arg in
-            -c|--clean)  XMAKE_CONFIG_OPTION_CLEAN=set ;;
-            -m|--mode=*) XMAKE_CONFIG_OPTION_MODE=set  ;;
-            -vD)         XMAKE_CONFIG_OPTION_vD=set ;;
+            -c|--clean)  XMAKE_CONFIG_OPTION_CLEAN='set' ;;
+            -m|--mode=*) XMAKE_CONFIG_OPTION_MODE='set'  ;;
+            -vD)         XMAKE_CONFIG_OPTION_vD='set' ;;
         esac
     done
 
-    if [ "$VERBOSE_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+    if [ "$LOG_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -1790,10 +2770,14 @@ xmakew() {
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
     fi
 
-    run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_INSTALLING_BST_DIR --buildir=$PACKAGE_INSTALLING_TMP_DIR &&
-    run $XMAKE --jobs=$BUILD_NJOBS &&
-    run $XMAKE install -o "$PACKAGE_INSTALL_DIR"
+    run "$XMAKE" config "$XMAKE_CONFIG_OPTIONS" "--project=$PACKAGE_BSCRIPT_DIR" "--buildir=$PACKAGE_BCACHED_DIR" &&
+    run "$XMAKE" "--jobs=$BUILD_NJOBS" &&
+    run "$XMAKE" install -o "$PACKAGE_INSTALL_DIR"
 }
+
+# }}}
+##############################################################################
+# {{{ mesonw
 
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
@@ -1804,9 +2788,9 @@ mesonw() {
         static|shared|both) MESON_BUILD_DEFAULT_LIBRARY="$INSTALL_LIB"
     esac
 
-        MESON_CROSS_FILE="$PACKAGE_INSTALLING_TMP_DIR/cross-file"
+    MESON_NATIVE_FILE="$PACKAGE_BCACHED_DIR/native-file.ini"
 
-    cat > "$MESON_CROSS_FILE" <<EOF
+    cat > "$MESON_NATIVE_FILE" <<EOF
 [binaries]
 c = '$CC'
 cpp = '$CXX'
@@ -1820,507 +2804,40 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    run meson --version
-    run ninja --version
-    run meson setup \
+    run "$MESON" setup \
         --prefix="$PACKAGE_INSTALL_DIR" \
-        --buildtype=release \
+        --buildtype="$BUILD_TYPE" \
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
-        --build.pkg-config-path="$PKG_CONFIG_PATH" \
-        -Ddefault_library=$MESON_BUILD_DEFAULT_LIBRARY \
+        --native-file="$MESON_NATIVE_FILE" \
+        -Ddefault_library="$MESON_BUILD_DEFAULT_LIBRARY" \
         -Dlibdir=lib \
-        $@ "$PACKAGE_INSTALLING_TMP_DIR" "$PACKAGE_INSTALLING_BST_DIR" &&
-    {
-        if command -v build_configed > /dev/null ; then
-            build_configed
-        fi
-    } &&
-    run ninja -C "$PACKAGE_INSTALLING_TMP_DIR" &&
-    run ninja -C "$PACKAGE_INSTALLING_TMP_DIR" install
+        "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" &&
+    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" install
 }
 
 to_meson_array() {
-    RESULT="[''"
-    for item in $@
+    RESULT=
+
+    for item in "$@"
     do
-        RESULT="$RESULT, '$item'"
-    done
-    RESULT="$RESULT]"
-    echo "$RESULT"
-}
-
-
-########################################################################
-
-list_tools_in_the_toolchain() {
-    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf dlltool addr2line
-}
-
-echo_path_of_tool_in_the_toolchain() {
-    case $1 in
-        cc)  command -v cc  || command -v gcc || command -v clang   ;;
-        cxx) command -v c++ || command -v g++ || command -v clang++ ;;
-        *)   command -v "$1"
-    esac
-}
-
-bppend_to_ACLOCAL_PATH() {
-    case ":${ACLOCAL_PATH}:" in
-        *:"$1":*) ;;
-        *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
-    esac
-}
-
-main() {
-    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
-    #IFS_DEFAULT=$(printf ' \t\n')
-    #IFS=$IFS_DEFAULT
-
-    PPKG_HOME="$HOME/.ppkg"
-
-    PPKG_CORE_DIR="$PPKG_HOME/core"
-    PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
-
-    PPKG_PACKAGE_INSTALLED_DIR="$PPKG_HOME/installed"
-
-    UPPM_COMMAND="$PPKG_CORE_BIN_DIR/uppm"
-
-    # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
-    fi
-
-    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
-    if [ -z "$ACLOCAL_PATH" ] ; then
-        export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal"
-    else
-        export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
-    fi
-
-    # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
-    if [ -d "$HOME/.uppm/installed/git/libexec/git-core" ] ; then
-        export GIT_EXEC_PATH="$HOME/.uppm/installed/git/libexec/git-core"
-        export GIT_TEMPLATE_DIR="$HOME/.uppm/installed/git/share/git-core/templates"
-    fi
-
-    if [ "$(id -u)" -ne 0 ] ; then
-        sudo=sudo
-    fi
-
-    #######################################################################################
-
-    # CURRENT_USER__NAME="$(id -n -u)"
-    # CURRENT_GROUP_NAME="$(id -n -g)"
-
-    # if [ -d "$PPKG_HOME" ] ; then
-    #     if [ -r "$PPKG_HOME" ] && [ -w "$PPKG_HOME" ] && [ -x "$PPKG_HOME" ] ; then
-    #         :
-    #     else
-    #         if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-    #                  chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$PPKG_HOME"
-    #         else
-    #             sudo chown -R "$CURRENT_GROUP_NAME:$CURRENT_USER__NAME" "$PPKG_HOME"
-    #         fi
-    #     fi
-    # else
-    #     if [ -r /opt ] && [ -w /opt ] && [ -x /opt ] ; then
-    #              install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$PPKG_HOME"
-    #     else
-    #         sudo install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$PPKG_HOME"
-    #     fi
-    # fi
-
-    #######################################################################################
-
-    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
-    unset TARGET_ARCH
-
-    if [ "$INSTALL_LIB" = yes ] ; then
-        INSTALL_LIB=both
-    fi
-
-
-    if [ "$VERBOSE_LEVEL" -eq 0 ] ; then
-        exec 1>/dev/null
-        exec 2>&1
-    fi
-
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        export PKG_CONFIG_DEBUG_SPEW=set
-    fi
-
-    PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
-
-    PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
-
-    PACKAGE_BUILD_IN_BSCRIPT_DIR="$PACKAGE_BINBSTD"
-
-    unset PACKAGE_VERSION_MAJOR
-    unset PACKAGE_VERSION_MINOR
-    unset PACKAGE_VERSION_PATCH
-    unset PACKAGE_VERSION_TWEAK
-
-    PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
-    PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
-    PACKAGE_VERSION_PATCH="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f3)"
-    PACKAGE_VERSION_TWEAK="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f4)"
-
-    unset PACKAGE_BUILD_SYSTEM_GO
-    unset PACKAGE_BUILD_SYSTEM_RAKE
-    unset PACKAGE_BUILD_SYSTEM_NINJA
-    unset PACKAGE_BUILD_SYSTEM_GMAKE
-    unset PACKAGE_BUILD_SYSTEM_CMAKE
-    unset PACKAGE_BUILD_SYSTEM_XMAKE
-    unset PACKAGE_BUILD_SYSTEM_MESON
-    unset PACKAGE_BUILD_SYSTEM_CARGO
-    unset PACKAGE_BUILD_SYSTEM_AUTOGENSH
-    unset PACKAGE_BUILD_SYSTEM_AUTOTOOLS
-    unset PACKAGE_BUILD_SYSTEM_CONFIGURE
-    unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
-
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
-            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-gmake) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes     ;;
-            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes     ;;
-            gmake)       PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
-            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes      ;;
-            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes     ;;
-            go)          PACKAGE_BUILD_SYSTEM_GO=yes        ;;
-        esac
+        if [ -z "$RESULT" ] ; then
+            RESULT="'$item'"
+        else
+            RESULT="$RESULT, '$item'"
+        fi
     done
 
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            autogen)     PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
-            autotools)   PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG automake" ;;
-
-            configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
-            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
-            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
-            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
-            xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
-            meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
-            ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
-            gmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
-            rake)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"   ;;
-            #cargo)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP rustup" ;;
-            go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
-        esac
-    done
-
-    if [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] ; then
-        PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
-    fi
-
-    if [ -n "$PACKAGE_DEP_PYM" ] ; then
-        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG python3"
-    fi
-
-    if [ -n "$PACKAGE_DEP_PLM" ] ; then
-        PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG perl"
-    fi
-
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
-        BUILD_NJOBS=1
-    fi
-
-    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
-
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
-
-    if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
-    fi
-
-    #########################################################################################
-
-    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
-    fi
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
-    fi
-
-    case $NATIVE_OS_KIND in
-        linux|darwin)
-            PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkg-config util-linux $PACKAGE_DEP_UPP"
-            ;;
-        *)  PACKAGE_DEP_UPP="coreutils findutils gsed grep tree patchelf pkgconf $PACKAGE_DEP_UPP"
-    esac
-
-    #########################################################################################
-
-    if [ -n "$PACKAGE_DEP_UPP" ] ; then
-        step "install depentent tools via uppm"
-
-        run "$UPPM_COMMAND" update
-        run "$UPPM_COMMAND" install $PACKAGE_DEP_UPP
-    fi
-
-    #########################################################################################
-
-    # pip install --user <PKG>
-    bppend_to_PATH "$HOME/.local/bin"
-
-    # cpan install to default local location
-    bppend_to_PATH "$HOME/perl5/bin"
-
-    if [ -f "$HOME/.cargo/env" ] ; then
-        .   "$HOME/.cargo/env"
-    fi
-
-    UPPM_PACKAGE_INSTALLED_DIR="$HOME/.uppm/installed"
-
-    if [ -d "$UPPM_PACKAGE_INSTALLED_DIR" ] ; then
-        for item in $(ls "$UPPM_PACKAGE_INSTALLED_DIR")
-        do
-            if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item" ] && [ -f "$UPPM_PACKAGE_INSTALLED_DIR/$item/.uppm/receipt.yml" ] ; then
-                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin" ] ; then
-                    bppend_to_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/bin"
-                fi
-
-                if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal" ] ; then
-                    bppend_to_ACLOCAL_PATH "$UPPM_PACKAGE_INSTALLED_DIR/$item/share/aclocal"
-                fi
-            fi
-        done
-    fi
-
-    bppend_to_PATH "$PPKG_CORE_BIN_DIR"
-
-    #########################################################################################
-
-    if [ -n "$PACKAGE_DEP_PYM" ] ; then
-        step "install depentent python packages via pip3"
-
-        run pip3 --version
-        run pip3 install --upgrade pip setuptools wheel
-        run pip3 --version
-
-        for item in $PACKAGE_DEP_PYM
-        do
-            run pip3 install "$item" --upgrade
-        done
-    fi
-
-    #########################################################################################
-
-    if [ -n "$PACKAGE_DEP_PLM" ] ; then
-        step "install depentent perl modules via cpan"
-
-        for item in $PACKAGE_DEP_PLM
-        do
-            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
-                note "perl module $item has been already installed."
-            else
-                case $item in
-                    XML::Parser)
-                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
-                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
-                        export EXPATINCPATH="$expat_INCLUDE_DIR"
-                        echo EXPATLIBPATH=$EXPATLIBPATH
-                        echo EXPATINCPATH=$EXPATINCPATH
-                        ;;
-                esac
-
-                # Would you like to configure as much as possible automatically? [yes]
-                run "printf '%s\n' 'yes' | cpan $item"
-            fi
-        done
-    fi
-
-    #########################################################################################
-
-    if [ -n "$PACKAGE_DEP_PKG" ] ; then
-        step "generating dependency graph files for $1"
-
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.svg"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
-
-        "$PPKG_EXECUTABLE" depends "$1" --format=dot > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-        "$PPKG_EXECUTABLE" depends "$1" --format=box > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
-
-        if command -v dot > /dev/null ; then
-            "$PPKG_EXECUTABLE" depends "$1" --format=svg > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_SVG" || true
-            "$PPKG_EXECUTABLE" depends "$1" --format=png > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
-        fi
-
-        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
-            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
-        fi
-    fi
-
-    #########################################################################################
-
-    if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
-    else
-        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    fi
-
-    #########################################################################################
-
-    __export_relevant_environment_variables "$1"
-    __printf_relevant_environment_variables "$1"
-
-    #########################################################################################
-
-    if [ "$VERBOSE_LEVEL" -ge 3 ] ; then
-        step "list files of the installing top directory"
-        run ls -l "$PACKAGE_INSTALLING_TOP_DIR"
-
-        step "list files of the installing src directory"
-        run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
-
-        if [ -n "$PACKAGE_BSCRIPT" ] ; then
-            step "list files of the installing build script directory"
-            run ls -l "$PACKAGE_INSTALLING_BST_DIR"
-        fi
-    fi
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        ccache -s > "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
-    fi
-
-    [ -n "$PACKAGE_DEP_PKG_R" ] && {
-        step2 "create symbolic links for dependency libs"
-        case $LINK_TYPE in
-            static-only|static-prefered) LINK_LIBRARY_TYPE=a  ;;
-            shared-only|shared-prefered) LINK_LIBRARY_TYPE=so ;;
-        esac
-
-        for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG_R
-        do
-            DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR="$PPKG_PACKAGE_INSTALLED_DIR/$DEPENDENT_PACKAGE_NAME/lib"
-            if [ -d "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
-                for item in $(find "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
-                do
-                    if [ -e "$PACKAGE_INSTALLING_TOP_DIR/$item" ] ; then
-                        continue
-                    else
-                        if [ ! -e "$PACKAGE_INSTALLING_LIB_DIR/$item" ] ; then
-                            run ln -s "$DEPENDENT_PACKAGE_INSTALLED_LIBRARY_DIR/$item" "$PACKAGE_INSTALLING_LIB_DIR/$item"
-                        fi
-                    fi
-                done
-            fi
-        done
-
-        unset LINK_LIBRARY_TYPE
-    }
-
-    step "do some preparation works"
-    if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
-        run cd "$PACKAGE_INSTALLING_BST_DIR"
-    fi
-    if command -v prepare > /dev/null ; then
-        prepare "$1"
-    else
-        case $PACKAGE_BUILD_SYSTEM in
-            autogen)
-                warn "no prepare mapping found in formula."
-                run NOCONFIGURE=yes ./autogen.sh    || return 1
-                ;;
-            autotools)
-                warn "no prepare mapping found in formula."
-                run autoreconf -ivf || return 1
-                ;;
-            *)  warn "no prepare mapping found in formula, skipped."
-        esac
-    fi
-
-    step "create symbolic link for CC and CXX to use ccache"
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        if [ -z "$CCACHE" ] ; then
-            die "ccache is not installed."
-        fi
-        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CC")"
-        run ln -sf "$CCACHE" "$PACKAGE_INSTALLING_BIN_DIR/$(basename "$CXX")"
-    else
-        note "ccache is disabled, skipped."
-    fi
-
-    # run ln -sf "$CC" "$PACKAGE_INSTALLING_BIN_DIR/cc"
-    # run ln -sf "$LD" "$PACKAGE_INSTALLING_BIN_DIR/ld"
-
-    if [ "$DRYRUN" = yes ] ; then
-        if [ -z "$SHELL" ] ; then
-            SHELL=$(command -v zsh || command -v bash || command -v sh)
-        fi
-        exec "$SHELL" || return 1
-    fi
-
-    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
-        run rm -rf "$PACKAGE_INSTALL_DIR" || return 1
-    fi
-
-    step "building"
-
-    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-        if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
-            run cd "$PACKAGE_INSTALLING_BST_DIR" || return 1
-        fi
-    else
-            run cd "$PACKAGE_INSTALLING_TMP_DIR" || return 1
-    fi
-
-    if command -v build > /dev/null ; then
-        build $1
-    else
-        case $PACKAGE_BUILD_SYSTEM in
-            autogen)   configure ;;
-            autotools) configure ;;
-            configure) configure ;;
-            cmake*)    cmakew ;;
-            meson)     mesonw ;;
-            ninja)     ninjaw clean && ninjaw && ninjaw install ;;
-            gmake)     gmakew clean && gmakew && gmakew install ;;
-            cargo)     cargow install ;;
-            go)        gow ;;
-        esac
-    fi
-
-    cd "$PACKAGE_INSTALL_DIR" || die "nothing is installed."
-
-    [ -z "$(ls)" ]            && die "nothing is installed."
-
-
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        step "adjust Mach-O files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_mach_o_files_for_the_given_target $@
-    else
-        step "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_elf_files_for_the_given_target $@
-    fi
-
-    if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
-        step "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_la_files_for_the_given_target $@
-
-        step "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_pc_files_for_the_given_target $@
-    fi
+    printf '[%s]\n' "$RESULT"
 }
 
-main "$PACKAGE_NAME"
+__install_the_given_package "$PACKAGE_NAME"
+
+# }}}
+##############################################################################
+# {{{ vim operation
+
+# last line mode :set foldmethod=marker
+# command mode zM  fold close all
+# command mode zR  fold open all

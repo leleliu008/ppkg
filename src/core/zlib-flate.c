@@ -4,10 +4,16 @@
 
 #define CHUNK 16384
 
+// this source file was modified from https://www.zlib.net/zpipe.c
+
 // compress
-int zlib_deflate_string_to_file(const char * inputBuf, size_t inputBufSizeInBytes, FILE * file) {
+int zlib_deflate_string_to_file(const char * inputBuf, size_t inputBufSizeInBytes, FILE * outputFile, int level) {
     if (inputBufSizeInBytes == 0) {
         inputBufSizeInBytes = strlen(inputBuf);
+    }
+
+    if (level == 0) {
+        level = 1;
     }
 
     z_stream zStream;
@@ -15,10 +21,10 @@ int zlib_deflate_string_to_file(const char * inputBuf, size_t inputBufSizeInByte
     zStream.zfree  = Z_NULL;
     zStream.opaque = Z_NULL;
 
-    int resultCode = deflateInit(&zStream, 1);
+    int ret = deflateInit(&zStream, level);
 
-    if (resultCode != Z_OK) {
-        return resultCode;
+    if (ret != Z_OK) {
+        return ret;
     }
 
     unsigned char outputBuf[CHUNK];
@@ -32,11 +38,16 @@ int zlib_deflate_string_to_file(const char * inputBuf, size_t inputBufSizeInByte
         zStream.avail_out = CHUNK;
         zStream.next_out  = outputBuf;
 
-        resultCode = deflate(&zStream, Z_FINISH);
+        ret = deflate(&zStream, Z_FINISH);
+
+        if (ret == Z_STREAM_ERROR) {
+            (void)deflateEnd(&zStream);
+            return ret;
+        }
 
         have = CHUNK - zStream.avail_out;
 
-        if (fwrite(outputBuf, 1, have, file) != have || ferror(file)) {
+        if (fwrite(outputBuf, 1, have, outputFile) != have || ferror(outputFile)) {
             (void)deflateEnd(&zStream);
             return Z_ERRNO;
         }
@@ -46,62 +57,116 @@ int zlib_deflate_string_to_file(const char * inputBuf, size_t inputBufSizeInByte
     return Z_OK;
 }
 
-int zlib_inflate_file_to_file(FILE * inputFile, FILE * outputFile) {
-    int ret;
+int zlib_deflate_file_to_file(FILE * inputFile, FILE * outputFile, int level) {
+    z_stream zStream;
+    zStream.zalloc = Z_NULL;
+    zStream.zfree  = Z_NULL;
+    zStream.opaque = Z_NULL;
+
+    int ret = deflateInit(&zStream, level);
+
+    if (ret != Z_OK) {
+        return ret;
+    }
+
+    int flush;
     unsigned have;
-    z_stream strm;
     unsigned char in[CHUNK];
     unsigned char out[CHUNK];
 
-    /* allocate inflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.avail_in = 0;
-    strm.next_in = Z_NULL;
-    ret = inflateInit(&strm);
-    if (ret != Z_OK)
-        return ret;
-
-    /* decompress until deflate stream ends or end of file */
     do {
-        strm.avail_in = fread(in, 1, CHUNK, inputFile);
+        zStream.avail_in = fread(in, 1, CHUNK, inputFile);
+
         if (ferror(inputFile)) {
-            (void)inflateEnd(&strm);
+            (void)deflateEnd(&zStream);
             return Z_ERRNO;
         }
-        if (strm.avail_in == 0)
-            break;
-        strm.next_in = in;
 
-        /* run inflate() on input until output buffer not full */
+        flush = feof(inputFile) ? Z_FINISH : Z_NO_FLUSH;
+
+        zStream.next_in = in;
+
         do {
-            strm.avail_out = CHUNK;
-            strm.next_out = out;
+            zStream.avail_out = CHUNK;
+            zStream.next_out  = out;
 
-            ret = inflate(&strm, Z_NO_FLUSH);
+            ret = deflate(&zStream, flush);
 
-            switch (ret) {
-            case Z_NEED_DICT:
-                ret = Z_DATA_ERROR;     /* and fall through */
-            case Z_DATA_ERROR:
-            case Z_MEM_ERROR:
-                (void)inflateEnd(&strm);
+            if (ret == Z_STREAM_ERROR) {
+                (void)deflateEnd(&zStream);
                 return ret;
             }
 
-            have = CHUNK - strm.avail_out;
+            have = CHUNK - zStream.avail_out;
 
             if (fwrite(out, 1, have, outputFile) != have || ferror(outputFile)) {
-                (void)inflateEnd(&strm);
+                (void)deflateEnd(&zStream);
                 return Z_ERRNO;
             }
-        } while (strm.avail_out == 0);
+        } while (zStream.avail_out == 0);
+    } while (flush != Z_FINISH);
 
-        /* done when inflate() says it's done */
+    (void)deflateEnd(&zStream);
+    return Z_OK;
+}
+
+int zlib_inflate_file_to_file(FILE * inputFile, FILE * outputFile) {
+    z_stream zStream;
+    zStream.zalloc = Z_NULL;
+    zStream.zfree = Z_NULL;
+    zStream.opaque = Z_NULL;
+    zStream.avail_in = 0;
+    zStream.next_in = Z_NULL;
+
+    int ret = inflateInit(&zStream);
+
+    if (ret != Z_OK) {
+        return ret;
+    }
+
+    unsigned char  inputBuf[CHUNK];
+    unsigned char outputBuf[CHUNK];
+
+    unsigned have;
+
+    do {
+        zStream.avail_in = fread(inputBuf, 1, CHUNK, inputFile);
+
+        if (ferror(inputFile)) {
+            (void)inflateEnd(&zStream);
+            return Z_ERRNO;
+        }
+
+        if (zStream.avail_in == 0) {
+            break;
+        }
+
+        zStream.next_in = inputBuf;
+
+        do {
+            zStream.avail_out = CHUNK;
+            zStream.next_out  = outputBuf;
+
+            ret = inflate(&zStream, Z_NO_FLUSH);
+
+            switch (ret) {
+            case Z_NEED_DICT:
+                ret = Z_DATA_ERROR;
+            case Z_DATA_ERROR:
+            case Z_MEM_ERROR:
+                (void)inflateEnd(&zStream);
+                return ret;
+            }
+
+            have = CHUNK - zStream.avail_out;
+
+            if (fwrite(outputBuf, 1, have, outputFile) != have || ferror(outputFile)) {
+                (void)inflateEnd(&zStream);
+                return Z_ERRNO;
+            }
+        } while (zStream.avail_out == 0);
     } while (ret != Z_STREAM_END);
 
-    /* clean up and return */
-    (void)inflateEnd(&strm);
+    (void)inflateEnd(&zStream);
     return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }

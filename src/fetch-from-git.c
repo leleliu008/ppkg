@@ -1,12 +1,16 @@
 #include <git2.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
 #include "core/url-transform.h"
+
+#include "ppkg.h"
 
 typedef struct {
     git_indexer_progress indexerProgress;
@@ -46,7 +50,7 @@ void git_checkout_progress_callback(const char *path, size_t completed_steps, si
 // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_new
 // https://libgit2.org/libgit2/#HEAD/group/callback/git_credential_acquire_cb
 int git_credential_acquire_callback(git_credential **credential, const char *url, const char *username_from_url, unsigned int allowed_types, void *payload) {
-    const char * userHomeDir = getenv("HOME");
+    const char * const userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
         return 1;
@@ -54,13 +58,12 @@ int git_credential_acquire_callback(git_credential **credential, const char *url
 
     int userHomeDirLength = strlen(userHomeDir);
 
-    if (userHomeDir == NULL) {
+    if (userHomeDirLength == 0U) {
         return 1;
     }
 
-    size_t  sshPrivateKeyFilePathLength = userHomeDirLength + 20;
-    char    sshPrivateKeyFilePath[sshPrivateKeyFilePathLength];
-    memset( sshPrivateKeyFilePath, 0, sshPrivateKeyFilePathLength);
+    size_t sshPrivateKeyFilePathLength = userHomeDirLength + 20U;
+    char   sshPrivateKeyFilePath[sshPrivateKeyFilePathLength];
     snprintf(sshPrivateKeyFilePath, sshPrivateKeyFilePathLength, "%s/.ssh/id_rsa", userHomeDir);
 
     struct stat st;
@@ -83,9 +86,8 @@ int git_credential_acquire_callback(git_credential **credential, const char *url
 void print_git_oid(const git_oid oid, const char * prefix) {
     char sha1sum[41] = {0};
 
-    size_t i, j;
-    for (i = 0; i < 20; i++) {
-        j = 2 * i;
+    for (int i = 0; i < 20; i++) {
+        int j = 2 * i;
         sprintf(&sha1sum[j], "%02x", (unsigned int)(oid.id[i]));
     }
 
@@ -93,67 +95,95 @@ void print_git_oid(const git_oid oid, const char * prefix) {
 }
 
 int check_if_is_a_empty_dir(const char * dirpath, bool * value) {
-    DIR           * dir;
-    struct dirent * dir_entry;
-
-    dir = opendir(dirpath);
+    DIR * dir = opendir(dirpath);
 
     if (dir == NULL) {
         perror(dirpath);
-        return 1;
+        return PPKG_ERROR;
     }
 
-    while ((dir_entry = readdir(dir))) {
+    for (;;) {
+        errno = 0;
+
+        struct dirent * dir_entry = readdir(dir);
+
+        if (dir_entry == NULL) {
+            if (errno == 0) {
+                closedir(dir);
+                break;
+            } else {
+                perror(dirpath);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
+        }
+
         //puts(dir_entry->d_name);
         if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
             continue;
         }
 
-        (*value) = false;
         closedir(dir);
-        return 0;
+
+        (*value) = false;
+        return PPKG_OK;
     }
 
     (*value) = true;
-    closedir(dir);
-    return 0;
+    return PPKG_OK;
 }
 
 // implement following steps:
-// git -C -c init.defaultBranch=master init
-// git -C remote add origin https://github.com/leleliu008/ppkg-formula-repository-offical-core.git
+// git -c init.defaultBranch=master init
+// git remote add origin https://github.com/leleliu008/ppkg-formula-repository-offical-core.git
 // git fetch --progress origin +refs/heads/master:refs/remotes/origin/master
 // git checkout --progress --force -B master refs/remotes/origin/master
 int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const char * refspec, const char * localeTrackingBranchName) {
-    if ((repositoryDIR == NULL) || (strcmp(repositoryDIR, "") == 0)) {
+    if ((repositoryDIR == NULL) || (repositoryDIR[0] == '\0')) {
         repositoryDIR = ".";
     }
 
-    if ((remoteUrl == NULL) || (strcmp(remoteUrl, "") == 0)) {
-        return GIT_ERROR;
+    if (remoteUrl == NULL) {
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    char * transformedUrl = NULL;
+    size_t remoteUrlLength = strlen(remoteUrl);
 
-    switch (url_transform(remoteUrl, &transformedUrl)) {
-        case URL_TRANSFORM_OK:
-            break;
-        case URL_TRANSFORM_ERROR:
-            return URL_TRANSFORM_ERROR;
-        case URL_TRANSFORM_ENV_IS_NOT_SET:
-            transformedUrl = strdup(remoteUrl);
-            break;
-        case URL_TRANSFORM_ENV_VALUE_IS_EMPTY:
-            return URL_TRANSFORM_ENV_VALUE_IS_EMPTY;
-        case URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST:
-            return URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST;
-        case URL_TRANSFORM_RUN_EMPTY_RESULT:
-            return URL_TRANSFORM_RUN_EMPTY_RESULT;
-        case URL_TRANSFORM_ALLOCATE_MEMORY_FAILED:
-            return URL_TRANSFORM_ALLOCATE_MEMORY_FAILED;
+    if (remoteUrlLength == 0U) {
+        return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
-    int resultCode = GIT_OK;
+    int ret = PPKG_OK;
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    char transformedUrl[1025] = {0};
+
+    const char * urlTransformCommandPath = getenv("PPKG_URL_TRANSFORM");
+
+    if ((urlTransformCommandPath == NULL) || (urlTransformCommandPath[0] == '\0')) {
+        strncpy(transformedUrl, remoteUrl, remoteUrlLength);
+        transformedUrl[1024] = '\0';
+    } else {
+        fprintf(stderr, "\nyou have set PPKG_URL_TRANSFORM=%s\n", urlTransformCommandPath);
+        fprintf(stderr, "transform from: %s\n", remoteUrl);
+
+        size_t writtenSize = 0;
+
+        if (url_transform(urlTransformCommandPath, remoteUrl, transformedUrl, 1024, &writtenSize, true) != 0) {
+            perror(urlTransformCommandPath);
+            return PPKG_ERROR;
+        }
+
+        if (writtenSize == 0) {
+            fprintf(stderr, "a new url was expected to be output, but it was not.\n");
+            return PPKG_ERROR;
+        }
+
+        fprintf(stderr, "transform   to: %s\n", transformedUrl);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
 
     bool needInitGitRepo = false;
 
@@ -163,10 +193,10 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
         if (S_ISDIR(st.st_mode)) {
             bool isAEmptyDir = false;
 
-            resultCode = check_if_is_a_empty_dir(repositoryDIR, &isAEmptyDir);
+            ret = check_if_is_a_empty_dir(repositoryDIR, &isAEmptyDir);
 
-            if (resultCode != 0) {
-                return GIT_ERROR;
+            if (ret != PPKG_OK) {
+                return PPKG_ERROR;
             }
 
             if (isAEmptyDir) {
@@ -176,11 +206,11 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
             }
         } else {
             fprintf(stderr, "%s exist and it is not a git repository.", repositoryDIR);
-            return GIT_ERROR;
+            return PPKG_ERROR;
         }
     } else {
         fprintf(stderr, "%s dir is not exist.", repositoryDIR);
-        return GIT_ERROR;
+        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -194,14 +224,14 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
     const char * refspecSrc = NULL;
     const char * refspecDst = NULL;
 
-    if ((refspec != NULL) && strcmp(refspec, "") != 0) {
-        resultCode = git_refspec_parse(&gitRefSpec, refspec, true);
+    if ((refspec != NULL) && (refspec[0] != '\0')) {
+        ret = git_refspec_parse(&gitRefSpec, refspec, true);
 
-        if (resultCode != GIT_OK) {
+        if (ret != GIT_OK) {
             const git_error * gitError = git_error_last();
             fprintf(stderr, "%s\n", gitError->message);
             git_libgit2_shutdown();
-            return resultCode;
+            return abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
         }
 
         refspecSrc = git_refspec_src(gitRefSpec);
@@ -224,76 +254,73 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
     git_reference  * localeTrackingBranchRef = NULL;
     git_reference  * remoteTrackingBranchRef = NULL;
 
-    const git_oid * remoteTrackingBranchHeadOid = NULL;
-    git_object * remoteTrackingBranchHeadCommit = NULL;
-    git_tree   * remoteTrackingBranchHeadTree   = NULL;
+    const git_oid * remoteTrackingBranchHeadOid    = NULL;
+    git_object    * remoteTrackingBranchHeadCommit = NULL;
+    git_tree      * remoteTrackingBranchHeadTree   = NULL;
 
     const git_error * gitError        = NULL;
-
-    git_reference * HEADRef = NULL;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
     if (needInitGitRepo) {
-        resultCode = git_repository_init(&gitRepo, repositoryDIR, false);
+        ret = git_repository_init(&gitRepo, repositoryDIR, false);
 
-        if (resultCode != GIT_OK) {
+        if (ret != GIT_OK) {
             gitError = git_error_last();
             fprintf(stderr, "%s\n", gitError->message);
             git_repository_state_cleanup(gitRepo);
             git_repository_free(gitRepo);
             git_libgit2_shutdown();
-            return resultCode;
+            return abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
         }
 
         //https://libgit2.org/libgit2/#HEAD/group/remote/git_remote_create
-        resultCode = git_remote_create(&gitRemote, gitRepo, "origin", transformedUrl);
+        ret = git_remote_create(&gitRemote, gitRepo, "origin", transformedUrl);
 
-        if (resultCode != GIT_OK) {
+        if (ret != GIT_OK) {
             gitError = git_error_last();
             fprintf(stderr, "%s\n", gitError->message);
             git_repository_state_cleanup(gitRepo);
             git_repository_free(gitRepo);
             git_libgit2_shutdown();
-            return resultCode;
+            return abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
         }
     } else {
-        resultCode = git_repository_open_ext(&gitRepo, repositoryDIR, GIT_REPOSITORY_OPEN_NO_SEARCH, NULL);
+        ret = git_repository_open_ext(&gitRepo, repositoryDIR, GIT_REPOSITORY_OPEN_NO_SEARCH, NULL);
 
-        if (resultCode != GIT_OK) {
+        if (ret != GIT_OK) {
             gitError = git_error_last();
             fprintf(stderr, "%s\n", gitError->message);
             git_repository_state_cleanup(gitRepo);
             git_repository_free(gitRepo);
             git_libgit2_shutdown();
-            return resultCode;
+            return abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
         }
 
         // https://libgit2.org/libgit2/#HEAD/group/remote/git_remote_lookup
-        resultCode = git_remote_lookup(&gitRemote, gitRepo, "origin");
+        ret = git_remote_lookup(&gitRemote, gitRepo, "origin");
 
-        if (resultCode == GIT_ENOTFOUND) {
+        if (ret == GIT_ENOTFOUND) {
             //https://libgit2.org/libgit2/#HEAD/group/remote/git_remote_create
-            resultCode = git_remote_create(&gitRemote, gitRepo, "origin", transformedUrl);
-        } else if (resultCode == GIT_OK) {
-            resultCode = git_remote_set_instance_url(gitRemote, transformedUrl);
+            ret = git_remote_create(&gitRemote, gitRepo, "origin", transformedUrl);
+        } else if (ret == GIT_OK) {
+            ret = git_remote_set_instance_url(gitRemote, transformedUrl);
         }
 
-        if (resultCode != GIT_OK) {
+        if (ret != GIT_OK) {
             gitError = git_error_last();
             fprintf(stderr, "%s\n", gitError->message);
             git_repository_state_cleanup(gitRepo);
             git_repository_free(gitRepo);
             git_libgit2_shutdown();
-            return resultCode;
+            return abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
         }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t localeTrackingBranchRefStringLength = strlen(localeTrackingBranchName) + 12;
+    size_t localeTrackingBranchRefStringLength = strlen(localeTrackingBranchName) + 12U;
     char   localeTrackingBranchRefString[localeTrackingBranchRefStringLength];
-    memset(localeTrackingBranchRefString, 0, localeTrackingBranchRefStringLength);
     snprintf(localeTrackingBranchRefString, localeTrackingBranchRefStringLength, "refs/heads/%s", localeTrackingBranchName);
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,81 +338,86 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
     gitFetchOptions.callbacks = gitRemoteCallbacks;
 
     git_checkout_options gitCheckoutOptions = GIT_CHECKOUT_OPTIONS_INIT;
-    gitCheckoutOptions.checkout_strategy    = GIT_CHECKOUT_SAFE;
+    gitCheckoutOptions.checkout_strategy    = GIT_CHECKOUT_FORCE;
     gitCheckoutOptions.progress_cb          = git_checkout_progress_callback;
     gitCheckoutOptions.progress_payload     = &progressPayload;
 
     if (refspecSrc == NULL) {
-        resultCode = git_remote_fetch(gitRemote, NULL, &gitFetchOptions, NULL);
+        ret = git_remote_fetch(gitRemote, NULL, &gitFetchOptions, NULL);
     } else {
         git_strarray refspecArray = {.count = 1};
         char* strings[1] = {(char*)refspec};
         refspecArray.strings = strings;
-        resultCode = git_remote_fetch(gitRemote, &refspecArray, &gitFetchOptions, NULL);
+        ret = git_remote_fetch(gitRemote, &refspecArray, &gitFetchOptions, NULL);
     }
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    resultCode = git_branch_lookup(&remoteTrackingBranchRef, gitRepo, &refspecDst[13], GIT_BRANCH_REMOTE);
+    ret = git_branch_lookup(&remoteTrackingBranchRef, gitRepo, &refspecDst[13], GIT_BRANCH_REMOTE);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     remoteTrackingBranchHeadOid = git_reference_target(remoteTrackingBranchRef);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     {
         git_oid HEADOid  = {0};
 
-        resultCode = git_reference_name_to_id(&HEADOid, gitRepo, "HEAD");
+        ret = git_reference_name_to_id(&HEADOid, gitRepo, "HEAD");
 
-        if (resultCode == GIT_OK) {
+        if (ret == GIT_OK) {
             //print_git_oid((*remoteTrackingBranchHeadOid), "remoteTrackingBranchHeadOid");
             //print_git_oid(HEADOid, "HEADOid");
             // HEAD SHA-1 is equal to remote tracking branch's HEAD SHA-1, means no need to perform merge
             if (memcmp(remoteTrackingBranchHeadOid->id, HEADOid.id, 20) == 0) {
-                goto clean;
+                goto finalize;
             }
         }
     }
- 
-    resultCode = git_reference_create(&localeTrackingBranchRef, gitRepo, localeTrackingBranchRefString, remoteTrackingBranchHeadOid, false, NULL);
 
-    if (resultCode == GIT_EEXISTS) {
+    {
         git_oid localeTrackingBranchHeadOid  = {0};
 
-        resultCode = git_reference_name_to_id(&localeTrackingBranchHeadOid, gitRepo, localeTrackingBranchRefString);
+        ret = git_reference_name_to_id(&localeTrackingBranchHeadOid, gitRepo, localeTrackingBranchRefString);
 
-        if (resultCode == GIT_OK) {
-            print_git_oid((*remoteTrackingBranchHeadOid), "remoteTrackingBranchHeadOid");
-            print_git_oid(localeTrackingBranchHeadOid, "localeTrackingBranchHeadOid");
+        if (ret == GIT_OK) {
+            //print_git_oid((*remoteTrackingBranchHeadOid), "remoteTrackingBranchHeadOid");
+            //print_git_oid(localeTrackingBranchHeadOid, "localeTrackingBranchHeadOid");
             // remote tracking branch's SHA-1 is equal to remote tracking branch's HEAD SHA-1, means no need to perform merge
             if (memcmp(remoteTrackingBranchHeadOid->id, localeTrackingBranchHeadOid.id, 20) == 0) {
-                resultCode = git_repository_set_head(gitRepo, localeTrackingBranchRefString);
+                ret = git_repository_set_head(gitRepo, localeTrackingBranchRefString);
 
-                if (resultCode != GIT_OK) {
+                if (ret != GIT_OK) {
                     gitError = git_error_last();
+                    goto finalize;
                 }
-
-                goto clean;
             }
-        }
-    }
+        } else if (ret == GIT_ENOTFOUND) {
+            git_reference * localeTrackingBranchRef = NULL;
 
-    if (resultCode != GIT_OK) {
-        gitError = git_error_last();
-        goto clean;
+            ret = git_reference_create(&localeTrackingBranchRef, gitRepo, localeTrackingBranchRefString, remoteTrackingBranchHeadOid, false, NULL);
+            git_reference_free(localeTrackingBranchRef);
+
+            if (ret != GIT_OK) {
+                gitError = git_error_last();
+                goto finalize;
+            }
+        } else {
+            gitError = git_error_last();
+            goto finalize;
+        }
     }
 
     // git cat-file commit HEAD
@@ -397,44 +429,44 @@ int ppkg_fetch_via_git(const char * repositoryDIR, const char * remoteUrl, const
     // optimized
 
     // https://libgit2.org/libgit2/#HEAD/group/reference/git_reference_peel
-    resultCode = git_reference_peel(&remoteTrackingBranchHeadCommit, remoteTrackingBranchRef, GIT_OBJ_COMMIT);
+    ret = git_reference_peel(&remoteTrackingBranchHeadCommit, remoteTrackingBranchRef, GIT_OBJ_COMMIT);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     // https://libgit2.org/libgit2/#HEAD/group/commit/git_commit_tree
-    resultCode = git_commit_tree(&remoteTrackingBranchHeadTree, (git_commit*)remoteTrackingBranchHeadCommit);
+    ret = git_commit_tree(&remoteTrackingBranchHeadTree, (git_commit*)remoteTrackingBranchHeadCommit);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     // https://libgit2.org/libgit2/#HEAD/group/checkout/git_checkout_tree
-    resultCode = git_checkout_tree(gitRepo, (git_object*)remoteTrackingBranchHeadTree, &gitCheckoutOptions);
+    ret = git_checkout_tree(gitRepo, (git_object*)remoteTrackingBranchHeadTree, &gitCheckoutOptions);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
-        goto clean;
+        goto finalize;
     }
 
     // https://libgit2.org/libgit2/#HEAD/group/reference/git_reference_set_target
-    resultCode = git_reference_set_target(&localeTrackingBranchRef, localeTrackingBranchRef, git_commit_id((git_commit*)remoteTrackingBranchHeadCommit), NULL);
+    ret = git_reference_set_target(&localeTrackingBranchRef, localeTrackingBranchRef, git_commit_id((git_commit*)remoteTrackingBranchHeadCommit), NULL);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
     }
 
-    resultCode = git_repository_set_head(gitRepo, localeTrackingBranchRefString);
+    ret = git_repository_set_head(gitRepo, localeTrackingBranchRefString);
 
-    if (resultCode != GIT_OK) {
+    if (ret != GIT_OK) {
         gitError = git_error_last();
     }
 
-clean:
-    if (resultCode == GIT_OK) {
+finalize:
+    if (ret == GIT_OK) {
         printf("%s\n", "Already up to date.");
     } else {
         if (gitError != NULL) {
@@ -442,13 +474,10 @@ clean:
         }
     }
 
-    free(transformedUrl);
-
     git_repository_state_cleanup(gitRepo);
     git_repository_free(gitRepo);
     git_refspec_free(gitRefSpec);
     git_remote_free(gitRemote);
-    git_reference_free(HEADRef);
     git_reference_free(localeTrackingBranchRef);
     git_reference_free(remoteTrackingBranchRef);
     git_tree_free(remoteTrackingBranchHeadTree);
@@ -459,5 +488,5 @@ clean:
 
     git_libgit2_shutdown();
 
-    return resultCode;
+    return ret == GIT_OK ? PPKG_OK : abs(ret) + PPKG_ERROR_LIBGIT2_BASE;
 }

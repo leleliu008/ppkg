@@ -1,28 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-#include "core/fs.h"
 #include "ppkg.h"
 
 int ppkg_formula_bat(const char * packageName) {
     char * formulaFilePath = NULL;
 
-    int resultCode = ppkg_formula_path(packageName, &formulaFilePath);
+    int ret = ppkg_formula_locate(packageName, &formulaFilePath);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    resultCode = execlp("bat", "bat", "--paging=never", formulaFilePath, NULL);
+    execlp("bat", "bat", "--paging=never", formulaFilePath, NULL);
 
-    if (resultCode == -1) {
-        fprintf(stderr, "command not found: bat\n");
-        resultCode = PPKG_ERROR;
-    }
+    perror("bat");
 
     free(formulaFilePath);
 
-    return resultCode;
+    return PPKG_ERROR;
 }

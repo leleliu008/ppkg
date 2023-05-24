@@ -1,79 +1,119 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <dirent.h>
 #include <fnmatch.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 
-#include "core/fs.h"
 #include "ppkg.h"
 
 int ppkg_logs(const char * packageName) {
-    int resultCode = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
+    int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDir[256];
+    size_t ppkgHomeDirLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ENV_HOME_NOT_SET;
+    ret = ppkg_home_dir(ppkgHomeDir, 256, &ppkgHomeDirLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
+    size_t   packageMetadataDirLength = ppkgHomeDirLength + strlen(packageName) + 18U;
+    char     packageMetadataDir[packageMetadataDirLength];
+    snprintf(packageMetadataDir, packageMetadataDirLength, "%s/installed/%s/.ppkg", ppkgHomeDir, packageName);
 
-    if (userHomeDirLength == 0) {
-        return PPKG_ENV_HOME_NOT_SET;
-    }
-
-    size_t  packageMetadataDirLength = userHomeDirLength + strlen(packageName) + 24;
-    char    packageMetadataDir[packageMetadataDirLength];
-    memset (packageMetadataDir, 0, packageMetadataDirLength);
-    snprintf(packageMetadataDir, packageMetadataDirLength, "%s/.ppkg/installed/%s/.ppkg", userHomeDir, packageName);
-
-    size_t  receiptFilePathLength = packageMetadataDirLength + 13;
-    char    receiptFilePath[receiptFilePathLength];
-    memset (receiptFilePath, 0, receiptFilePathLength);
+    size_t   receiptFilePathLength = packageMetadataDirLength + 13U;
+    char     receiptFilePath[receiptFilePathLength];
     snprintf(receiptFilePath, receiptFilePathLength, "%s/receipt.yml", packageMetadataDir);
 
-    if (!exists_and_is_a_regular_file(receiptFilePath)) {
-        return PPKG_PACKAGE_IS_NOT_INSTALLED;
+    struct stat st;
+
+    if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    if (!exists_and_is_a_regular_file(receiptFilePath)) {
-        return PPKG_PACKAGE_IS_NOT_INSTALLED;
-    }
-
-    DIR           * dir;
-    struct dirent * dir_entry;
-
-    dir = opendir(packageMetadataDir);
+    DIR * dir = opendir(packageMetadataDir);
 
     if (dir == NULL) {
         perror(packageMetadataDir);
         return PPKG_ERROR;
     }
 
-    while ((dir_entry = readdir(dir))) {
+    for (;;) {
+        errno = 0;
+
+        struct dirent * dir_entry = readdir(dir);
+
+        if (dir_entry == NULL) {
+            if (errno == 0) {
+                closedir(dir);
+                return PPKG_OK;
+            } else {
+                perror(packageMetadataDir);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
+        }
+
         //puts(dir_entry->d_name);
+
         if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
             continue;
         }
 
-        size_t  cmdLength = packageMetadataDirLength + strlen(dir_entry->d_name) + 6;
-        char    cmd[cmdLength];
-        memset (cmd, 0, cmdLength);
-        snprintf(cmd, cmdLength, "bat %s/%s", packageMetadataDir, dir_entry->d_name);
+        size_t   filepathLength = packageMetadataDirLength + strlen(dir_entry->d_name) + 2U;
+        char     filepath[filepathLength];
+        snprintf(filepath, filepathLength, "%s/%s", packageMetadataDir, dir_entry->d_name);
 
+        if (stat(filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
+            continue;
+        }
 
-        resultCode = system(cmd);
+        pid_t pid = fork();
 
-        if (resultCode != 0) {
-            break;
+        if (pid < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
+
+        if (pid == 0) {
+            char* argv[3] = { (char*)"bat", filepath, NULL };
+            execvp(argv[0], argv);
+            perror(argv[0]);
+            exit(127);
+        } else {
+            int childProcessExitStatusCode;
+
+            if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
+                perror(NULL);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
+
+            if (childProcessExitStatusCode != 0) {
+                size_t   cmdLength = packageMetadataDirLength + filepathLength + 4U;
+                char     cmd[cmdLength];
+                snprintf(cmd, cmdLength, "bat %s", filepath);
+
+                if (WIFEXITED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
+                } else if (WIFSIGNALED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
+                } else if (WIFSTOPPED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
+                }
+
+                closedir(dir);
+                return PPKG_ERROR;
+            }
         }
     }
-
-    closedir(dir);
-
-    return resultCode;
 }

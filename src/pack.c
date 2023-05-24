@@ -1,19 +1,21 @@
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
-#include "ppkg.h"
-#include "core/fs.h"
 #include "core/log.h"
 #include "core/tar.h"
+#include "core/cp.h"
 #include "core/sysinfo.h"
+
+#include "ppkg.h"
 
 int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     PPKGReceipt * receipt = NULL;
 
-    int resultCode = ppkg_receipt_parse(packageName, &receipt);
+    int ret = ppkg_receipt_parse(packageName, &receipt);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -32,9 +34,8 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t  packingDirNameLength = strlen(packageName) + strlen(receipt->version) + strlen(osType) + strlen(osArch) + 4;
+    size_t  packingDirNameLength = strlen(packageName) + strlen(receipt->version) + strlen(osType) + strlen(osArch) + 4U;
     char    packingDirName[packingDirNameLength];
-    memset (packingDirName, 0, packingDirNameLength);
     snprintf(packingDirName, packingDirNameLength, "%s-%s-%s-%s", packageName, receipt->version, osType, osArch);
 
     ppkg_receipt_free(receipt);
@@ -44,42 +45,45 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
     char * userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
     if (userHomeDirLength == 0) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
-    size_t  ppkgHomeDirLength = userHomeDirLength + 7;
+    size_t  ppkgHomeDirLength = userHomeDirLength + 7U;
     char    ppkgHomeDir[ppkgHomeDirLength];
-    memset (ppkgHomeDir, 0, ppkgHomeDirLength);
     snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
-    size_t  packageInstalledDirLength = ppkgHomeDirLength + strlen(packageName) + 12;
+    size_t  packageInstalledDirLength = ppkgHomeDirLength + strlen(packageName) + 12U;
     char    packageInstalledDir[packageInstalledDirLength];
-    memset (packageInstalledDir, 0, packageInstalledDirLength);
     snprintf(packageInstalledDir, packageInstalledDirLength, "%s/installed/%s", ppkgHomeDir, packageName);
 
-    size_t  receiptFilePathLength = packageInstalledDirLength + 20;
+    size_t  receiptFilePathLength = packageInstalledDirLength + 20U;
     char    receiptFilePath[receiptFilePathLength];
-    memset (receiptFilePath, 0, receiptFilePathLength);
     snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
 
-    if (!exists_and_is_a_regular_file(receiptFilePath)) {
-        return PPKG_PACKAGE_IS_NOT_INSTALLED;
+    struct stat st;
+
+    if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    size_t  ppkgPackingDirLength = ppkgHomeDirLength + 9;
+    size_t  ppkgPackingDirLength = ppkgHomeDirLength + 9U;
     char    ppkgPackingDir[ppkgPackingDirLength];
-    memset (ppkgPackingDir, 0, ppkgPackingDirLength);
     snprintf(ppkgPackingDir, ppkgPackingDirLength, "%s/packing", ppkgHomeDir);
 
-    if (!exists_and_is_a_directory(ppkgPackingDir)) {
+    if (stat(ppkgPackingDir, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgPackingDir);
+            return PPKG_ERROR;
+        }
+    } else {
         if (mkdir(ppkgPackingDir, S_IRWXU) != 0) {
             perror(ppkgPackingDir);
             return PPKG_ERROR;
@@ -91,10 +95,12 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
         return PPKG_ERROR;
     }
 
-    if (exists_and_is_a_directory(packingDirName)) {
-        if (unlink(packingDirName) != 0) {
-            perror(packingDirName);
-            return PPKG_ERROR;
+    if (stat(packingDirName, &st) == 0) {
+        if (S_ISLNK(st.st_mode)) {
+            if (unlink(packingDirName) != 0) {
+                perror(packingDirName);
+                return PPKG_ERROR;
+            }
         }
     }
 
@@ -113,15 +119,14 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
         case ArchiveType_zip:     archiveFileType = (char*)".zip";     break;
     }
 
-    size_t  stageArchiveFilePathLength = ppkgPackingDirLength + packingDirNameLength + 10;
+    size_t  stageArchiveFilePathLength = ppkgPackingDirLength + packingDirNameLength + 10U;
     char    stageArchiveFilePath[stageArchiveFilePathLength];
-    memset (stageArchiveFilePath, 0, stageArchiveFilePathLength);
     snprintf(stageArchiveFilePath, stageArchiveFilePathLength, "%s/%s%s", ppkgPackingDir, packingDirName, archiveFileType);
 
-    resultCode = tar_create(packingDirName, stageArchiveFilePath, type, verbose);
+    ret = tar_create(packingDirName, stageArchiveFilePath, type, verbose);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -148,22 +153,25 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    size_t  ppkgPackedDirLength = strlen(userHomeDir) + 15;
+    size_t  ppkgPackedDirLength = strlen(userHomeDir) + 15U;
     char    ppkgPackedDir[ppkgPackedDirLength];
-    memset (ppkgPackedDir, 0, ppkgPackedDirLength);
     snprintf(ppkgPackedDir, ppkgPackedDirLength, "%s/.ppkg/packed", userHomeDir);
 
-    if (!exists_and_is_a_directory(ppkgPackedDir)) {
+    if (stat(ppkgPackedDir, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgPackedDir);
+            return PPKG_ERROR;
+        }
+    } else {
         if (mkdir(ppkgPackedDir, S_IRWXU) != 0) {
             perror(ppkgPackedDir);
             return PPKG_ERROR;
         }
     }
 
-    size_t  finalArchiveFilePathLength = ppkgPackedDirLength + packingDirNameLength + 10;
+    size_t  finalArchiveFilePathLength = ppkgPackedDirLength + packingDirNameLength + 10U;
     char    finalArchiveFilePath[finalArchiveFilePathLength];
-    memset (finalArchiveFilePath, 0, finalArchiveFilePathLength);
     snprintf(finalArchiveFilePath, finalArchiveFilePathLength, "%s/%s%s", ppkgPackedDir, packingDirName, archiveFileType);
 
-    return cp(stageArchiveFilePath, finalArchiveFilePath);
+    return copy_file(stageArchiveFilePath, finalArchiveFilePath);
 }

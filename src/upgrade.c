@@ -1,16 +1,16 @@
 #include "ppkg.h"
 
 int ppkg_upgrade(const char * packageName, PPKGInstallOptions options) {
-    int resultCode = ppkg_check_if_the_given_package_is_outdated(packageName);
+    int ret = ppkg_check_if_the_given_package_is_outdated(packageName);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    resultCode = ppkg_uninstall(packageName, options.verbose);
+    ret = ppkg_uninstall(packageName, options.logLevel >= PPKGLogLevel_verbose);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     return ppkg_install(packageName, options);

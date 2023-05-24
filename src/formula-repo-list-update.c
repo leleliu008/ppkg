@@ -6,9 +6,9 @@
 int ppkg_formula_repo_list_update() {
     PPKGFormulaRepoList * formulaRepoList = NULL;
 
-    int resultCode = ppkg_formula_repo_list_new(&formulaRepoList);
+    int ret = ppkg_formula_repo_list(&formulaRepoList);
 
-    if (resultCode == PPKG_OK) {
+    if (ret == PPKG_OK) {
         bool officalCoreIsThere = false;
 
         for (size_t i = 0; i < formulaRepoList->size; i++) {
@@ -18,23 +18,19 @@ int ppkg_formula_repo_list_update() {
                 officalCoreIsThere = true;
             }
 
-            if (formulaRepo->pinned) {
-                fprintf(stderr, "[%s] formula repo was pinned, skipped.\n", formulaRepo->name);
-            } else {
-                resultCode = ppkg_formula_repo_update(formulaRepo);
+            ret = ppkg_formula_repo_sync(formulaRepo);
 
-                if (resultCode != PPKG_OK) {
-                    break;
-                }
+            if (ret != PPKG_OK) {
+                break;
             }
         }
 
+        ppkg_formula_repo_list_free(formulaRepoList);
+
         if (!officalCoreIsThere) {
-            resultCode = ppkg_formula_repo_add("offical-core", "https://github.com/leleliu008/ppkg-formula-repository-offical-core", "master");
+            ret = ppkg_formula_repo_add("offical-core", "https://github.com/leleliu008/ppkg-formula-repository-offical-core", "master", false, true);
         }
     }
 
-    ppkg_formula_repo_list_free(formulaRepoList);
-
-    return resultCode;
+    return ret;
 }

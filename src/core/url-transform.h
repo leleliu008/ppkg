@@ -1,14 +1,14 @@
-#ifndef URL_TRANSFORM_H
-#define URL_TRANSFORM_H
+#ifndef _URL_TRANSFORM_H_
+#define _URL_TRANSFORM_H_
 
-#define URL_TRANSFORM_OK                0
-#define URL_TRANSFORM_ERROR             101
-#define URL_TRANSFORM_RUN_EMPTY_RESULT  102
-#define URL_TRANSFORM_ENV_IS_NOT_SET    103
-#define URL_TRANSFORM_ENV_VALUE_IS_EMPTY      104
-#define URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST 105
-#define URL_TRANSFORM_ALLOCATE_MEMORY_FAILED   106
+#include <stdlib.h>
+#include <stdbool.h>
 
-int url_transform(const char * inUrl, char * * outUrlPointer);
+/** transform a old url to new url.
+ *
+ *  On success, 0 is returned.
+ *  On error,  -1 is returned and errno is set to indicate the error.
+ */
+int url_transform(const char * urlTransformCommandPath, const char * inUrl, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes, bool verbose);
 
 #endif

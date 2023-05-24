@@ -37,11 +37,11 @@ typedef enum {
     PPKGReceiptKeyCode_bscript,
     PPKGReceiptKeyCode_binbstd,
 
-    PPKGReceiptKeyCode_prepare,
+    PPKGReceiptKeyCode_dopatch,
     PPKGReceiptKeyCode_install,
     PPKGReceiptKeyCode_symlink,
 
-    PPKGReceiptKeyCode_cdefine,
+    PPKGReceiptKeyCode_ppflags,
     PPKGReceiptKeyCode_ccflags,
     PPKGReceiptKeyCode_xxflags,
     PPKGReceiptKeyCode_ldflags,
@@ -86,7 +86,7 @@ void ppkg_receipt_dump(PPKGReceipt * receipt) {
     printf("binbstd: %d\n", receipt->binbstd);
     printf("parallel: %d\n", receipt->parallel);
 
-    printf("prepare: %s\n", receipt->prepare);
+    printf("dopatch: %s\n", receipt->dopatch);
     printf("install: %s\n", receipt->install);
 
     printf("symlink: %d\n", receipt->symlink);
@@ -213,9 +213,9 @@ void ppkg_receipt_free(PPKGReceipt * receipt) {
 
     ///////////////////////////////
 
-    if (receipt->cdefine != NULL) {
-        free(receipt->cdefine);
-        receipt->cdefine = NULL;
+    if (receipt->ppflags != NULL) {
+        free(receipt->ppflags);
+        receipt->ppflags = NULL;
     }
 
     if (receipt->ccflags != NULL) {
@@ -242,9 +242,9 @@ void ppkg_receipt_free(PPKGReceipt * receipt) {
 
     ///////////////////////////////
 
-    if (receipt->prepare != NULL) {
-        free(receipt->prepare);
-        receipt->prepare = NULL;
+    if (receipt->dopatch != NULL) {
+        free(receipt->dopatch);
+        receipt->dopatch = NULL;
     }
 
     if (receipt->install != NULL) {
@@ -311,16 +311,16 @@ static PPKGReceiptKeyCode ppkg_receipt_key_code_from_key_name(char * key) {
         return PPKGReceiptKeyCode_dep_pym;
     } else if (strcmp(key, "dep-plm") == 0) {
         return PPKGReceiptKeyCode_dep_plm;
-    } else if (strcmp(key, "cdefine") == 0) {
-        return PPKGReceiptKeyCode_cdefine;
+    } else if (strcmp(key, "ppflags") == 0) {
+        return PPKGReceiptKeyCode_ppflags;
     } else if (strcmp(key, "ccflags") == 0) {
         return PPKGReceiptKeyCode_ccflags;
     } else if (strcmp(key, "xxflags") == 0) {
         return PPKGReceiptKeyCode_xxflags;
     } else if (strcmp(key, "ldflags") == 0) {
         return PPKGReceiptKeyCode_ldflags;
-    } else if (strcmp(key, "prepare") == 0) {
-        return PPKGReceiptKeyCode_prepare;
+    } else if (strcmp(key, "dopatch") == 0) {
+        return PPKGReceiptKeyCode_dopatch;
     } else if (strcmp(key, "install") == 0) {
         return PPKGReceiptKeyCode_install;
     } else if (strcmp(key, "symlink") == 0) {
@@ -391,12 +391,12 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
         case PPKGReceiptKeyCode_dep_pym: if (receipt->dep_pym != NULL) free(receipt->dep_pym); receipt->dep_pym = strdup(value); break;
         case PPKGReceiptKeyCode_dep_plm: if (receipt->dep_plm != NULL) free(receipt->dep_plm); receipt->dep_plm = strdup(value); break;
 
-        case PPKGReceiptKeyCode_cdefine: if (receipt->cdefine != NULL) free(receipt->cdefine); receipt->cdefine = strdup(value); break;
+        case PPKGReceiptKeyCode_ppflags: if (receipt->ppflags != NULL) free(receipt->ppflags); receipt->ppflags = strdup(value); break;
         case PPKGReceiptKeyCode_ccflags: if (receipt->ccflags != NULL) free(receipt->ccflags); receipt->ccflags = strdup(value); break;
         case PPKGReceiptKeyCode_xxflags: if (receipt->xxflags != NULL) free(receipt->xxflags); receipt->xxflags = strdup(value); break;
         case PPKGReceiptKeyCode_ldflags: if (receipt->ldflags != NULL) free(receipt->ldflags); receipt->ldflags = strdup(value); break;
 
-        case PPKGReceiptKeyCode_prepare: if (receipt->prepare != NULL) free(receipt->prepare); receipt->prepare = strdup(value); break;
+        case PPKGReceiptKeyCode_dopatch: if (receipt->dopatch != NULL) free(receipt->dopatch); receipt->dopatch = strdup(value); break;
         case PPKGReceiptKeyCode_install: if (receipt->install != NULL) free(receipt->install); receipt->install = strdup(value); break;
 
         case PPKGReceiptKeyCode_exetype: if (receipt->exetype != NULL) free(receipt->exetype); receipt->exetype = strdup(value); break;
@@ -441,23 +441,23 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
 static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePath) {
     if (receipt->summary == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : summary mapping not found.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
+        return PPKG_ERROR_FORMULA_SCHEME;
     }
 
     if (receipt->version == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : version mapping not found.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
+        return PPKG_ERROR_FORMULA_SCHEME;
     }
 
     if (receipt->web_url == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : web-url mapping not found.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
+        return PPKG_ERROR_FORMULA_SCHEME;
     }
 
     if (receipt->src_url == NULL) {
         if (receipt->git_url == NULL) {
             fprintf(stderr, "scheme error in receipt file: %s : neither src-url nor git-url mapping not found.\n", receiptFilePath);
-            return PPKG_FORMULA_SCHEME_ERROR;
+            return PPKG_ERROR_FORMULA_SCHEME;
         }
     } else {
         if (strncmp(receipt->src_url, "dir://", 6) == 0) {
@@ -465,31 +465,31 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
         } else {
             if (receipt->src_sha == NULL) {
                 fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping not found.\n", receiptFilePath);
-                return PPKG_FORMULA_SCHEME_ERROR;
+                return PPKG_ERROR_FORMULA_SCHEME;
             }
 
             if (strlen(receipt->src_sha) != 64) {
                 fprintf(stderr, "scheme error in receipt file: %s : src-sha mapping's value's length must be 64.\n", receiptFilePath);
-                return PPKG_FORMULA_SCHEME_ERROR;
+                return PPKG_ERROR_FORMULA_SCHEME;
             }
         }
     }
 
     if (receipt->bsystem == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : bsystem mapping not found.\n", receiptFilePath);
-        return PPKG_FORMULA_SCHEME_ERROR;
+        return PPKG_ERROR_FORMULA_SCHEME;
     }
 
     if (receipt->signature == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : signature mapping not found.\n", receiptFilePath);
-        return PPKG_RECEIPT_SCHEME_ERROR;
+        return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (receipt->timestamp == NULL) {
         fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping not found.\n", receiptFilePath);
-        return PPKG_RECEIPT_SCHEME_ERROR;
+        return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     size_t i = 0;
@@ -504,42 +504,42 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
 
         if ((c < '0') || (c > '9')) {
             fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping's value should only contains non-numeric characters.\n", receiptFilePath);
-            return PPKG_RECEIPT_SCHEME_ERROR;
+            return PPKG_ERROR_RECEIPT_SCHEME;
         }
     }
 
     if (i != 10) {
         fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping's value's length must be 10.\n", receiptFilePath);
-        return PPKG_RECEIPT_SCHEME_ERROR;
+        return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     return PPKG_OK;
 }
 
 int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
-    int resultCode = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
+    int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     char * userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
     if (userHomeDirLength == 0) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
-    size_t receiptFilePathLength = userHomeDirLength + strlen(packageName) + 36;
+    size_t receiptFilePathLength = userHomeDirLength + strlen(packageName) + 36U;
     char * receiptFilePath = (char*)calloc(receiptFilePathLength, sizeof(char));
 
     if (receiptFilePath == NULL) {
-        return PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
+        return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
     snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/installed/%s/.ppkg/receipt.yml", userHomeDir, packageName);
@@ -549,7 +549,7 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
     if (file == NULL) {
         perror(receiptFilePath);
         free(receiptFilePath);
-        return PPKG_PACKAGE_IS_NOT_INSTALLED;
+        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
     yaml_parser_t parser;
@@ -574,8 +574,8 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         // https://libyaml.docsforge.com/master/api/yaml_parser_scan/
         if (yaml_parser_scan(&parser, &token) == 0) {
             fprintf(stderr, "syntax error in receipt file: %s\n", receiptFilePath);
-            resultCode = PPKG_RECEIPT_SYNTAX_ERROR;
-            goto clean;
+            ret = PPKG_ERROR_RECEIPT_SYNTAX;
+            goto finalize;
         }
 
         switch(token.type) {
@@ -593,8 +593,8 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
                         receipt = (PPKGReceipt*)calloc(1, sizeof(PPKGReceipt));
 
                         if (receipt == NULL) {
-                            resultCode = PPKG_ERROR_ALLOCATE_MEMORY_FAILED;
-                            goto clean;
+                            ret = PPKG_ERROR_MEMORY_ALLOCATE;
+                            goto finalize;
                         }
 
                         receipt->path = receiptFilePath;
@@ -617,7 +617,7 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         }
     } while(token.type != YAML_STREAM_END_TOKEN);
 
-clean:
+finalize:
     yaml_token_delete(&token);
 
     yaml_parser_delete(&parser);
@@ -626,10 +626,10 @@ clean:
 
     //ppkg_receipt_dump(receipt);
 
-    if (resultCode == PPKG_OK) {
-        resultCode = ppkg_receipt_check(receipt, receiptFilePath);
+    if (ret == PPKG_OK) {
+        ret = ppkg_receipt_check(receipt, receiptFilePath);
 
-        if (resultCode == PPKG_OK) {
+        if (ret == PPKG_OK) {
             (*out) = receipt;
             return PPKG_OK;
         }
@@ -641,5 +641,5 @@ clean:
         ppkg_receipt_free(receipt);
     }
 
-    return resultCode;
+    return ret;
 }

@@ -2,33 +2,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "ppkg.h"
-#include "core/fs.h"
-#include "core/zlib-flate.h"
 
-int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName) {
+int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled) {
     if (formulaRepoName == NULL) {
-        return PPKG_ARG_IS_NULL;
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
     size_t formulaRepoNameLength = strlen(formulaRepoName);
 
     if (formulaRepoNameLength == 0) {
-        return PPKG_ARG_IS_EMPTY;
+        return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
     if (formulaRepoUrl == NULL) {
-        return PPKG_ARG_IS_NULL;
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
     size_t formulaRepoUrlLength = strlen(formulaRepoUrl);
 
     if (formulaRepoUrlLength == 0) {
-        return PPKG_ARG_IS_EMPTY;
+        return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
-    if (branchName == NULL || strcmp(branchName, "") == 0) {
+    if (branchName == NULL || branchName[0] == '\0') {
         branchName = (char*)"master";
     }
 
@@ -39,23 +40,29 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
     char * userHomeDir = getenv("HOME");
 
     if (userHomeDir == NULL) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
     size_t userHomeDirLength = strlen(userHomeDir);
 
     if (userHomeDirLength == 0) {
-        return PPKG_ENV_HOME_NOT_SET;
+        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t  ppkgHomeDirLength = userHomeDirLength + 7;
-    char    ppkgHomeDir[ppkgHomeDirLength];
-    memset (ppkgHomeDir, 0, ppkgHomeDirLength);
+    struct stat st;
+
+    size_t ppkgHomeDirLength = userHomeDirLength + 7U;
+    char   ppkgHomeDir[ppkgHomeDirLength];
     snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
 
-    if (!exists_and_is_a_directory(ppkgHomeDir)) {
+    if (stat(ppkgHomeDir, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgHomeDir);
+            return PPKG_ERROR;
+        }
+    } else {
         if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
             perror(ppkgHomeDir);
             return PPKG_ERROR;
@@ -64,12 +71,16 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t  formulaRepoRootDirLength = ppkgHomeDirLength + 9;
-    char    formulaRepoRootDir[formulaRepoRootDirLength];
-    memset (formulaRepoRootDir, 0, formulaRepoRootDirLength);
+    size_t formulaRepoRootDirLength = ppkgHomeDirLength + 9U;
+    char   formulaRepoRootDir[formulaRepoRootDirLength];
     snprintf(formulaRepoRootDir, formulaRepoRootDirLength, "%s/repos.d", ppkgHomeDir);
 
-    if (!exists_and_is_a_directory(formulaRepoRootDir)) {
+    if (stat(formulaRepoRootDir, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", formulaRepoRootDir);
+            return PPKG_ERROR;
+        }
+    } else {
         if (mkdir(formulaRepoRootDir, S_IRWXU) != 0) {
             perror(formulaRepoRootDir);
             return PPKG_ERROR;
@@ -78,12 +89,14 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t  formulaRepoDirLength = formulaRepoRootDirLength + formulaRepoNameLength + 2;
-    char    formulaRepoDir[formulaRepoDirLength];
-    memset (formulaRepoDir, 0, formulaRepoDirLength);
+    size_t formulaRepoDirLength = formulaRepoRootDirLength + formulaRepoNameLength + 2U;
+    char   formulaRepoDir[formulaRepoDirLength];
     snprintf(formulaRepoDir, formulaRepoDirLength, "%s/%s", formulaRepoRootDir, formulaRepoName);
 
-    if (!exists_and_is_a_directory(formulaRepoDir)) {
+    if (stat(formulaRepoDir, &st) == 0) {
+        fprintf(stderr, "formula repo already exist at: %s\n", formulaRepoDir);
+        return PPKG_ERROR_FORMULA_REPO_HAS_EXIST;
+    } else {
         if (mkdir(formulaRepoDir, S_IRWXU) != 0) {
             perror(formulaRepoDir);
             return PPKG_ERROR;
@@ -94,46 +107,20 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     printf("Adding formula repo : %s => %s\n", formulaRepoName, formulaRepoUrl);
 
-    size_t  refspecLength = (branchNameLength << 1) + 33;
-    char    refspec[refspecLength];
-    memset (refspec, 0, refspecLength);
+    size_t refspecLength = (branchNameLength << 1) + 33U;
+    char   refspec[refspecLength];
     snprintf(refspec, refspecLength, "refs/heads/%s:refs/remotes/origin/%s", branchName, branchName);
 
-    if (ppkg_fetch_via_git(formulaRepoDir, formulaRepoUrl, refspec, branchName) != 0) {
-        return PPKG_ERROR;
+    int ret = ppkg_fetch_via_git(formulaRepoDir, formulaRepoUrl, refspec, branchName);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t formulaRepoConfigFilePathLength = formulaRepoDirLength + 24;
-    char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
-    memset(formulaRepoConfigFilePath, 0, formulaRepoConfigFilePathLength);
-    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.dat", formulaRepoDir);
-
-    FILE * file = fopen(formulaRepoConfigFilePath, "wb");
-
-    if (file == NULL) {
-        perror(formulaRepoConfigFilePath);
-        return PPKG_ERROR;
-    }
+    ////////////////////////////////////////////////////////////////////////////////////////
 
     char ts[11];
-    memset(ts, 0, 11);
     snprintf(ts, 11, "%ld", time(NULL));
 
-    size_t  strLength = formulaRepoUrlLength + branchNameLength + strlen(ts) + 45;
-    char    str[strLength];
-    memset (str, 0, strLength);
-    snprintf(str, strLength, "url: %s\nbranch: %s\npinned: no\ntimestamp-added: %s\n", formulaRepoUrl, branchName, ts);
-
-    if (zlib_deflate_string_to_file(str, strLength - 1, file) != 0) {
-        fclose(file);
-
-        if (unlink(formulaRepoConfigFilePath) != 0) {
-            perror(formulaRepoConfigFilePath);
-        }
-
-        return PPKG_ERROR;
-    } else {
-        fclose(file);
-        return PPKG_OK;
-    }
+    return ppkg_formula_repo_config_write(formulaRepoDir, formulaRepoUrl, branchName, pinned, enabled, ts, NULL);
 }

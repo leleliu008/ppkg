@@ -1,90 +1,129 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+
 #include "url-transform.h"
 
-int url_transform(const char * url, char ** out) {
-    char * urlTransformCommandPath = getenv("PPKG_URL_TRANSFORM");
-
-    if (urlTransformCommandPath == NULL) {
-        return URL_TRANSFORM_ENV_IS_NOT_SET;
-    }
-
-    if (strcmp(urlTransformCommandPath, "") == 0) {
-        return URL_TRANSFORM_ENV_VALUE_IS_EMPTY;
-    }
-
-    struct stat sb;
-
-    if ((stat(urlTransformCommandPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-        ;
-    } else {
-        return URL_TRANSFORM_ENV_VALUE_PATH_NOT_EXIST;
-    }
-
-    size_t urlLength = strlen(url);
-
-    size_t  cmdLength = urlLength + strlen(urlTransformCommandPath) + 2;
-    char    cmd[cmdLength];
-    memset( cmd, 0, cmdLength);
-    snprintf(cmd, cmdLength, "%s %s", urlTransformCommandPath, url);
-
-    FILE * file = popen(cmd, "r");
-
-    if (file == NULL) {
-        perror(cmd);
-        return URL_TRANSFORM_ERROR;
-    }
-
-    size_t capcity = 0;
-    size_t size    = 0;
-    char * result = NULL;
-    char   c;
+static int url_transform_read(int readEndFD, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes) {
+    char buf[1024];
 
     for (;;) {
-        c = fgetc(file);
+        ssize_t readSize = read(readEndFD, buf, 1024);
 
-        if (c == EOF) {
-            break;
+        if (readSize == 0) {
+            return 0;
         }
 
-        if (c == '\n') {
-            break;
+        if (readSize < 0) {
+            return -1;
         }
 
-        if (capcity == size) {
-            capcity += 256;
+        if (buf[readSize - 1] == '\n') {
+            readSize--;
+        }
 
-            char * ptr = (char*)calloc(capcity, sizeof(char));
+        if (readSize > 0) {
+            size_t writtenSize = (*writtenSizeInBytes);
+            size_t detlaSize = outputBufferSizeInBytes - writtenSize;
+            size_t n = detlaSize > (size_t)readSize ? readSize : detlaSize;
 
-            if (ptr == NULL) {
-                pclose(file);
-                return URL_TRANSFORM_ALLOCATE_MEMORY_FAILED;
+            strncpy(outputBuffer + writtenSize, buf, n);
+
+            (*writtenSizeInBytes) = writtenSize + n;
+
+            if ((*writtenSizeInBytes) == outputBufferSizeInBytes) {
+                return 0;
             }
-
-            if (size > 0) {
-                strncpy(ptr, result, size);
-                free(result);
-            }
-
-            result = ptr;
         }
+    }
+}
 
-        result[size] = c;
-        size++;
+int url_transform(const char * urlTransformCommandPath, const char * inUrl, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes, bool verbose) {
+    struct stat st;
+
+    if (stat(urlTransformCommandPath, &st) == 0) {
+        if (access(urlTransformCommandPath, X_OK) != 0) {
+            return -1;
+        }
+    } else {
+        return -1;
     }
 
-    pclose(file);
+    ////////////////////////////////////////////////////////////////////
 
-    if (result == NULL) {
-        return URL_TRANSFORM_RUN_EMPTY_RESULT;
+    int pipeFDs[2];
+
+    if (pipe(pipeFDs) != 0) {
+        return -1;
+    }
+
+    ////////////////////////////////////////////////////////////////////
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        return -1;
+    }
+
+    if (pid == 0) {
+        close(pipeFDs[0]);
+
+        if (dup2(pipeFDs[1], STDOUT_FILENO) < 0) {
+            if (verbose) {
+                perror(NULL);
+            }
+            exit(254);
+        }
+
+        execl(urlTransformCommandPath, urlTransformCommandPath, inUrl, NULL);
+
+        if (verbose) {
+            perror(urlTransformCommandPath);
+        }
+
+        exit(255);
     } else {
-        fprintf(stderr, "you have set PPKG_URL_TRANSFORM=%s\n", urlTransformCommandPath);
-        fprintf(stderr, "transform from: %s\n", url);
-        fprintf(stderr, "transform to:   %s\n", result);
-        (*out) = result;
-        return URL_TRANSFORM_OK;
+        close(pipeFDs[1]);
+
+        int err = 0;
+
+        int ret = url_transform_read(pipeFDs[0], outputBuffer, outputBufferSizeInBytes, writtenSizeInBytes);
+
+        if (ret != 0) {
+            err = errno;
+        }
+
+        int childProcessExitStatusCode;
+
+        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
+            return -1;
+        }
+
+        if (childProcessExitStatusCode == 0) {
+            errno = err;
+            return ret;
+        }
+
+        if (WIFEXITED(childProcessExitStatusCode)) {
+            if (verbose) {
+                fprintf(stderr, "running command '%s %s' exit with status code: %d\n", urlTransformCommandPath, inUrl, WEXITSTATUS(childProcessExitStatusCode));
+            }
+        } else if (WIFSIGNALED(childProcessExitStatusCode)) {
+            if (verbose) {
+                fprintf(stderr, "running command '%s %s' killed by signal: %d\n", urlTransformCommandPath, inUrl, WTERMSIG(childProcessExitStatusCode));
+            }
+            errno = EINTR;
+        } else if (WIFSTOPPED(childProcessExitStatusCode)) {
+            if (verbose) {
+                fprintf(stderr, "running command '%s %s' stopped by signal: %d\n", urlTransformCommandPath, inUrl, WSTOPSIG(childProcessExitStatusCode));
+            }
+            errno = EINTR;
+        }
+
+        return -1;
     }
 }

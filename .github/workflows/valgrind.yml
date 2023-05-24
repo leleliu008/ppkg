@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@main
 
       - run:  apt -y update
-      - run:  apt -y install cmake ninja-build pkg-config g++ linux-headers-generic  curl zip unzip tar git
+      - run:  apt -y install valgrind cmake ninja-build pkg-config g++ linux-headers-generic  curl zip unzip tar git
 
       - uses: actions/checkout@v3
 

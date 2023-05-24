@@ -1,69 +1,106 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <dirent.h>
-#include <fnmatch.h>
+#include <sys/stat.h>
 
-#include "core/log.h"
-#include "core/fs.h"
 #include "ppkg.h"
 
-int ppkg_list_the_available_packages() {
+int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, const void * payload) {
     PPKGFormulaRepoList * formulaRepoList = NULL;
 
-    int resultCode = ppkg_formula_repo_list_new(&formulaRepoList);
+    int ret = ppkg_formula_repo_list(&formulaRepoList);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    for (size_t i = 0; i < formulaRepoList->size; i++) {
-        char *  formulaRepoPath = formulaRepoList->repos[i]->path;
+    size_t j = 0;
 
-        size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
-        char    formulaDir[formulaDirLength];
-        memset (formulaDir, 0, formulaDirLength);
+    for (size_t i = 0; i < formulaRepoList->size; i++) {
+        char * formulaRepoPath  = formulaRepoList->repos[i]->path;
+
+        size_t formulaDirLength = strlen(formulaRepoPath) + 10U;
+        char   formulaDir[formulaDirLength];
         snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
 
-        DIR           * dir;
-        struct dirent * dir_entry;
+        struct stat status;
 
-        dir = opendir(formulaDir);
+        if (stat(formulaDir, &status) != 0) {
+            continue;
+        }
+
+        if (!S_ISDIR(status.st_mode)) {
+            continue;
+        }
+
+        DIR * dir = opendir(formulaDir);
 
         if (dir == NULL) {
-            ppkg_formula_repo_list_free(formulaRepoList);
             perror(formulaDir);
+            ppkg_formula_repo_list_free(formulaRepoList);
             return PPKG_ERROR;
         }
 
-        while ((dir_entry = readdir(dir))) {
+        char * fileName;
+        char * fileNameSuffix;
+        size_t fileNameLength;
+
+        struct dirent * dir_entry;
+
+        for (;;) {
+            errno = 0;
+
+            dir_entry = readdir(dir);
+
+            if (dir_entry == NULL) {
+                if (errno == 0) {
+                    closedir(dir);
+                    break;
+                } else {
+                    perror(formulaDir);
+                    closedir(dir);
+                    ppkg_formula_repo_list_free(formulaRepoList);
+                    return PPKG_ERROR;
+                }
+            }
+
             //puts(dir_entry->d_name);
 
-            if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
-                continue;
-            }
+            fileName = dir_entry->d_name;
 
-            int r = fnmatch("*.yml", dir_entry->d_name, 0);
+            fileNameLength = strlen(fileName);
 
-            if (r == 0) {
-                int fileNameLength = strlen(dir_entry->d_name);
-                char packageName[fileNameLength];
-                memset(packageName, 0, fileNameLength);
-                strncpy(packageName, dir_entry->d_name, fileNameLength - 4);
-                printf("%s\n", packageName);
-            } else if(r == FNM_NOMATCH) {
-                ;
-            } else {
-                ppkg_formula_repo_list_free(formulaRepoList);
-                fprintf(stderr, "fnmatch() error\n");
-                closedir(dir);
-                return PPKG_ERROR;
+            if (fileNameLength > 4) {
+                fileNameSuffix = fileName + fileNameLength - 4;
+
+                if (strcmp(fileNameSuffix, ".yml") == 0) {
+                    fileName[fileNameLength - 4] = '\0';
+
+                    ret = packageNameCallbak(fileName, j, payload);
+
+                    j++;
+
+                    if (ret != PPKG_OK) {
+                        closedir(dir);
+                        ppkg_formula_repo_list_free(formulaRepoList);
+                        return ret;
+                    }
+                }
             }
         }
-
-        closedir(dir);
     }
 
     ppkg_formula_repo_list_free(formulaRepoList);
 
     return PPKG_OK;
+}
+
+static int package_name_callback(const char * packageName, size_t i, const void * payload) {
+    printf("%s\n", packageName);
+    return PPKG_OK;
+}
+
+int ppkg_show_the_available_packages() {
+    return ppkg_list_the_available_packages(package_name_callback, NULL);
 }

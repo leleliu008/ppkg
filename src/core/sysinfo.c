@@ -1,46 +1,51 @@
-#include "sysinfo.h"
-
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 
-#include "regex/regex.h"
+#include "sysinfo.h"
 
-#include <unistd.h>
+#if defined (__APPLE__)
+#include <regex.h>
+#elif defined (__ANDROID__)
+#include <sys/system_properties.h>
+#endif
 
 int sysinfo_kind(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "windows", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__APPLE__)
-    strncpy(buf, "darwin", bufSize > 6 ? 6 : bufSize);
+    strncpy(buf, "darwin",  (bufSize > 6U) ? 6U : bufSize);
+    return 0;
+#elif defined (__DragonFly__)
+    strncpy(buf, "dragonflybsd", (bufSize > 12U) ? 12U : bufSize);
     return 0;
 #elif defined (__FreeBSD__)
-    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "freebsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__OpenBSD__)
-    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "openbsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__NetBSD__)
-    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
+    strncpy(buf, "netbsd",  (bufSize > 6U) ? 6U : bufSize);
     return 0;
 #elif defined (__ANDROID__)
-    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "android", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__linux__)
-    strncpy(buf, "linux", bufSize > 5 ? 5 : bufSize);
+    strncpy(buf, "linux",   (bufSize > 5U) ? 5U : bufSize);
     return 0;
 #else
     struct utsname uts;
 
     if (uname(&uts) < 0) {
-        perror("uname() error");
         return -1;
     }
 
     size_t osKindLength = strlen(uts.sysname);
-    size_t n = bufSize > osKindLength ? osKindLength : bufSize;
+    size_t n = (bufSize > osKindLength) ? osKindLength : bufSize;
 
     strncpy(buf, uts.sysname, n);
 
@@ -56,36 +61,38 @@ int sysinfo_kind(char * buf, size_t bufSize) {
 
 int sysinfo_type(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "windows", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__APPLE__)
-    strncpy(buf, "macos", bufSize > 5 ? 5 : bufSize);
+    strncpy(buf, "macos",   (bufSize > 5U) ? 5U : bufSize);
+    return 0;
+#elif defined (__DragonFly__)
+    strncpy(buf, "dragonflybsd", (bufSize > 12U) ? 12U : bufSize);
     return 0;
 #elif defined (__FreeBSD__)
-    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "freebsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__OpenBSD__)
-    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "openbsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__NetBSD__)
-    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
+    strncpy(buf, "netbsd",  (bufSize > 6U) ? 6U : bufSize);
     return 0;
 #elif defined (__ANDROID__)
-    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "android", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__linux__)
-    strncpy(buf, "linux", bufSize > 5 ? 5 : bufSize);
+    strncpy(buf, "linux",   (bufSize > 5U) ? 5U : bufSize);
     return 0;
 #else
     struct utsname uts;
 
     if (uname(&uts) < 0) {
-        perror("uname() error");
         return -1;
     }
 
     size_t osKindLength = strlen(uts.sysname);
-    size_t n = bufSize > osKindLength ? osKindLength : bufSize;
+    size_t n = (bufSize > osKindLength) ? osKindLength : bufSize;
 
     strncpy(buf, uts.sysname, n);
 
@@ -103,79 +110,167 @@ int sysinfo_arch(char * buf, size_t bufSize) {
     struct utsname uts;
 
     if (uname(&uts) < 0) {
-        perror("uname() error");
         return -1;
     }
 
     size_t osArchLength = strlen(uts.machine);
 
-    strncpy(buf, uts.machine, bufSize > osArchLength ? osArchLength : bufSize);
+    strncpy(buf, uts.machine, (bufSize > osArchLength) ? osArchLength : bufSize);
 
     return 0;
 }
 
-int sysinfo_name(char * buf, size_t bufSize) {
+int sysinfo_code(char * buf, size_t bufSize) {
 #if defined (_WIN32)
-    strncpy(buf, "windows", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "windows", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__APPLE__)
-    strncpy(buf, "macos", bufSize > 5 ? 5 : bufSize);
+    strncpy(buf, "macos",   (bufSize > 5U) ? 5U : bufSize);
+    return 0;
+#elif defined (__DragonFly__)
+    strncpy(buf, "dragonflybsd", (bufSize > 12U) ? 12U : bufSize);
     return 0;
 #elif defined (__FreeBSD__)
-    strncpy(buf, "freebsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "freebsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__OpenBSD__)
-    strncpy(buf, "openbsd", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "openbsd", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #elif defined (__NetBSD__)
-    strncpy(buf, "netbsd", bufSize > 6 ? 6 : bufSize);
+    strncpy(buf, "netbsd",  (bufSize > 6U) ? 6U : bufSize);
     return 0;
 #elif defined (__ANDROID__)
-    strncpy(buf, "android", bufSize > 7 ? 7 : bufSize);
+    strncpy(buf, "android", (bufSize > 7U) ? 7U : bufSize);
     return 0;
 #else
+    const char * filepath = "/etc/os-release";
     struct stat sb;
 
-    if ((stat("/etc/os-release", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-        FILE * file = fopen("/etc/os-release", "r");
+    if ((stat(filepath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+        FILE * file = fopen(filepath, "r");
 
         if (file == NULL) {
-            perror("/etc/os-release");
             return -1;
         }
 
         char line[50];
 
-        while (fgets(line, 50, file) != NULL) {
-            size_t n = strlen(line);
+        for (;;) {
+            if (fgets(line, 50, file) == NULL) {
+                if (ferror(file)) {
+                    perror(filepath);
+                    fclose(file);
+                    return -1;
+                } else {
+                    fclose(file);
+                    return -1;
+                }
+            }
 
-            if (strncmp(line, "ID=", n > 3 ? 3 : n) == 0) {
+            if (strncmp(line, "ID=", 3) == 0) {
                 char * p = &line[3];
 
-                if (p[0] == '"' || p[0] == '\'') {
+                if ((p[0] == '"') || (p[0] == '\'')) {
                     p++;
-                    n -= 4;
-                } else {
-                    n -= 3;
                 }
+
+                size_t n = strlen(p);
 
                 p[n - 1] = '\0';
                 n--;
 
-                if (p[n - 1] == '"' || p[n - 1] == '\'') {
+                if ((p[n - 1] == '"') || (p[n - 1] == '\'')) {
                     p[n - 1] = '\0';
                     n--;
                 }
 
-                strncpy(buf, p, bufSize > n ? n : bufSize);
+                strncpy(buf, p, (bufSize > n) ? n : bufSize);
+
+                fclose(file);
+
                 return 0;
             }
         }
-
-        fclose(file);
     }
 
-    return -2;
+    return -1;
+#endif
+}
+
+int sysinfo_name(char * buf, size_t bufSize) {
+#if defined (_WIN32)
+    strncpy(buf, "Windows", (bufSize > 7U) ? 7U : bufSize);
+    return 0;
+#elif defined (__APPLE__)
+    strncpy(buf, "macOS",   (bufSize > 5U) ? 5U : bufSize);
+    return 0;
+#elif defined (__DragonFly__)
+    strncpy(buf, "DragonFlyBSD", (bufSize > 12U) ? 12U : bufSize);
+    return 0;
+#elif defined (__FreeBSD__)
+    strncpy(buf, "FreeBSD", (bufSize > 7U) ? 7U : bufSize);
+    return 0;
+#elif defined (__OpenBSD__)
+    strncpy(buf, "OpenBSD", (bufSize > 7U) ? 7U : bufSize);
+    return 0;
+#elif defined (__NetBSD__)
+    strncpy(buf, "NetBSD",  (bufSize > 6U) ? 6U : bufSize);
+    return 0;
+#elif defined (__ANDROID__)
+    strncpy(buf, "Android", (bufSize > 7U) ? 7U : bufSize);
+    return 0;
+#else
+    const char * filepath = "/etc/os-release";
+    struct stat sb;
+
+    if ((stat(filepath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+        FILE * file = fopen(filepath, "r");
+
+        if (file == NULL) {
+            return -1;
+        }
+
+        char line[50];
+
+        for (;;) {
+            if (fgets(line, 50, file) == NULL) {
+                if (ferror(file)) {
+                    perror(filepath);
+                    fclose(file);
+                    return -1;
+                } else {
+                    fclose(file);
+                    return -1;
+                }
+            }
+
+            if (strncmp(line, "NAME=", 5) == 0) {
+                char * p = &line[5];
+
+                if ((p[0] == '"') || (p[0] == '\'')) {
+                    p++;
+                }
+
+                size_t n = strlen(p);
+
+                p[n - 1] = '\0';
+                n--;
+
+                if ((p[n - 1] == '"') || (p[n - 1] == '\'')) {
+                    p[n - 1] = '\0';
+                    n--;
+                }
+
+                strncpy(buf, p, (bufSize > n) ? n : bufSize);
+
+                fclose(file);
+
+                return 0;
+            }
+        }
+    }
+
+    return -1;
 #endif
 }
 
@@ -184,273 +279,413 @@ int sysinfo_vers(char * buf, size_t bufSize) {
     struct utsname uts;
 
     if (uname(&uts) < 0) {
-        perror("uname() error");
         return -1;
     }
 
     size_t n = strlen(uts.release);
 
-    strncpy(buf, uts.release, bufSize > n ? n : bufSize);
+    strncpy(buf, uts.release, (bufSize > n) ? n : bufSize);
 
     return 0;
+#elif defined (__ANDROID__)
+    char buff[PROP_VALUE_MAX];
+
+    int n = __system_property_get("ro.build.version.release", buff);
+
+    if (n > 0) {
+        strncpy(buf, buff, (bufSize > n) ? n : bufSize);
+        return 0;
+    } else {
+        return -1;
+    }
 #elif defined (__APPLE__)
     const char * filepath = "/System/Library/CoreServices/SystemVersion.plist";
     struct stat sb;
+
     if ((stat(filepath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
         FILE * file = fopen(filepath, "r");
 
         if (file == NULL) {
-            perror(filepath);
             return -1;
         }
 
         char line[512];
 
-        while (fgets(line, 512, file) != NULL) {
-            if (regex_matched(line, "ProductVersion")) {
-                if (fgets(line, 512, file) != NULL) {
-                    char * p = regex_extract(line, "[1-9][0-9.]+[0-9]");
-                    size_t n = strlen(p);
-                    strncpy(buf, p, bufSize > n ? n : bufSize);
-                    free(p);
+        for (;;) {
+            if (fgets(line, 512, file) == NULL) {
+                if (ferror(file)) {
+                    perror(filepath);
                     fclose(file);
-                    return 0;
+                    return -1;
+                } else {
+                    fclose(file);
+                    return -1;
+                }
+            }
+
+            regex_t regex;
+
+            if (regcomp(&regex, "ProductVersion", REG_EXTENDED) != 0) {
+                regfree(&regex);
+                fclose(file);
+                return -1;
+            }
+
+            regmatch_t regmatch[2];
+
+            if (regexec(&regex, line, 2, regmatch, 0) != 0) {
+                regfree(&regex);
+                continue;
+            }
+
+            //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+            //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+            if (regmatch[0].rm_so >= 0 && regmatch[0].rm_eo > regmatch[0].rm_so) {
+                regfree(&regex);
+
+                if (fgets(line, 512, file) == NULL) {
+                    if (ferror(file)) {
+                        perror(filepath);
+                        fclose(file);
+                        return -1;
+                    } else {
+                        fclose(file);
+                        return -1;
+                    }
                 }
 
-                break;
+                regex_t regex;
+
+                if (regcomp(&regex, "[1-9][0-9.]+[0-9]", REG_EXTENDED) != 0) {
+                    regfree(&regex);
+                    fclose(file);
+                    return -1;
+                }
+
+                regmatch_t regmatch[2];
+
+                if (regexec(&regex, line, 2, regmatch, 0) != 0) {
+                    regfree(&regex);
+                    fclose(file);
+                    return -1;
+                }
+
+                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+                if (regmatch[0].rm_so >= 0 && regmatch[0].rm_eo > regmatch[0].rm_so) {
+                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
+
+                    strncpy(buf, line + regmatch[0].rm_so, (bufSize > n) ? n : bufSize);
+
+                    regfree(&regex);
+                    fclose(file);
+                    return 0;
+                } else {
+                    regfree(&regex);
+                    fclose(file);
+                    return -1;
+                }
+            } else {
+                regfree(&regex);
             }
         }
-
-        fclose(file);
     }
 
-    return -2;
+    return -1;
 #else
+    const char * filepath = "/etc/os-release";
     struct stat sb;
 
-    if ((stat("/etc/os-release", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-        FILE * file = fopen("/etc/os-release", "r");
+    if ((stat(filepath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+        FILE * file = fopen(filepath, "r");
 
         if (file == NULL) {
-            perror("/etc/os-release");
             return -1;
         }
 
         char line[50];
 
-        while (fgets(line, 50, file) != NULL) {
-            size_t n = strlen(line);
+        for (;;) {
+            if (fgets(line, 50, file) == NULL) {
+                if (ferror(file)) {
+                    perror(filepath);
+                    fclose(file);
+                    return -1;
+                } else {
+                    fclose(file);
+                    strncpy(buf, "rolling", (bufSize > 7U) ? 7U : bufSize);
+                    return 0;
+                }
+            }
 
-            if (strncmp(line, "VERSION_ID=", n > 11 ? 11 : n) == 0) {
+            if (strncmp(line, "VERSION_ID=", 11) == 0) {
                 char * p = &line[11];
 
-                if (p[0] == '"' || p[0] == '\'') {
+                if ((p[0] == '"') || (p[0] == '\'')) {
                     p++;
-                    n -= 12;
-                } else {
-                    n -= 11;
                 }
+
+                size_t n = strlen(p);
 
                 p[n - 1] = '\0';
                 n--;
 
-                if (p[n - 1] == '"' || p[n - 1] == '\'') {
+                if ((p[n - 1] == '"') || (p[n - 1] == '\'')) {
                     p[n - 1] = '\0';
                     n--;
                 }
 
-                strncpy(buf, p, bufSize > n ? n : bufSize);
+                strncpy(buf, p, (bufSize > n) ? n : bufSize);
+
+                fclose(file);
+
                 return 0;
             }
         }
-
-        fclose(file);
     }
 
-    strncpy(buf, "rolling", bufSize > 7 ? 7 : bufSize);
-
-    return 0;
+    return -1;
 #endif
 }
 
-int sysinfo_libc(LIBC * out) {
+int sysinfo_libc() {
+#if defined (__ANDROID__)
+    return 3;
+#else
     struct utsname uts;
 
     if (uname(&uts) < 0) {
-        perror("uname() error");
         return -1;
     }
 
     if (strcmp(uts.sysname, "Linux") == 0) {
         size_t osArchLength = strlen(uts.machine);
 
-        size_t  dynamicLoaderPathLength = osArchLength + 19;
-        char    dynamicLoaderPath[dynamicLoaderPathLength];
-        memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
-        snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib/ld-musl-%s.so.1", uts.machine);
-
         struct stat sb;
 
-        if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-            (*out) = LIBC_MUSL;
-        } else {
-            if (strcmp(uts.machine, "x86_64") == 0) {
-                const char * dynamicLoaderPath = "/lib64/ld-linux-x86-64.so.2";
-
-                struct stat sb;
-
-                if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-                    (*out) = LIBC_GLIBC;
-                } else {
-                    (*out) = LIBC_UNKNOWN;
-                }
-            } else {
-                size_t  dynamicLoaderPathLength = osArchLength + 22;
-                char    dynamicLoaderPath[dynamicLoaderPathLength];
-                memset( dynamicLoaderPath, 0, dynamicLoaderPathLength);
-                snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib64/ld-linux-%s.so.2", uts.machine);
-
-                struct stat sb;
-
-                if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
-                    (*out) = LIBC_GLIBC;
-                } else {
-                    (*out) = LIBC_UNKNOWN;
-                }
+        if (strcmp(uts.machine, "x86_64") == 0) {
+            if ((stat("/lib64/ld-linux-x86-64.so.2", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                return 1;
             }
+
+            if ((stat("/lib/ld-musl-x86_64.so.1", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                return 2;
+            }
+        }
+
+        if (strcmp(uts.machine, "ppc64le") == 0) {
+            if ((stat("/lib/powerpc64le-linux-gnu/ld64.so.2", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                return 1;
+            }
+
+            if ((stat("/lib/ld-musl-powerpc64le.so.1", &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+                return 2;
+            }
+        }
+
+        size_t   muslDynamicLoaderPathLength = osArchLength + 19U;
+        char     muslDynamicLoaderPath[muslDynamicLoaderPathLength];
+        snprintf(muslDynamicLoaderPath, muslDynamicLoaderPathLength, "/lib/ld-musl-%s.so.1", uts.machine);
+
+        if ((stat(muslDynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+            return 2;
+        }
+
+        size_t   dynamicLoaderPathLength = osArchLength + 22U;
+        char     dynamicLoaderPath[dynamicLoaderPathLength];
+        snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib64/ld-linux-%s.so.2", uts.machine);
+
+        if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
+            return 1;
         }
     }
 
     return 0;
+#endif
 }
 
-int sysinfo_ncpu(size_t * out) {
-    long nprocs = 1;
+int sysinfo_ncpu() {
+    long nprocs;
 
 #if defined (_SC_NPROCESSORS_ONLN)
     nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 
-    if (nprocs > 0) {
-        (*out) = nprocs;
-        return 0;
+    if (nprocs > 0L) {
+        return nprocs;
     }
 #endif
 
 #if defined (_SC_NPROCESSORS_CONF)
     nprocs = sysconf(_SC_NPROCESSORS_CONF);
 
-    if (nprocs > 0) {
-        (*out) = nprocs;
-        return 0;
+    if (nprocs > 0L) {
+        return nprocs;
     }
 #endif
 
-    (*out) = 1;
-    return 0;
+    nprocs = 1L;
+    return nprocs;
 }
 
 int sysinfo_make(SysInfo * sysinfo) {
     if (sysinfo == NULL) {
+        errno = EINVAL;
         return -1;
     }
 
-    int resultCode;
+    int ret;
 
     ///////////////////////////////////////
 
     char osArch[31] = {0};
 
-    resultCode = sysinfo_arch(osArch, 30);
+    ret = sysinfo_arch(osArch, 30);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////
 
     char osKind[31] = {0};
 
-    resultCode = sysinfo_kind(osKind, 30);
+    ret = sysinfo_kind(osKind, 30);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////
 
     char osType[31] = {0};
 
-    resultCode = sysinfo_type(osType, 30);
+    ret = sysinfo_type(osType, 30);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
+    }
+
+    ///////////////////////////////////////
+
+    char osCode[31] = {0};
+
+    ret = sysinfo_code(osCode, 30);
+
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////
 
     char osName[31] = {0};
 
-    resultCode = sysinfo_name(osName, 30);
+    ret = sysinfo_name(osName, 30);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////
 
     char osVers[31] = {0};
 
-    resultCode = sysinfo_vers(osVers, 30);
+    ret = sysinfo_vers(osVers, 30);
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ret != 0) {
+        return ret;
     }
 
     ///////////////////////////////////////
 
-    LIBC libc = LIBC_UNKNOWN;
+    int libc = sysinfo_libc();
 
-    resultCode = sysinfo_libc(&libc);
-
-    if (resultCode != 0) {
-        return resultCode;
+    if (libc < 0) {
+        return libc;
     }
 
     ///////////////////////////////////////
 
-    size_t ncpu = 0;
-    
-    resultCode = sysinfo_ncpu(&ncpu);
+    int ncpu = sysinfo_ncpu();
 
-    if (resultCode != 0) {
-        return resultCode;
+    if (ncpu < 0) {
+        return ncpu;
     }
 
     ///////////////////////////////////////
 
     sysinfo->arch = strdup(osArch);
+
+    if (sysinfo->arch == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
     sysinfo->kind = strdup(osKind);
+
+    if (sysinfo->kind == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
     sysinfo->type = strdup(osType);
+
+    if (sysinfo->type == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
+    sysinfo->code = strdup(osCode);
+
+    if (sysinfo->code == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
     sysinfo->name = strdup(osName);
+
+    if (sysinfo->name == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
     sysinfo->vers = strdup(osVers);
+
+    if (sysinfo->vers == NULL) {
+        sysinfo_free(*sysinfo);
+        errno = ENOMEM;
+        return -1;
+    }
+
     sysinfo->libc = libc;
     sysinfo->ncpu = ncpu;
+
+    sysinfo->euid = geteuid();
+    sysinfo->egid = getegid();
 
     return 0;
 }
 
 void sysinfo_dump(SysInfo sysinfo) {
-    printf("sysinfo.ncpu: %lu\n", sysinfo.ncpu);
-    printf("sysinfo.arch: %s\n",  sysinfo.arch == NULL ? "" : sysinfo.arch);
-    printf("sysinfo.kind: %s\n",  sysinfo.kind == NULL ? "" : sysinfo.kind);
-    printf("sysinfo.type: %s\n",  sysinfo.type == NULL ? "" : sysinfo.type);
-    printf("sysinfo.name: %s\n",  sysinfo.name == NULL ? "" : sysinfo.name);
-    printf("sysinfo.vers: %s\n",  sysinfo.vers == NULL ? "" : sysinfo.vers);
+    printf("sysinfo.ncpu: %u\n",  sysinfo.ncpu);
+    printf("sysinfo.arch: %s\n", (sysinfo.arch == NULL) ? "" : sysinfo.arch);
+    printf("sysinfo.kind: %s\n", (sysinfo.kind == NULL) ? "" : sysinfo.kind);
+    printf("sysinfo.type: %s\n", (sysinfo.type == NULL) ? "" : sysinfo.type);
+    printf("sysinfo.code: %s\n", (sysinfo.code == NULL) ? "" : sysinfo.code);
+    printf("sysinfo.name: %s\n", (sysinfo.name == NULL) ? "" : sysinfo.name);
+    printf("sysinfo.vers: %s\n", (sysinfo.vers == NULL) ? "" : sysinfo.vers);
+    printf("sysinfo.euid: %u\n",  sysinfo.euid);
+    printf("sysinfo.egid: %u\n",  sysinfo.egid);
 
     switch(sysinfo.libc) {
-        case LIBC_GLIBC: printf("sysinfo.libc: glibc\n"); break;
-        case LIBC_MUSL:  printf("sysinfo.libc: musl\n");  break;
-        default:         printf("sysinfo.libc: \n");
+        case 1:  printf("sysinfo.libc: glibc\n"); break;
+        case 2:  printf("sysinfo.libc: musl\n");  break;
+        case 3:  printf("sysinfo.libc: bonic\n"); break;
+        default: printf("sysinfo.libc: \n");
     }
 }
 
@@ -468,6 +703,11 @@ void sysinfo_free(SysInfo sysinfo) {
     if (sysinfo.type != NULL) {
         free(sysinfo.type);
         sysinfo.type = NULL;
+    }
+
+    if (sysinfo.code != NULL) {
+        free(sysinfo.code);
+        sysinfo.code = NULL;
     }
 
     if (sysinfo.name != NULL) {

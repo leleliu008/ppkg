@@ -3,6 +3,8 @@
 
 #include<stdbool.h>
 
+#include "../ppkg.h"
+
 int rm_r(const char * dirPath, bool verbose);
 
 #endif

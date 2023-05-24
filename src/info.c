@@ -3,119 +3,46 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <jansson.h>
 
-#include "core/fs.h"
 #include "core/log.h"
 #include "ppkg.h"
 
-#include <dirent.h>
-#include <fnmatch.h>
-
-int ppkg_info_all_available_packages(const char * key) {
-    PPKGFormulaRepoList * formulaRepoList = NULL;
-
-    int resultCode = ppkg_formula_repo_list_new(&formulaRepoList);
-
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+static int package_name_callback(const char * packageName, size_t i, const void * key) {
+    if (i != 0) {
+        printf("\n");
     }
 
-    bool isFirst = true;
-
-    for (size_t i = 0; i < formulaRepoList->size; i++) {
-        char *  formulaRepoPath  = formulaRepoList->repos[i]->path;
-
-        size_t  formulaDirLength = strlen(formulaRepoPath) + 10;
-        char    formulaDir[formulaDirLength];
-        memset (formulaDir, 0, formulaDirLength);
-        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
-
-        DIR           * dir;
-        struct dirent * dir_entry;
-
-        dir = opendir(formulaDir);
-
-        if (dir == NULL) {
-            ppkg_formula_repo_list_free(formulaRepoList);
-            perror(formulaDir);
-            return PPKG_ERROR;
-        }
-
-        while ((dir_entry = readdir(dir))) {
-            //puts(dir_entry->d_name);
-            if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
-                continue;
-            }
-
-            int r = fnmatch("*.yml", dir_entry->d_name, 0);
-
-            if (r == 0) {
-                size_t  fileNameLength = strlen(dir_entry->d_name);
-                char    packageName[fileNameLength];
-                memset (packageName, 0, fileNameLength);
-                strncpy(packageName, dir_entry->d_name, fileNameLength - 4);
-
-                if (!isFirst) {
-                    printf("\n");
-                }
-
-                //printf("%s\n", packageName);
-                resultCode = ppkg_info(packageName, key);
-
-                if (resultCode != PPKG_OK) {
-                    ppkg_formula_repo_list_free(formulaRepoList);
-                    closedir(dir);
-                    return resultCode;
-                }
-
-                if (isFirst) {
-                    isFirst = false;
-                }
-            } else if(r == FNM_NOMATCH) {
-                ;
-            } else {
-                ppkg_formula_repo_list_free(formulaRepoList);
-                fprintf(stderr, "fnmatch() error\n");
-                closedir(dir);
-                return PPKG_ERROR;
-            }
-        }
-
-        closedir(dir);
-    }
-
-    ppkg_formula_repo_list_free(formulaRepoList);
-
-    return PPKG_OK;
+    return ppkg_info(packageName, (char*)key);
 }
 
 int ppkg_info(const char * packageName, const char * key) {
     if (packageName == NULL) {
-        return PPKG_ARG_IS_NULL;
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    if (strcmp(packageName, "") == 0) {
-        return PPKG_ARG_IS_EMPTY;
+    if (packageName[0] == '\0') {
+        return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
     if (strcmp(packageName, "@all") == 0) {
-        return ppkg_info_all_available_packages(key);
+        return ppkg_list_the_available_packages(package_name_callback, key);
     }
 
-    int resultCode = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
+    int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
-    if (resultCode != PPKG_OK) {
-        return resultCode;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    if ((key == NULL) || (strcmp(key, "") == 0) || (strcmp(key, "formula-yaml") == 0)) {
+    if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "formula-yaml") == 0)) {
         char * formulaFilePath = NULL;
 
-        resultCode = ppkg_formula_path(packageName, &formulaFilePath);
+        ret = ppkg_formula_locate(packageName, &formulaFilePath);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         FILE * formulaFile = fopen(formulaFilePath, "r");
@@ -137,12 +64,32 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         char   buff[1024];
-        size_t size = 0;
-        while((size = fread(buff, 1, 1024, formulaFile)) != 0) {
-            fwrite(buff, 1, size, stdout);
-        }
+        size_t size;
 
-        fclose(formulaFile);
+        for (;;) {
+            size = fread(buff, 1, 1024, formulaFile);
+
+            if (ferror(formulaFile)) {
+                perror(formulaFilePath);
+                fclose(formulaFile);
+                free(formulaFilePath);
+                return PPKG_ERROR;
+            }
+
+            if (size > 0) {
+                if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
+                    perror(NULL);
+                    fclose(formulaFile);
+                    free(formulaFilePath);
+                    return PPKG_ERROR;
+                }
+            }
+
+            if (feof(formulaFile)) {
+                fclose(formulaFile);
+                break;
+            }
+        }
 
         printf("formula: %s\n", formulaFilePath);
 
@@ -150,10 +97,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "formula-json") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         json_t * root = json_object();
@@ -184,7 +131,7 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "dep-pym", json_string(formula->dep_pym));
         json_object_set_new(root, "dep-plm", json_string(formula->dep_plm));
 
-        json_object_set_new(root, "cdefine", json_string(formula->cdefine));
+        json_object_set_new(root, "ppflags", json_string(formula->ppflags));
         json_object_set_new(root, "ccflags", json_string(formula->ccflags));
         json_object_set_new(root, "xxflags", json_string(formula->xxflags));
         json_object_set_new(root, "ldfalgs", json_string(formula->ldflags));
@@ -197,13 +144,13 @@ int ppkg_info(const char * packageName, const char * key) {
 
         json_object_set_new(root, "exetype", json_string(formula->exetype));
 
-        json_object_set_new(root, "prepare", json_string(formula->prepare));
+        json_object_set_new(root, "dopatch", json_string(formula->dopatch));
         json_object_set_new(root, "install", json_string(formula->install));
 
         char * jsonStr = json_dumps(root, 0);
 
         if (jsonStr == NULL) {
-            resultCode = PPKG_ERROR;
+            ret = PPKG_ERROR;
         } else {
             printf("%s\n", jsonStr);
             free(jsonStr);
@@ -215,10 +162,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "formula-path") == 0) {
         char * formulaFilePath = NULL;
 
-        resultCode = ppkg_formula_path(packageName, &formulaFilePath);
+        ret = ppkg_formula_locate(packageName, &formulaFilePath);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", formulaFilePath);
@@ -226,10 +173,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "summary") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->summary != NULL) {
@@ -240,10 +187,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "version") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->version != NULL) {
@@ -254,10 +201,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "license") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->license != NULL) {
@@ -268,10 +215,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "web-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->web_url != NULL) {
@@ -282,10 +229,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "git-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->git_url != NULL) {
@@ -296,10 +243,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "git-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->git_sha != NULL) {
@@ -310,10 +257,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "git-ref") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->git_ref != NULL) {
@@ -324,10 +271,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "src-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->src_url != NULL) {
@@ -338,10 +285,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "src-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->src_sha != NULL) {
@@ -352,10 +299,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "fix-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->fix_url != NULL) {
@@ -366,10 +313,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "fix-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->fix_sha != NULL) {
@@ -380,10 +327,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "res-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->res_url != NULL) {
@@ -394,10 +341,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "res-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->res_sha != NULL) {
@@ -408,10 +355,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "dep-pkg") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->dep_pkg != NULL) {
@@ -422,10 +369,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "dep-upp") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->dep_upp != NULL) {
@@ -436,10 +383,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "dep-pym") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->dep_pym != NULL) {
@@ -450,10 +397,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "dep-plm") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->dep_plm != NULL) {
@@ -464,10 +411,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "bsystem") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->bsystem != NULL) {
@@ -478,10 +425,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "bscript") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->bscript != NULL) {
@@ -492,10 +439,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "binbstd") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", formula->binbstd ? "yes" : "no");
@@ -504,10 +451,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "symlink") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", formula->symlink ? "yes" : "no");
@@ -516,36 +463,36 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "parallel") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", formula->parallel ? "yes" : "no");
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "cdefine") == 0) {
+    } else if (strcmp(key, "ppflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
-        if (formula->cdefine != NULL) {
-            printf("%s\n", formula->cdefine);
+        if (formula->ppflags != NULL) {
+            printf("%s\n", formula->ppflags);
         }
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "ccflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->ccflags != NULL) {
@@ -556,10 +503,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "xxflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->xxflags != NULL) {
@@ -570,10 +517,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "ldflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->ldflags != NULL) {
@@ -584,10 +531,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "exetype") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->exetype != NULL) {
@@ -595,27 +542,27 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "prepare") == 0) {
+    } else if (strcmp(key, "dopatch") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
-        if (formula->prepare != NULL) {
-            printf("%s\n", formula->prepare);
+        if (formula->dopatch != NULL) {
+            printf("%s\n", formula->dopatch);
         }
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "install") == 0) {
         PPKGFormula * formula = NULL;
 
-        resultCode = ppkg_formula_parse(packageName, &formula);
+        ret = ppkg_formula_lookup(packageName, &formula);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         if (formula->install != NULL) {
@@ -626,53 +573,52 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-dir") == 0) {
         char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
+        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
         size_t userHomeDirLength = strlen(userHomeDir);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
         char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
         snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
-        size_t  receiptFilePathLength = installedDirLength + 20;
+        size_t  receiptFilePathLength = installedDirLength + 20U;
         char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
         snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
-        if (exists_and_is_a_regular_file(receiptFilePath)) {
+        struct stat st;
+
+        if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             printf("%s\n", installedDir);
         } else {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+            return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
     } else if (strcmp(key, "installed-files") == 0) {
         char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
+        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
         size_t userHomeDirLength = strlen(userHomeDir);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
         char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
         snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
-        size_t  receiptFilePathLength = installedDirLength + 20;
+        size_t  receiptFilePathLength = installedDirLength + 20U;
         char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
         snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
-        if (!exists_and_is_a_regular_file(receiptFilePath)) {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+        struct stat st;
+
+        if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+            return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t  installedManifestFilePathLength = installedDirLength + 20;
+        size_t  installedManifestFilePathLength = installedDirLength + 20U;
         char    installedManifestFilePath[installedManifestFilePathLength];
-        memset (installedManifestFilePath, 0, installedManifestFilePathLength);
         snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s/.ppkg/manifest.txt", installedDir);
 
         FILE * installedManifestFile = fopen(installedManifestFilePath, "r");
@@ -682,20 +628,38 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR;
         }
 
-        char buff[1024];
-        int  size = 0;
-        while((size = fread(buff, 1, 1024, installedManifestFile)) != 0) {
-            fwrite(buff, 1, size, stdout);
-        }
+        char   buff[1024];
+        size_t size;
 
-        fclose(installedManifestFile);
+        for (;;) {
+            size = fread(buff, 1, 1024, installedManifestFile);
+
+            if (ferror(installedManifestFile)) {
+                perror(installedManifestFilePath);
+                fclose(installedManifestFile);
+                return PPKG_ERROR;
+            }
+
+            if (size > 0) {
+                if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
+                    perror(NULL);
+                    fclose(installedManifestFile);
+                    return PPKG_ERROR;
+                }
+            }
+
+            if (feof(installedManifestFile)) {
+                fclose(installedManifestFile);
+                break;
+            }
+        }
     } else if (strcmp(key, "installed-version") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", receipt->version);
@@ -704,10 +668,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-timestamp-unix") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         printf("%s\n", receipt->timestamp);
@@ -716,10 +680,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-timestamp-rfc-3339") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         time_t tt = (time_t)atol(receipt->timestamp);
@@ -738,10 +702,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-timestamp-rfc-3339-utc") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         time_t tt = (time_t)atol(receipt->timestamp);
@@ -760,10 +724,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-timestamp-iso-8601") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         time_t tt = (time_t)atol(receipt->timestamp);
@@ -782,10 +746,10 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "installed-timestamp-iso-8601-utc") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         time_t tt = (time_t)atol(receipt->timestamp);
@@ -800,48 +764,48 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "receipt-path") == 0) {
         char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
+        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
         size_t userHomeDirLength = strlen(userHomeDir);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
         char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
         snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
-        size_t  receiptFilePathLength = installedDirLength + 20;
+        size_t  receiptFilePathLength = installedDirLength + 20U;
         char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
         snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
-        if (exists_and_is_a_regular_file(receiptFilePath)) {
+        struct stat st;
+
+        if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             printf("%s\n", receiptFilePath);
         } else {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+            return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
     } else if (strcmp(key, "receipt-yaml") == 0) {
         char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || strcmp(userHomeDir, "") == 0) {
-            return PPKG_ENV_HOME_NOT_SET;
+        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
         size_t userHomeDirLength = strlen(userHomeDir);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20;
+        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
         char    installedDir[installedDirLength];
-        memset (installedDir, 0, installedDirLength);
         snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
 
-        size_t  receiptFilePathLength = installedDirLength + 20;
+        size_t  receiptFilePathLength = installedDirLength + 20U;
         char    receiptFilePath[receiptFilePathLength];
-        memset (receiptFilePath, 0, receiptFilePathLength);
         snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
-        if (!exists_and_is_a_regular_file(receiptFilePath)) {
-            return PPKG_PACKAGE_IS_NOT_INSTALLED;
+        struct stat st;
+
+        if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+            return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
         FILE * receiptFile = fopen(receiptFilePath, "r");
@@ -851,20 +815,38 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR;
         }
 
-        char buff[1024];
-        int  size = 0;
-        while((size = fread(buff, 1, 1024, receiptFile)) != 0) {
-            fwrite(buff, 1, size, stdout);
-        }
+        char   buff[1024];
+        size_t size;
 
-        fclose(receiptFile);
+        for (;;) {
+            size = fread(buff, 1, 1024, receiptFile);
+
+            if (ferror(receiptFile)) {
+                perror(receiptFilePath);
+                fclose(receiptFile);
+                return PPKG_ERROR;
+            }
+
+            if (size > 0) {
+                if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
+                    perror(NULL);
+                    fclose(receiptFile);
+                    return PPKG_ERROR;
+                }
+            }
+
+            if (feof(receiptFile)) {
+                fclose(receiptFile);
+                break;
+            }
+        }
     } else if (strcmp(key, "receipt-json") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int resultCode = ppkg_receipt_parse(packageName, &receipt);
+        int ret = ppkg_receipt_parse(packageName, &receipt);
 
-        if (resultCode != PPKG_OK) {
-            return resultCode;
+        if (ret != PPKG_OK) {
+            return ret;
         }
 
         json_t * root = json_object();
@@ -895,7 +877,7 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "dep-pym", json_string(receipt->dep_pym));
         json_object_set_new(root, "dep-plm", json_string(receipt->dep_plm));
 
-        json_object_set_new(root, "cdefine", json_string(receipt->cdefine));
+        json_object_set_new(root, "ppflags", json_string(receipt->ppflags));
         json_object_set_new(root, "ccflags", json_string(receipt->ccflags));
         json_object_set_new(root, "xxflags", json_string(receipt->xxflags));
         json_object_set_new(root, "ldfalgs", json_string(receipt->ldflags));
@@ -908,7 +890,7 @@ int ppkg_info(const char * packageName, const char * key) {
 
         json_object_set_new(root, "exetype", json_string(receipt->exetype));
 
-        json_object_set_new(root, "prepare", json_string(receipt->prepare));
+        json_object_set_new(root, "dopatch", json_string(receipt->dopatch));
         json_object_set_new(root, "install", json_string(receipt->install));
 
         json_object_set_new(root, "signature", json_string(receipt->signature));
@@ -917,7 +899,7 @@ int ppkg_info(const char * packageName, const char * key) {
         char * jsonStr = json_dumps(root, 0);
 
         if (jsonStr == NULL) {
-            resultCode = PPKG_ERROR;
+            ret = PPKG_ERROR;
         } else {
             printf("%s\n", jsonStr);
             free(jsonStr);
@@ -927,8 +909,8 @@ int ppkg_info(const char * packageName, const char * key) {
 
         ppkg_receipt_free(receipt);
     } else {
-        return PPKG_ARG_IS_UNKNOWN;
+        return PPKG_ERROR_ARG_IS_UNKNOWN;
     }
 
-    return resultCode;
+    return ret;
 }
