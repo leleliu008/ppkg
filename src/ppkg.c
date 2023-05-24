@@ -1006,14 +1006,73 @@ int ppkg_main(int argc, char* argv[]) {
     }
 
     if (strcmp(argv[1], "pack") == 0) {
-        int ret = ppkg_pack(argv[2], ArchiveType_tar_xz, verbose);
+        ArchiveType outputType = ArchiveType_tar_xz;
+
+        char * outputPath     = NULL;
+
+        for (int i = 3; i < argc; i++) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strcmp(argv[i], "-t") == 0) {
+                const char * type = argv[i + 1];
+
+                if (type == NULL) {
+                    fprintf(stderr, "-t <OUTPUT-TYPE>, <OUTPUT-TYPE> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                if (type[0] == '\0') {
+                    fprintf(stderr, "-o <OUTPUT-TYPE>, <OUTPUT-TYPE> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_EMPTY;
+                }
+
+                if (strcmp(type, "zip") == 0) {
+                    outputType = ArchiveType_zip;
+                    i++;
+                } else if (strcmp(type, "tar.gz") == 0) {
+                    outputType = ArchiveType_tar_gz;
+                    i++;
+                } else if (strcmp(type, "tar.lz") == 0) {
+                    outputType = ArchiveType_tar_lz;
+                    i++;
+                } else if (strcmp(type, "tar.xz") == 0) {
+                    outputType = ArchiveType_tar_xz;
+                    i++;
+                } else if (strcmp(type, "tar.bz2") == 0) {
+                    outputType = ArchiveType_tar_bz2;
+                    i++;
+                } else {
+                    LOG_ERROR2("unrecognized type: ", type);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+             } else if (strcmp(argv[i], "-o") == 0) {
+                outputPath = argv[i + 1];
+
+                if (outputPath == NULL) {
+                    fprintf(stderr, "-o <OUTPUT-PATH>, <OUTPUT-PATH> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                if (outputPath[0] == '\0') {
+                    fprintf(stderr, "-o <OUTPUT-PATH>, <OUTPUT-PATH> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_EMPTY;
+                }
+
+                i++;
+            } else {
+                LOG_ERROR2("unrecognized argument: ", argv[i]);
+                return PPKG_ERROR_ARG_IS_INVALID;
+            }
+        }
+
+        int ret = ppkg_pack(argv[2], outputType, verbose);
 
         if (ret == PPKG_ERROR_ARG_IS_NULL) {
-            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [--type=tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);
+            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [-t tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);
         } else if (ret == PPKG_ERROR_ARG_IS_EMPTY) {
-            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [--type=tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is empty string.\n", argv[0], argv[1]);
+            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [-t tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is empty string.\n", argv[0], argv[1]);
         } else if (ret == PPKG_ERROR_ARG_IS_INVALID) {
-            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [--type=tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not match pattern %s\n", argv[0], argv[1], PPKG_PACKAGE_NAME_PATTERN);
+            fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [-t tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not match pattern %s\n", argv[0], argv[1], PPKG_PACKAGE_NAME_PATTERN);
         } else if (ret == PPKG_ERROR_PACKAGE_NOT_AVAILABLE) {
             fprintf(stderr, "package [%s] is not available.\n", argv[2]);
         } else if (ret == PPKG_ERROR_PACKAGE_NOT_INSTALLED) {

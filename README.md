@@ -392,11 +392,11 @@ all relevant dirs and files are located in `~/.ppkg` directory.
 *   **pack the given installed package**
         
         ppkg pack curl
-        ppkg pack curl --type=tar.xz
-        ppkg pack curl --type=tar.gz
-        ppkg pack curl --type=tar.lz
-        ppkg pack curl --type=tar.bz2
-        ppkg pack curl --type=zip
+        ppkg pack curl -t tar.xz
+        ppkg pack curl -t tar.gz
+        ppkg pack curl -t tar.lz
+        ppkg pack curl -t tar.bz2
+        ppkg pack curl -t zip
         
 *   **cleanup the unused cached files**
         

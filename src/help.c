@@ -50,7 +50,7 @@ int ppkg_help() {
         COLOR_OFF
         "    list files of the given installed package in a tree-like format.\n\n"
         COLOR_GREEN
-        "ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.bz2>\n"
+        "ppkg pack <PACKAGE-NAME> -t <7z|zip|tar.gz|tar.xz|tar.bz2>\n"
         COLOR_OFF
         "    pack the given installed package.\n\n"
         COLOR_GREEN
@@ -236,7 +236,7 @@ int ppkg_help() {
         "    show information of the given package.\n\n"
         "ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]\n"
         "    list files of the given installed package in a tree-like format.\n\n"
-        "ppkg pack <PACKAGE-NAME> --type=<7z|zip|tar.gz|tar.xz|tar.bz2>\n"
+        "ppkg pack <PACKAGE-NAME> -t <7z|zip|tar.gz|tar.xz|tar.bz2>\n"
         "    pack the given installed package.\n\n"
         "ppkg logs <PACKAGE-NAME>\n"
         "    show logs of the given installed package.\n\n"

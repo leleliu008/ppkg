@@ -103,11 +103,11 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg info libzip installed-version
 
       - run: $VALGRIND ./output/bin/ppkg pack libzip
-      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.gz
-      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.lz
-      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.xz
-      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=tar.bz2
-      - run: $VALGRIND ./output/bin/ppkg pack libzip --type=zip
+      - run: $VALGRIND ./output/bin/ppkg pack libzip -t tar.gz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip -t tar.lz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip -t tar.xz
+      - run: $VALGRIND ./output/bin/ppkg pack libzip -t tar.bz2
+      - run: $VALGRIND ./output/bin/ppkg pack libzip -t zip
 
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
