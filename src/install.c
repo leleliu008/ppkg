@@ -1568,7 +1568,20 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    pid = fork();
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (!options.keepInstallingDir) {
+        if ((ret = rm_r(packageInstallingTopDir, options.logLevel >= PPKGLogLevel_verbose)) != PPKG_OK) {
+            perror(packageInstallingTopDir);
+            return ret;
+        }
+    }
+
+    return PPKG_OK;
+}
+
+static int tree_installed_files(char * packageInstalledDir, size_t packageInstalledDirLength) {
+    pid_t pid = fork();
 
     if (pid < 0) {
         perror(NULL);
@@ -1588,7 +1601,9 @@ static int ppkg_install_package(
             return PPKG_ERROR;
         }
 
-        if (childProcessExitStatusCode != 0) {
+        if (childProcessExitStatusCode == 0) {
+            return PPKG_OK;
+        } else {
             size_t   cmdLength = packageInstalledDirLength + 21U;
             char     cmd[cmdLength];
             snprintf(cmd, cmdLength, "tree -a --dirsfirst %s", packageInstalledDir);
@@ -1604,17 +1619,6 @@ static int ppkg_install_package(
             return PPKG_ERROR;
         }
     }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (!options.keepInstallingDir) {
-        if ((ret = rm_r(packageInstallingTopDir, options.logLevel >= PPKGLogLevel_verbose)) != PPKG_OK) {
-            perror(packageInstallingTopDir);
-            return ret;
-        }
-    }
-
-    return PPKG_OK;
 }
 
 typedef struct {
