@@ -71,7 +71,7 @@ int ppkg_setup(bool verbose) {
     char     githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
     snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest-uppm.json", ppkgTmpDir);
 
-    char * latestVersion = NULL;
+    char * latestReleaseName = NULL;
 
     char buf[30];
 
@@ -106,7 +106,7 @@ int ppkg_setup(bool verbose) {
                     } else {
                         if (buf[i] == '"') {
                             buf[i] = '\0';
-                            latestVersion = &buf[j];
+                            latestReleaseName = &buf[j];
                             break;
                         }
                     }
@@ -118,8 +118,20 @@ int ppkg_setup(bool verbose) {
         fclose(file);
     }
 
-    if (latestVersion == NULL) {
-        latestVersion = (char*)"1.10.4";
+    if (latestReleaseName == NULL) {
+        latestReleaseName = (char*)"0.10.4+2f295170a1d24bc4736af99f4509c4b2a1c264fb";
+    }
+
+    char latestReleaseVersion[10] = {0};
+
+    for (int i = 0; i < 10; i++) {
+        char c = latestReleaseName[i];
+
+        if (c == '+') {
+            break;
+        }
+
+        latestReleaseVersion[i] = latestReleaseName[i];
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,15 +148,15 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t  latestVersionLength = strlen(latestVersion);
+    size_t  latestReleaseVersionLength = strlen(latestReleaseVersion);
 
-    size_t   tarballFileNameLength = latestVersionLength + strlen(osType) + strlen(osArch) + 15U;
+    size_t   tarballFileNameLength = latestReleaseVersionLength + strlen(osType) + strlen(osArch) + 15U;
     char     tarballFileName[tarballFileNameLength];
-    snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
 
-    size_t   tarballUrlLength = tarballFileNameLength + latestVersionLength + 55U;
+    size_t   tarballUrlLength = tarballFileNameLength + strlen(latestReleaseName) + 55U;
     char     tarballUrl[tarballUrlLength];
-    snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestVersion, tarballFileName);
+    snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestReleaseName, tarballFileName);
 
     size_t   tarballFilePathLength = ppkgTmpDirLength + tarballFileNameLength + 2U;
     char     tarballFilePath[tarballFilePathLength];
