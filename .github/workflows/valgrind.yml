@@ -86,7 +86,7 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg fetch gzip
       - run: $VALGRIND ./output/bin/ppkg fetch gsed -v
 
-      - run: sudo apt -y install g++ linux-headers-generic
+      - run: apt -y install g++ linux-headers-generic
 
       - run: $VALGRIND ./output/bin/ppkg install libzip
 

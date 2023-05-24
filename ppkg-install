@@ -676,7 +676,7 @@ EOF
 
     run $CC $TMP_CCFLAGS -o "$PROXY_CC" proxy-cc.c
 
-    run ln -sfr "$PROXY_CC" "$PROXY_CXX"
+    run ln -sf "$PROXY_CC" "$PROXY_CXX"
 
     export PROXIED_CC="$CC"
     export PROXIED_CXX="$CXX"

@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 
 #include "core/regex/regex.h"
+#include "core/mkdir_p.h"
 #include "core/sysinfo.h"
 #include "core/http.h"
 #include "core/tar.h"
@@ -190,9 +191,17 @@ int ppkg_setup(bool verbose) {
         return ret;
     }
 
-    size_t   cacertPemFilePath2Length = ppkgTmpDirLength + 12U;
+    size_t   cacertDIRLength = ppkgCoreDirLength + 15U;
+    char     cacertDIR[cacertDIRLength];
+    snprintf(cacertDIR, cacertDIRLength, "%s/etc/ssl/certs", ppkgCoreDir);
+
+    if (mkdir_p(cacertDIR, verbose) != 0) {
+        return PPKG_ERROR;
+    }
+
+    size_t   cacertPemFilePath2Length = cacertDIRLength + 12U;
     char     cacertPemFilePath2[cacertPemFilePath2Length];
-    snprintf(cacertPemFilePath2, cacertPemFilePath2Length, "%s/cacert.pem", ppkgHomeDir);
+    snprintf(cacertPemFilePath2, cacertPemFilePath2Length, "%s/cacert.pem", cacertDIR);
 
     if (copy_file(cacertPemFilePath, cacertPemFilePath2) != 0) {
         return PPKG_ERROR;
