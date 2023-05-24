@@ -12,51 +12,46 @@ int mkdir_p(const char * dirPath, bool verbose) {
         return -1;
     }
 
-    size_t dirPathLength = strlen(dirPath);
-
-    if (dirPathLength == 0U) {
+    if (dirPath[0] == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    if (verbose) printf("mkdir -p %s\n", dirPath);
+    size_t len = strlen(dirPath);
+
+    char buf[len + 1U];
+
+    memset(buf, 0, len + 1U);
 
     struct stat st;
 
-    if (stat(dirPath, &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
-            return 0;
-        } else {
-            errno = ENOTDIR;
-            return -1;
-        }
-    } else {
-        size_t i = dirPathLength - 1U;
+    int i = 0;
 
-        if (dirPath[i] == '/') {
-            i--;
-        }
+    for (;;) {
+        char c = dirPath[i];
 
-        for(;;) {
-            if (dirPath[i] == '/') {
-                if (i == 0U) { // /a
-                    return mkdir(dirPath, S_IRWXU);
+        if (c == '/' || c == '\0') {
+            if (buf[0] != '\0') {
+                if (stat(buf, &st) == 0) {
+                    if (!S_ISDIR(st.st_mode)) {
+                        errno = ENOTDIR;
+                        return -1;
+                    }
                 } else {
-                    char p[i];
-                    strncpy(p, dirPath, i - 1U);
+                    if (verbose) printf("mkdir -p %s\n", buf);
 
-                    return mkdir_p(p, verbose);
+                    if (mkdir(buf, S_IRWXU) != 0) {
+                        return -1;
+                    }
                 }
             }
+        }
 
-            i--;
-
-            if (i == 0U) {
-                // dirPath is a relative path
-                return mkdir(dirPath, S_IRWXU);
-            }
+        if (c == '\0') {
+            return 0;
+        } else {
+            buf[i] = c;
+            i++;
         }
     }
-
-    return 0;
 }
