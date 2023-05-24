@@ -80,8 +80,8 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg info libzip src-sha
 
       - run: $VALGRIND ./output/bin/ppkg depends libzip
-      - run: $VALGRIND ./output/bin/ppkg depends libzip --format=dot
-      - run: $VALGRIND ./output/bin/ppkg depends libzip --format=box
+      - run: $VALGRIND ./output/bin/ppkg depends libzip -t dot
+      - run: $VALGRIND ./output/bin/ppkg depends libzip -t box
 
       - run: $VALGRIND ./output/bin/ppkg fetch gzip
       - run: $VALGRIND ./output/bin/ppkg fetch gsed -v

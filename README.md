@@ -294,15 +294,15 @@ all relevant dirs and files are located in `~/.ppkg` directory.
         
         ppkg depends curl
 
-        ppkg depends curl --format=dot
-        ppkg depends curl --format=box
-        ppkg depends curl --format=png
-        ppkg depends curl --format=svg
+        ppkg depends curl -t dot
+        ppkg depends curl -t box
+        ppkg depends curl -t png
+        ppkg depends curl -t svg
 
-        ppkg depends curl --format=dot > xx.dot
-        ppkg depends curl --format=box > xx.txt
-        ppkg depends curl --format=png > xx.png
-        ppkg depends curl --format=svg > xx.svg
+        ppkg depends curl -t dot > xx.dot
+        ppkg depends curl -t box > xx.txt
+        ppkg depends curl -t png > xx.png
+        ppkg depends curl -t svg > xx.svg
         
 *   **download formula resources of the given package to the local cache**
         

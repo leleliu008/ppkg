@@ -81,8 +81,8 @@ jobs:
       - run: ./output/bin/ppkg info libzip src-sha
 
       - run: ./output/bin/ppkg depends libzip
-      - run: ./output/bin/ppkg depends libzip --format=dot
-      - run: ./output/bin/ppkg depends libzip --format=box
+      - run: ./output/bin/ppkg depends libzip -t dot
+      - run: ./output/bin/ppkg depends libzip -t box
 
       - run: ./output/bin/ppkg fetch gzip
       - run: ./output/bin/ppkg fetch gsed -v
