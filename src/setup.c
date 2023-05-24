@@ -119,7 +119,7 @@ int ppkg_setup(bool verbose) {
     }
 
     if (latestVersion == NULL) {
-        latestVersion = (char*)"1.0.0";
+        latestVersion = (char*)"1.10.4";
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
