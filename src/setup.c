@@ -258,9 +258,8 @@ int ppkg_setup(bool verbose) {
     }
 
     if (pid == 0) {
-        char* argv[3] = { uppmCmdPath, (char*)"update", NULL };
-        execvp(argv[0], argv);
-        perror(argv[0]);
+        execl(uppmCmdPath, "update", NULL);
+        perror(uppmCmdPath);
         exit(127);
     } else {
         int childProcessExitStatusCode;

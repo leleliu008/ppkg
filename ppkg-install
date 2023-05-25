@@ -758,7 +758,14 @@ EOF
     for item in $PACKAGE_DEP_UPP_ALL
     do
         case $item in
-            perl|python3|libtool|autoconf|automake) continue
+            perl|python3|libtool|autoconf|automake)
+                continue
+                ;;
+            cmake)
+                if [ "$NATIVE_OS_KIND" = netbsd ] ; then
+                    run sudo pkgin -y install cmake
+                    continue
+                fi
         esac
 
         run "$UPPM" install "$item"

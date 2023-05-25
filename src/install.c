@@ -462,6 +462,50 @@ static int install_files_to_metainfo_dir(struct stat st, const char * fromDIR, s
     return PPKG_OK;
 }
 
+static int tree_installed_files(const char * packageInstalledDir, size_t packageInstalledDirLength, const char * userHomeDir, size_t userHomeDirLength) {
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t   treeCmdPathLength = userHomeDirLength + 31U;
+    char     treeCmdPath[treeCmdPathLength];
+    snprintf(treeCmdPath, treeCmdPathLength, "%s/.uppm/installed/tree/bin/tree", userHomeDir);
+
+    if (pid == 0) {
+        execl(treeCmdPath, treeCmdPath, "-a", "--dirsfirst", packageInstalledDir, NULL);
+        perror(treeCmdPath);
+        exit(127);
+    } else {
+        int childProcessExitStatusCode;
+
+        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (childProcessExitStatusCode == 0) {
+            return PPKG_OK;
+        } else {
+            size_t   cmdLength = packageInstalledDirLength + 21U;
+            char     cmd[cmdLength];
+            snprintf(cmd, cmdLength, "%s -a --dirsfirst %s", treeCmdPath, packageInstalledDir);
+
+            if (WIFEXITED(childProcessExitStatusCode)) {
+                fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
+            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
+                fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
+            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
+                fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
+            }
+
+            return PPKG_ERROR;
+        }
+    }
+}
+
 static int ppkg_install_package(
         const char * packageName,
         PPKGFormula * formula,
@@ -1558,6 +1602,12 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    ret = tree_installed_files(packageInstalledDir, packageInstalledDirLength, userHomeDir, userHomeDirLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
     //////////////////////////////////////////////////////////////////////////////
 
     if (!options.keepInstallingDir) {
@@ -1568,47 +1618,6 @@ static int ppkg_install_package(
     }
 
     return PPKG_OK;
-}
-
-static int tree_installed_files(char * packageInstalledDir, size_t packageInstalledDirLength) {
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (pid == 0) {
-        char* argv[5] = { (char*)"tree", (char*)"-a", (char*)"--dirsfirst", packageInstalledDir, NULL };
-        execvp(argv[0], argv);
-        perror(argv[0]);
-        exit(127);
-    } else {
-        int childProcessExitStatusCode;
-
-        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (childProcessExitStatusCode == 0) {
-            return PPKG_OK;
-        } else {
-            size_t   cmdLength = packageInstalledDirLength + 21U;
-            char     cmd[cmdLength];
-            snprintf(cmd, cmdLength, "tree -a --dirsfirst %s", packageInstalledDir);
-
-            if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
-            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
-            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
-            }
-
-            return PPKG_ERROR;
-        }
-    }
 }
 
 typedef struct {
