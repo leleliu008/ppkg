@@ -78,15 +78,9 @@ int main(int argc, char * argv[]) {
     // }
     // printf("\n");
 
-    if (PROXIED_PROGRAM[0] == '/') {
-        execv (PROXIED_PROGRAM, argv);
-        perror(PROXIED_PROGRAM);
-        return -1;
-    } else {
-        execvp(PROXIED_PROGRAM, argv);
-        perror(PROXIED_PROGRAM);
-        return -1;
-    }
+    execv (PROXIED_PROGRAM, argv);
+    perror(PROXIED_PROGRAM);
+    return -1;
 
     return 0;
 }

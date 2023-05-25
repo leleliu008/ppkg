@@ -415,7 +415,7 @@ a ppkg formula's filename suffix must be `.yml`
 
 a ppkg formula'a filename prefix would be treated as the package name.
 
-a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z0-9+-._]{1,50}$`
+a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
 
 a ppkg formula's file content must follow [the ppkg formula scheme](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
 

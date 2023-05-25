@@ -2404,62 +2404,6 @@ __cleanup() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg compare-versions
-
-package_name_transform_from_uppm_to_brew() {
-    case $1 in
-        gm4)      printf '%s\n' 'm4'        ;;
-        file)     printf '%s\n' 'file-formula' ;;
-        xattr)    printf '%s\n' 'attr'      ;;
-        patch)    printf '%s\n' 'gpatch'    ;;
-        delta)    printf '%s\n' 'git-delta' ;;
-        gmake)    printf '%s\n' 'make'      ;;
-        gtar)     printf '%s\n' 'gnu-tar'   ;;
-        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
-        blake3)   printf '%s\n' 'b3sum'     ;;
-        libwebp)  printf '%s\n' 'webp'      ;;
-        proj7)    printf '%s\n' 'proj@7'    ;;
-        openssl)  printf '%s\n' 'openssl@1.1';;
-        freetype2)printf '%s\n' 'freetype'  ;;
-        freetype2-with-harfbuzz)
-                  printf '%s\n' 'freetype'  ;;
-        libmediainfo|mediainfo)
-                  printf '%s\n' 'media-info';;
-        tcl-core) printf '%s\n' 'tcl-tk'    ;;
-        openssl1.1.x)
-                  printf '%s\n' 'openssl@1.1';;
-        gnu-binutils)
-                  printf '%s\n' 'binutils'  ;;
-        *)        printf '%s\n' "$1"
-    esac
-}
-
-__compare_versions_with_brew() {
-    cd "$PPKG_HOME/repos.d/offical-core/formula"
-
-    for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
-    do
-        __load_formula_of_the_given_package "$item"
-
-        BREW_PKG_NMAE="$(package_name_transform_from_uppm_to_brew "$PACKAGE_NAME")"
-
-        if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
-            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" --json | yq '.[0].versions.stable')
-
-            if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
-                printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
-            else
-                :
-                #printf "${COLOR_GREEN}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
-            fi
-        else
-            printf "${COLOR_BLUE}%-10s %-10s  |${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
-        fi
-    done
-}
-
-# }}}
-##############################################################################
 # {{{ ppkg gen-url-transform-sample
 
 __gen_url_transform_sample() {
@@ -2487,126 +2431,6 @@ EOF
 
     success "url-transform sample has been written into $PPKG_HOME/url-transform.sample"
     note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export PPKG_URL_TRANSFORM=$PPKG_HOME/url-transform' in your terminal."
-}
-
-# }}}
-##############################################################################
-# {{{ ppkg gen-github-workflows
-
-__gen_github_workflows() {
-    unset GROUP_SIZE
-    unset OUTPUT_DIR
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --group-size=*)
-                GROUP_SIZE="${1#*=}"
-                is_integer "$GROUP_SIZE" || abort 1 "--group-size=<INTEGER>, <INTEGER> must be an integer."
-                ;;
-            --output-dir=*)
-                OUTPUT_DIR="${1#*=}"
-
-                case "$OUTPUT_DIR" in
-                    '') abort 1 "--output-dir=<DIR>, <DIR> must be non-empty." ;;
-                    /*) ;;
-                    \~|\~/) OUTPUT_DIR="${HOME}" ;;
-                    \~/*)   OUTPUT_DIR="${HOME}${OUTPUT_DIR#'~/'}" ;;
-                    .|./)   OUTPUT_DIR="${PWD}" ;;
-                    *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
-                esac
-
-                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
-        esac
-        shift
-    done
-
-    if [ -z "$GROUP_SIZE" ] ; then
-        abort 1 "--group-size=<INTEGER> option must be given."
-    fi
-
-    if [ -z "$OUTPUT_DIR" ] ; then
-        OUTPUT_DIR="$PPKG_HOME/repos.d/offical-core/.github/workflows"
-    fi
-
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$PPKG_HOME/repos.d/offical-core/.github/workflows/template"
-
-    if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
-        __sync_available_formula_repositories
-    fi
-
-    unset AVAILABLE_PACKAGES
-    unset YDEPENDED_PACKAGES
-    unset NDEPENDED_PACKAGES
-
-    AVAILABLE_PACKAGES=$(__list_available_packages)
-
-    for item in test v8 webrtc
-    do
-        AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
-    done
-
-    for x in $AVAILABLE_PACKAGES
-    do
-        __load_formula_of_the_given_package "$x"
-
-        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $PACKAGE_DEP_PKG"
-    done
-
-    YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)
-
-    printf '%s\n' "YDEPENDED_PACKAGES=$YDEPENDED_PACKAGES"
-
-    unset AVAILABLE_PACKAGES_COUNT
-
-    AVAILABLE_PACKAGES_COUNT="$(list_size $AVAILABLE_PACKAGES)"
-
-    printf '%s\n' "$AVAILABLE_PACKAGES_COUNT"
-
-    I=0
-    J=0
-    K=0
-
-    for x in $AVAILABLE_PACKAGES
-    do
-        I=$(expr "$I" + 1)
-        K=$(expr "$K" + 1)
-
-        EXIST=n
-
-        for y in $YDEPENDED_PACKAGES
-        do
-            if [ "$x" = "$y" ] ; then
-                EXIST=y
-                break
-            fi
-        done
-
-        if [ "$EXIST" = n ] ; then
-            if [ -z "$NDEPENDED_PACKAGES" ] ; then
-                NDEPENDED_PACKAGES="$x"
-            else
-                NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
-            fi
-        fi
-
-        if [ "$I" -eq "$AVAILABLE_PACKAGES_COUNT" ] || [ "$K" -eq "$GROUP_SIZE" ] ; then
-            unset OUTPUT_FILEPATH
-
-            J=$(expr "$J" + 1)
-            OUTPUT_FILEPATH="$OUTPUT_DIR/ci$J.yml"
-            NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
-
-            echo
-            run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
-            sed_in_place "s/INDEX/$J/"                          "$OUTPUT_FILEPATH"
-            sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"       "$OUTPUT_FILEPATH"
-
-            unset NDEPENDED_PACKAGES
-
-            K=0
-        fi
-    done
 }
 
 # }}}
@@ -3385,7 +3209,7 @@ __inspect_install_arguments() {
                 ;;
             -*) abort 1 "unrecognized option: $1"
                 ;;
-            *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
+            *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-.@_]{1,50}$' ; then
                     if [ -z "$USER_SPECIFIED_PACKAGE_NAME_LIST" ] ; then
                         USER_SPECIFIED_PACKAGE_NAME_LIST="$1"
                     else
@@ -3627,6 +3451,34 @@ __install_the_given_packages() {
             (__install_the_given_package "$PACKAGE_NAME")
         fi
     done
+}
+
+package_name_transform_from_uppm_to_brew() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        file)     printf '%s\n' 'file-formula' ;;
+        xattr)    printf '%s\n' 'attr'      ;;
+        patch)    printf '%s\n' 'gpatch'    ;;
+        delta)    printf '%s\n' 'git-delta' ;;
+        gmake)    printf '%s\n' 'make'      ;;
+        gtar)     printf '%s\n' 'gnu-tar'   ;;
+        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+        blake3)   printf '%s\n' 'b3sum'     ;;
+        libwebp)  printf '%s\n' 'webp'      ;;
+        proj7)    printf '%s\n' 'proj@7'    ;;
+        openssl)  printf '%s\n' 'openssl@1.1';;
+        freetype2)printf '%s\n' 'freetype'  ;;
+        freetype2-with-harfbuzz)
+                  printf '%s\n' 'freetype'  ;;
+        libmediainfo|mediainfo)
+                  printf '%s\n' 'media-info';;
+        tcl-core) printf '%s\n' 'tcl-tk'    ;;
+        openssl1.1.x)
+                  printf '%s\n' 'openssl@1.1';;
+        gnu-binutils)
+                  printf '%s\n' 'binutils'  ;;
+        *)        printf '%s\n' "$1"
+    esac
 }
 
 __install_the_given_package_onexit() {
@@ -3963,17 +3815,9 @@ int main(int argc, char * argv[]) {
     // }
     // printf("\n");
 
-    if (PROXIED_PROGRAM[0] == '/') {
-        execv (PROXIED_PROGRAM, argv);
-        perror(PROXIED_PROGRAM);
-        return -1;
-    } else {
-        execvp(PROXIED_PROGRAM, argv);
-        perror(PROXIED_PROGRAM);
-        return -1;
-    }
-
-    return 0;
+    execv (PROXIED_PROGRAM, argv);
+    perror(PROXIED_PROGRAM);
+    return -1;
 }
 EOF
 
@@ -5296,7 +5140,7 @@ $DOT_CONTENT
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
         step "config environment variables for go"
 
-        # https://golang.org/doc/install/source#environment
+        # https://pkg.go.dev/cmd/cgo
         export CGO_ENABLED=0
         export CGO_CFLAGS="$CFLAGS"
         export CGO_CXXFLAGS="$CXXFLAGS"
@@ -5309,6 +5153,7 @@ $DOT_CONTENT
             export GOPROXY='https://goproxy.cn'
         fi
 
+        # https://golang.org/doc/install/source#environment
         unset GOOS
         unset GOARCH
 
@@ -5752,198 +5597,186 @@ $PACKAGE_DOBUILD_ACTIONS
 }
 
 __adjust_elf_files_for_the_given_target() {
-    for x in bin sbin lib libexec
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec base64-encode '{}' \;)"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
     do
-        [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
 
-        BASE64_DECODED_RELATIVE_FILEPATH_LIST=
-        BASE64_DECODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR/$x" && find -not -name . -type f -exec base64-encode '{}' \;)"
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
 
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_DECODED_RELATIVE_FILEPATH_LIST
-        do
-            BASE64_DECODED_RELATIVE_FILEPATH=
-            BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+        [ -w "$FILEPATH" ] || continue
 
-            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | base16-encode)"
 
-            [ -w "$FILEPATH" ] || continue
+        ELF_TYPE_EXECUTABLE=no
+        ELF_TYPE_SHAREDABLE=no
 
-            FILE_HEADER_ACTUAL=
-            FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | base16-encode)"
+        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+        case $FILE_HEADER_ACTUAL in
+            7F454C460[12]01010[039]00000000000000000100)
+                continue
+                ;;
+            7F454C460[12]01010[039]00000000000000000200)
+                # little-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]01010[039]00000000000000000300)
+                # little-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000001)
+                continue
+                ;;
+            7F454C460[12]02010[039]00000000000000000002)
+                # big-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000003)
+                # big-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C46*)
+                abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                ;;
+            *)  continue
+        esac
 
-            ELF_EXECUTABLE=no
-            ELF_SHAREDABLE=no
+        # https://github.com/NixOS/patchelf/issues/371
 
-            # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-            case $FILE_HEADER_ACTUAL in
-                7F454C460[12]01010[039]00000000000000000100)
-                    continue
-                    ;;
-                7F454C460[12]01010[039]00000000000000000200)
-                    # little-endian mode
-                    ELF_EXECUTABLE=yes
-                    ;;
-                7F454C460[12]01010[039]00000000000000000300)
-                    # little-endian mode
-                    ELF_SHAREDABLE=yes
-                    ;;
-                7F454C460[12]02010[039]00000000000000000001)
-                    continue
-                    ;;
-                7F454C460[12]02010[039]00000000000000000002)
-                    # big-endian mode
-                    ELF_EXECUTABLE=yes
-                    ;;
-                7F454C460[12]02010[039]00000000000000000003)
-                    # big-endian mode
-                    ELF_SHAREDABLE=yes
-                    ;;
-                7F454C46*)
-                    abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
-                    ;;
-                *)  continue
-            esac
-
-            # https://github.com/NixOS/patchelf/issues/371
-
-            if [ "$BUILD_TYPE" = release ] ; then
-                if [ "$x" != lib ] ; then
-                    # freebsd's strip has problem
-                    if [ "$NATIVE_OS_KIND" != freebsd ] ; then
+        if [ "$BUILD_TYPE" = release ] ; then
+            if [ "$ELF_TYPE_EXECUTABLE" = yes ] ; then
+                # freebsd's strip has problem
+                if [ "$NATIVE_OS_KIND" != freebsd ] ; then
                     run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                    fi
                 fi
             fi
+        fi
 
-            if [ "$ELF_EXECUTABLE" = yes ] || [ "$ELF_SHAREDABLE" = yes ] ; then
-                DT_NEEDED=
-                DT_NEEDED=$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)
-
-                DT_RUNPATH=
-                DT_RUNPATH=$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')
-
-                if [ -n "$DT_RUNPATH" ] ; then
-                    run patchelf --remove-rpath "$FILEPATH"
-                fi
-
-                unset RUNPATH
-
-                PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
-
-                if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-                    for NEEDED in $DT_NEEDED
-                    do
-                        if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
-                            RUNPATH="$PACKAGE_LIBRARY_DIR"
-                            break
-                        fi
-                    done
-                fi
-
-                for NEEDED in $DT_NEEDED
-                do
-                    case $NEEDED in
-                        libc.so.6) ;;
-                        libm.so.6) ;;
-                        libgcc_s.so.1) ;;
-                        ld-linux-x86-64.so.2) ;;
-                        *)  for LIBDIR in $DT_RUNPATH
-                            do
-                                if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
-                                    continue
-                                fi
-
-                                if [ "$LIBDIR" = "$PACKAGE_WORKING_DIR/lib" ] ; then
-                                    continue
-                                fi
-
-                                if [ -e "$LIBDIR/$NEEDED" ] ; then
-                                    if [ -z "$RUNPATH" ] ; then
-                                        RUNPATH="$LIBDIR"
-                                    else
-                                        RUNPATH="$RUNPATH:$LIBDIR"
-                                    fi
-                                    break
-                                fi
-                            done
-                    esac
-                done
-
-                if [ -n "$RUNPATH" ] ; then
-                    run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
-                fi
-            fi
-        done
-    done
-}
-
-__adjust_mach_o_files_for_the_given_target() {
-    for x in bin sbin lib libexec
-    do
-        [ -d "$PACKAGE_INSTALL_DIR/$x" ] || continue
-
-        BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
-        BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR/$x" && find . -not -name . -type f -exec base64-encode '{}' \;)"
-
-        for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
-        do
-            BASE64_DECODED_RELATIVE_FILEPATH=
-            BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
-
-            FILEPATH="$PACKAGE_INSTALL_DIR/$x/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
-
-            FILE_HEADER_ACTUAL=
-            FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | base16-encode)"
-
-            # https://github.com/aidansteele/osx-abi-macho-file-format-reference
-            case $FILE_HEADER_ACTUAL in
-                CFFAEDFE0C000001000000000[26]000000)
-                    # arm64
-                    ;;
-                CFFAEDFE07000001030000000[26]000000)
-                    # x86_64
-                    ;;
-                *)  continue
-            esac
-
-            DT_SONAME=
-            DT_SONAME=$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
-
+        if [ "$ELF_TYPE_EXECUTABLE" = yes ] || [ "$ELF_TYPE_SHAREDABLE" = yes ] ; then
             DT_NEEDED=
-            DT_NEEDED=$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+            DT_NEEDED="$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)"
 
             DT_RUNPATH=
-            DT_RUNPATH=$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+            DT_RUNPATH="$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')"
 
-            if [ -z "$DT_NEEDED" ] ; then
-                abort 1 "no dependent shared libraries found in $FILEPATH"
+            if [ -n "$DT_RUNPATH" ] ; then
+                run patchelf --remove-rpath "$FILEPATH"
             fi
 
-            echo "DT_SONAME=\n$DT_SONAME"
-            echo "DT_NEEDED=\n$DT_NEEDED"
-            echo "DT_RUNPATH=\n$DT_RUNPATH"
+            unset RUNPATH
 
-            case $DT_SONAME in
-                '') ;;
-                @*) ;;
-                /*) ;;
-                lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
-            esac
+            PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+                for NEEDED in $DT_NEEDED
+                do
+                    if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
+                        RUNPATH="$PACKAGE_LIBRARY_DIR"
+                        break
+                    fi
+                done
+            fi
 
             for NEEDED in $DT_NEEDED
             do
                 case $NEEDED in
-                    lib*.dylib)
-                        run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
+                    libc.so.6) ;;
+                    libm.so.6) ;;
+                    libgcc_s.so.1) ;;
+                    ld-linux-x86-64.so.2) ;;
+                    *)  for LIBDIR in $DT_RUNPATH
+                        do
+                            if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
+                                continue
+                            fi
+
+                            if [ "$LIBDIR" = "$PACKAGE_WORKING_DIR/lib" ] ; then
+                                continue
+                            fi
+
+                            if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                if [ -z "$RUNPATH" ] ; then
+                                    RUNPATH="$LIBDIR"
+                                else
+                                    RUNPATH="$RUNPATH:$LIBDIR"
+                                fi
+                                break
+                            fi
+                        done
                 esac
             done
 
-            if [ "$BUILD_TYPE" = release ] ; then
-                if [ "$x" != lib ] ; then
-                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                fi
+            if [ -n "$RUNPATH" ] ; then
+                run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
             fi
+        fi
+    done
+}
+
+__adjust_mach_o_files_for_the_given_target() {
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec base64-encode '{}' \;)"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | base16-encode)"
+
+        # https://github.com/aidansteele/osx-abi-macho-file-format-reference
+        case $FILE_HEADER_ACTUAL in
+            CFFAEDFE0C000001000000000[26]000000)
+                # arm64
+                ;;
+            CFFAEDFE07000001030000000[26]000000)
+                # x86_64
+                ;;
+            *)  continue
+        esac
+
+        DT_SONAME=
+        DT_SONAME="$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_NEEDED=
+        DT_NEEDED="$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_RUNPATH=
+        DT_RUNPATH="$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        if [ -z "$DT_NEEDED" ] ; then
+            abort 1 "no dependent shared libraries found in $FILEPATH"
+        fi
+
+        echo "DT_SONAME=\n$DT_SONAME"
+        echo "DT_NEEDED=\n$DT_NEEDED"
+        echo "DT_RUNPATH=\n$DT_RUNPATH"
+
+        case $DT_SONAME in
+            '') ;;
+            @*) ;;
+            /*) ;;
+            lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
+        esac
+
+        for NEEDED in $DT_NEEDED
+        do
+            case $NEEDED in
+                lib*.dylib)
+                    run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
+            esac
         done
+
+        if [ "$BUILD_TYPE" = release ] ; then
+            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+        fi
     done
 }
 
@@ -7765,15 +7598,6 @@ EOF
         receipt)
             shift
             __show_receipt_of_the_given_package "$@"
-            ;;
-
-        gen-github-workflows)
-            shift
-            __gen_github_workflows "$@"
-            ;;
-        compare-versions)
-            shift
-            __compare_versions_with_brew
             ;;
         *)  abort 1 "unrecognized argument: $1"
     esac
