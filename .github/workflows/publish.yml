@@ -34,7 +34,7 @@ jobs:
 
       - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-netbsd-amd64.tar.xz .
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ppkg-netbsd-tar-xz
           path: ${{ github.workspace }}/ppkg-*.tar.xz
@@ -70,7 +70,7 @@ jobs:
 
       - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-openbsd-amd64.tar.xz .
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ppkg-openbsd-tar-xz
           path: ${{ github.workspace }}/ppkg-*.tar.xz
@@ -106,7 +106,7 @@ jobs:
 
       - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-freebsd-amd64.tar.xz .
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ppkg-freebsd-tar-xz
           path: ${{ github.workspace }}/ppkg-*.tar.xz
@@ -144,7 +144,7 @@ jobs:
       - run: ./ppkg install ppkg --link-type=static-prefered --install-lib=static
       - run: ./ppkg pack    ppkg
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ppkg-macos-tar-xz
           path: /opt/ppkg/cache.d/bin/*.tar.xz
@@ -181,22 +181,22 @@ jobs:
       - run: ./ppkg install ppkg gh --link-type=static-only --install-lib=static
       - run: ./ppkg pack    ppkg
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: ppkg-netbsd-tar-xz
           path: /opt/ppkg/cache.d/bin/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: ppkg-opensbd-tar-xz
           path: /opt/ppkg/cache.d/bin/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: ppkg-freebsd-tar-xz
           path: /opt/ppkg/cache.d/bin/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: ppkg-macos-tar-xz
           path: /opt/ppkg/cache.d/bin/

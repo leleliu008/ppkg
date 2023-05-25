@@ -149,11 +149,45 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t  latestReleaseVersionLength = strlen(latestReleaseVersion);
-
-    size_t   tarballFileNameLength = latestReleaseVersionLength + strlen(osType) + strlen(osArch) + 15U;
+    size_t   tarballFileNameLength = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
     char     tarballFileName[tarballFileNameLength];
-    snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
+
+    if (strcmp(osType, "macos") == 0) {
+        char osVersion[31] = {0};
+
+        if (sysinfo_vers(osVersion, 30) != 0) {
+            return PPKG_ERROR;
+        }
+
+        int i = 0;
+
+        for (;;) {
+            char c = osVersion[i];
+
+            if (c == '.') {
+                osVersion[i] = '\0';
+                break;
+            }
+
+            if (c == '\0') {
+                break;
+            }
+        }
+
+        const char * x;
+
+        if (strcmp(osVersion, "10") == 0) {
+            x = "10.15";
+        } else if (strcmp(osVersion, "11") == 0) {
+            x = "11.0";
+        } else {
+            x = "12.0";
+        }
+
+        snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s%s-%s.tar.xz", latestReleaseVersion, osType, x, osArch);
+    } else {
+        snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
+    }
 
     size_t   tarballUrlLength = tarballFileNameLength + strlen(latestReleaseName) + 55U;
     char     tarballUrl[tarballUrlLength];

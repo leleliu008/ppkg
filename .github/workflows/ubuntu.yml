@@ -9,6 +9,9 @@ on:
 jobs:
   test:
 
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Asia/Shanghai
     runs-on: ubuntu-latest
 
     strategy:

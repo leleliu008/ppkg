@@ -633,7 +633,7 @@ static int ppkg_install_package(
 
     char dependentToolsStr[200] = {0};
 
-    strncpy(dependentToolsStr, "pkg-config", 10);
+    strncpy(dependentToolsStr, "pkgconf", 7);
 
     if (formula->useBuildSystemAutogen || formula->useBuildSystemAutotools) {
         strncat(dependentToolsStr, " automake autoconf perl gm4", 27);
@@ -1201,10 +1201,10 @@ static int ppkg_install_package(
     fprintf(installShellScriptFile, "BUILD_NJOBS='%lu'\n", njobs);
 
     switch (options.linkType) {
-        case PPKGLinkType_static_only:     fprintf(installShellScriptFile, "LINK_TYPE='static-only'\n\n");
-        case PPKGLinkType_shared_only:     fprintf(installShellScriptFile, "LINK_TYPE='shared-only'\n\n");
-        case PPKGLinkType_static_prefered: fprintf(installShellScriptFile, "LINK_TYPE='static-prefered'\n\n");
-        case PPKGLinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='shared-prefered'\n\n");
+        case PPKGLinkType_static_only:     fprintf(installShellScriptFile, "LINK_TYPE='static-only'\n\n");     break;
+        case PPKGLinkType_shared_only:     fprintf(installShellScriptFile, "LINK_TYPE='shared-only'\n\n");     break;
+        case PPKGLinkType_static_prefered: fprintf(installShellScriptFile, "LINK_TYPE='static-prefered'\n\n"); break;
+        case PPKGLinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='shared-prefered'\n\n"); break;
     }
 
     fprintf(installShellScriptFile, "INSTALL_LIB='both'\n\n");
@@ -1302,16 +1302,6 @@ static int ppkg_install_package(
     fprintf(installShellScriptFile, "PACKAGE_METAINF_DIR='%s'\n\n", packageInstalledMetaInfoDir);
 
     fprintf(installShellScriptFile, "SESSION_DIR='%s'\n\n", sessionDir);
-
-    const char * externalPackageManager;
-
-    if (isOSDarwin) {
-        externalPackageManager = "brew";
-    } else {
-        externalPackageManager = "uppm";
-    }
-
-    fprintf(installShellScriptFile, "PPKG_USE_EXTERNAL_PACKAGE_MANAGER='%s'\n\n", externalPackageManager);
 
     if (formula->dopatch == NULL) {
         fprintf(installShellScriptFile, "unset -f dopatch\n\n");
