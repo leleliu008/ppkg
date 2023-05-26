@@ -18,6 +18,13 @@ jobs:
     container: debian:${{ matrix.tag }}
 
     steps:
+      - if: ${{ matrix.tag == '9.13' }}
+        run: |
+          sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list
+          sed -i 's|security.debian.org|archive.debian.org/|g' /etc/apt/sources.list
+          sed -i '/stretch-updates/d' /etc/apt/sources.list
+          #https://stackoverflow.com/questions/76094428/debian-stretch-repositories-404-not-found
+
       - run: apt -y update
       - run: apt -y install curl xz-utils g++
 
