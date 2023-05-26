@@ -1,6 +1,6 @@
 # ppkg
 
-portable package manager for Unix-like system.
+A portable package manager for Unix-like system.
 
 <br>
 
@@ -15,20 +15,32 @@ This project provides two implementations:
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 
-## Install POSIX-Shell-based ppkg
+## Install POSIX-Shell-based ppkg via curl
 
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
-mv ppkg /usr/local/bin/
-ppkg setup
+./ppkg setup
+export PATH="$PWD:$PATH"
+```
+
+## Install POSIX-Shell-based ppkg via wget
+
+```bash
+wget https://cdn.jsdelivr.net/gh/leleliu008/ppkg/ppkg
+chmod a+x ppkg
+./ppkg setup
+export PATH="$PWD:$PATH"
 ```
 
 ## ~/.ppkg
 
-all relevant dirs and files are located in `~/.ppkg` directory.
+all relevant directories and files are located in `~/.ppkg` directory.
 
-**Note**: Please do NOT place your own files in `~/.ppkg` directory, as `ppkg` will change files in `~/.ppkg` directory without notice.
+**Caveats**:
+
+- Please do NOT place your own files in `~/.ppkg` directory, as `ppkg` will change files in `~/.ppkg` directory without notice.
+- Please do NOT run `ppkg` command in parallell to avoid destroying the data.
 
 ## ppkg command usage
 
