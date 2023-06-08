@@ -7503,10 +7503,10 @@ main() {
             ;;
         env)
             cat <<EOF
-ppkg.vers : $PPKG_VERSION
-ppkg.home : $PPKG_HOME
-ppkg.path : $PPKG
-ppkg.link : https://github.com/leleliu008/ppkg
+ppkg.version : $PPKG_VERSION
+ppkg.homedir : $PPKG_HOME
+ppkg.exepath : $PPKG
+ppkg.website : https://github.com/leleliu008/ppkg
 EOF
             if [ "$PPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
                 printf '\n'
