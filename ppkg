@@ -7405,6 +7405,10 @@ main() {
 
     TIMESTAMP_UNIX="$(date +%s)"
 
+    if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
+        export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
+    fi
+
     #########################################################################################
 
     case $1 in
