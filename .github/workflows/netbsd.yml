@@ -30,10 +30,13 @@ jobs:
           mem: 2048
           box: generic/netbsd${{ matrix.version }}
           run: |
+            run sudo pkgin -y update
+            run sudo pkgin -y install llvm
+
             run ./ppkg --help
             run ./ppkg --version
 
-            run ./ppkg setup --use-system-package-manager
+            run ./ppkg setup
 
             run ./ppkg env
 

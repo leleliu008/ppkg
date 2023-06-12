@@ -25,10 +25,12 @@ jobs:
           mem: 2048
           box: generic/openbsd7
           run: |
+            run sudo pkg_add curl gcc%11
+
             run ./ppkg --help
             run ./ppkg --version
 
-            run ./ppkg setup --use-system-package-manager
+            run ./ppkg setup
 
             run ./ppkg env
 

@@ -31,12 +31,12 @@ jobs:
           box: generic/freebsd${{ matrix.version }}
           run: |
             run pkg update
-            run pkg install -y curl libnghttp2
+            run pkg install -y curl libnghttp2 gcc
 
             run ./ppkg --help
             run ./ppkg --version
 
-            run ./ppkg setup --use-system-package-manager
+            run ./ppkg setup
 
             run ./ppkg env
 
