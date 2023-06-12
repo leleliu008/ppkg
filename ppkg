@@ -7038,18 +7038,6 @@ EOF
 # {{{ ppkg help
 
 __help() {
-    if command -v base64 > /dev/null ; then
-        LOGO_BASE64_ENCODED='ICAgICAgICAgICAgIF8gICAgICAgICAKIF8gX18gIF8gX18gfCB8IF9fX18gXyAKfCAnXyBcfCAn
-XyBcfCB8LyAvIF9gIHwKfCB8XykgfCB8XykgfCAgIDwgKF98IHwKfCAuX18vfCAuX18vfF98XF9c
-X18sIHwKfF98ICAgfF98ICAgICAgICB8X19fLyAK'
-
-        if command -v lolcat > /dev/null ; then
-            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
-        else
-            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
-        fi
-    fi
-
     printf '%b\n' "
 ${COLOR_GREEN}A portable package manager for UNIX and UNIX-like systems.${COLOR_OFF}
 

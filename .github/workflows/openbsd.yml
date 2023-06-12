@@ -25,7 +25,9 @@ jobs:
           mem: 2048
           box: generic/openbsd7
           run: |
-            run sudo pkg_add curl gcc%11
+            run sudo pkg_add curl gtar-- gcc%11
+
+            run sudo ln -s /usr/local/bin/gtar /usr/bin/tar
 
             run ./ppkg --help
             run ./ppkg --version
