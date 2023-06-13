@@ -30,6 +30,9 @@ jobs:
           mem: 2048
           box: generic/netbsd${{ matrix.version }}
           run: |
+            run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
+            run sudo update-ca-certificates
+
             run sudo pkgin -y update
             run sudo pkgin -y install llvm
 
