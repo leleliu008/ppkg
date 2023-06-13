@@ -3861,11 +3861,6 @@ int main(int argc, char* argv[]) {
     if (SYSROOT == NULL || SYSROOT[0] == '\0') {
         argv2[argc] = NULL;
 
-        for (int i = 0; argv2[i] != NULL; i++) {
-            fprintf(stderr, "%s ", argv2[i]);
-        }
-        fprintf(stderr, "\n");
-
         execv (compiler, argv2);
         perror(compiler);
         return 255;
@@ -3876,11 +3871,6 @@ int main(int argc, char* argv[]) {
 
         argv2[argc]     = sysrootArg;
         argv2[argc + 1] = NULL;
-
-        for (int i = 0; argv2[i] != NULL; i++) {
-            fprintf(stderr, "%s ", argv2[i]);
-        }
-        fprintf(stderr, "\n");
 
         execv (compiler, argv2);
         perror(compiler);
@@ -6771,9 +6761,13 @@ __setup() {
             *) abort 1 "$NATIVE_OS_KIND is not supported yet."
         esac
 
+        #################################################################################
+
         export PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
         run cd "$SETUP_WORKING_DIR"
+
+        #################################################################################
 
         step "install CA Certificate"
         # https://curl.se/docs/caextract.html
@@ -6784,8 +6778,55 @@ __setup() {
 
         export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
+        #################################################################################
+
+        getSYSPM() {
+            case $NATIVE_OS_KIND in
+                linux)
+                    if [ -e /etc/os-release ] ; then
+                        unset ID
+
+                        . /etc/os-release
+
+                        case $ID in
+                            debian)  printf '%s\n' apt ;;
+                            ubuntu)  printf '%s\n' apt ;;
+                            alpine)  printf '%s\n' apk ;;
+                            centos)  printf '%s\n' dnf ;;
+                            fedora)  printf '%s\n' dnf ;;
+                            rhel)    printf '%s\n' dnf ;;
+                            gentoo)  printf '%s\n' emerge ;;
+                            manjaro) printf '%s\n' pacman ;;
+                            arch)    printf '%s\n' pacman ;;
+                            void)    printf '%s\n' xbps   ;;
+                            linuxmint) printf '%s\n' apt  ;;
+                            opensuse-leap) printf '%s\n' zypper ;;
+                        esac
+                    fi
+                    ;;
+                darwin)    printf '%s\n' brew    ;;
+                freebsd)   printf '%s\n' pkg     ;;
+                openbsd)   printf '%s\n' pkg_add ;;
+                netbsd)    printf '%s\n' pkgin ;;
+                gragonfly) printf '%s\n' pkg ;;
+            esac
+        }
+
+        SYSPM="$(getSYSPM)"
+
+        UPPM_SHIM_FILENAME="uppm-shim-$SYSPM"
+
+        step "install uppm shim"
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/$UPPM_SHIM_FILENAME" --output-dir="$SETUP_WORKING_DIR"
+        run chmod +x "$UPPM_SHIM_FILENAME"
+        run mv       "$UPPM_SHIM_FILENAME" "$PPKG_CORE_DIR/bin"
+
+        #################################################################################
+
         step "install yq"
         __setup_yq
+
+        #################################################################################
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"

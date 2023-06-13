@@ -1,0 +1,65 @@
+#!/bin/sh
+
+set -ex
+
+package_name_transform_from_uppm_to_brew() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        file)     printf '%s\n' 'file-formula' ;;
+        xattr)    printf '%s\n' 'attr'      ;;
+        patch)    printf '%s\n' 'gpatch'    ;;
+        delta)    printf '%s\n' 'git-delta' ;;
+        gmake)    printf '%s\n' 'make'      ;;
+        gtar)     printf '%s\n' 'gnu-tar'   ;;
+        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+        blake3)   printf '%s\n' 'b3sum'     ;;
+        libwebp)  printf '%s\n' 'webp'      ;;
+        proj7)    printf '%s\n' 'proj@7'    ;;
+        freetype2)printf '%s\n' 'freetype'  ;;
+        freetype2-with-harfbuzz)
+                  printf '%s\n' 'freetype'  ;;
+        libmediainfo|mediainfo)
+                  printf '%s\n' 'media-info';;
+        tcl-core) printf '%s\n' 'tcl-tk'    ;;
+
+        xorg-*)   printf '%s\n' "$1" | cut -c6- ;;
+
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+main() {
+    case $1 in
+        env)
+            brew --env
+            ;;
+        update)
+            brew update
+            ;;
+        install)
+            shift 1
+            for UPPM_PACKAGE_NAME in "$@"
+            do
+                BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$UPPM_PACKAGE_NAME")"
+                brew install "$BREW_PACKAGE_NMAE"
+            done
+            ;;
+        is-installed)
+            shift 1
+            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$1")"
+            brew list "$BREW_PACKAGE_NMAE" 2>/dev/null
+            ;;
+        info)
+            shift 1
+            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$1")"
+            case $2 in
+                installed-dir)
+                    brew --prefix "$BREW_PACKAGE_NMAE"
+                    ;;
+            esac
+            ;;
+        *)  brew "$@"
+    esac
+}
+
+main "$@"
