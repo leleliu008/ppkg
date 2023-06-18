@@ -4993,6 +4993,11 @@ $DOT_CONTENT
             fi
         fi
 
+        # https://github.com/rust-lang/rust/issues/89626
+        if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
+            CFLAGS="$CFLAGS -mno-outline-atomics"
+        fi
+
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
         # https://docs.rs/cc/latest/cc/
