@@ -6819,7 +6819,7 @@ __setup() {
         step "install uppm shim"
         wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/$UPPM_SHIM_FILENAME" --output-dir="$SETUP_WORKING_DIR"
         run chmod +x "$UPPM_SHIM_FILENAME"
-        run mv       "$UPPM_SHIM_FILENAME" "$PPKG_CORE_DIR/bin"
+        run mv       "$UPPM_SHIM_FILENAME" "$PPKG_CORE_DIR/bin/uppm"
 
         #################################################################################
 
