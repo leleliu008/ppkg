@@ -4198,8 +4198,8 @@ $DOT_CONTENT
 
         unset MACOSX_DEPLOYMENT_TARGET
 
-        GMAKE="$(command -v gmake || command -v make)" || abort 1 "command not found: gmake"
-        CMAKE="$(command -v cmake)"                    || abort 1 "command not found: cmake"
+        GMAKE="$(command -v gmake || command -v make || printf '%s\n' 'gmake')"
+        CMAKE="$(command -v cmake                    || printf '%s\n' 'cmake')"
 
         #########################################################################################
 
