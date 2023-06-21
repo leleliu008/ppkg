@@ -4196,6 +4196,9 @@ $DOT_CONTENT
     (
         export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
 
+        export CPPFLAGS="$CPPFLAGS -I$PPKG_CORE_DIR/include"
+        export  LDFLAGS="$LDFLAGS  -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
+
         unset MACOSX_DEPLOYMENT_TARGET
 
         GMAKE="$(command -v gmake || command -v make || printf '%s\n' 'gmake')"
@@ -4333,20 +4336,20 @@ $DOT_CONTENT
             unset PYTHONHOME
             unset PYTHONPATH
 
-            export ZLIB_CFLAGS="-I$PPKG_CORE_DIR/include"
-            export ZLIB_LIBS="-L$PPKG_CORE_DIR/lib -lz"
+            unset ZLIB_CFLAGS
+            unset ZLIB_LIBS
 
-            export BZIP2_CFLAGS="-I$PPKG_CORE_DIR/include"
-            export BZIP2_LIBS="-L$PPKG_CORE_DIR/lib -lbz2"
+            unset BZIP2_CFLAGS
+            unset BZIP2_LIBS
 
-            export LIBLZMA_CFLAGS="-I$PPKG_CORE_DIR/include"
-            export LIBLZMA_LIBS="-L$PPKG_CORE_DIR/lib -llzma"
+            unset LIBLZMA_CFLAGS
+            unset LIBLZMA_LIBS
 
-            export LIBSQLITE3_CFLAGS="-I$PPKG_CORE_DIR/include"
-            export LIBSQLITE3_LIBS="-L$PPKG_CORE_DIR/lib -lsqlite3"
+            unset LIBSQLITE3_CFLAGS
+            unset LIBSQLITE3_LIBS
 
-            export GDBM_CFLAGS="-I$PPKG_CORE_DIR/include"
-            export GDBM_LIBS="-L$PPKG_CORE_DIR/lib -lgdbm -lgdbm_compat"
+            unset GDBM_CFLAGS
+            unset GDBM_LIBS
 
             SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
             SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
