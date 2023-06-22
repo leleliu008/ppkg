@@ -21,7 +21,6 @@ In theroy, these two implementations should have the same behaver except for hav
 curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
 ./ppkg setup
-export PATH="$PWD:$PATH"
 ```
 
 ## Install POSIX-Shell-based ppkg via wget
@@ -30,7 +29,6 @@ export PATH="$PWD:$PATH"
 wget https://cdn.jsdelivr.net/gh/leleliu008/ppkg/ppkg
 chmod a+x ppkg
 ./ppkg setup
-export PATH="$PWD:$PATH"
 ```
 
 ## ~/.ppkg
@@ -44,33 +42,33 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
 ## ppkg command usage
 
-* **show help of this command**
+- **show help of this command**
 
     ```bash
     ppkg -h
     ppkg --help
     ```
 
-* **show version of this command**
+- **show version of this command**
 
     ```bash
     ppkg -V
     ppkg --version
     ```
 
-* **show basic information about your current running operation system**
+- **show basic information about your current running operation system**
 
     ```bash
     ppkg sysinfo
     ```
 
-* **show basic information about this software**
+- **show basic information about this software**
 
     ```bash
     ppkg env
     ```
 
-* **integrate `zsh-completion` script**
+- **integrate `zsh-completion` script**
 
     ```bash
     ppkg integrate zsh
@@ -82,20 +80,20 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 
-* **update all available formula repositories**
+- **update all available formula repositories**
 
     ```bash
     ppkg update
     ```
 
-* **search all available packages whose name matches the given regular expression partten**
+- **search all available packages whose name matches the given regular expression partten**
 
     ```bash
     ppkg search curl
     ppkg search lib
     ```
 
-* **show information of the given package**
+- **show information of the given package**
 
     ```bash
     ppkg info curl
@@ -123,7 +121,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg info @all
     ```
 
-* **show formula of the given package**
+- **show formula of the given package**
 
     ```bash
     ppkg formula curl
@@ -141,7 +139,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg formula curl src-sha
     ```
 
-* **show receipt of the given installed package**
+- **show receipt of the given installed package**
 
     ```bash
     ppkg receipt curl
@@ -159,7 +157,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg receipt curl src-sha
     ```
 
-* **show packages that are depended by the given package**
+- **show packages that are depended by the given package**
 
     ```bash
     ppkg depends curl
@@ -180,7 +178,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg depends curl -t svg -o dependencies/
     ```
 
-* **download resources of the given package to the local cache**
+- **download resources of the given package to the local cache**
 
     ```bash
     ppkg fetch curl
@@ -190,7 +188,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg fetch @all -v
     ```
 
-* **install packages**
+- **install packages**
 
     ```bash
     ppkg install curl
@@ -199,21 +197,21 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
     **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
 
-* **reinstall packages**
+- **reinstall packages**
 
     ```bash
     ppkg reinstall curl
     ppkg reinstall curl bzip2 -v
     ```
 
-* **uninstall packages**
+- **uninstall packages**
 
     ```bash
     ppkg uninstall curl
     ppkg uninstall curl bzip2 -v
     ```
 
-* **upgrade the outdated packages**
+- **upgrade the outdated packages**
 
     ```bash
     ppkg upgrade
@@ -221,20 +219,20 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg upgrade curl bzip2 -v
     ```
 
-* **upgrade this software**
+- **upgrade this software**
 
     ```bash
     ppkg upgrade-self
     ppkg upgrade-self -v
     ```
 
-* **list all avaliable formula repositories**
+- **list all avaliable formula repositories**
 
     ```bash
     ppkg formula-repo-list
     ```
 
-* **create a new empty formula repository**
+- **create a new empty formula repository**
 
     ```bash
     uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
@@ -244,7 +242,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
     ```
 
-* **create a new empty formula repository then sync with server**
+- **create a new empty formula repository then sync with server**
 
     ```bash
     uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
@@ -254,25 +252,25 @@ all relevant directories and files are located in `~/.ppkg` directory.
     uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
     ```
 
-* **delete the given formula repository**
+- **delete the given formula repository**
 
     ```bash
     uppm formula-repo-del my_repo
     ```
 
-* **sync the given formula repository with server**
+- **sync the given formula repository with server**
 
     ```bash
     uppm formula-repo-sync my_repo
     ```
 
-* **show information of the given formula repository**
+- **show information of the given formula repository**
 
     ```bash
     uppm formula-repo-info my_repo
     ```
 
-* **change the config of the given formula repository**
+- **change the config of the given formula repository**
 
     ```bash
     uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
@@ -283,56 +281,56 @@ all relevant directories and files are located in `~/.ppkg` directory.
     uppm formula-repo-conf my_repo --disable
     ```
 
-* **list all available packages**
+- **list all available packages**
 
     ```bash
     ppkg ls-available
     ```
 
-* **list all installed packages**
+- **list all installed packages**
 
     ```bash
     ppkg ls-installed
     ```
 
-* **list all outdated packages**
+- **list all outdated packages**
 
     ```bash
     ppkg ls-outdated
     ```
 
-* **check if the given package is available**
+- **check if the given package is available**
 
     ```bash
     ppkg is-available curl
     ```
 
-* **check if the given package is installed**
+- **check if the given package is installed**
 
     ```bash
     ppkg is-installed curl
     ```
 
-* **check if the given package is outdated**
+- **check if the given package is outdated**
 
     ```bash
     ppkg is-outdated  curl
     ```
 
-* **list installed files of the given installed package in a tree-like format**
+- **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ppkg tree curl
     ppkg tree curl -L 3
     ```
 
-* **show logs of the given installed package**
+- **show logs of the given installed package**
 
     ```bash
     ppkg logs curl
     ```
 
-* **pack the given installed package**
+- **pack the given installed package**
 
     ```bash
     ppkg pack curl
@@ -346,13 +344,13 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg pack curl -o a/xx.zip
     ```
 
-* **delete the unused cached files**
+- **delete the unused cached files**
 
     ```bash
     ppkg cleanup
     ```
 
-* **generate url-transform sample**
+- **generate url-transform sample**
 
     ```bash
     ppkg gen-url-transform-sample
@@ -360,15 +358,15 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
 ## environment variables
 
-* **HOME**
+- **HOME**
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
-* **PATH**
+- **PATH**
 
     this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
 
-* **SSL_CERT_FILE**
+- **SSL_CERT_FILE**
 
     ```bash
     curl -LO https://curl.se/ca/cacert.pem
@@ -377,7 +375,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
     In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
-* **PPKG_URL_TRANSFORM**
+- **PPKG_URL_TRANSFORM**
 
     ```bash
     export PPKG_URL_TRANSFORM=/path/of/url-transform
@@ -391,7 +389,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
-* **PPKG_XTRACE**
+- **PPKG_XTRACE**
 
     for debugging purposes.
 
@@ -403,7 +401,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     export PPKG_XTRACE=1
     ```
 
-* **other relevant environment variables**
+- **other relevant environment variables**
 
     |utility|reference|
     |-|-|
@@ -441,8 +439,8 @@ a ppkg formula repository's local path is `~/.ppkg/repos.d/${PPKGFormulaRepoName
 
 **Note:**
 
-* please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
-* ppkg supports multiple formula repositories.
+- please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
+- ppkg supports multiple formula repositories.
 
 ## ppkg formula repository's config
 

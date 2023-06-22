@@ -2160,9 +2160,10 @@ mark_is_package_installed_or_not() {
 
     ###########################################################################################
 
+    PACKING_DIR="$PPKG_HOME/run/$$"
+
     step "create packing directory"
-    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    PACKING_DIR=$(mktemp -d)
+    run install -d "$PACKING_DIR"
 
     step "change to packing directory"
     run cd "$PACKING_DIR"
@@ -2239,9 +2240,9 @@ __cleanup() {
         CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORKING_DIR=$(mktemp -d)
+    WORKING_DIR="$PPKG_HOME/run/$$"
 
+    run install -d "$WORKING_DIR"
     run cd "$WORKING_DIR"
 
     wfetch "$1" --output-path="$WORKING_DIR/self"
@@ -2314,9 +2315,9 @@ __cleanup() {
         fi
     fi
 
-    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORKING_DIR=$(mktemp -d)
+    WORKING_DIR="$PPKG_HOME/run/$$"
 
+    run install -d "$WORKING_DIR"
     run cd "$WORKING_DIR"
 
     wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
@@ -2615,7 +2616,9 @@ $DOT_CONTENT
                 fi
             fi
 
-            unset TMP_DIR; TMP_DIR=$(mktemp -d)
+            TMP_DIR="$PPKG_HOME/run/$$"
+
+            install -d "$TMP_DIR"
 
             DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
 
@@ -2639,7 +2642,9 @@ $DOT_CONTENT
                 fi
             fi
 
-            unset TMP_DIR; TMP_DIR=$(mktemp -d)
+            TMP_DIR="$PPKG_HOME/run/$$"
+
+            install -d "$TMP_DIR"
 
             DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
 
@@ -2712,7 +2717,7 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
+    SESSION_DIR="$PPKG_HOME/run/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -2891,7 +2896,7 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
+    SESSION_DIR="$PPKG_HOME/run/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -3269,7 +3274,7 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/installing/.session/$$"
+    SESSION_DIR="$PPKG_HOME/run/$$"
 
     rm -rf     "$SESSION_DIR"
     install -d "$SESSION_DIR"
@@ -3534,8 +3539,8 @@ EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
 
     step "create and change to working directory"
 
+    PACKAGE_WORKING_DIR="$SESSION_DIR/$1"
     PACKAGE_INSTALL_DIR="$PPKG_HOME/installed/$1"
-    PACKAGE_WORKING_DIR="$PPKG_HOME/installing/$1"
 
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
@@ -4444,13 +4449,11 @@ $DOT_CONTENT
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
-            if [ -f    "$PPKG_HOME/tmp.d/rustup-init.sh" ] ; then
-                run rm "$PPKG_HOME/tmp.d/rustup-init.sh"
-            fi
+            RUST_INIT_SH_FILEPATH="$PACKAGE_WORKING_DIR/rustup-init.sh"
 
-            wfetch 'https://sh.rustup.rs' --output-path="$PPKG_HOME/tmp.d/rustup-init.sh"
+            wfetch 'https://sh.rustup.rs' --output-path="$RUST_INIT_SH_FILEPATH"
 
-            run bash "$PPKG_HOME/tmp.d/rustup-init.sh" -y
+            run bash "$RUST_INIT_SH_FILEPATH" -y
 
             export CARGO_HOME="$HOME/.cargo"
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -6729,7 +6732,9 @@ __setup() {
         unset sudo
     fi
 
-    SETUP_WORKING_DIR="$(mktemp -d)"
+    SETUP_WORKING_DIR="$PPKG_HOME/run/$$"
+
+    install -d "$SETUP_WORKING_DIR"
 
     #################################################################################
 
