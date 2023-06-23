@@ -857,7 +857,9 @@ filetype_from_url() {
     # remove query params
     URL="${1%%'?'*}"
 
-    case $URL in
+    FNAME="${URL##*/}"
+
+    case $FNAME in
         *.tar.gz|*.tgz)
             printf '%s\n' '.tgz'
             ;;
@@ -870,7 +872,7 @@ filetype_from_url() {
         *.tar.bz2|*.tbz2)
             printf '%s\n' '.tbz2'
             ;;
-        *)  printf '%s\n' ".${URL##*.}"
+        *.*)printf '%s\n' ".${FNAME##*.}"
     esac
 }
 
@@ -5144,7 +5146,7 @@ $DOT_CONTENT
             run cp     "$PACKAGE_SRC_FILEPATH"    "$PACKAGE_INSTALLING_SRC_DIR"
     esac
 
-    if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
+    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
         case $PACKAGE_FIX_FILETYPE in
             .zip)
                 step "uncompressed patch file to the installing fix directory"
@@ -5159,7 +5161,7 @@ $DOT_CONTENT
         esac
     fi
 
-    if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
+    if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
         case $PACKAGE_RES_FILETYPE in
             .zip)
                 step "uncompressed res file to the installing res directory"
@@ -7349,7 +7351,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.1.3
+    PPKG_VERSION=0.1.4
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
