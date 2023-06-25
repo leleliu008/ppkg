@@ -218,14 +218,14 @@ wfetch() {
         shift
     done
 
+    FETCH_OUTPUT_TO_DEVICE_FILE=false
+
     if [ -z "$FETCH_URI" ] ; then
         FETCH_URI="$FETCH_URL"
     fi
 
-    if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
-            FETCH_OUTPUT_PATH='-'
-        else
+    case $FETCH_OUTPUT_PATH in
+        '')
             if [ -z "$FETCH_OUTPUT_DIR" ] ; then
                 FETCH_OUTPUT_DIR="$PWD"
             fi
@@ -239,17 +239,20 @@ wfetch() {
             if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
                 run install -d "$FETCH_OUTPUT_DIR" || return 1
             fi
-        fi
-    elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
-        unset FETCH_OUTPUT_DIR
-        unset FETCH_OUTPUT_NAME
-    else
-        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_PATH")"
-        FETCH_OUTPUT_NAME="$(basename "$FETCH_OUTPUT_PATH")"
-        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-            run install -d "$FETCH_OUTPUT_DIR" || return 1
-        fi
-    fi
+            ;;
+        /dev/*)
+            FETCH_OUTPUT_TO_DEVICE_FILE=true
+            unset FETCH_OUTPUT_DIR
+            unset FETCH_OUTPUT_NAME
+            ;;
+        *)
+            FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_PATH")"
+            FETCH_OUTPUT_NAME="$(basename "$FETCH_OUTPUT_PATH")"
+
+            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR" || return 1
+            fi
+    esac
 
     case $FETCH_URL in
         *.git)
@@ -272,7 +275,7 @@ wfetch() {
             fi
             ;;
         *)
-            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
+            if [ "$FETCH_OUTPUT_TO_DEVICE_FILE" != true ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
                 if [ -n "$FETCH_SHA256" ] ; then
                     if [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] ; then
                         success "$FETCH_OUTPUT_PATH already have been fetched."
@@ -336,7 +339,7 @@ wfetch() {
 
             [ $? -eq 0 ] || return 1
 
-            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
+            if [ "$FETCH_OUTPUT_TO_DEVICE_FILE" != true ] && [ -n "$FETCH_SHA256" ] ; then
                 [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] || {
                     abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)"
                 }
@@ -6786,7 +6789,7 @@ __setup() {
 
         step "install CA Certificate"
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+        wfetch 'https://curl.se/ca/cacert.pem'
 
         run install -d    "$PPKG_CORE_DIR/etc/ssl/certs"
         run mv cacert.pem "$PPKG_CORE_DIR/etc/ssl/certs"
@@ -6832,42 +6835,70 @@ __setup() {
         UPPM_SHIM_FILENAME="uppm-shim-$SYSPM"
 
         step "install uppm shim"
-        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/$UPPM_SHIM_FILENAME" --output-dir="$SETUP_WORKING_DIR"
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/$UPPM_SHIM_FILENAME"
         run chmod +x "$UPPM_SHIM_FILENAME"
         run mv       "$UPPM_SHIM_FILENAME" "$PPKG_CORE_DIR/bin/uppm"
 
         #################################################################################
 
         step "install yq"
-        __setup_yq
+
+        unset YQ_URL
+        unset YQ_SHA
+
+        # https://github.com/mikefarah/yq/releases
+        case $NATIVE_OS_KIND in
+            linux)
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
+                YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+                ;;
+            freebsd)
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
+                YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
+                ;;
+            openbsd)
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_openbsd_amd64'
+                YQ_SHA='2c3c42137b7bff40b7f592d13923f5d3fcd8f91e8f54131c3c4059bd6890283c'
+                ;;
+            netbsd)
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
+                YQ_SHA='cad6dcd7449e11868eadb122bca6be5ec8a0918f822528e1e7c845d4ca637492'
+                ;;
+        esac
+
+        if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
+            wfetch "$YQ_URL" --sha256=$YQ_SHA
+            run chmod +x "$FETCH_OUTPUT_PATH"
+            run mv "$FETCH_OUTPUT_PATH" "$PPKG_CORE_BIN_DIR/yq"
+        fi
 
         #################################################################################
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' --output-dir="$SETUP_WORKING_DIR"
-            run install -d patchelf-src
-            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner -C patchelf-src
-            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o patchelf  patchelf-src/src/patchelf.cc
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' --output-name=patchelf-0.17.2.zip
+            run unzip patchelf-0.17.2.zip
+            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o patchelf  patchelf-0.17.2/src/patchelf.cc
             run mv patchelf "$PPKG_CORE_BIN_DIR"
         }
 
         step "install base16-encode and base16-decode"
-        run git clone --depth 1 --no-tags https://github.com/leleliu008/C-examples
+        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' --output-name=C-examples-master.zip
+        run unzip master.zip
 
-        run cmake -S C-examples/algorithm/base16 -B C-examples/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples/algorithm/base16/build.d
-        run cmake --install C-examples/algorithm/base16/build.d
+        run cmake -S C-examples-master/algorithm/base16 -B C-examples-master/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/algorithm/base16/build.d
+        run cmake --install C-examples-master/algorithm/base16/build.d
 
         step "install base64-encode and base64-decode"
-        run cmake -S C-examples/library/mbedTLS/base64 -B C-examples/library/mbedTLS/base64/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples/library/mbedTLS/base64/build.d
-        run cmake --install C-examples/library/mbedTLS/base64/build.d
+        run cmake -S C-examples-master/library/mbedTLS/base64 -B C-examples-master/library/mbedTLS/base64/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/library/mbedTLS/base64/build.d
+        run cmake --install C-examples-master/library/mbedTLS/base64/build.d
 
         step "install sysinfo"
-        run cmake -S C-examples/utils/sysinfo -B C-examples/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples/utils/sysinfo/build.d
-        run cmake --install C-examples/utils/sysinfo/build.d
+        run cmake -S C-examples-master/utils/sysinfo -B C-examples-master/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/utils/sysinfo/build.d
+        run cmake --install C-examples-master/utils/sysinfo/build.d
     else
         __setup_uppm
     fi
@@ -7040,40 +7071,6 @@ __setup__netbsd() {
     fi
 }
 
-__setup_yq() {
-    # https://github.com/mikefarah/yq/releases
-
-    case $NATIVE_OS_KIND in
-        linux)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
-            YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
-            ;;
-        darwin)
-            YQ_URL=
-            YQ_SHA=
-            ;;
-        freebsd)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
-            YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
-            ;;
-        openbsd)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_openbsd_amd64'
-            YQ_SHA='2c3c42137b7bff40b7f592d13923f5d3fcd8f91e8f54131c3c4059bd6890283c'
-            ;;
-        netbsd)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
-            YQ_SHA='cad6dcd7449e11868eadb122bca6be5ec8a0918f822528e1e7c845d4ca637492'
-            ;;
-        *)  abort 1 "$(uname -s) is not supported yet."
-    esac
-
-    if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-        wfetch "$YQ_URL" --sha256=$YQ_SHA --output-dir="$PPKG_CORE_BIN_DIR"
-        run chmod +x "$FETCH_OUTPUT_PATH"
-        run mv "$FETCH_OUTPUT_PATH" "$PPKG_CORE_BIN_DIR/yq"
-    fi
-}
-
 # use commands: uname curl|wget tar xz cut
 __setup_uppm() {
     unset FETCH_TOOL
@@ -7118,14 +7115,14 @@ __setup_uppm() {
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-name="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}"
 
     run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner -C "$PPKG_CORE_DIR"
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+    wfetch 'https://curl.se/ca/cacert.pem'
 
     run install -d                         "$PPKG_CORE_DIR/etc/ssl/certs"
     run cp "$SETUP_WORKING_DIR/cacert.pem" "$PPKG_CORE_DIR/etc/ssl/certs"
