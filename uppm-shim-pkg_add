@@ -1,0 +1,62 @@
+#!/bin/sh
+
+set -ex
+
+pkg_add() {
+    if [ "$(id -u)" - eq 0 ] ; then
+        command      pkg_add "$@"
+    else
+        command sudo pkg_add "$@"
+    fi
+}
+
+package_name_transform_from_uppm_to_pkg_add() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        grep)     printf '%s\n' 'ggrep'     ;;
+        gtar)     printf '%s\n' 'gtar--'    ;;
+        patch)    printf '%s\n' 'gpatch'    ;;
+        unzip)    printf '%s\n' 'unzip--'   ;;
+        golang)   printf '%s\n' 'go'        ;;
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+main() {
+    case $1 in
+        env)
+            ;;
+        update)
+            ;;
+        install)
+            shift 1
+            for UPPM_PACKAGE_NAME in "$@"
+            do
+                BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkg_add "$UPPM_PACKAGE_NAME")"
+                pkg_add "$BREW_PACKAGE_NMAE"
+            done
+            ;;
+        is-installed)
+            shift 1
+            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkg_add "$1")"
+            for item in $(pkg_info | cut -d ' ' -f1)
+            do
+                case $item in
+                    "$BREW_PACKAGE_NMAE-"*) return 0
+                esac
+            done
+            return 1
+            ;;
+        info)
+            shift 1
+            case $2 in
+                installed-dir)
+                    printf '%s\n' '/usr/local'
+                    ;;
+            esac
+            ;;
+        *)  pkg_add "$@"
+    esac
+}
+
+main "$@"

@@ -1,0 +1,56 @@
+#!/bin/sh
+
+set -ex
+
+pkg() {
+    if [ "$(id -u)" -eq 0 ] ; then
+        command      pkg "$@"
+    else
+        command sudo pkg "$@"
+    fi
+}
+
+package_name_transform_from_uppm_to_pkg() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        grep)     printf '%s\n' 'gnugrep'   ;;
+        golang)   printf '%s\n' 'go'        ;;
+        yq)       printf '%s\n' 'go-yq'     ;;
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+main() {
+    case $1 in
+        env)
+            pkg --version
+            ;;
+        update)
+            pkg update
+            ;;
+        install)
+            shift 1
+            for UPPM_PACKAGE_NAME in "$@"
+            do
+                BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkg "$UPPM_PACKAGE_NAME")"
+                pkg install -y "$BREW_PACKAGE_NMAE"
+            done
+            ;;
+        is-installed)
+            shift 1
+            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkg "$1")"
+            pkg info "$BREW_PACKAGE_NMAE" 2>/dev/null
+            ;;
+        info)
+            shift 1
+            case $2 in
+                installed-dir)
+                    printf '%s\n' '/usr/local'
+                    ;;
+            esac
+            ;;
+        *)  pkg "$@"
+    esac
+}
+
+main "$@"
