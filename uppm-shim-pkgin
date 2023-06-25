@@ -3,7 +3,7 @@
 set -ex
 
 pkgin() {
-    if [ "$(id -u)" - eq 0 ] ; then
+    if [ "$(id -u)" -eq 0 ] ; then
         command      pkgin "$@"
     else
         command sudo pkgin "$@"
