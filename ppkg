@@ -6884,7 +6884,7 @@ __setup() {
 
         step "install base16-encode and base16-decode"
         wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' --output-name=C-examples-master.zip
-        run unzip master.zip
+        run unzip C-examples-master.zip
 
         run cmake -S C-examples-master/algorithm/base16 -B C-examples-master/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PPKG_CORE_DIR" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
         run cmake --build   C-examples-master/algorithm/base16/build.d
