@@ -4203,11 +4203,18 @@ $DOT_CONTENT
         fi
     done
 
-    (
-        export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
+    # make sure '$PPKG_HOME/core' comes first
+    PATH="$PPKG_CORE_BIN_DIR:$PATH"
+    ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
 
-        export CPPFLAGS="$CPPFLAGS -I$PPKG_CORE_DIR/include"
-        export  LDFLAGS="$LDFLAGS  -L$PPKG_CORE_DIR/lib -Wl,-rpath,$PPKG_CORE_DIR/lib"
+    (
+        PPKG_CORE_INCLUDE_DIR="$PPKG_CORE_DIR/include"
+        PPKG_CORE_LIBRARY_DIR="$PPKG_CORE_DIR/lib"
+
+        export PKG_CONFIG_PATH="$PPKG_CORE_LIBRARY_DIR/pkgconfig"
+
+        export CPPFLAGS="$CPPFLAGS -I$PPKG_CORE_INCLUDE_DIR"
+        export  LDFLAGS="$LDFLAGS  -L$PPKG_CORE_LIBRARY_DIR -Wl,-rpath,$PPKG_CORE_LIBRARY_DIR"
 
         unset MACOSX_DEPLOYMENT_TARGET
 
@@ -4394,9 +4401,6 @@ $DOT_CONTENT
 
         :
     )
-
-    PATH="$(printf '%s\n' "$PATH" | sed "s|:$PPKG_CORE_BIN_DIR||g")"
-    PATH="$PPKG_CORE_BIN_DIR:$PATH"
 
     #########################################################################################
 
@@ -4768,10 +4772,7 @@ $DOT_CONTENT
 
     step "list ACLOCAL_PATH"
 
-    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
-    export ACLOCAL_PATH
-
-   for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
     do
         DEPENDENT_PACKAGE_ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALL_DIR/share/aclocal"
 
@@ -4783,6 +4784,9 @@ $DOT_CONTENT
             fi
         fi
     done
+
+    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
+    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal:$ACLOCAL_PATH"
 
     printf '%s\n' "$ACLOCAL_PATH" | tr : '\n'
 
@@ -4798,20 +4802,6 @@ $DOT_CONTENT
 
     step "config environment variables for pkg-config"
 
-    if [ "$LOG_LEVEL" -ge 3 ] ; then
-        export PKG_CONFIG_DEBUG_SPEW='set'
-    fi
-
-    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    # because we only want to use our own
-    export PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
-
-    if [ -z "$PKG_CONFIG_PATH" ] ; then
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    else
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-    fi
-
     for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
     do
         DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
@@ -4826,6 +4816,19 @@ $DOT_CONTENT
             fi
         fi
     done
+
+    if [ -z "$PKG_CONFIG_PATH" ] ; then
+        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    else
+        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+    fi
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    export PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        export PKG_CONFIG_DEBUG_SPEW='set'
+    fi
 
     printf 'PKG_CONFIG_DEBUG_SPEW = %s\n' "$PKG_CONFIG_DEBUG_SPEW"
 
