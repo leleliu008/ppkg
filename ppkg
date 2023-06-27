@@ -4939,6 +4939,32 @@ $DOT_CONTENT
         fi
 
         env | sed -n '/^CMAKE_/p'
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
+
+        CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
+
+        if [ "$NATIVE_OS_KIND" = darwin ] ; then
+            case $LINK_TYPE in
+                static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+            esac
+        else
+            case $LINK_TYPE in
+                static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            esac
+        fi
+
+        if [ "$LOG_LEVEL" -gt 0 ] ; then
+            run cat "$CMAKE_PROJECT_INCLUDE"
+        fi
     fi
 
     #########################################################################################
@@ -6580,32 +6606,6 @@ EOF
         else
             run cat "$CMAKE_TOOLCHAIN_FILE"
         fi
-    fi
-
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
-
-    CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
-
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
-
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-        esac
-    else
-        case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-        esac
-    fi
-
-    if [ "$LOG_LEVEL" -gt 0 ] ; then
-        run cat "$CMAKE_PROJECT_INCLUDE"
     fi
 
     run "$CMAKE" \

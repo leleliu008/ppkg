@@ -16,6 +16,7 @@ package_name_transform_from_uppm_to_pkg() {
         grep)     printf '%s\n' 'gnugrep'   ;;
         golang)   printf '%s\n' 'go'        ;;
         yq)       printf '%s\n' 'go-yq'     ;;
+        xz)                                 ;;
         *)        printf '%s\n' "$1"
     esac
 }
