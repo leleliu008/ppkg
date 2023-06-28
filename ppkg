@@ -3436,6 +3436,22 @@ __install_native_package_to_core_dir_via_configure() {
 
     run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
 
+    # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+    # https://git.savannah.gnu.org/cgit/config.git/tree/
+
+    # update config.sub and config.guess to the lastest version
+
+    for FILENAME in config.sub config.guess
+    do
+        FILEPATH="$SESSION_DIR/$FILENAME"
+
+        wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-path="$FILEPATH"
+
+        run chmod a+x "$FILEPATH"
+
+        find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+    done
+
     case $PKGNAME in
         openssl)
             run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$PPKG_CORE_DIR --libdir=$PPKG_CORE_DIR/lib --openssldir=$PPKG_CORE_DIR/etc/ssl
@@ -5233,7 +5249,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "do some preparation works"
+    step "patching"
 
     if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
@@ -5246,18 +5262,59 @@ $PACKAGE_DOPATCH_ACTIONS
 }"
         dopatch "$1"
     else
-        case $PACKAGE_BUILD_SYSTEM in
-            autogen)
-                note "dopatch mapping was not found in formula."
-                run NOCONFIGURE=yes ./autogen.sh
-                ;;
-            autotools)
-                note "dopatch mapping was not found in formula."
-                run autoreconf -ivf
-                ;;
-            *)  note "dopatch mapping was not found in formula, skipped."
-        esac
+        note "dopatch mapping was not found in formula, skipped."
     fi
+
+    #########################################################################################
+
+    case $PACKAGE_BUILD_SYSTEM in
+        autogen)
+            if [ -f configure ] ; then
+                CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+                if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+                    run NOCONFIGURE=yes ./autogen.sh
+                elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+                    run NOCONFIGURE=yes ./autogen.sh
+                fi
+            else
+                run NOCONFIGURE=yes ./autogen.sh
+            fi
+            ;;
+        autotools)
+            if [ -f configure ] ; then
+                CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+                if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+                    run autoreconf -ivf
+                elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+                    run autoreconf -ivf
+                fi
+            else
+                run autoreconf -ivf
+            fi
+            ;;
+    esac
+
+    #########################################################################################
+
+    [ "$PACKAGE_BUILD_SYSTEM_CONFIGURE" = yes ] && {
+        # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+        # https://git.savannah.gnu.org/cgit/config.git/tree/
+
+        step "update config.sub and config.guess to the lastest version"
+
+        for FILENAME in config.sub config.guess
+        do
+            FILEPATH="$SESSION_DIR/$FILENAME"
+
+            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-path="$FILEPATH"
+
+            run chmod a+x "$FILEPATH"
+
+            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+        done
+    }
 
     #########################################################################################
 
