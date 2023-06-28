@@ -3449,7 +3449,7 @@ __install_native_package_to_core_dir_via_configure() {
 
         run chmod a+x "$FILEPATH"
 
-        find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+        find . -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
     done
 
     case $PKGNAME in
