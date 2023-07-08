@@ -7,6 +7,7 @@ _commands=(
     '--version:show version of this command.'
     'env:show basic information about this software.'
     'sysinfo:show basic information about your current running operation system.'
+    'setup:install essential tools that are used by this shell script.'
     'integrate:integrate zsh completions.'
     'update:update all the formula repositories.'
     'upgrade-self:upgrade this software.'
