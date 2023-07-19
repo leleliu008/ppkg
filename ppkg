@@ -3598,7 +3598,7 @@ __install_the_given_packages() {
 
     case $BUILD_SYSTEM_NAME in
         cmake)
-            CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+            CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
 
             run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$PPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$BUILD_CONFIG_ARGS"
             run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
@@ -3618,7 +3618,7 @@ __install_the_given_packages() {
                 *)  run ./configure "--prefix=$PPKG_CORE_DIR" "$BUILD_CONFIG_ARGS"
             esac
 
-            GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
+            GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
 
             run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
             run "$GMAKE" install
@@ -4265,8 +4265,6 @@ $DOT_CONTENT
     #########################################################################################
 
     step "install needed packages via uppm"
-
-    UPPM="$PPKG_CORE_BIN_DIR/uppm"
 
     run "$UPPM" env
     run "$UPPM" update
@@ -6865,7 +6863,7 @@ __setup() {
         step "install uppm shim"
         wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/$UPPM_SHIM_FILENAME"
         run chmod +x "$UPPM_SHIM_FILENAME"
-        run mv       "$UPPM_SHIM_FILENAME" "$PPKG_CORE_DIR/bin/uppm"
+        run mv       "$UPPM_SHIM_FILENAME" "$UPPM"
 
         #################################################################################
 
@@ -7159,8 +7157,6 @@ __setup_uppm() {
 
     export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
-    UPPM="$PPKG_CORE_BIN_DIR/uppm"
-
     run "$UPPM" env
     run "$UPPM" update
 
@@ -7392,6 +7388,8 @@ main() {
     PPKG_CORE_DIR="$PPKG_HOME/core"
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
 
+    UPPM="$PPKG_CORE_BIN_DIR/uppm"
+
     TIMESTAMP_UNIX="$(date +%s)"
 
     if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
@@ -7500,7 +7498,9 @@ ppkg.exepath : $PPKG
 ppkg.website : https://github.com/leleliu008/ppkg
 
 EOF
-            uppm env
+            if [ -f "$PPKG_CORE_DIR/env" ] && [ -f "$UPPM" ] ; then
+                "$UPPM" env
+            fi
 
             return 0
             ;;
