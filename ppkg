@@ -7500,7 +7500,7 @@ ppkg.exepath : $PPKG
 ppkg.website : https://github.com/leleliu008/ppkg
 
 EOF
-            uppm env | grep '^uppm\.'
+            uppm env
 
             return 0
             ;;
