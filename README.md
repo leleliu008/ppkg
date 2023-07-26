@@ -8,7 +8,7 @@ A portable package manager for Unix-like system.
 
 - Please do NOT place your own files under `~/.ppkg` directory, as `ppkg` will change files under `~/.ppkg` directory without notice.
 
-- Please do NOT run `ppkg` command in parallell to avoid destroying the data.
+- Please do NOT run `ppkg` command in parallell to avoid generating dirty data.
 
 ## Two implementations
 
@@ -69,26 +69,29 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg setup
     ```
 
-    This command is actually to install following tools to `~/.ppkg/core`.
+    This command is actually to do two things:
 
-  - [uppm](https://github.com/leleliu008/uppm)
-  - [GNU Bash](https://www.gnu.org/software/bash/manual/bash.html)
-  - [GNU CoreUtils](https://www.gnu.org/software/coreutils/manual/coreutils.html)
-  - [GNU FindUtils](https://www.gnu.org/software/findutils/manual/html_mono/find.html)
-  - [GNU awk](https://www.gnu.org/software/gawk/manual/gawk.html)
-  - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
-  - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
-  - [curl](https://curl.se/docs/manpage.html)
-  - [git](https://git-scm.com/docs/git)
-  - [GNU tar](https://www.gnu.org/software/tar/manual/tar.html)
-  - [gzip](https://www.gnu.org/software/gzip/manual/gzip.html)
-  - [bzip2](https://linux.die.net/man/1/bzip2)
-  - [xz](https://linux.die.net/man/1/xz)
-  - [zip](https://linux.die.net/man/1/zip)
-  - [unzip](https://linux.die.net/man/1/unzip)
-  - [yq](https://mikefarah.gitbook.io/yq/)
-  - [jq](https://stedolan.github.io/jq/manual/)
-  - [tree](https://linux.die.net/man/1/tree)
+  - install [uppm](https://github.com/leleliu008/uppm) to `~/.ppkg/core`
+  - install following tools that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+
+    - [GNU Bash](https://www.gnu.org/software/bash/manual/bash.html)
+    - [GNU CoreUtils](https://www.gnu.org/software/coreutils/manual/coreutils.html)
+    - [GNU FindUtils](https://www.gnu.org/software/findutils/manual/html_mono/find.html)
+    - [GNU awk](https://www.gnu.org/software/gawk/manual/gawk.html)
+    - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
+    - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
+    - [curl](https://curl.se/docs/manpage.html)
+    - [git](https://git-scm.com/docs/git)
+    - [GNU tar](https://www.gnu.org/software/tar/manual/tar.html)
+    - [gzip](https://www.gnu.org/software/gzip/manual/gzip.html)
+    - [lzip](https://www.nongnu.org/lzip/)
+    - [bzip2](https://linux.die.net/man/1/bzip2)
+    - [xz](https://linux.die.net/man/1/xz)
+    - [zip](https://linux.die.net/man/1/zip)
+    - [unzip](https://linux.die.net/man/1/unzip)
+    - [yq](https://mikefarah.gitbook.io/yq/)
+    - [jq](https://stedolan.github.io/jq/manual/)
+    - [tree](https://linux.die.net/man/1/tree)
 
 - **show basic information about your current running operation system**
 
