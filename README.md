@@ -63,6 +63,12 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg --version
     ```
 
+- **generate url-transform sample**
+
+    ```bash
+    ppkg gen-url-transform-sample
+    ```
+
 - **install essential tools**
 
     ```bash
@@ -387,12 +393,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg cleanup
-    ```
-
-- **generate url-transform sample**
-
-    ```bash
-    ppkg gen-url-transform-sample
     ```
 
 ## environment variables
