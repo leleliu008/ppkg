@@ -4409,19 +4409,17 @@ $DOT_CONTENT
         do
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
                 note "perl module $item has been already installed."
-            else
-                case $item in
-                    XML::Parser)
-                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
-                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
-                        export EXPATINCPATH="$expat_INCLUDE_DIR"
-                        echo EXPATLIBPATH=$EXPATLIBPATH
-                        echo EXPATINCPATH=$EXPATINCPATH
-                        ;;
-                esac
+                continue
+            fi
 
+            if [ "$item" = 'XML::Parser' ] ; then
+                __install_native_package_to_core_dir expat
+                __install_native_package_to_core_dir perl-XML-Parser
+            else
                 # Would you like to configure as much as possible automatically? [yes]
-                run "printf '%s\n' 'yes' | cpan $item"
+                # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
+                export PERL_MM_USE_DEFAULT=1
+                run cpan "$item"
             fi
         done
 

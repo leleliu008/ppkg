@@ -2,18 +2,30 @@
 
 A portable package manager for Unix-like system.
 
-<br>
+## Caveats
 
-**Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+- This software is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
-## two implementations
+- Please do NOT place your own files under `~/.ppkg` directory, as `ppkg` will change files under `~/.ppkg` directory without notice.
 
-This project provides two implementations:
+- Please do NOT run `ppkg` command in parallell to avoid destroying the data.
+
+## Two implementations
+
+This software provides two implementations:
 
 1. implemented in `POSIX Shell`, the source code is on `master` branch.
 2. implemented in `C`, the source code is on `dev` branch.
 
 In theroy, these two implementations should have the same behaver except for have bugs.
+
+## Manually build packages using this software via GitHub Actions
+
+In this way, you will be liberated from the rut of setting up the build environemt.
+
+In this way, all you need to do is just clicking the buttons and waiting for finishing. After finishing, a url refers to a zip archive will be provided to download.
+
+For more details please refer to https://github.com/leleliu008/ppkg-package-manually-build
 
 ## Install POSIX-Shell-based ppkg via curl
 
@@ -33,12 +45,7 @@ chmod a+x ppkg
 
 ## ~/.ppkg
 
-all relevant directories and files are located in `~/.ppkg` directory.
-
-**Caveats**:
-
-- Please do NOT place your own files in `~/.ppkg` directory, as `ppkg` will change files in `~/.ppkg` directory without notice.
-- Please do NOT run `ppkg` command in parallell to avoid destroying the data.
+all relevant directories and files are located under `~/.ppkg` directory.
 
 ## ppkg command usage
 
@@ -103,7 +110,7 @@ all relevant directories and files are located in `~/.ppkg` directory.
     ppkg integrate zsh -v
     ```
 
-    This project provides a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
+    This software provides a zsh-completion script for `ppkg`. when you've typed `ppkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 
