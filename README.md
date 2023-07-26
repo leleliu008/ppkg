@@ -25,7 +25,7 @@ In this way, you will be liberated from the rut of setting up the build environe
 
 In this way, all you need to do is just clicking the buttons and waiting for finishing. After finishing, a url refers to a zip archive will be provided to download.
 
-For more details please refer to https://github.com/leleliu008/ppkg-package-manually-build
+For more details please refer to <https://github.com/leleliu008/ppkg-package-manually-build>
 
 ## Install POSIX-Shell-based ppkg via curl
 
@@ -69,10 +69,12 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg setup
     ```
 
+    This command is only available for POSIX-Shell-based implementation.
+
     This command is actually to do two things:
 
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ppkg/core`
-  - install following tools that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+  - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 
     - [GNU Bash](https://www.gnu.org/software/bash/manual/bash.html)
     - [GNU CoreUtils](https://www.gnu.org/software/coreutils/manual/coreutils.html)
