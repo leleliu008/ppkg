@@ -1,6 +1,6 @@
 #compdef ppkg
 
-_commands=(
+_ppkg_actions=(
     '-h:show help of this command.'
     '--help:show help of this command.'
     '-V:show version of this command.'
@@ -42,10 +42,6 @@ _commands=(
     'gen-url-transform-sample:generate url-transform sample.'
 )
 
-function _ppkg_commands() {
-    _describe 'command' _commands
-}
-
 function _ppkg_available_packages() {
     local -a _available_packages
     _available_packages=($(ppkg ls-available 2>/dev/null))
@@ -69,7 +65,7 @@ function _ppkg() {
     typeset -A opt_args
 
     _arguments \
-        '1: :_ppkg_commands' \
+        '1: :{_describe ppkg_actions _ppkg_actions}' \
         '*:: :->option'
 
     case $state in
@@ -160,13 +156,13 @@ function _ppkg() {
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
                         '-t[set output format]:output-type:(dot box svg png)' \
-                        '-o[set output filepath or directory]:output-path:{_files}'
+                        '-o[set output filepath or directory]:output-path:_files'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
                         '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[set output filepath or directory]:output-path:{_files}' \
+                        '-o[set output filepath or directory]:output-path:_files' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 tree)

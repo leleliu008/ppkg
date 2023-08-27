@@ -7370,7 +7370,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.1.5
+    PPKG_VERSION=0.1.6
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -7413,6 +7413,20 @@ main() {
         gen-url-transform-sample)
             shift
             __gen_url_transform_sample "$@"
+            return 0
+            ;;
+        env)
+            cat <<EOF
+ppkg.version : $PPKG_VERSION
+ppkg.homedir : $PPKG_HOME
+ppkg.exepath : $PPKG
+ppkg.website : https://github.com/leleliu008/ppkg
+
+EOF
+            if [ -f "$PPKG_CORE_DIR/env" ] && [ -f "$UPPM" ] ; then
+                "$UPPM" env
+            fi
+
             return 0
             ;;
     esac
@@ -7486,20 +7500,6 @@ main() {
     case $1 in
         sysinfo)
             sysinfo
-            return 0
-            ;;
-        env)
-            cat <<EOF
-ppkg.version : $PPKG_VERSION
-ppkg.homedir : $PPKG_HOME
-ppkg.exepath : $PPKG
-ppkg.website : https://github.com/leleliu008/ppkg
-
-EOF
-            if [ -f "$PPKG_CORE_DIR/env" ] && [ -f "$UPPM" ] ; then
-                "$UPPM" env
-            fi
-
             return 0
             ;;
         ls-available) shift; __list_available_packages ;;
