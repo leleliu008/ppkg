@@ -4236,6 +4236,12 @@ $DOT_CONTENT
 
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
         do
+            if [ "$UPPM_PACKAGE_NAME" = cmake ] && [ "$NATIVE_OS_KIND" = netbsd ] ; then
+                run $sudo pkgin -y update
+                run $sudo pkgin -y install cmake
+                continue
+            fi
+
             run "$UPPM" install "$UPPM_PACKAGE_NAME"
 
             UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$UPPM_PACKAGE_NAME" installed-dir)"
