@@ -7112,7 +7112,7 @@ __setup_uppm() {
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
     run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
-    cp ~/github.com/uppm/build.d/uppm bin/
+
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
