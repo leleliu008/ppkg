@@ -163,7 +163,7 @@ function _ppkg() {
                         '1:package-name:_ppkg_installed_packages' \
                         '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
                         '-o[set output filepath or directory]:output-path:_files' \
-                        '--keep-working-dir[do not delete the working directory even if packed success]'
+                        '--keep-session-dir[do not delete the session directory even if packed success]'
                     ;;
                 tree)
                     _arguments \
@@ -182,7 +182,7 @@ function _ppkg() {
                         '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete the working directory even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -199,7 +199,7 @@ function _ppkg() {
                         '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete the working directory even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -215,7 +215,7 @@ function _ppkg() {
                         ':package-name:_ppkg_outdated_packages' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete the working directory even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
