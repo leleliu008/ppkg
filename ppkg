@@ -1507,9 +1507,8 @@ __list_available_packages() {
 # {{{ ppkg ls-installed
 
 __list_installed_packages() {
-    if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] ; then
-         cd "$PPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 1 -mindepth 1 -type l -printf '%P\n'
+    if [  -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] ; then
+        find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 1 -mindepth 1 -type l -printf '%P\n'
     else
         return 0
     fi
@@ -1534,18 +1533,13 @@ __list_symlinked_packages() {
 # {{{ ppkg ls-outdated
 
 __list__outdated_packages() {
-    if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] ; then
-         cd "$PPKG_PACKAGE_INSTALLED_ROOT" > /dev/null || return 1
-    else
-        return 0
-    fi
+    [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] || return 0
 
-    for packageName in $(ls)
+    for packageName in $(find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 1 -mindepth 1 -type l -printf '%P\n')
     do
-        is_package_available "$packageName" || continue
-        is_package_installed "$packageName" || continue
-        is_package__outdated "$packageName" || continue
-        printf '%s\n' "$packageName"
+        if is_package__outdated "$packageName" ; then
+            printf '%s\n' "$packageName"
+        fi
     done
 }
 
@@ -1956,23 +1950,23 @@ EOF
             ;;
         installed-timestamp-unix)
             __load_receipt_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_RECEIPT_TIMESTAMP"
+            printf '%s\n' "$RECEIPT_PACKAGE_TIMESTAMP"
             ;;
         installed-timestamp-rfc-3339)
             __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
+            format_unix_timestamp "$RECEIPT_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
             ;;
         installed-timestamp-iso-8601)
             __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
+            format_unix_timestamp "$RECEIPT_PACKAGE_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
             ;;
         installed-timestamp-rfc-3339-utc)
             __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z' -u
+            format_unix_timestamp "$RECEIPT_PACKAGE_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z' -u
             ;;
         installed-timestamp-iso-8601-utc)
             __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%SZ' -u
+            format_unix_timestamp "$RECEIPT_PACKAGE_TIMESTAMP" '+%Y-%m-%dT%H:%M:%SZ' -u
             ;;
         installed-version)
             __load_receipt_of_the_given_package "$1"
@@ -6013,7 +6007,10 @@ EOF
   __load_receipt_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__load_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    is_package_installed "$1" || abort 1 "package [$1] is not installed."
+    is_package_installed "$1" || abort 1 "package '$1' is not installed."
+
+    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$1"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/RECEIPT.yml"
 
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
@@ -6051,40 +6048,67 @@ EOF
 
     unset RECEIPT_PACKAGE_PARALLEL
 
-    #######################################################################################################
+    unset RECEIPT_PACKAGE_SIGNATURE
+    unset RECEIPT_PACKAGE_TIMESTAMP
 
-    PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$1"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ppkg/RECEIPT.yml"
 
-    PACKAGE_RECEIPT_SIGNATURE=
-    PACKAGE_RECEIPT_TIMESTAMP=
+    RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    PACKAGE_RECEIPT_SIGNATURE="$(yq .signature "$PACKAGE_RECEIPT_FILEPATH")"
-    PACKAGE_RECEIPT_TIMESTAMP="$(yq .timestamp "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_WEB_URL="$(yq '.web-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    [ "$PACKAGE_RECEIPT_SIGNATURE" = null ] && abort 1 "receipt scheme error. signature mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-    [ "$PACKAGE_RECEIPT_TIMESTAMP" = null ] && abort 1 "receipt scheme error. timestamp mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    RECEIPT_PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    #######################################################################################################
+    RECEIPT_PACKAGE_SRC_URL="$(yq '.src-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SRC_URI="$(yq '.src-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SRC_SHA="$(yq '.src-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    for KEY in summary license version web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm bsystem bscript binbstd ppflags ccflags xxflags ldflags parallel developer dopatch install symlink
-    do
-        VALUE=
-        VALUE="$(yq ".$KEY" "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-        if [ "$VALUE" != null ] ; then
-            unset KEY_UPPERCASE_UNDERSCORE
-            KEY_UPPERCASE_UNDERSCORE="$(printf '%s\n' "$KEY" | tr '-' '_' | tr a-z A-Z)"
+    RECEIPT_PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-            eval "RECEIPT_PACKAGE_$KEY_UPPERCASE_UNDERSCORE='$VALUE'"
-        fi
-    done
+    RECEIPT_PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_BSYSTEM="$(yq '.bsystem | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_BSCRIPT="$(yq '.bscript | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_BINBSTD="$(yq '.binbstd | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_CCFLAGS="$(yq '.ccflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_XXFLAGS="$(yq '.xxflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_SIGNATURE="$(yq '.signature | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_TIMESTAMP="$(yq '.timestamp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    [ -z "$RECEIPT_PACKAGE_SIGNATURE" ] && abort 1 "receipt scheme error. signature mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_TIMESTAMP" ] && abort 1 "receipt scheme error. timestamp mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
 
     [ -z "$RECEIPT_PACKAGE_VERSION" ] && abort 1 "receipt scheme error. version mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
     [ -z "$RECEIPT_PACKAGE_SUMMARY" ] && abort 1 "receipt scheme error. summary mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
     [ -z "$RECEIPT_PACKAGE_WEB_URL" ] && abort 1 "receipt scheme error. web-url mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
 
-    [ "${#PACKAGE_RECEIPT_TIMESTAMP}" -eq 10 ] || abort 1 "receipt scheme error. timestamp mapping's value length must be 10."
+    [ "${#RECEIPT_PACKAGE_TIMESTAMP}" -eq 10 ] || abort 1 "receipt scheme error. timestamp mapping's value length must be 10."
 }
 
 # }}}
