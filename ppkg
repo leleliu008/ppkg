@@ -132,8 +132,8 @@ sed_in_place() {
 }
 
 git() {
-    if [ -f "$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$PPKG_CORE_DIR/etc/ssl/certs/cacert.pem" "$@"
+    if [ -n "$SSL_CERT_FILE" ] ; then
+        command git -c http.sslCAInfo="$SSL_CERT_FILE" "$@"
     else
         command git "$@"
     fi
