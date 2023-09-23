@@ -2503,13 +2503,90 @@ static int ppkg_install_package(
     char     ppkgLibexecDIR[ppkgLibexecDIRLength];
     snprintf(ppkgLibexecDIR, ppkgLibexecDIRLength, "%s/libexec", ppkgCoreDIR);
 
-    size_t   ccLength = ppkgLibexecDIRLength + 17U;
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t   ccLength = ppkgLibexecDIRLength + 12U;
     char     cc[ccLength];
     snprintf(cc, ccLength, "%s/wrapper-cc", ppkgLibexecDIR);
 
-    size_t   cxxLength = ppkgLibexecDIRLength + 18U;
+    struct stat st;
+
+    if (stat(cc, &st) != 0) {
+        size_t   cc1Length = sessionDIRLength + 12U;
+        char     cc1[cc1Length];
+        snprintf(cc1, cc1Length, "%s/wrapper-cc", sessionDIR);
+
+        size_t   cmdLength = strlen(toolchain.cc) + cc1Length + ppkgHomeDIRLength + 24U;
+        char     cmd[cmdLength];
+        snprintf(cmd, cmdLength, "%s -o %s %s/core/wrapper-cc.c", toolchain.cc, cc1, ppkgHomeDIR);
+
+        ret = run_cmd(cmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        if (rename(cc1, cc) != 0) {
+            perror(cc);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t   cxxLength = ppkgLibexecDIRLength + 13U;
     char     cxx[cxxLength];
     snprintf(cxx, cxxLength, "%s/wrapper-c++", ppkgLibexecDIR);
+
+    if (stat(cxx, &st) != 0) {
+        size_t   cc1Length = sessionDIRLength + 13U;
+        char     cc1[cc1Length];
+        snprintf(cc1, cc1Length, "%s/wrapper-c++", sessionDIR);
+
+        size_t   cmdLength = strlen(toolchain.cc) + cc1Length + ppkgHomeDIRLength + 25U;
+        char     cmd[cmdLength];
+        snprintf(cmd, cmdLength, "%s -o %s %s/core/wrapper-c++.c", toolchain.cc, cc1, ppkgHomeDIR);
+
+        ret = run_cmd(cmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        if (rename(cc1, cxx) != 0) {
+            perror(cxx);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t   objcLength = ppkgLibexecDIRLength + 14U;
+    char     objc[objcLength];
+    snprintf(objc, objcLength, "%s/wrapper-objc", ppkgLibexecDIR);
+
+    if (stat(objc, &st) != 0) {
+        size_t   cc1Length = sessionDIRLength + 14U;
+        char     cc1[cc1Length];
+        snprintf(cc1, cc1Length, "%s/wrapper-objc", sessionDIR);
+
+        size_t   cmdLength = strlen(toolchain.cc) + cc1Length + ppkgHomeDIRLength + 26U;
+        char     cmd[cmdLength];
+        snprintf(cmd, cmdLength, "%s -o %s %s/core/wrapper-objc.c", toolchain.cc, cc1, ppkgHomeDIR);
+
+        ret = run_cmd(cmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        if (rename(cc1, objc) != 0) {
+            perror(objc);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
 
     size_t   cppLength = ccLength + 4U;
     char     cpp[cppLength];
@@ -2517,7 +2594,7 @@ static int ppkg_install_package(
 
     const ENV envs[20] = {
         { "CC", cc },
-        { "OBJC", cc },
+        { "OBJC", objc },
         { "CXX", cxx },
         { "CPP", cpp },
         { "AS", toolchain.as },
@@ -2691,8 +2768,6 @@ static int ppkg_install_package(
     }
 
     //////////////////////////////////////////////////////////////////////////////
-
-    struct stat st;
 
     size_t   packageNameLength = strlen(packageName);
 

@@ -126,9 +126,9 @@ int ppkg_setup(bool verbose) {
         char     wrapperCompilerSourceUrl[wrapperCompilerSourceUrlLength];
         snprintf(wrapperCompilerSourceUrl, wrapperCompilerSourceUrlLength, "https://raw.githubusercontent.com/leleliu008/ppkg/dev/ppkg-wrapper-%s.c", compiler);
 
-        size_t   wrapperCompilerSourceFilePathLength = sessionDIRLength + 25U;
+        size_t   wrapperCompilerSourceFilePathLength = sessionDIRLength + 16U;
         char     wrapperCompilerSourceFilePath[wrapperCompilerSourceFilePathLength];
-        snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathLength, "%s/ppkg-wrapper-%s.c", sessionDIR, compiler);
+        snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathLength, "%s/wrapper-%s.c", sessionDIR, compiler);
 
         ret = ppkg_http_fetch_to_file(wrapperCompilerSourceUrl, wrapperCompilerSourceFilePath, verbose, verbose);
 
