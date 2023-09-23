@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.0)
 
 project(ppkg C)
 
-set(PROJECT_VERSION       1.0.0)
-set(PROJECT_VERSION_MAJOR 1)
-set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 0)
+set(PROJECT_VERSION       0.20.0)
+
+string(REPLACE "." ";" PROJECT_VERSION_PART_LIST ${PROJECT_VERSION})
+list(GET PROJECT_VERSION_PART_LIST 0 PROJECT_VERSION_MAJOR)
+list(GET PROJECT_VERSION_PART_LIST 1 PROJECT_VERSION_MINOR)
+list(GET PROJECT_VERSION_PART_LIST 2 PROJECT_VERSION_PATCH)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -24,7 +26,7 @@ if ("${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
     set(LINK_STATIC_LIBS ON)
 
     if ("${CMAKE_SYSTEM_NAME}" STREQUAL Darwin)
-        message(FATAL "macOS DO NOT support static link the c runtime.")
+        message(FATAL_ERROR "macOS DO NOT support static link the c runtime.")
     endif()
 endif()
 
@@ -114,8 +116,14 @@ if (OPENSSL_VERSION)
     list(GET OPENSSL_VERSION_PART_LIST 0 OPENSSL_VERSION_MAJOR)
 
     message(STATUS "OPENSSL_VERSION_MAJOR = ${OPENSSL_VERSION_MAJOR}")
+
+    if (OPENSSL_VERSION_MAJOR STREQUAL 3)
+        set(SHA256SUM_SRC src/openssl/3/sha256sum.c)
+    else()
+        set(SHA256SUM_SRC src/openssl/1/sha256sum.c)
+    endif()
 else()
-    message(FATAL "no OPENSSL_VERSION set.")
+    set(SHA256SUM_SRC src/openssl/1/sha256sum.c)
 endif()
 
 ########################################################################################
@@ -129,7 +137,7 @@ endif()
 aux_source_directory(src/core CORE_SRCS)
 aux_source_directory(src           SRCS)
 
-add_executable(ppkg "${CORE_SRCS};${REGEX_SRC};${SRCS}")
+add_executable(ppkg "${CORE_SRCS};${REGEX_SRC};${SHA256SUM_SRC};${SRCS}")
 
 ########################################################################################
 
@@ -149,7 +157,12 @@ target_link_libraries(ppkg LIBGIT2::LIBGIT2)
 target_link_libraries(ppkg LIBYAML::LIBYAML)
 target_link_libraries(ppkg JANSSON::JANSSON)
 target_link_libraries(ppkg ZLIB::ZLIB)
-target_link_libraries(ppkg "-lm")
+
+find_library(LIBM m)
+
+if (LIBM)
+    target_link_libraries(ppkg "${LIBM}")
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL OpenBSD)
     target_link_libraries(ppkg PCRE2::PCRE2)
@@ -167,6 +180,7 @@ include(GNUInstallDirs)
 
 install(TARGETS ppkg RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(
-    FILES       "${CMAKE_CURRENT_SOURCE_DIR}/zsh-completion/_ppkg"
+    FILES       "${CMAKE_CURRENT_SOURCE_DIR}/ppkg-zsh-completion"
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/zsh/site-functions"
+    RENAME      _ppkg
 )

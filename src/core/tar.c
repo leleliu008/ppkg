@@ -1,7 +1,8 @@
+#include <errno.h>
 #include <string.h>
+
 #include <locale.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
 

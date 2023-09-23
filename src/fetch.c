@@ -1,58 +1,51 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
+
 #include <sys/stat.h>
 
 #include "core/http.h"
-#include "core/sha256sum.h"
+
+#include "sha256sum.h"
 
 #include "ppkg.h"
-
 
 static int package_name_callback(const char * packageName, size_t i, const void * payload) {
     return ppkg_fetch(packageName, *((bool*)payload));
 }
 
-static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength) {
-    size_t   gitRepositoryDirLength = ppkgDownloadsDirLength + strlen(packageName) + 6U;
-    char     gitRepositoryDir[gitRepositoryDirLength];
-    snprintf(gitRepositoryDir, gitRepositoryDirLength, "%s/%s.git", ppkgDownloadsDir, packageName);
+static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength) {
+    size_t   gitRepositoryDIRLength = ppkgDownloadsDIRLength + strlen(packageName) + 6U;
+    char     gitRepositoryDIR[gitRepositoryDIRLength];
+    snprintf(gitRepositoryDIR, gitRepositoryDIRLength, "%s/%s.git", ppkgDownloadsDIR, packageName);
 
     struct stat st;
 
-    if (stat(gitRepositoryDir, &st) == 0) {
+    if (stat(gitRepositoryDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", gitRepositoryDir);
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", gitRepositoryDIR);
             return PPKG_ERROR;
         }
     } else {
-        if (mkdir(gitRepositoryDir, S_IRWXU) != 0) {
-            perror(gitRepositoryDir);
+        if (mkdir(gitRepositoryDIR, S_IRWXU) != 0) {
+            perror(gitRepositoryDIR);
             return PPKG_ERROR;
         }
     }
+
+    const char * remoteRef;
 
     if (formula->git_sha == NULL) {
-        if (formula->git_ref == NULL) {
-            return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, "refs/heads/master:refs/remotes/origin/master", "master");
-        } else {
-            size_t  refspecLength = strlen(formula->git_ref) + 28U;
-            char    refspec[refspecLength];
-            snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_ref);
-
-            return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, "master");
-        }
+        remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
     } else {
-        size_t  refspecLength = strlen(formula->git_sha) + 28U;
-        char    refspec[refspecLength];
-        snprintf(refspec, refspecLength, "%s:refs/remotes/origin/master", formula->git_sha);
-
-        return ppkg_fetch_via_git(gitRepositoryDir, formula->git_url, refspec, formula->git_sha);
+        remoteRef = formula->git_sha;
     }
+    
+    return ppkg_git_sync(gitRepositoryDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master");
 }
 
-static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, const char * ppkgDownloadsDir, size_t ppkgDownloadsDirLength, bool verbose) {
+static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {
     char fileNameExtension[21] = {0};
 
     int ret = ppkg_examine_file_extension_from_url(fileNameExtension, 20, url);
@@ -63,13 +56,13 @@ static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, con
 
     printf("==========>> fileNameExtension = %s\n", fileNameExtension);
 
-    size_t  fileNameLength = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1U;
-    char    fileName[fileNameLength];
+    size_t   fileNameLength = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1U;
+    char     fileName[fileNameLength];
     snprintf(fileName, fileNameLength, "%s%s", expectedSHA256SUM, fileNameExtension);
 
-    size_t  filePathLength = ppkgDownloadsDirLength + fileNameLength + 1U;
-    char    filePath[filePathLength];
-    snprintf(filePath, filePathLength, "%s/%s", ppkgDownloadsDir, fileName);
+    size_t   filePathLength = ppkgDownloadsDIRLength + fileNameLength + 1U;
+    char     filePath[filePathLength];
+    snprintf(filePath, filePathLength, "%s/%s", ppkgDownloadsDIR, fileName);
 
     struct stat st;
 
@@ -88,7 +81,7 @@ static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, con
         }
     }
 
-    ret = http_fetch_to_file(url, filePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file(url, filePath, verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -135,29 +128,38 @@ int ppkg_fetch(const char * packageName, bool verbose) {
 
     ///////////////////////////////////////////////////////////////
 
-    const char * const userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL || userHomeDir[0] == '\0') {
-        ppkg_formula_free(formula);
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    size_t  ppkgDownloadsDirLength = userHomeDirLength + 18U;
-    char    ppkgDownloadsDir[ppkgDownloadsDirLength];
-    snprintf(ppkgDownloadsDir, ppkgDownloadsDirLength, "%s/.ppkg/downloads", userHomeDir);
+    size_t   ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
+    char     ppkgDownloadsDIR[ppkgDownloadsDIRLength];
+    snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
 
     struct stat st;
 
-    if (stat(ppkgDownloadsDir, &st) == 0) {
+    if (stat(ppkgDownloadsDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgDownloadsDir);
-            return PPKG_ERROR;
+            if (unlink(ppkgDownloadsDIR) != 0) {
+                perror(ppkgDownloadsDIR);
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+                perror(ppkgDownloadsDIR);
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
         }
     } else {
-        if (mkdir(ppkgDownloadsDir, S_IRWXU) != 0) {
-            perror(ppkgDownloadsDir);
+        if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+            perror(ppkgDownloadsDIR);
             ppkg_formula_free(formula);
             return PPKG_ERROR;
         }
@@ -166,12 +168,12 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     ///////////////////////////////////////////////////////////////
 
     if (formula->src_url == NULL) {
-        ret = ppkg_fetch_git(packageName, formula, ppkgDownloadsDir, ppkgDownloadsDirLength);
+        ret = ppkg_fetch_git(packageName, formula, ppkgDownloadsDIR, ppkgDownloadsDIRLength);
     } else {
         if (formula->src_is_dir) {
             fprintf(stderr, "src_url is point to local dir, so no need to fetch.\n");
         } else {
-            ret = ppkg_fetch_file(formula->src_url, formula->src_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
+            ret = ppkg_fetch_file(formula->src_url, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
         }
     }
 
@@ -180,7 +182,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->fix_url != NULL) {
-        ret = ppkg_fetch_file(formula->fix_url, formula->fix_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
+        ret = ppkg_fetch_file(formula->fix_url, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;
@@ -188,7 +190,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->res_url != NULL) {
-        ret = ppkg_fetch_file(formula->res_url, formula->res_sha, ppkgDownloadsDir, ppkgDownloadsDirLength, verbose);
+        ret = ppkg_fetch_file(formula->res_url, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;

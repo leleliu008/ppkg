@@ -1,12 +1,29 @@
+#include <time.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include <sys/stat.h>
-#include <libgen.h>
-#include <time.h>
+
 #include <yaml.h>
-#include "ppkg.h"
+
 #include "core/regex/regex.h"
+
+#include "ppkg.h"
+
+#define STRING_BUFFER_APPEND(strbuf,strbufLength,str) \
+    size_t len = strlen(str) + 1U; \
+    int ret = snprintf(&strbuf[strbufLength], len + 1U, " %s", str); \
+    if (ret < 0) { \
+        return PPKG_ERROR; \
+    } \
+    if ((size_t)ret == len) { \
+        strbufLength += len; \
+    } else { \
+        fprintf(stderr, "snprintf: the output was truncated.\n"); \
+        return PPKG_ERROR; \
+    }
 
 typedef enum {
     FORMULA_KEY_CODE_unknown,
@@ -20,15 +37,18 @@ typedef enum {
     FORMULA_KEY_CODE_git_url,
     FORMULA_KEY_CODE_git_sha,
     FORMULA_KEY_CODE_git_ref,
-    FORMULA_KEY_CODE_shallow,
+    FORMULA_KEY_CODE_git_nth,
 
     FORMULA_KEY_CODE_src_url,
+    FORMULA_KEY_CODE_src_uri,
     FORMULA_KEY_CODE_src_sha,
 
     FORMULA_KEY_CODE_fix_url,
+    FORMULA_KEY_CODE_fix_uri,
     FORMULA_KEY_CODE_fix_sha,
 
     FORMULA_KEY_CODE_res_url,
+    FORMULA_KEY_CODE_res_uri,
     FORMULA_KEY_CODE_res_sha,
 
     FORMULA_KEY_CODE_dep_pkg,
@@ -49,8 +69,6 @@ typedef enum {
     FORMULA_KEY_CODE_xxflags,
     FORMULA_KEY_CODE_ldflags,
 
-    FORMULA_KEY_CODE_exetype,
-
     FORMULA_KEY_CODE_parallel,
 } PPKGFormulaKeyCode;
 
@@ -68,15 +86,18 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("git_url: %s\n", formula->git_url);
     printf("git_sha: %s\n", formula->git_sha);
     printf("git_ref: %s\n", formula->git_ref);
-    printf("shallow: %d\n", formula->shallow);
+    printf("git_nth: %lu\n", formula->git_nth);
 
     printf("src_url: %s\n", formula->src_url);
+    printf("src_uri: %s\n", formula->src_uri);
     printf("src_sha: %s\n", formula->src_sha);
 
     printf("fix_url: %s\n", formula->fix_url);
+    printf("fix_uri: %s\n", formula->fix_uri);
     printf("fix_sha: %s\n", formula->fix_sha);
 
     printf("res_url: %s\n", formula->res_url);
+    printf("res_uri: %s\n", formula->res_uri);
     printf("res_sha: %s\n", formula->res_sha);
 
     printf("dep_pkg: %s\n", formula->dep_pkg);
@@ -91,10 +112,7 @@ void ppkg_formula_dump(PPKGFormula * formula) {
 
     printf("dopatch: %s\n", formula->dopatch);
     printf("install: %s\n", formula->install);
-
     printf("symlink: %d\n", formula->symlink);
-
-    printf("exetype: %s\n", formula->exetype);
 
     printf("path:    %s\n", formula->path);
 
@@ -150,6 +168,11 @@ void ppkg_formula_free(PPKGFormula * formula) {
         formula->src_url = NULL;
     }
 
+    if (formula->src_uri != NULL) {
+        free(formula->src_uri);
+        formula->src_uri = NULL;
+    }
+
     if (formula->src_sha != NULL) {
         free(formula->src_sha);
         formula->src_sha = NULL;
@@ -162,6 +185,11 @@ void ppkg_formula_free(PPKGFormula * formula) {
         formula->fix_url = NULL;
     }
 
+    if (formula->fix_uri != NULL) {
+        free(formula->fix_uri);
+        formula->fix_uri = NULL;
+    }
+
     if (formula->fix_sha != NULL) {
         free(formula->fix_sha);
         formula->fix_sha = NULL;
@@ -172,6 +200,11 @@ void ppkg_formula_free(PPKGFormula * formula) {
     if (formula->res_url != NULL) {
         free(formula->res_url);
         formula->res_url = NULL;
+    }
+
+    if (formula->res_uri != NULL) {
+        free(formula->res_uri);
+        formula->res_uri = NULL;
     }
 
     if (formula->res_sha != NULL) {
@@ -237,13 +270,6 @@ void ppkg_formula_free(PPKGFormula * formula) {
 
     ///////////////////////////////
 
-    if (formula->exetype != NULL) {
-        free(formula->exetype);
-        formula->exetype = NULL;
-    }
-
-    ///////////////////////////////
-
     if (formula->dopatch != NULL) {
         free(formula->dopatch);
         formula->dopatch = NULL;
@@ -279,18 +305,24 @@ static PPKGFormulaKeyCode ppkg_formula_key_code_from_key_name(char * key) {
         return FORMULA_KEY_CODE_git_sha;
     } else if (strcmp(key, "git-ref") == 0) {
         return FORMULA_KEY_CODE_git_ref;
-    } else if (strcmp(key, "shallow") == 0) {
-        return FORMULA_KEY_CODE_shallow;
+    } else if (strcmp(key, "git-nth") == 0) {
+        return FORMULA_KEY_CODE_git_nth;
     } else if (strcmp(key, "src-url") == 0) {
         return FORMULA_KEY_CODE_src_url;
+    } else if (strcmp(key, "src-uri") == 0) {
+        return FORMULA_KEY_CODE_src_uri;
     } else if (strcmp(key, "src-sha") == 0) {
         return FORMULA_KEY_CODE_src_sha;
     } else if (strcmp(key, "fix-url") == 0) {
         return FORMULA_KEY_CODE_fix_url;
+    } else if (strcmp(key, "fix-uri") == 0) {
+        return FORMULA_KEY_CODE_fix_uri;
     } else if (strcmp(key, "fix-sha") == 0) {
         return FORMULA_KEY_CODE_fix_sha;
     } else if (strcmp(key, "res-url") == 0) {
         return FORMULA_KEY_CODE_res_url;
+    } else if (strcmp(key, "res-uri") == 0) {
+        return FORMULA_KEY_CODE_res_uri;
     } else if (strcmp(key, "res-sha") == 0) {
         return FORMULA_KEY_CODE_res_sha;
     } else if (strcmp(key, "dep-pkg") == 0) {
@@ -321,8 +353,6 @@ static PPKGFormulaKeyCode ppkg_formula_key_code_from_key_name(char * key) {
         return FORMULA_KEY_CODE_bscript;
     } else if (strcmp(key, "binbstd") == 0) {
         return FORMULA_KEY_CODE_binbstd;
-    } else if (strcmp(key, "exetype") == 0) {
-        return FORMULA_KEY_CODE_exetype;
     } else if (strcmp(key, "parallel") == 0) {
         return FORMULA_KEY_CODE_parallel;
     } else {
@@ -335,10 +365,8 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         return;
     }
 
-    char c;
-
     for (;;) {
-        c = value[0];
+        char c = value[0];
 
         if (c == '\0') {
             return;
@@ -346,7 +374,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
 
         // non-printable ASCII characters and space
         if (c <= 32) {
-            value = &value[1];
+            value++;
         } else {
             break;
         }
@@ -364,12 +392,15 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_git_ref: if (formula->git_ref != NULL) free(formula->git_ref); formula->git_ref = strdup(value); break;
 
         case FORMULA_KEY_CODE_src_url: if (formula->src_url != NULL) free(formula->src_url); formula->src_url = strdup(value); break;
+        case FORMULA_KEY_CODE_src_uri: if (formula->src_uri != NULL) free(formula->src_uri); formula->src_uri = strdup(value); break;
         case FORMULA_KEY_CODE_src_sha: if (formula->src_sha != NULL) free(formula->src_sha); formula->src_sha = strdup(value); break;
 
         case FORMULA_KEY_CODE_fix_url: if (formula->fix_url != NULL) free(formula->fix_url); formula->fix_url = strdup(value); break;
+        case FORMULA_KEY_CODE_fix_uri: if (formula->fix_uri != NULL) free(formula->fix_uri); formula->fix_uri = strdup(value); break;
         case FORMULA_KEY_CODE_fix_sha: if (formula->fix_sha != NULL) free(formula->fix_sha); formula->fix_sha = strdup(value); break;
 
         case FORMULA_KEY_CODE_res_url: if (formula->res_url != NULL) free(formula->res_url); formula->res_url = strdup(value); break;
+        case FORMULA_KEY_CODE_res_uri: if (formula->res_uri != NULL) free(formula->res_uri); formula->res_uri = strdup(value); break;
         case FORMULA_KEY_CODE_res_sha: if (formula->res_sha != NULL) free(formula->res_sha); formula->res_sha = strdup(value); break;
 
         case FORMULA_KEY_CODE_dep_pkg: if (formula->dep_pkg != NULL) free(formula->dep_pkg); formula->dep_pkg = strdup(value); break;
@@ -385,19 +416,11 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_dopatch: if (formula->dopatch != NULL) free(formula->dopatch); formula->dopatch = strdup(value); break;
         case FORMULA_KEY_CODE_install: if (formula->install != NULL) free(formula->install); formula->install = strdup(value); break;
 
-        case FORMULA_KEY_CODE_exetype: if (formula->exetype != NULL) free(formula->exetype); formula->exetype = strdup(value); break;
-
         case FORMULA_KEY_CODE_bsystem: if (formula->bsystem != NULL) free(formula->bsystem); formula->bsystem = strdup(value); break;
         case FORMULA_KEY_CODE_bscript: if (formula->bscript != NULL) free(formula->bscript); formula->bscript = strdup(value); break;
 
-        case FORMULA_KEY_CODE_shallow:
-            if (strcmp(value, "yes") == 0) {
-                formula->shallow = true;
-            } else if (strcmp(value, "no") == 0) {
-                formula->shallow = false;
-            } else {
-                //TODO
-            }
+        case FORMULA_KEY_CODE_git_nth:
+            formula->git_nth = atoi(value);
             break;
         case FORMULA_KEY_CODE_binbstd:
             if (strcmp(value, "yes") == 0) {
@@ -431,40 +454,89 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
     }
 }
 
-static inline bool ppkg_formula_check_bsystem_match(PPKGFormula * formula, const char * buf, size_t bufLength) {
-    if (bufLength == 0) {
-        return false;
-    } else if (regex_matched(buf, "^[[:space:]]*configure[[:space:]]*")) {
+static inline int ppkg_formula_check_bsystem_match(PPKGFormula * formula, const char * buf, size_t bufLength) {
+    if (bufLength == 0U) {
+        return PPKG_ERROR_NOT_MATCH;
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*configure[[:space:]]*") == 0) {
         formula->bsystem = strdup("configure");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*cmakew[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*cmakew[[:space:]]*") == 0) {
         formula->bsystem = strdup("cmake");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*xmakew[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*xmakew[[:space:]]*") == 0) {
         formula->bsystem = strdup("xmake");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*gmakew[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*gmakew[[:space:]]*") == 0) {
         formula->bsystem = strdup("gmake");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*mesonw[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*mesonw[[:space:]]*") == 0) {
         formula->bsystem = strdup("meson");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*cargow[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*cargow[[:space:]]*") == 0) {
         formula->bsystem = strdup("cargo");
         formula->bsystem_is_calculated = true;
-        return true;
-    } else if (regex_matched(buf, "^[[:space:]]*gow?[[:space:]]*")) {
+        return PPKG_OK;
+    } else {
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    if (regex_matched(buf, "^[[:space:]]*gow?[[:space:]]*") == 0) {
         formula->bsystem = strdup("go");
         formula->bsystem_is_calculated = true;
-        return true;
+        return PPKG_OK;
     } else {
-        return false;
+        if (errno != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
     }
+
+    return PPKG_ERROR_NOT_MATCH;
 }
 
 static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
@@ -480,36 +552,53 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
     const char * installString = formula->install;
 
     char   buf[11] = {0};
-    size_t bufLength = 0;
+    size_t bufLength = 0U;
 
-    size_t i = 0;
+    size_t i = 0U;
 
     char c;
+
+    int ret;
 
     for (;;) {
         c = installString[i];
 
         if (c == '\0') {
-            ppkg_formula_check_bsystem_match(formula, buf, bufLength);
-            return PPKG_OK;
+            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
+
+            if (ret == PPKG_OK) {
+                return PPKG_OK;
+            } else if (ret == PPKG_ERROR_NOT_MATCH) {
+                return PPKG_OK;
+            } else {
+                return ret;
+            }
         }
 
         if (c == '\n') {
-            if (ppkg_formula_check_bsystem_match(formula, buf, bufLength)) {
+            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
+
+            if (ret == PPKG_OK) {
                 return PPKG_OK;
-            } else {
+            } else if (ret == PPKG_ERROR_NOT_MATCH) {
                 bufLength = 0;
                 i++;
                 continue;
+            } else {
+                return ret;
             }
         }
 
         if (bufLength == 10) {
-            if (ppkg_formula_check_bsystem_match(formula, buf, bufLength)) {
+            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
+
+            if (ret == PPKG_OK) {
                 return PPKG_OK;
-            } else {
+            } else if (ret == PPKG_ERROR_NOT_MATCH) {
                 i++;
                 continue;
+            } else {
+                return ret;
             }
         }
 
@@ -628,29 +717,48 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
 
     if (formula->version == NULL) {
         if ((formula->src_url != NULL) && (!formula->src_is_dir)) {
-            size_t urlLength = strlen(formula->src_url);
-            size_t urlCopyLength = urlLength + 1U;
-            char   urlCopy[urlCopyLength];
-            strncpy(urlCopy, formula->src_url, urlCopyLength);
-
-            char * srcFileName = basename(urlCopy);
-
-            size_t srcFileNameLength = 0;
-
             char c;
 
+            size_t i = 0U;
+            size_t j = 0U;
+
             for (;;) {
-                c = srcFileName[srcFileNameLength];
+                c = formula->src_url[i];
+
+                if (c == '\0') {
+                    break;
+                }
+
+                if (c == '/') {
+                    j = i;
+                }
+
+                i++;
+            }
+
+            if (j == 0U) {
+                fprintf(stderr, "scheme error in formula file: %s : invalid src-url: %s\n", formulaFilePath, formula->src_url);
+                return PPKG_ERROR_FORMULA_SCHEME;
+            }
+
+            size_t srcFileNameLength = i - j - 1U;
+
+            char   srcFileName[srcFileNameLength + 1U];
+
+            strncpy(srcFileName, formula->src_url + j + 1U, srcFileNameLength + 1U);
+
+            for (i = 0U;;) {
+                c = srcFileName[i];
 
                 if (c == '\0') {
                     break;
                 }
 
                 if (c == '_' || c == '@') {
-                    srcFileName[srcFileNameLength] = '-';
+                    srcFileName[i] = '-';
                 }
 
-                srcFileNameLength++;
+                i++;
             }
 
             if (srcFileNameLength > 8) {
@@ -748,22 +856,48 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             char * splitedStr = strtok(srcFileName, "-");
 
             while (splitedStr != NULL) {
-                if (regex_matched(splitedStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$")) {
+                if (regex_matched(splitedStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
                     formula->version = strdup(splitedStr);
                     formula->version_is_calculated = true;
                     break;
-                } else if (regex_matched(splitedStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$")) {
+                } else {
+                    if (errno != 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+                }
+
+                if (regex_matched(splitedStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
                     formula->version = strdup(&splitedStr[1]);
                     formula->version_is_calculated = true;
                     break;
-                } else if (regex_matched(splitedStr, "^[0-9]{3,8}$")) {
+                } else {
+                    if (errno != 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+                }
+
+                if (regex_matched(splitedStr, "^[0-9]{3,8}$") == 0) {
                     formula->version = strdup(splitedStr);
                     formula->version_is_calculated = true;
                     break;
-                } else if (regex_matched(splitedStr, "^[vrR][0-9]{2,8}$")) {
+                } else {
+                    if (errno != 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+                }
+
+                if (regex_matched(splitedStr, "^[vrR][0-9]{2,8}$") == 0) {
                     formula->version = strdup(&splitedStr[1]);
                     formula->version_is_calculated = true;
                     break;
+                } else {
+                    if (errno != 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
                 }
 
                 splitedStr = strtok(NULL, "-");
@@ -841,6 +975,101 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
         }
 
         bsystem = strtok(NULL, " ");
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    char   dep_upp_extra_buf[256] = {0};
+    size_t dep_upp_extra_buf_len = 0U;
+
+    if (formula->useBuildSystemAutogen || formula->useBuildSystemAutotools) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "automake autoconf perl gm4")
+    }
+
+    if (formula->useBuildSystemCmake) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "cmake")
+    }
+
+    if (formula->useBuildSystemGmake) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "gmake")
+    }
+
+    if (formula->useBuildSystemNinja) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "ninja")
+    }
+
+    if (formula->useBuildSystemXmake) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "xmake")
+    }
+
+    if (formula->useBuildSystemGolang) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "golang")
+    }
+
+    if (formula->useBuildSystemMeson || (formula->dep_pym != NULL)) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "python3")
+    }
+
+    if (formula->dep_plm != NULL) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "perl")
+    }
+
+    if (formula->fix_url != NULL || formula->res_url != NULL) {
+        STRING_BUFFER_APPEND(dep_upp_extra_buf, dep_upp_extra_buf_len, "patch")
+    }
+
+    if (formula->dep_upp == NULL) {
+        char * p = strdup(dep_upp_extra_buf);
+
+        if (p == NULL) {
+            return PPKG_ERROR_MEMORY_ALLOCATE;
+        }
+
+        formula->dep_upp = p;
+    } else {
+        size_t oldLength = strlen(formula->dep_upp);
+        size_t newLength = oldLength + dep_upp_extra_buf_len + 2U;
+
+        char * p = (char*)calloc(newLength, sizeof(char));
+
+        if (p == NULL) {
+            return PPKG_ERROR_MEMORY_ALLOCATE;
+        }
+
+        snprintf(p, newLength, "%s %s", formula->dep_upp, dep_upp_extra_buf);
+
+        free(formula->dep_upp);
+
+        formula->dep_upp = p;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (formula->useBuildSystemMeson) {
+        if (formula->dep_pym == NULL) {
+            char * p = strdup("meson");
+
+            if (p == NULL) {
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            }
+
+            formula->dep_pym = p;
+        } else {
+            size_t oldLength = strlen(formula->dep_pym);
+            size_t newLength = oldLength + 7U;
+
+            char * p = (char*)calloc(newLength, sizeof(char));
+
+            if (p == NULL) {
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            }
+
+            snprintf(p, newLength, "%s meson", formula->dep_pym);
+
+            free(formula->dep_pym);
+
+            formula->dep_pym = p;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -952,7 +1181,7 @@ int ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out) {
                             goto finalize;
                         }
 
-                        formula->shallow = true;
+                        formula->git_nth = 1U;
                         formula->symlink = true;
                         formula->binbstd = false;
                         formula->parallel = true;

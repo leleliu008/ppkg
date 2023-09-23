@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+
 #include <unistd.h>
-#include <sys/stat.h>
 
 #include "ppkg.h"
 
@@ -12,39 +12,36 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         return ret;
     }
 
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0U) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t   packageInstalledDirLength = userHomeDirLength + strlen(packageName) + 20U;
-    char     packageInstalledDir[packageInstalledDirLength];
-    snprintf(packageInstalledDir, packageInstalledDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+    size_t   packageInstalledDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    char     packageInstalledDIR[packageInstalledDIRLength];
+    snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
 
     struct stat st;
 
-    if (stat(packageInstalledDir, &st) != 0) {
+    if (stat(packageInstalledDIR, &st) != 0) {
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    size_t   receiptFilePathLength = packageInstalledDirLength + 20U;
+    size_t   receiptFilePathLength = packageInstalledDIRLength + 20U;
     char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
 
     if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
         return PPKG_ERROR_PACKAGE_IS_BROKEN;
     }
 
-    size_t   treeCommandPathLength = userHomeDirLength + 31U;
+    size_t   treeCommandPathLength = ppkgHomeDIRLength + 15U;
     char     treeCommandPath[treeCommandPathLength];
-    snprintf(treeCommandPath, treeCommandPathLength, "%s/.uppm/installed/tree/bin/tree", userHomeDir);
+    snprintf(treeCommandPath, treeCommandPathLength, "%s/core/bin/tree", ppkgHomeDIR);
 
     size_t n = argc + 5U;
     char*  p[n];
@@ -57,8 +54,8 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         p[3U + i] = argv[i];
     }
 
-    p[n - 2] = packageInstalledDir;
-    p[n - 1]   = NULL;
+    p[n - 2U] = packageInstalledDIR;
+    p[n - 1U]   = NULL;
 
     execv(treeCommandPath, p);
 

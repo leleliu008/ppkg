@@ -1,6 +1,6 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -20,13 +20,13 @@ int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char * formulaRepoPath  = formulaRepoList->repos[i]->path;
 
-        size_t formulaDirLength = strlen(formulaRepoPath) + 10U;
-        char   formulaDir[formulaDirLength];
-        snprintf(formulaDir, formulaDirLength, "%s/formula", formulaRepoPath);
+        size_t formulaDIRLength = strlen(formulaRepoPath) + 10U;
+        char   formulaDIR[formulaDIRLength];
+        snprintf(formulaDIR, formulaDIRLength, "%s/formula", formulaRepoPath);
 
         struct stat status;
 
-        if (stat(formulaDir, &status) != 0) {
+        if (stat(formulaDIR, &status) != 0) {
             continue;
         }
 
@@ -34,10 +34,10 @@ int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, 
             continue;
         }
 
-        DIR * dir = opendir(formulaDir);
+        DIR * dir = opendir(formulaDIR);
 
         if (dir == NULL) {
-            perror(formulaDir);
+            perror(formulaDIR);
             ppkg_formula_repo_list_free(formulaRepoList);
             return PPKG_ERROR;
         }
@@ -58,7 +58,7 @@ int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, 
                     closedir(dir);
                     break;
                 } else {
-                    perror(formulaDir);
+                    perror(formulaDIR);
                     closedir(dir);
                     ppkg_formula_repo_list_free(formulaRepoList);
                     return PPKG_ERROR;
@@ -77,14 +77,18 @@ int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, 
                 if (strcmp(fileNameSuffix, ".yml") == 0) {
                     fileName[fileNameLength - 4] = '\0';
 
-                    ret = packageNameCallbak(fileName, j, payload);
+                    ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(fileName);
 
-                    j++;
+                    if (ret == PPKG_OK) {
+                        ret = packageNameCallbak(fileName, j, payload);
 
-                    if (ret != PPKG_OK) {
-                        closedir(dir);
-                        ppkg_formula_repo_list_free(formulaRepoList);
-                        return ret;
+                        j++;
+
+                        if (ret != PPKG_OK) {
+                            closedir(dir);
+                            ppkg_formula_repo_list_free(formulaRepoList);
+                            return ret;
+                        }
                     }
                 }
             }

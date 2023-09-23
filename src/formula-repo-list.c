@@ -1,31 +1,29 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+
 #include <dirent.h>
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
 int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t ppkgFormulaRepoDirLength = userHomeDirLength + 15U;
-    char   ppkgFormulaRepoDir[ppkgFormulaRepoDirLength];
-    snprintf(ppkgFormulaRepoDir, ppkgFormulaRepoDirLength, "%s/.ppkg/repos.d", userHomeDir);
+    size_t   ppkgFormulaRepoDIRLength = ppkgHomeDIRLength + 9U;
+    char     ppkgFormulaRepoDIR[ppkgFormulaRepoDIRLength];
+    snprintf(ppkgFormulaRepoDIR, ppkgFormulaRepoDIRLength, "%s/repos.d", ppkgHomeDIR);
 
     struct stat st;
 
-    if ((stat(ppkgFormulaRepoDir, &st) != 0) || (!S_ISDIR(st.st_mode))) {
+    if ((stat(ppkgFormulaRepoDIR, &st) != 0) || (!S_ISDIR(st.st_mode))) {
         PPKGFormulaRepoList* formulaRepoList = (PPKGFormulaRepoList*)calloc(1, sizeof(PPKGFormulaRepoList));
 
         if (formulaRepoList == NULL) {
@@ -36,10 +34,10 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
         }
     }
 
-    DIR * dir = opendir(ppkgFormulaRepoDir);
+    DIR * dir = opendir(ppkgFormulaRepoDIR);
 
     if (dir == NULL) {
-        perror(ppkgFormulaRepoDir);
+        perror(ppkgFormulaRepoDIR);
         return PPKG_ERROR;
     }
 
@@ -47,7 +45,7 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
 
     PPKGFormulaRepoList * formulaRepoList = NULL;
 
-    int ret = PPKG_OK;
+    ret = PPKG_OK;
 
     struct dirent * dir_entry;
 
@@ -60,7 +58,7 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
             if (errno == 0) {
                 break;
             } else {
-                perror(ppkgFormulaRepoDir);
+                perror(ppkgFormulaRepoDIR);
                 closedir(dir);
                 ppkg_formula_repo_list_free(formulaRepoList);
                 return PPKG_ERROR;
@@ -73,9 +71,9 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
             continue;
         }
 
-        size_t formulaRepoPathLength = ppkgFormulaRepoDirLength + strlen(dir_entry->d_name) + 2U;
+        size_t formulaRepoPathLength = ppkgFormulaRepoDIRLength + strlen(dir_entry->d_name) + 2U;
         char   formulaRepoPath[formulaRepoPathLength];
-        snprintf(formulaRepoPath, formulaRepoPathLength, "%s/%s", ppkgFormulaRepoDir, dir_entry->d_name);
+        snprintf(formulaRepoPath, formulaRepoPathLength, "%s/%s", ppkgFormulaRepoDIR, dir_entry->d_name);
 
         size_t formulaRepoConfigFilePathLength = formulaRepoPathLength + 24U;
         char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];

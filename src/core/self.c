@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -144,9 +145,12 @@ char* self_realpath() {
         return NULL;
     }
 #else
-    char buf[PATH_MAX + 1] = {0};
+    // PATH_MAX : maximum number of bytes in a pathname, including the terminating null character.
+    // https://pubs.opengroup.org/onlinepubs/009695399/basedefs/limits.h.html
+    char buf[PATH_MAX] = {0};
 
-    if (readlink("/proc/self/exe", buf, PATH_MAX) < 0) {
+    //  readlink() does not append a terminating null byte to buf.
+    if (readlink("/proc/self/exe", buf, PATH_MAX - 1U) == -1) {
         return NULL;
     }
 

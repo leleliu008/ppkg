@@ -1,7 +1,8 @@
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <time.h>
+
 #include <yaml.h>
 
 #include "ppkg.h"
@@ -92,18 +93,14 @@ static int ppkg_formula_repo_set_value(PPKGFormulaRepoKeyCode keyCode, char * va
         return PPKG_OK;
     }
 
-    char c;
-
     for (;;) {
-        c = value[0];
-
-        if (c == '\0') {
+        if (value[0] == '\0') {
             return PPKG_OK;
         }
 
         // non-printable ASCII characters and space
-        if (c <= 32) {
-            value = &value[1];
+        if (value[0] <= 32) {
+            value++;
         } else {
             break;
         }
@@ -245,6 +242,7 @@ int ppkg_formula_repo_parse(const char * formulaRepoConfigFilePath, PPKGFormulaR
     // https://libyaml.docsforge.com/master/api/yaml_parser_initialize/
     if (yaml_parser_initialize(&parser) == 0) {
         perror("Failed to initialize yaml parser");
+        fclose(file);
         return PPKG_ERROR;
     }
 

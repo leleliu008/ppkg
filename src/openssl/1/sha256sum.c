@@ -1,18 +1,18 @@
 #include <stdio.h>
 #include <string.h>
+
 #include <openssl/sha.h>
 
-#include "sha256sum.h"
+#include "../../sha256sum.h"
+#include "../../ppkg.h"
 
-static inline void tohex(char buf[65], unsigned char * sha256Bytes) {
-    const char * table = "0123456789abcdef";
+static inline void tohex(char buf[65], const unsigned char * sha256Bytes) {
+    const char * const table = "0123456789abcdef";
 
-    size_t i, j;
-
-    for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        j = i << 1;
-        buf[j]     = table[sha256Bytes[i] >> 4];
-        buf[j + 1] = table[sha256Bytes[i] & 0x0F];
+    for (size_t i = 0U; i < SHA256_DIGEST_LENGTH; i++) {
+        size_t j = i << 1;
+        buf[j]      = table[sha256Bytes[i] >> 4];
+        buf[j + 1U] = table[sha256Bytes[i] & 0x0F];
     }
 }
 
@@ -25,7 +25,7 @@ int sha256sum_of_bytes(char outputBuffer[65], unsigned char * inputBuffer, size_
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    if (inputBufferSizeInBytes == 0) {
+    if (inputBufferSizeInBytes == 0U) {
         return PPKG_ERROR_ARG_IS_INVALID;
     }
 
@@ -38,7 +38,7 @@ int sha256sum_of_bytes(char outputBuffer[65], unsigned char * inputBuffer, size_
 
     tohex(outputBuffer, sha256Bytes);
 
-    return PPKG_OK;
+    return 0;
 }
 
 int sha256sum_of_string(char outputBuffer[65], const char * str) {
@@ -46,9 +46,7 @@ int sha256sum_of_string(char outputBuffer[65], const char * str) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    size_t strLength = strlen(str);
-
-    if (strLength == 0) {
+    if (str[0] == '\0') {
         return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
@@ -56,12 +54,12 @@ int sha256sum_of_string(char outputBuffer[65], const char * str) {
  
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
-    SHA256_Update(&ctx, str, strLength);
+    SHA256_Update(&ctx, str, strlen(str));
     SHA256_Final(sha256Bytes, &ctx);
 
     tohex(outputBuffer, sha256Bytes);
 
-    return PPKG_OK;
+    return 0;
 }
 
 int sha256sum_of_stream(char outputBuffer[65], FILE * file) {
@@ -79,17 +77,16 @@ int sha256sum_of_stream(char outputBuffer[65], FILE * file) {
     SHA256_Init(&ctx);
 
     unsigned char buffer[1024];
-    size_t size;
 
     for (;;) {
-        size = fread(buffer, 1, 1024, file);
+        size_t size = fread(buffer, 1, 1024, file);
 
         if (ferror(file)) {
             perror(NULL);
-            return PPKG_ERROR;
+            return -1;
         }
 
-        if (size > 0) {
+        if (size > 0U) {
             SHA256_Update(&ctx, buffer, size);
         }
 
@@ -102,7 +99,7 @@ int sha256sum_of_stream(char outputBuffer[65], FILE * file) {
 
     tohex(outputBuffer, sha256Bytes);
 
-    return PPKG_OK;
+    return 0;
 }
 
 int sha256sum_of_file(char outputBuffer[65], const char * filepath) {

@@ -2,8 +2,11 @@
 #define PPKG_H
 
 #include <config.h>
+
 #include <stdlib.h>
 #include <stdbool.h>
+
+#include "core/sysinfo.h"
 #include "core/tar.h"
 
 
@@ -25,7 +28,8 @@
 #define PPKG_ERROR_ENV_HOME_NOT_SET 8
 #define PPKG_ERROR_ENV_PATH_NOT_SET 9
 
-#define PPKG_ERROR_EXE_NOT_FOUND    10
+#define PPKG_ERROR_NOT_FOUND    10
+#define PPKG_ERROR_NOT_MATCH    11
 
 #define PPKG_ERROR_PACKAGE_NOT_AVAILABLE 20
 #define PPKG_ERROR_PACKAGE_NOT_INSTALLED 21
@@ -107,16 +111,19 @@ typedef struct {
     char * git_url;
     char * git_sha;
     char * git_ref;
-    bool   shallow;
+    size_t git_nth;
 
     char * src_url;
+    char * src_uri;
     char * src_sha;
     bool   src_is_dir;
 
     char * fix_url;
+    char * fix_uri;
     char * fix_sha;
 
     char * res_url;
+    char * res_uri;
     char * res_sha;
 
     char * dep_pkg;
@@ -136,8 +143,6 @@ typedef struct {
     char * ccflags;
     char * xxflags;
     char * ldflags;
-
-    char * exetype;
 
     char * dopatch;
     char * install;
@@ -197,7 +202,7 @@ int  ppkg_formula_repo_remove(const char * formulaRepoName);
 int  ppkg_formula_repo_sync_ (const char * formulaRepoName);
 int  ppkg_formula_repo_info_ (const char * formulaRepoName);
 int  ppkg_formula_repo_config(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled);
-int  ppkg_formula_repo_config_write(const char * formulaRepoDirPath, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled, const char * timestamp_created, const char * timestamp_updated);
+int  ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled, const char * timestamp_created, const char * timestamp_updated);
 int  ppkg_formula_repo_lookup(const char * formulaRepoName, PPKGFormulaRepo * * formulaRepo);
 int  ppkg_formula_repo_parse (const char * formulaRepoConfigFilePath, PPKGFormulaRepo * * formulaRepo);
 
@@ -225,15 +230,18 @@ typedef struct {
     char * git_url;
     char * git_sha;
     char * git_ref;
-    bool   shallow;
+    size_t git_nth;
 
     char * src_url;
+    char * src_uri;
     char * src_sha;
 
     char * fix_url;
+    char * fix_uri;
     char * fix_sha;
 
     char * res_url;
+    char * res_uri;
     char * res_sha;
 
     char * dep_pkg;
@@ -254,8 +262,6 @@ typedef struct {
     char * xxflags;
     char * ldflags;
 
-    char * exetype;
-
     char * dopatch;
     char * install;
 
@@ -271,12 +277,78 @@ void ppkg_receipt_dump(PPKGReceipt * receipt);
 
 //////////////////////////////////////////////////////////////////////
 
+typedef struct {
+    char * cc;
+    char * objc;
+    char * cxx;
+    char * cpp;
+    char * as;
+    char * ar;
+    char * ranlib;
+    char * ld;
+    char * nm;
+    char * strip;
+    char * size;
+    char * strings;
+    char * objdump;
+    char * objcopy;
+    char * readelf;
+    char * dlltool;
+    char * addr2line;
+
+    char * sysroot;
+
+    char * ccflags;
+
+    char * cxxflags;
+
+    char * cppflags;
+
+    char * ldflags;
+} PPKGToolChain;
+
+int  ppkg_toolchain_locate(PPKGToolChain * toolchain, SysInfo sysinfo, const char * sessionDIR, size_t sessionDIRLength);
+void ppkg_toolchain_free(PPKGToolChain   toolchain);
+void ppkg_toolchain_dump(PPKGToolChain   toolchain);
+
+//////////////////////////////////////////////////////////////////////
+
+int ppkg_main(int argc, char* argv[]);
+
+int ppkg_util(int argc, char* argv[]);
+
+int ppkg_help();
+
+int ppkg_sysinfo();
+
+int ppkg_buildinfo();
+
+int ppkg_env(bool verbose);
+
+int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
+
+int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize);
+
+int ppkg_search(const char * regPattern);
+
+int ppkg_info(const char * packageName, const char * key);
+
+int ppkg_tree(const char * packageName, size_t argc, char* argv[]);
+
+int ppkg_logs(const char * packageName);
+
+int ppkg_pack(const char * packageName, ArchiveType outputType, const char * outputPath, bool verbose);
+
 typedef enum {
     PPKGDependsOutputType_DOT,
     PPKGDependsOutputType_BOX,
     PPKGDependsOutputType_SVG,
     PPKGDependsOutputType_PNG,
 } PPKGDependsOutputType;
+
+int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputPath);
+
+int ppkg_fetch(const char * packageName, bool verbose);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -300,74 +372,20 @@ typedef enum {
 } PPKGLinkType;
 
 typedef struct {
-    bool    exportCompileCommandsJson;
-    bool    keepInstallingDir;
-    bool    enableCcache;
-    bool    enableBear;
-    bool    dryrun;
+    bool   exportCompileCommandsJson;
+    bool   keepSessionDIR;
+    bool   enableCcache;
+    bool   enableBear;
+    bool   dryrun;
+    bool   force;
 
-    size_t  parallelJobsCount;
+    size_t parallelJobsCount;
 
     PPKGBuildType buildType;
     PPKGLinkType  linkType;
 
     PPKGLogLevel  logLevel;
 } PPKGInstallOptions;
-
-//////////////////////////////////////////////////////////////////////
-
-typedef struct {
-    char * cc;
-    char * cxx;
-    char * cpp;
-    char * as;
-    char * ar;
-    char * ranlib;
-    char * ld;
-    char * nm;
-    char * strip;
-    char * size;
-    char * strings;
-    char * objdump;
-    char * objcopy;
-    char * readelf;
-    char * dlltool;
-    char * addr2line;
-} PPKGToolChain;
-
-int  ppkg_toolchain_find(PPKGToolChain * toolchain);
-void ppkg_toolchain_free(PPKGToolChain * toolchain);
-void ppkg_toolchain_dump(PPKGToolChain * toolchain);
-
-//////////////////////////////////////////////////////////////////////
-
-int ppkg_main(int argc, char* argv[]);
-
-int ppkg_util(int argc, char* argv[]);
-
-int ppkg_help();
-
-int ppkg_sysinfo();
-
-int ppkg_buildinfo();
-
-int ppkg_env(bool verbose);
-
-int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
-
-int ppkg_search(const char * keyword);
-
-int ppkg_info(const char * packageName, const char * key);
-
-int ppkg_tree(const char * packageName, size_t argc, char* argv[]);
-
-int ppkg_logs(const char * packageName);
-
-int ppkg_pack(const char * packageName, ArchiveType type, bool verbose);
-
-int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputFilePath);
-
-int ppkg_fetch(const char * packageName, bool verbose);
 
 int ppkg_install  (const char * packageName, PPKGInstallOptions options);
 
@@ -379,9 +397,9 @@ int ppkg_uninstall(const char * packageName, bool verbose);
 
 int ppkg_upgrade_self(bool verbose);
 
-int ppkg_integrate_zsh_completion (const char * outputDir, bool verbose);
-int ppkg_integrate_bash_completion(const char * outputDir, bool verbose);
-int ppkg_integrate_fish_completion(const char * outputDir, bool verbose);
+int ppkg_integrate_zsh_completion (const char * outputDIR, bool verbose);
+int ppkg_integrate_bash_completion(const char * outputDIR, bool verbose);
+int ppkg_integrate_fish_completion(const char * outputDIR, bool verbose);
 
 int ppkg_setup(bool verbose);
 
@@ -401,11 +419,22 @@ int ppkg_list_the_outdated__packages();
 
 int ppkg_show_the_available_packages();
 
-int ppkg_fetch_via_git(const char * gitRepositoryDirPath, const char * remoteUrl, const char * refspec, const char * checkoutToBranchName);
+int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, const char * remoteRef, const char * remoteTrackingRef, const char * checkoutToBranchName);
 
 int ppkg_generate_url_transform_sample();
 
 int ppkg_examine_file_extension_from_url(char buf[], size_t maxSize, const char * url);
 
+int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress);
+
+int ppkg_download(const char * url, const char * sha256sum, const char * downloadDIR, const char * unpackDIR, size_t stripComponentsNumber, bool verbose);
+
+int ppkg_rename_or_copy_file(const char * fromFilePath, const char * toFilePath);
+
+int ppkg_copy_file(const char * fromFilePath, const char * toFilePath);
+
+int ppkg_mkdir_p(const char * dirPath, bool verbose);
+
+int ppkg_rm_r(const char * dirPath, bool verbose);
 
 #endif

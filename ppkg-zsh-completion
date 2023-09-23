@@ -1,13 +1,13 @@
 #compdef ppkg
 
-_commands=(
+_ppkg_actions=(
     '-h:show help of this command.'
     '--help:show help of this command.'
     '-V:show version of this command.'
     '--version:show version of this command.'
     'env:show basic information about this software.'
-    'buildinfo:show build information about this software'
     'sysinfo:show basic information about your current running operation system.'
+    'setup:install essential tools that are used by this shell script.'
     'integrate:integrate zsh completions.'
     'update:update all the formula repositories.'
     'upgrade-self:upgrade this software.'
@@ -40,12 +40,7 @@ _commands=(
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
     'gen-url-transform-sample:generate url-transform sample.'
-    'util:extra utilities.'
 )
-
-function _ppkg_commands() {
-    _describe 'command' _commands
-}
 
 function _ppkg_available_packages() {
     local -a _available_packages
@@ -70,7 +65,7 @@ function _ppkg() {
     typeset -A opt_args
 
     _arguments \
-        '1: :_ppkg_commands' \
+        '1: :{_describe ppkg_actions _ppkg_actions}' \
         '*:: :->option'
 
     case $state in
@@ -132,7 +127,7 @@ function _ppkg() {
                         '--path[show formula file path only]' \
                         '--yaml[show formula file content in yaml format]' \
                         '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
+                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
                     ;;
                 receipt)
                     _arguments '1:package-name:_ppkg_installed_packages' \
@@ -140,7 +135,7 @@ function _ppkg() {
                         '--path[show receipt file path only]' \
                         '--yaml[show receipt file content in yaml format]' \
                         '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
+                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
                     ;;
                 info)
                     case $words[3] in
@@ -151,7 +146,7 @@ function _ppkg() {
                             ;;
                         *)  _arguments \
                                 '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
+                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
                     esac
                     ;;
                 fetch)
@@ -161,14 +156,14 @@ function _ppkg() {
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
                         '-t[set output format]:output-type:(dot box svg png)' \
-                        '-o[set output filepath or directory]:output-path:{_files}'
+                        '-o[set output filepath or directory]:output-path:_files'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
                         '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[set output filepath or directory]:output-path:{_files}' \
-                        '--keep-packing-dir[do not delete packing dir even if packed success]'
+                        '-o[set output filepath or directory]:output-path:_files' \
+                        '--keep-session-dir[do not delete the session directory even if packed success]'
                     ;;
                 tree)
                     _arguments \
@@ -187,7 +182,7 @@ function _ppkg() {
                         '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -204,7 +199,7 @@ function _ppkg() {
                         '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -220,7 +215,7 @@ function _ppkg() {
                         ':package-name:_ppkg_outdated_packages' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
+                        '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -246,33 +241,6 @@ function _ppkg() {
                 integrate)
                     _arguments '1:what:(zsh)'
                     ;;
-                util)
-                    _arguments \
-                        '1:utility:(base16-encode base16-decode base64-encode base64-decode sha256sum zlib-deflate zlib-inflate which)' \
-                        '*:: :->utility-option'
-
-                    if [ "$state" = 'utility-option' ] ; then
-                        case $words[1] in
-                            base16-encode)
-                                ;;
-                            base16-decode)
-                                ;;
-                            base64-encode)
-                                ;;
-                            base64-decode)
-                                ;;
-                            zlib-deflate)
-                                _arguments '-L[level]:level:(1 2 3 4 5 6 7 8 9)'
-                                ;;
-                            zlib-inflate)
-                                ;;
-                            which)
-                                _arguments '1:cmd:()' '-a[find all]'
-                                ;;
-                        esac
-                    fi
-                    ;;
-
             esac
             ;;
         *);;

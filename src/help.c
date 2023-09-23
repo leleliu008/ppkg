@@ -5,7 +5,7 @@ int ppkg_help() {
     if (isatty(STDOUT_FILENO)) {
         const char * str = ""
         COLOR_GREEN
-        "ppkg (Portable Package manager for UNIX)\n\n"
+        "A portable package manager for Unix-like system.\n\n"
         "ppkg <ACTION> [ARGUMENT...]\n\n"
         "ppkg --help\n"
         "ppkg -h\n"
@@ -38,11 +38,11 @@ int ppkg_help() {
         COLOR_OFF
         "    update all available formula repositories.\n\n"
         COLOR_GREEN
-        "ppkg search  <REGULAR-EXPRESSION>\n"
+        "ppkg search <REGULAR-EXPRESSION>\n"
         COLOR_OFF
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
         COLOR_GREEN
-        "ppkg info    <PACKAGE-NAME|@all>\n"
+        "ppkg info <PACKAGE-NAME|@all>\n"
         COLOR_OFF
         "    show information of the given package.\n\n"
         COLOR_GREEN
@@ -70,17 +70,17 @@ int ppkg_help() {
         COLOR_GREEN
         "ppkg fetch   <PACKAGE-NAME|@all>\n"
         COLOR_OFF
-        "    download the prebuild binary archive file of the given package to the local cache.\n\n"
+        "    download resources of the given package to the local cache.\n\n"
         COLOR_GREEN
-        "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         COLOR_OFF
         "    install the given packages.\n\n"
         COLOR_GREEN
-        "ppkg   upgrade [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "ppkg   upgrade [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         COLOR_OFF
         "    upgrade the given packages or all outdated packages.\n\n"
         COLOR_GREEN
-        "ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         COLOR_OFF
         "    reinstall the given packages.\n\n"
         COLOR_GREEN
@@ -214,7 +214,7 @@ int ppkg_help() {
         printf("%s\n", str);
     } else {
         const char * str = ""
-        "ppkg (Portable Package manager for UNIX)\n\n"
+        "A portable package manager for Unix-like system.\n\n"
         "ppkg <ACTION> [ARGUMENT...]\n\n"
         "ppkg --help\n"
         "ppkg -h\n"
@@ -230,9 +230,9 @@ int ppkg_help() {
         "    show basic information about your current running operation system.\n\n"
         "ppkg update\n"
         "    update all available formula repositories.\n\n"
-        "ppkg search  <REGULAR-EXPRESSION>\n"
+        "ppkg search <REGULAR-EXPRESSION>\n"
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
-        "ppkg info    <PACKAGE-NAME|@all>\n"
+        "ppkg info <PACKAGE-NAME|@all>\n"
         "    show information of the given package.\n\n"
         "ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]\n"
         "    list files of the given installed package in a tree-like format.\n\n"
@@ -249,12 +249,12 @@ int ppkg_help() {
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
         "ppkg fetch   <PACKAGE-NAME|@all>\n"
-        "    download the prebuild binary archive file of the given package to the local cache.\n\n"
-        "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "    download resources of the given package to the local cache.\n\n"
+        "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         "    install the given packages.\n\n"
-        "ppkg   upgrade [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "ppkg   upgrade [PACKAGE-NAME]... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         "    upgrade the given packages or all outdated packages.\n\n"
-        "ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-installing-dir]\n"
+        "ppkg reinstall <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         "    reinstall the given packages.\n\n"
         "ppkg uninstall <PACKAGE-NAME>\n"
         "    uninstall the given packages.\n\n"

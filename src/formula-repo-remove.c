@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <sys/stat.h>
 
-#include "core/rm-r.h"
 #include "ppkg.h"
 
 int ppkg_formula_repo_remove(const char * formulaRepoName) {
@@ -11,9 +11,7 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    size_t formulaRepoNameLength = strlen(formulaRepoName);
-
-    if (formulaRepoNameLength == 0) {
+    if (formulaRepoName[0] == '\0') {
         return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
@@ -22,21 +20,18 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR;
     }
 
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t formulaRepoPathLength = userHomeDirLength + formulaRepoNameLength + 16U;
-    char   formulaRepoPath[formulaRepoPathLength];
-    snprintf(formulaRepoPath, formulaRepoPathLength, "%s/.ppkg/repos.d/%s", userHomeDir, formulaRepoName);
+    size_t   formulaRepoPathLength = ppkgHomeDIRLength + strlen(formulaRepoName) + 10U;
+    char     formulaRepoPath[formulaRepoPathLength];
+    snprintf(formulaRepoPath, formulaRepoPathLength, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
 
     struct stat st;
 
@@ -45,12 +40,12 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR;
     }
 
-    size_t formulaRepoConfigFilePathLength = formulaRepoPathLength + 24U;
-    char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
+    size_t   formulaRepoConfigFilePathLength = formulaRepoPathLength + 24U;
+    char     formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
     snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
 
     if (stat(formulaRepoConfigFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-        return rm_r(formulaRepoPath, false);
+        return ppkg_rm_r(formulaRepoPath, false);
     } else {
         fprintf(stderr, "formula repo is broken: %s\n", formulaRepoName);
         return PPKG_ERROR;

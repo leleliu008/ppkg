@@ -1,6 +1,7 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -8,11 +9,11 @@
 
 #include "ppkg.h"
 
-static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, const char * sub) {
-    DIR * dir = opendir(installedDir);
+static int ppkg_list_dirs(const char * installedDIR, size_t installedDIRLength, const char * sub) {
+    DIR * dir = opendir(installedDIR);
 
     if (dir == NULL) {
-        perror(installedDir);
+        perror(installedDIR);
         return PPKG_ERROR;
     }
 
@@ -28,7 +29,7 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
                 closedir(dir);
                 break;
             } else {
-                perror(installedDir);
+                perror(installedDIR);
                 closedir(dir);
                 return PPKG_ERROR;
             }
@@ -40,24 +41,24 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
             continue;
         }
 
-        size_t packageInstalledDirLength = installedDirLength + strlen(dir_entry->d_name) + 2U;
-        char   packageInstalledDir[packageInstalledDirLength];
-        snprintf(packageInstalledDir, packageInstalledDirLength, "%s/%s", installedDir, dir_entry->d_name);
+        size_t packageInstalledDIRLength = installedDIRLength + strlen(dir_entry->d_name) + 2U;
+        char   packageInstalledDIR[packageInstalledDIRLength];
+        snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", installedDIR, dir_entry->d_name);
 
-        size_t receiptFilePathLength = packageInstalledDirLength + 20U;
+        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
         char   receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
 
         if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             if ((sub == NULL) || (sub[0] == '\0')) {
-                printf("%s\n", packageInstalledDir);
+                printf("%s\n", packageInstalledDIR);
             } else {
-                size_t subDirLength = packageInstalledDirLength + strlen(sub) + 2U;
-                char   subDir[subDirLength];
-                snprintf(subDir, subDirLength, "%s/%s", packageInstalledDir, sub);
+                size_t subDIRLength = packageInstalledDIRLength + strlen(sub) + 2U;
+                char   subDIR[subDIRLength];
+                snprintf(subDIR, subDIRLength, "%s/%s", packageInstalledDIR, sub);
 
-                if (stat(subDir, &st) == 0 && S_ISDIR(st.st_mode)) {
-                    printf("%s\n", subDir);
+                if (stat(subDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
+                    printf("%s\n", subDIR);
                 }
             }
         }
@@ -67,17 +68,17 @@ static int ppkg_list_dirs(const char * installedDir, size_t installedDirLength, 
 }
 
 int ppkg_env(bool verbose) {
-    char   ppkgHomeDir[256];
-    size_t ppkgHomeDirLength;
+    char   ppkgHomeDIR[256];
+    size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDir, 256, &ppkgHomeDirLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, 256, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    printf("ppkg.vers : %s\n", PPKG_VERSION);
-    printf("ppkg.home : %s\n", ppkgHomeDir);
+    printf("ppkg.version : %s\n", PPKG_VERSION);
+    printf("ppkg.homedir : %s\n", ppkgHomeDIR);
 
     char * selfRealPath = self_realpath();
 
@@ -86,11 +87,11 @@ int ppkg_env(bool verbose) {
         return PPKG_ERROR;
     }
 
-    printf("ppkg.path : %s\n", selfRealPath);
+    printf("ppkg.exepath : %s\n", selfRealPath);
 
     free(selfRealPath);
 
-    printf("ppkg.link : %s\n", "https://github.com/leleliu008/ppkg");
+    printf("ppkg.website : %s\n", "https://github.com/leleliu008/ppkg");
 
     if (!verbose) {
         return PPKG_OK;
@@ -98,13 +99,13 @@ int ppkg_env(bool verbose) {
 
     struct stat st;
 
-    size_t   installedDirLength = ppkgHomeDirLength + 11U;
-    char     installedDir[installedDirLength];
-    snprintf(installedDir, installedDirLength, "%s/installed", ppkgHomeDir);
+    size_t   installedDIRLength = ppkgHomeDIRLength + 11U;
+    char     installedDIR[installedDIRLength];
+    snprintf(installedDIR, installedDIRLength, "%s/installed", ppkgHomeDIR);
 
-    if (stat(installedDir, &st) == 0) {
+    if (stat(installedDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", installedDir);
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", installedDIR);
             return PPKG_ERROR;
         }
     } else {
@@ -112,13 +113,13 @@ int ppkg_env(bool verbose) {
     }
 
     printf("\nbinDirs:\n");
-    ppkg_list_dirs(installedDir, installedDirLength, "bin");
+    ppkg_list_dirs(installedDIR, installedDIRLength, "bin");
 
     printf("\nlibDirs:\n");
-    ppkg_list_dirs(installedDir, installedDirLength, "lib");
+    ppkg_list_dirs(installedDIR, installedDIRLength, "lib");
 
     printf("\naclocalDirs:\n");
-    ppkg_list_dirs(installedDir, installedDirLength, "share/aclocal");
+    ppkg_list_dirs(installedDIR, installedDIRLength, "share/aclocal");
     
     return PPKG_OK;
 }

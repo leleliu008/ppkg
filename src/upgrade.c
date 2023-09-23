@@ -7,11 +7,7 @@ int ppkg_upgrade(const char * packageName, PPKGInstallOptions options) {
         return ret;
     }
 
-    ret = ppkg_uninstall(packageName, options.logLevel >= PPKGLogLevel_verbose);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
+    options.force = true;
 
     return ppkg_install(packageName, options);
 }

@@ -1,66 +1,139 @@
+#include <math.h>
+#include <errno.h>
 #include <string.h>
-#include <libgen.h>
+
 #include <sys/stat.h>
 #include <sys/wait.h>
 
 #include "core/regex/regex.h"
-#include "core/mkdir_p.h"
 #include "core/sysinfo.h"
 #include "core/http.h"
 #include "core/tar.h"
 #include "core/log.h"
-#include "core/cp.h"
 
 #include "ppkg.h"
 
 int ppkg_setup(bool verbose) {
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     ////////////////////////////////////////////////////////////////
 
     struct stat st;
 
-    size_t   ppkgHomeDirLength = userHomeDirLength + 7U;
-    char     ppkgHomeDir[ppkgHomeDirLength];
-    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
+    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
+    char     ppkgRunDIR[ppkgRunDIRLength];
+    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
 
-    if (stat(ppkgHomeDir, &st) == 0) {
+    if (stat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgHomeDir);
-            return PPKG_ERROR;
+            if (unlink(ppkgRunDIR) == 0) {
+                perror(ppkgRunDIR);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(ppkgRunDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(ppkgRunDIR);
+                    return PPKG_ERROR;
+                }
+            }
         }
     } else {
-        if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
-            perror(ppkgHomeDir);
+        if (mkdir(ppkgRunDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(ppkgRunDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
+    char     sessionDIR[sessionDIRLength];
+    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+
+    if (lstat(sessionDIR, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            ret = ppkg_rm_r(sessionDIR, verbose);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            if (mkdir(sessionDIR, S_IRWXU) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+        } else {
+            if (unlink(sessionDIR) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(sessionDIR, S_IRWXU) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+        }
+    } else {
+        if (mkdir(sessionDIR, S_IRWXU) != 0) {
+            perror(sessionDIR);
             return PPKG_ERROR;
         }
     }
 
-    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   ppkgTmpDirLength = ppkgHomeDirLength + 5U;
-    char     ppkgTmpDir[ppkgTmpDirLength];
-    snprintf(ppkgTmpDir, ppkgTmpDirLength, "%s/tmp", ppkgHomeDir);
+    size_t   libexecDIRLength = sessionDIRLength + 9U;
+    char     libexecDIR[libexecDIRLength];
+    snprintf(libexecDIR, libexecDIRLength, "%s/libexec", sessionDIR);
 
-    if (stat(ppkgTmpDir, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgTmpDir);
-            return PPKG_ERROR;
-        }
-    } else {
-        if (mkdir(ppkgTmpDir, S_IRWXU) != 0) {
-            perror(ppkgTmpDir);
-            return PPKG_ERROR;
+    if (mkdir(libexecDIR, S_IRWXU) != 0) {
+        perror(libexecDIR);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    const char * const ppkgInstallScriptUrl = "https://raw.githubusercontent.com/leleliu008/ppkg/dev/ppkg-install";
+
+    size_t   ppkgInstallScriptFilePathLength = libexecDIRLength + 14U;
+    char     ppkgInstallScriptFilePath[ppkgInstallScriptFilePathLength];
+    snprintf(ppkgInstallScriptFilePath, ppkgInstallScriptFilePathLength, "%s/ppkg-install", libexecDIR);
+
+    ret = ppkg_http_fetch_to_file(ppkgInstallScriptUrl, ppkgInstallScriptFilePath, verbose, verbose);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    const char* compilers[3] = { "cc", "c++", "objc" };
+
+    for (int i = 0; i < 3; i++) {
+        const char * compiler = compilers[i];
+
+        size_t   wrapperCompilerSourceUrlLength = sessionDIRLength + 75U;
+        char     wrapperCompilerSourceUrl[wrapperCompilerSourceUrlLength];
+        snprintf(wrapperCompilerSourceUrl, wrapperCompilerSourceUrlLength, "https://raw.githubusercontent.com/leleliu008/ppkg/dev/ppkg-wrapper-%s.c", compiler);
+
+        size_t   wrapperCompilerSourceFilePathLength = sessionDIRLength + 25U;
+        char     wrapperCompilerSourceFilePath[wrapperCompilerSourceFilePathLength];
+        snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathLength, "%s/ppkg-wrapper-%s.c", sessionDIR, compiler);
+
+        ret = ppkg_http_fetch_to_file(wrapperCompilerSourceUrl, wrapperCompilerSourceFilePath, verbose, verbose);
+
+        if (ret != PPKG_OK) {
+            return ret;
         }
     }
 
@@ -68,15 +141,17 @@ int ppkg_setup(bool verbose) {
 
     const char * const githubApiUrl = "https://api.github.com/repos/leleliu008/uppm/releases/latest";
 
-    size_t   githubApiResultJsonFilePathLength = ppkgTmpDirLength + 18U;
+    size_t   githubApiResultJsonFilePathLength = sessionDIRLength + 18U;
     char     githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
-    snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest-uppm.json", ppkgTmpDir);
+    snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest-uppm.json", sessionDIR);
 
     char * latestReleaseName = NULL;
 
     char buf[30];
 
-    if (http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose) == 0) {
+    ret = ppkg_http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose);
+
+    if (ret == PPKG_OK) {
         FILE * file = fopen(githubApiResultJsonFilePath, "r");
 
         if (file == NULL) {
@@ -97,7 +172,7 @@ int ppkg_setup(bool verbose) {
                 }
             }
 
-            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"")) {
+            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"") == 0) {
                 size_t length = strlen(buf);
                 for (size_t i = 10; i < length; i++) {
                     if (j == 0) {
@@ -113,6 +188,12 @@ int ppkg_setup(bool verbose) {
                     }
                 }
                 break;
+            } else {
+                if (errno != 0) {
+                    perror(NULL);
+                    fclose(file);
+                    return PPKG_ERROR;
+                }
             }
         }
 
@@ -120,7 +201,7 @@ int ppkg_setup(bool verbose) {
     }
 
     if (latestReleaseName == NULL) {
-        latestReleaseName = (char*)"0.10.4+2f295170a1d24bc4736af99f4509c4b2a1c264fb";
+        latestReleaseName = (char*)"0.15.0+b5148c3e8fdbadc64120a0d88aae095cd5324a57";
     }
 
     char latestReleaseVersion[10] = {0};
@@ -149,8 +230,8 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t   tarballFileNameLength = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
-    char     tarballFileName[tarballFileNameLength];
+    size_t tarballFileNameLength = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
+    char   tarballFileName[tarballFileNameLength];
 
     if (strcmp(osType, "macos") == 0) {
         char osVersion[31] = {0};
@@ -180,8 +261,10 @@ int ppkg_setup(bool verbose) {
             x = "10.15";
         } else if (strcmp(osVersion, "11") == 0) {
             x = "11.0";
-        } else {
+        } else if (strcmp(osVersion, "12") == 0) {
             x = "12.0";
+        } else {
+            x = "13.0";
         }
 
         snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s%s-%s.tar.xz", latestReleaseVersion, osType, x, osArch);
@@ -193,62 +276,51 @@ int ppkg_setup(bool verbose) {
     char     tarballUrl[tarballUrlLength];
     snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestReleaseName, tarballFileName);
 
-    size_t   tarballFilePathLength = ppkgTmpDirLength + tarballFileNameLength + 2U;
+    size_t   tarballFilePathLength = sessionDIRLength + tarballFileNameLength + 2U;
     char     tarballFilePath[tarballFilePathLength];
-    snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", ppkgTmpDir, tarballFileName);
+    snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", sessionDIR, tarballFileName);
 
-    int ret = http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
+    }
+
+    ret = tar_extract(sessionDIR, tarballFilePath, 0, verbose, 1);
+
+    if (ret != ARCHIVE_OK) {
+        return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
     }
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t   ppkgCoreDirLength = ppkgHomeDirLength + 6U;
-    char     ppkgCoreDir[ppkgCoreDirLength];
-    snprintf(ppkgCoreDir, ppkgCoreDirLength, "%s/core", ppkgHomeDir);
+    size_t   etcDIRLength = sessionDIRLength + 5U;
+    char     etcDIR[etcDIRLength];
+    snprintf(etcDIR, etcDIRLength, "%s/etc", sessionDIR);
 
-    ret = tar_extract(ppkgCoreDir, tarballFilePath, 0, verbose, 1);
-
-    if (ret != ARCHIVE_OK) {
-        return ret;
+    if (mkdir(etcDIR, S_IRWXU) != 0) {
+        perror(etcDIR);
+        return PPKG_ERROR;
     }
 
-    size_t   cacertPemFilePathLength = ppkgTmpDirLength + 12U;
+    size_t   cacertPemFilePathLength = etcDIRLength + 12U;
     char     cacertPemFilePath[cacertPemFilePathLength];
-    snprintf(cacertPemFilePath, cacertPemFilePathLength, "%s/cacert.pem", ppkgTmpDir);
+    snprintf(cacertPemFilePath, cacertPemFilePathLength, "%s/cacert.pem", etcDIR);
 
-    ret = http_fetch_to_file("https://curl.se/ca/cacert.pem", cacertPemFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file("https://curl.se/ca/cacert.pem", cacertPemFilePath, verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    size_t   cacertDIRLength = ppkgCoreDirLength + 15U;
-    char     cacertDIR[cacertDIRLength];
-    snprintf(cacertDIR, cacertDIRLength, "%s/etc/ssl/certs", ppkgCoreDir);
-
-    if (mkdir_p(cacertDIR, verbose) != 0) {
-        return PPKG_ERROR;
-    }
-
-    size_t   cacertPemFilePath2Length = cacertDIRLength + 12U;
-    char     cacertPemFilePath2[cacertPemFilePath2Length];
-    snprintf(cacertPemFilePath2, cacertPemFilePath2Length, "%s/cacert.pem", cacertDIR);
-
-    if (copy_file(cacertPemFilePath, cacertPemFilePath2) != 0) {
-        return PPKG_ERROR;
-    }
-
-    if (setenv("SSL_CERT_FILE", cacertPemFilePath2, 1) != 0) {
+    if (setenv("SSL_CERT_FILE", cacertPemFilePath, 1) != 0) {
         perror("SSL_CERT_FILE");
         return PPKG_ERROR;
     }
 
-    size_t   uppmCmdPathLength = ppkgCoreDirLength + 10U;
+    size_t   uppmCmdPathLength = sessionDIRLength + 10U;
     char     uppmCmdPath[uppmCmdPathLength];
-    snprintf(uppmCmdPath, uppmCmdPathLength, "%s/bin/uppm", ppkgCoreDir);
+    snprintf(uppmCmdPath, uppmCmdPathLength, "%s/bin/uppm", sessionDIR);
 
     pid_t pid = fork();
 
@@ -258,9 +330,9 @@ int ppkg_setup(bool verbose) {
     }
 
     if (pid == 0) {
-        execl(uppmCmdPath, "update", NULL);
+        execl(uppmCmdPath, uppmCmdPath, "update", NULL);
         perror(uppmCmdPath);
-        exit(127);
+        exit(255);
     } else {
         int childProcessExitStatusCode;
 
@@ -269,9 +341,7 @@ int ppkg_setup(bool verbose) {
             return PPKG_ERROR;
         }
 
-        if (childProcessExitStatusCode == 0) {
-            return PPKG_OK;
-        } else {
+        if (childProcessExitStatusCode != 0) {
             size_t   cmdLength = uppmCmdPathLength + 6U;
             char     cmd[cmdLength];
             snprintf(cmd, cmdLength, "%s update", uppmCmdPath);
@@ -286,5 +356,33 @@ int ppkg_setup(bool verbose) {
 
             return PPKG_ERROR;
         }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+    size_t   ppkgCoreDIRLength = ppkgHomeDIRLength + 6U;
+    char     ppkgCoreDIR[ppkgCoreDIRLength];
+    snprintf(ppkgCoreDIR, ppkgCoreDIRLength, "%s/core", ppkgHomeDIR);
+
+    if (lstat(ppkgCoreDIR, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            ret = ppkg_rm_r(ppkgCoreDIR, verbose);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        } else {
+            if (unlink(ppkgCoreDIR) != 0) {
+                perror(ppkgCoreDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    if (rename(sessionDIR, ppkgCoreDIR) != 0) {
+        perror(ppkgCoreDIR);
+        return PPKG_ERROR;
+    } else {
+        return PPKG_OK;
     }
 }

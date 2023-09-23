@@ -1,27 +1,20 @@
 #ifndef BASE_16_H
 #define BASE_16_H
     
-    #include <stdlib.h>
-    #include <stdbool.h>
-     
-    #ifdef __cplusplus
-        extern "C" {
-    #endif
+#include <stdlib.h>
+#include <stdbool.h>
 
-            /* base16编码
-             * output               base16编码后的字符串
-             * input                要编码的字节的起始指针
-             * inputLengthInBytes   要编码的字节的长度
-             * isToUpper            是否编码为大写字母
-             */
-            int base16_encode(char * output, const unsigned char * input, size_t inputSizeInBytes, bool isToUpper);
+/* base16编码
+ * outputBuf               base16编码后的字符串, 你需要自己确保这个buffer不够大到能容纳所有编码后的内容，你需要自己添加\0
+ * inputBuf                要编码的字节的起始指针
+ * inputBufLengthInBytes   要编码的字节的长度
+ * isToUpper            是否编码为大写字母
+ */
+int base16_encode(char * outputBuf, const unsigned char * inputBuf, size_t inputBufSizeInBytes, bool isToUpper);
 
-            /* base16解码
-             * input base16编码的字符串
-             */
-            int base16_decode(unsigned char * output, const char * input, size_t inputSizeInBytes);
+/* base16解码
+ * inputBuf base16编码的字符串
+ */
+int base16_decode(unsigned char * outputBuf, const char * inputBuf, size_t inputBufSizeInBytes);
 
-    #ifdef __cplusplus
-        }
-    #endif
 #endif

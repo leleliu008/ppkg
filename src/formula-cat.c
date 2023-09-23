@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "ppkg.h"
 
 int ppkg_formula_cat(const char * packageName) {
@@ -12,9 +15,9 @@ int ppkg_formula_cat(const char * packageName) {
         return ret;
     }
 
-    FILE * file = fopen(formulaFilePath, "r");
+    int fd = open(formulaFilePath, O_RDONLY);
 
-    if (file == NULL) {
+    if (fd == -1) {
         perror(formulaFilePath);
         free(formulaFilePath);
         return PPKG_ERROR;
@@ -25,25 +28,34 @@ int ppkg_formula_cat(const char * packageName) {
     free(formulaFilePath);
     formulaFilePath = NULL;
 
-    char   buff[1024];
-    size_t size;
+    char buf[1024];
 
     for(;;) {
-        size = fread(buff, 1, 1024, file);
+        ssize_t readSize = read(fd, buf, 1024);
 
-        if (ferror(file)) {
-            fclose(file);
+        if (readSize == -1) {
+            perror(formulaFilePath);
+            close(fd);
             return PPKG_ERROR;
         }
 
-        if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
-            fclose(file);
-            return PPKG_ERROR;
-        }
-
-        if (feof(file)) {
-            fclose(file);
+        if (readSize == 0) {
+            close(fd);
             return PPKG_OK;
+        }
+
+        ssize_t writeSize = write(STDOUT_FILENO, buf, readSize);
+
+        if (writeSize == -1) {
+            perror(NULL);
+            close(fd);
+            return PPKG_ERROR;
+        }
+
+        if (writeSize != readSize) {
+            fprintf(stderr, "not fully written to stdout.");
+            close(fd);
+            return PPKG_ERROR;
         }
     }
 }

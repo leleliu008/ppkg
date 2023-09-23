@@ -1,5 +1,5 @@
-#ifndef PPKG_LOG_H
-#define PPKG_LOG_H
+#ifndef _LOG_H
+#define _LOG_H
 
 #include <stdio.h>
 

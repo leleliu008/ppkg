@@ -2,17 +2,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
 #include "url-transform.h"
 
-static int url_transform_read(int readEndFD, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes) {
+static int url_transform_read(int inputFD, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes) {
     char buf[1024];
 
     for (;;) {
-        ssize_t readSize = read(readEndFD, buf, 1024);
+        ssize_t readSize = read(inputFD, buf, 1024);
 
         if (readSize == 0) {
             return 0;

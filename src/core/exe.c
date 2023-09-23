@@ -1,5 +1,7 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -7,56 +9,58 @@
 
 int exe_search(const char * commandName, char *** listP, size_t * listSize, bool findAll) {
     if (commandName == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
-    size_t commandNameLength = strlen(commandName);
-
-    if (commandNameLength == 0) {
-        return PPKG_ERROR_ARG_IS_EMPTY;
+    if (commandName[0] == '\0') {
+        errno = EINVAL;
+        return -1;
     }
 
     if (listP == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
     if (listSize == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
-    char * PATH = getenv("PATH");
+    const char * const PATH = getenv("PATH");
 
     if (PATH == NULL) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+        return -2;
     }
 
-    size_t PATHLength = strlen(PATH);
-
-    if (PATHLength == 0) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    if (PATH[0] == '\0') {
+        return -3;
     }
 
-    size_t  PATH2Length = PATHLength + 1;
+    size_t  PATH2Length = strlen(PATH) + 1U;
     char    PATH2[PATH2Length];
     strncpy(PATH2, PATH, PATH2Length);
 
     struct stat st;
 
+    size_t commandNameLength = strlen(commandName);
+
     char ** stringArrayList = NULL;
-    size_t  stringArrayListCapcity = 0;
-    size_t  stringArrayListSize    = 0;
+    size_t  stringArrayListSize    = 0U;
+    size_t  stringArrayListCapcity = 0U;
 
     char * PATHItem = strtok(PATH2, ":");
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t fullPathLength = strlen(PATHItem) + commandNameLength + 2;
-            char   fullPath[fullPathLength];
+            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
+            char     fullPath[fullPathLength];
             snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
 
             if (access(fullPath, X_OK) == 0) {
                 if (stringArrayListCapcity == stringArrayListSize) {
-                    stringArrayListCapcity += 2;
+                    stringArrayListCapcity += 2U;
 
                     char** paths = (char**)realloc(stringArrayList, stringArrayListCapcity * sizeof(char*));
 
@@ -68,7 +72,8 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
                             }
                             free(stringArrayList);
                         }
-                        return PPKG_ERROR_MEMORY_ALLOCATE;
+                        errno = ENOMEM;
+                        return -1;
                     } else {
                         stringArrayList = paths;
                     }
@@ -84,11 +89,12 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
                         }
                         free(stringArrayList);
                     }
-                    return PPKG_ERROR_MEMORY_ALLOCATE;
+                    errno = ENOMEM;
+                    return -1;
                 }
 
                 stringArrayList[stringArrayListSize] = fullPathDup;
-                stringArrayListSize += 1;
+                stringArrayListSize += 1U;
 
                 if (!findAll) {
                     break;
@@ -102,55 +108,57 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
     (*listP)    = stringArrayList;
     (*listSize) = stringArrayListSize;
 
-    return stringArrayList == NULL ? PPKG_ERROR_EXE_NOT_FOUND : PPKG_OK;
+    return 0;
 }
 
 int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
     if (commandName == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
-    size_t commandNameLength = strlen(commandName);
-
-    if (commandNameLength == 0) {
-        return PPKG_ERROR_ARG_IS_EMPTY;
+    if (commandName[0] == '\0') {
+        errno = EINVAL;
+        return -1;
     }
 
     if (pathP == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
-    char * PATH = getenv("PATH");
+    const char * const PATH = getenv("PATH");
 
     if (PATH == NULL) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+        return -2;
     }
 
-    size_t PATHLength = strlen(PATH);
-
-    if (PATHLength == 0) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    if (PATH[0] == '\0') {
+        return -3;
     }
 
-    size_t  PATH2Length = PATHLength + 1;
+    size_t  PATH2Length = strlen(PATH) + 1U;
     char    PATH2[PATH2Length];
     strncpy(PATH2, PATH, PATH2Length);
 
     struct stat st;
 
+    size_t commandNameLength = strlen(commandName);
+
     char * PATHItem = strtok(PATH2, ":");
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t fullPathLength = strlen(PATHItem) + commandNameLength + 2;
-            char   fullPath[fullPathLength];
+            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
+            char     fullPath[fullPathLength];
             snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
 
             if (access(fullPath, X_OK) == 0) {
                 char * fullPathDup = strdup(fullPath);
 
                 if (fullPathDup == NULL) {
-                    return PPKG_ERROR_MEMORY_ALLOCATE;
+                    errno = ENOMEM;
+                    return -1;
                 }
 
                 (*pathP) = fullPathDup;
@@ -159,63 +167,70 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
                     (*pathLength) = fullPathLength;
                 }
 
-                return PPKG_OK;
+                return 0;
             }
         }
 
         PATHItem = strtok(NULL, ":");
     }
 
-    return PPKG_ERROR_EXE_NOT_FOUND;
-}
-
-int exe_lookup2(const char * commandName, char buf[], size_t * writtenSize, size_t maxSize) {
-    if (commandName == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+    if (pathLength != NULL) {
+        (*pathLength) = 0;
     }
 
-    size_t commandNameLength = strlen(commandName);
+    (*pathP) = NULL;
+    return 0;
+}
 
-    if (commandNameLength == 0) {
-        return PPKG_ERROR_ARG_IS_EMPTY;
+int exe_where(const char * commandName, char buf[], size_t * writtenSize, size_t maxSize) {
+    if (commandName == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (commandName[0] == '\0') {
+        errno = EINVAL;
+        return -1;
     }
 
     if (buf == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
+        errno = EINVAL;
+        return -1;
     }
 
-    if (maxSize == 0) {
-        return PPKG_ERROR_ARG_IS_INVALID;
+    if (maxSize == 0U) {
+        errno = EINVAL;
+        return -1;
     }
 
-    char * PATH = getenv("PATH");
+    const char * const PATH = getenv("PATH");
 
     if (PATH == NULL) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+        return -2;
     }
 
-    size_t PATHLength = strlen(PATH);
-
-    if (PATHLength == 0) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    if (PATH[0] == '\0') {
+        return -3;
     }
 
-    size_t  PATH2Length = PATHLength + 1;
+    size_t  PATH2Length = strlen(PATH) + 1U;
     char    PATH2[PATH2Length];
     strncpy(PATH2, PATH, PATH2Length);
 
     struct stat st;
 
+    size_t commandNameLength = strlen(commandName);
+
     char * PATHItem = strtok(PATH2, ":");
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t fullPathLength = strlen(PATHItem) + commandNameLength + 2;
-            char   fullPath[fullPathLength];
+            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
+            char     fullPath[fullPathLength];
             snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
 
             if (access(fullPath, X_OK) == 0) {
-                size_t n = maxSize > fullPathLength ? fullPathLength : maxSize;
+                size_t n = (maxSize > fullPathLength) ? fullPathLength : maxSize;
 
                 strncpy(buf, fullPath, n);
 
@@ -223,12 +238,16 @@ int exe_lookup2(const char * commandName, char buf[], size_t * writtenSize, size
                     (*writtenSize) = n;
                 }
 
-                return PPKG_OK;
+                return 0;
             }
         }
 
         PATHItem = strtok(NULL, ":");
     }
 
-    return PPKG_ERROR_EXE_NOT_FOUND;
+    if (writtenSize != NULL) {
+        (*writtenSize) = 0;
+    }
+
+    return 0;
 }

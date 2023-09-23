@@ -1,55 +1,52 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+
 #include <dirent.h>
 #include <sys/stat.h>
 
 #include "core/log.h"
+
 #include "ppkg.h"
 
 int ppkg_list_the_installed_packages() {
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     struct stat st;
 
-    size_t ppkgInstalledDirLength = userHomeDirLength + 17U; 
-    char   ppkgInstalledDir[ppkgInstalledDirLength];
-    snprintf(ppkgInstalledDir, ppkgInstalledDirLength, "%s/.ppkg/installed", userHomeDir);
+    size_t   ppkgInstalledDIRLength = ppkgHomeDIRLength + 11U; 
+    char     ppkgInstalledDIR[ppkgInstalledDIRLength];
+    snprintf(ppkgInstalledDIR, ppkgInstalledDIRLength, "%s/installed", ppkgHomeDIR);
 
-    if (stat(ppkgInstalledDir, &st) != 0 || (!S_ISDIR(st.st_mode))) {
+    if (stat(ppkgInstalledDIR, &st) != 0 || (!S_ISDIR(st.st_mode))) {
         return PPKG_OK;
     }
 
-    DIR * dir = opendir(ppkgInstalledDir);
+    DIR * dir = opendir(ppkgInstalledDIR);
 
     if (dir == NULL) {
-        perror(ppkgInstalledDir);
+        perror(ppkgInstalledDIR);
         return PPKG_ERROR;
     }
-
-    struct dirent * dir_entry;
 
     for (;;) {
         errno = 0;
 
-        dir_entry = readdir(dir);
+        struct dirent * dir_entry = readdir(dir);
 
         if (dir_entry == NULL) {
             if (errno == 0) {
                 closedir(dir);
                 break;
             } else {
-                perror(ppkgInstalledDir);
+                perror(ppkgInstalledDIR);
                 closedir(dir);
                 return PPKG_ERROR;
             }
@@ -59,11 +56,23 @@ int ppkg_list_the_installed_packages() {
             continue;
         }
 
-        size_t receiptFilePathLength = ppkgInstalledDirLength + strlen(dir_entry->d_name) + 20U;
-        char   receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/%s/.ppkg/receipt.yml", ppkgInstalledDir, dir_entry->d_name);
+        size_t   packageInstalledDIRLength = ppkgInstalledDIRLength + strlen(dir_entry->d_name) + 2U;
+        char     packageInstalledDIR[packageInstalledDIRLength];
+        snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", ppkgInstalledDIR, dir_entry->d_name);
 
-        if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
+        if (lstat(packageInstalledDIR, &st) == 0) {
+            if (!S_ISLNK(st.st_mode)) {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        size_t   receiptFilePathLength = packageInstalledDIRLength + 20U;
+        char     receiptFilePath[receiptFilePathLength];
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+
+        if (lstat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             printf("%s\n", dir_entry->d_name);
         }
     }

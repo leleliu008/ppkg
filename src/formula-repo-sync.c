@@ -1,9 +1,11 @@
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <unistd.h>
-#include <time.h>
 
 #include "core/log.h"
+
 #include "ppkg.h"
 
 int ppkg_formula_repo_sync_(const char * formulaRepoName) {
@@ -40,12 +42,21 @@ int ppkg_formula_repo_sync(PPKGFormulaRepo * formulaRepo) {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t refspecLength = (strlen(formulaRepo->branch) << 1) + 33U;
-    char   refspec[refspecLength];
-    snprintf(refspec, refspecLength, "refs/heads/%s:refs/remotes/origin/%s", formulaRepo->branch, formulaRepo->branch);
+    const char * branchName = formulaRepo->branch;
+    size_t       branchNameLength = strlen(branchName);
 
-    if (ppkg_fetch_via_git(formulaRepo->path, formulaRepo->url, refspec, formulaRepo->branch) != 0) {
-        return PPKG_ERROR;
+    size_t   remoteRefPathLength = branchNameLength + 12U;
+    char     remoteRefPath[remoteRefPathLength];
+    snprintf(remoteRefPath, remoteRefPathLength, "refs/heads/%s", branchName);
+
+    size_t   remoteTrackingRefPathLength = branchNameLength + 21U;
+    char     remoteTrackingRefPath[remoteTrackingRefPathLength];
+    snprintf(remoteTrackingRefPath, remoteTrackingRefPathLength, "refs/remotes/origin/%s", branchName);
+
+    int ret = ppkg_git_sync(formulaRepo->path, formulaRepo->url, remoteRefPath, remoteTrackingRefPath, branchName);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+
 #include <sys/stat.h>
 
 #include "ppkg.h"
@@ -9,18 +10,6 @@ int ppkg_formula_locate(const char * packageName, char ** out) {
 
     if (ret != PPKG_OK) {
         return ret;
-    }
-
-    char * userHomeDir = getenv("HOME");
-
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
     }
 
     PPKGFormulaRepoList * formulaRepoList = NULL;

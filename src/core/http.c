@@ -1,25 +1,49 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <libgen.h>
 #include <stdbool.h>
+
+#include <unistd.h>
+
 #include <curl/curl.h>
 #include <curl/curlver.h>
 
 #include "http.h"
 
-//static size_t write_callback(void * ptr, size_t size, size_t nmemb, void * stream) {
-//    return fwrite(ptr, size, nmemb, (FILE *)stream);
-//}
-
 int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool showProgress) {
-    if (outputFile == NULL) {
-        size_t  urlCopyLength = strlen(url) + 1U;
-        char    urlCopy[urlCopyLength];
-        strncpy(urlCopy, url, urlCopyLength);
+    if (url == NULL || url[0] == '\0') {
+        errno = EINVAL;
+        return -1;
+    }
 
-        const char * filename = basename(urlCopy);
+    if (outputFile == NULL) {
+        size_t i = 0U;
+        size_t j = 0U;
+
+        for (;;) {
+            char c = url[i];
+
+            if (c == '\0') {
+                break;
+            }
+
+            if (c == '/') {
+                j = i;
+            }
+
+            i++;
+        }
+
+        if (j == 0U) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        size_t size = i - j + 1U;
+        char   filename[size];
+
+        strncpy(filename, url + j + 1U, size);
 
         outputFile = fopen(filename, "wb");
 
@@ -46,6 +70,9 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
 
     // https://curl.se/libcurl/c/CURLOPT_FAILONERROR.html
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    // https://curl.se/libcurl/c/CURLOPT_TIMEOUT.html
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
 
     // https://curl.se/libcurl/c/CURLOPT_VERBOSE.html
     curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose ? 1 : 0);

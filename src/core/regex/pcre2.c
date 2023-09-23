@@ -1,13 +1,15 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 #include <pcre2.h>
+#include <regex.h>
 
-bool regex_matched(const char * content, const char * pattern) {
+int regex_matched(const char * content, const char * pattern) {
     if (content == NULL || pattern == NULL) {
-        return false;
+        errno = EINVAL;
+        return -1;
     }
 
     int errorcode = 0;
@@ -18,7 +20,8 @@ bool regex_matched(const char * content, const char * pattern) {
         PCRE2_UCHAR buffer[256];
         pcre2_get_error_message(errorcode, buffer, sizeof(buffer));
         fprintf(stderr, "PCRE2 compilation failed at offset %d: %s\n", (int)erroroffset, buffer);
-        return false;
+        errno = EINVAL;
+        return -1;
     }
 
     pcre2_match_data * match_data = pcre2_match_data_create_from_pattern(re, NULL);
@@ -38,8 +41,9 @@ bool regex_matched(const char * content, const char * pattern) {
     pcre2_code_free(re);
 
     if (rc < 0) {
-        return false;
+        errno = 0;
+        return -1;
     } else {
-        return true;
+        return 0;
     }
 }

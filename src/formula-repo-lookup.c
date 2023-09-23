@@ -1,42 +1,40 @@
 #include <stdio.h>
 #include <string.h>
+
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
 int ppkg_formula_repo_lookup(const char * formulaRepoName, PPKGFormulaRepo * * formulaRepoPP) {
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     size_t formulaRepoNameLength = strlen(formulaRepoName);
 
-    size_t formulaRepoDirPathLength = userHomeDirLength + formulaRepoNameLength + 16U;
-    char   formulaRepoDirPath[formulaRepoDirPathLength];
-    snprintf(formulaRepoDirPath, formulaRepoDirPathLength, "%s/.ppkg/repos.d/%s", userHomeDir, formulaRepoName);
+    size_t formulaRepoDIRPathLength = ppkgHomeDIRLength + formulaRepoNameLength + 10U;
+    char   formulaRepoDIRPath[formulaRepoDIRPathLength];
+    snprintf(formulaRepoDIRPath, formulaRepoDIRPathLength, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
 
     struct stat st;
 
-    if (stat(formulaRepoDirPath, &st) == 0) {
+    if (stat(formulaRepoDIRPath, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", formulaRepoDirPath);
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", formulaRepoDIRPath);
             return PPKG_ERROR;
         }
     } else {
         return PPKG_ERROR_FORMULA_REPO_NOT_FOUND;
     }
 
-    size_t formulaRepoConfigFilePathLength = formulaRepoDirPathLength + 24U;
+    size_t formulaRepoConfigFilePathLength = formulaRepoDIRPathLength + 24U;
     char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
-    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoDirPath);
+    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoDIRPath);
 
     if (!((stat(formulaRepoConfigFilePath, &st) == 0) && S_ISREG(st.st_mode))) {
         return PPKG_ERROR_FORMULA_REPO_NOT_FOUND;
@@ -44,7 +42,7 @@ int ppkg_formula_repo_lookup(const char * formulaRepoName, PPKGFormulaRepo * * f
 
     PPKGFormulaRepo * formulaRepo = NULL;
 
-    int ret = ppkg_formula_repo_parse(formulaRepoConfigFilePath, &formulaRepo);
+    ret = ppkg_formula_repo_parse(formulaRepoConfigFilePath, &formulaRepo);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -57,7 +55,7 @@ int ppkg_formula_repo_lookup(const char * formulaRepoName, PPKGFormulaRepo * * f
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    formulaRepo->path = strdup(formulaRepoDirPath);
+    formulaRepo->path = strdup(formulaRepoDIRPath);
 
     if (formulaRepo->path == NULL) {
         ppkg_formula_repo_free(formulaRepo);

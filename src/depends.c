@@ -1,169 +1,18 @@
 #include <time.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
+#include <fcntl.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
-#include <curl/curl.h>
+
+#include "core/http.h"
+#include "core/url.h"
 
 #include "ppkg.h"
-
-static size_t write_callback(void * ptr, size_t size, size_t nmemb, void * stream) {
-    return fwrite(ptr, size, nmemb, (FILE *)stream);
-}
-
-static int ppkg_depends_make_box(const char * dotScriptStr, const char * outputFilePath) {
-    curl_global_init(CURL_GLOBAL_ALL);
-
-    CURL * curl = curl_easy_init();
-
-    char * dataUrlEncoded = curl_easy_escape(curl, dotScriptStr, strlen(dotScriptStr));
-
-    size_t urlLength = strlen(dataUrlEncoded) + 66U;
-    char   url[urlLength];
-    snprintf(url, urlLength, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", dataUrlEncoded);
-
-    //printf("url=%s\n", url);
-
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-
-    bool verbose = false;
-    bool showProgress = false;
-
-    // https://curl.se/libcurl/c/CURLOPT_VERBOSE.html
-    if (verbose) {
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-    } else {
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
-    }
-
-    // https://curl.se/libcurl/c/CURLOPT_NOPROGRESS.html
-    if (showProgress) {
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
-    } else {
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-    }
-
-    CURLcode curlcode = CURLE_OK;
-
-    int ret = PPKG_OK;
-
-    if (outputFilePath != NULL) {
-        FILE * outputFile = fopen(outputFilePath, "wb");
-
-        if (outputFile == NULL) {
-            perror(outputFilePath);
-            ret = PPKG_ERROR;
-            goto finalize;
-        }
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, outputFile);
-    }
-
-    curlcode = curl_easy_perform(curl);
-
-finalize:
-
-    if (curlcode != CURLE_OK) {
-        fprintf(stderr, "%s\n", curl_easy_strerror(curlcode));
-        ret = PPKG_ERROR_NETWORK_BASE + curlcode;
-    }
-
-    curl_free(dataUrlEncoded);
-    curl_easy_cleanup(curl);
-    curl_global_cleanup();
-
-    return ret;
-}
-
-static int ppkg_depends_make_xxx(const char * dotScriptStr, size_t len, const char * tOption, const char * oOption) {
-    char * userHomeDir = getenv("HOME");
-
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t userHomeDirLength = strlen(userHomeDir);
-
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    ////////////////////////////////////////////////////////////////
-
-    struct stat st;
-
-    size_t ppkgHomeDirLength = userHomeDirLength + 7U;
-    char   ppkgHomeDir[ppkgHomeDirLength];
-    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
-
-    if (stat(ppkgHomeDir, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgHomeDir);
-            return PPKG_ERROR;
-        }
-    } else {
-        if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
-            perror(ppkgHomeDir);
-            return PPKG_ERROR;
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////
-
-    size_t ppkgTmpDirLength = ppkgHomeDirLength + 5U;
-    char   ppkgTmpDir[ppkgTmpDirLength];
-    snprintf(ppkgTmpDir, ppkgTmpDirLength, "%s/tmp", ppkgHomeDir);
-
-    if (stat(ppkgTmpDir, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgTmpDir);
-            return PPKG_ERROR;
-        }
-    } else {
-        if (mkdir(ppkgTmpDir, S_IRWXU) != 0) {
-            perror(ppkgTmpDir);
-            return PPKG_ERROR;
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////
-
-    char ts[11] = {0};
-    snprintf(ts, 11, "%ld", time(NULL));
-
-    size_t filepathLength = ppkgTmpDirLength + strlen(ts) + 6U;
-    char   filepath[filepathLength];
-    snprintf(filepath, filepathLength, "%s/%s.dot", ppkgTmpDir, ts);
-
-    FILE * file = fopen(filepath, "w");
-
-    if (file == NULL) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (fwrite(dotScriptStr, 1, len, file) != len || ferror(file)) {
-        perror(filepath);
-        fclose(file);
-        return PPKG_ERROR;
-    }
-
-    fclose(file);
-
-    if (oOption == NULL) {
-        execlp("dot", "dot", tOption,          filepath, NULL);
-    } else {
-        execlp("dot", "dot", tOption, oOption, filepath, NULL);
-    }
-
-    perror("dot");
-
-    return PPKG_ERROR;
-}
 
 static int string_append(char ** outP, size_t * outSize, size_t * outCapcity, const char * buf, size_t bufLength) {
     size_t  oldCapcity = (*outCapcity);
@@ -180,7 +29,7 @@ static int string_append(char ** outP, size_t * outSize, size_t * outCapcity, co
         } else {
             (*outP) = p;
             (*outCapcity) = newCapcity;
-            memset(&p[*outSize], 0, 256 + bufLength + 1);
+            memset(&p[*outSize], 0, 256U + bufLength + 1U);
         }
     }
 
@@ -200,9 +49,9 @@ typedef struct {
     char * nodeList;
     size_t nodeListSize;
     size_t nodeListCapcity;
-} DirectedPath;
+} DIRectedPath;
 
-int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputFilePath) {
+static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputType, const char * outputFilePath) {
     int ret = PPKG_OK;
 
     ////////////////////////////////////////////////////////////////
@@ -210,12 +59,6 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
     char * p = NULL;
     size_t pSize = 0;
     size_t pCapcity = 0;
-
-    ////////////////////////////////////////////////////////////////
-
-    size_t          directedPathArrayListCapcity = 0;
-    size_t          directedPathArrayListSize    = 0;
-    DirectedPath ** directedPathArrayList        = NULL;
 
     ////////////////////////////////////////////////////////////////
 
@@ -269,7 +112,7 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
             }
 
             if (packageSetSize == packageSetCapcity) {
-                PPKGPackage ** p = (PPKGPackage**)realloc(packageSet, (packageSetCapcity + 10) * sizeof(PPKGPackage*));
+                PPKGPackage ** p = (PPKGPackage**)realloc(packageSet, (packageSetCapcity + 10U) * sizeof(PPKGPackage*));
 
                 if (p == NULL) {
                     free(packageName);
@@ -315,8 +158,8 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
 
         ////////////////////////////////////////////////////////////////
 
-        size_t bufLength = strlen(packageName) + 12U;
-        char   buf[bufLength];
+        size_t   bufLength = strlen(packageName) + 12U;
+        char     buf[bufLength];
         snprintf(buf, bufLength, "    \"%s\" -> {", packageName);
 
         ret = string_append(&p, &pSize, &pCapcity, buf, bufLength - 1);
@@ -348,7 +191,7 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
             char    buf[bufLength];
             snprintf(buf, bufLength, " \"%s\"", depPackageName);
 
-            ret = string_append(&p, &pSize, &pCapcity, buf, bufLength - 1);
+            ret = string_append(&p, &pSize, &pCapcity, buf, bufLength - 1U);
 
             if (ret != PPKG_OK) {
                 goto finalize;
@@ -359,7 +202,7 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
             ////////////////////////////////////////////////////////////////
 
             if (packageNameStackSize == packageNameStackCapcity) {
-                char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10) * sizeof(char*));
+                char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10U) * sizeof(char*));
 
                 if (p == NULL) {
                     ret = PPKG_ERROR_MEMORY_ALLOCATE;
@@ -428,82 +271,303 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    if (outputFilePath != NULL && outputFilePath[0] == '\0') {
-        outputFilePath = NULL;
-    }
+    size_t   dotScriptStrLength = pSize + 14U;
+    char     dotScriptStr[dotScriptStrLength];
+    snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
+
+    free(p);
+
+    dotScriptStrLength--;
 
     ////////////////////////////////////////////////////////////////
 
     if (outputType == PPKGDependsOutputType_DOT) {
         if (outputFilePath == NULL) {
-            printf("digraph G {\n%s}\n", p);
-            free(p);
+            printf("%s\n", dotScriptStr);
             return PPKG_OK;
-        } else {
-            FILE * outputFile = fopen(outputFilePath, "wb");
+        }
+    }
 
-            if (outputFile == NULL) {
-                perror(outputFilePath);
-                free(p);
+    ////////////////////////////////////////////////////////////////
+
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
+
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    ////////////////////////////////////////////////////////////////
+
+    struct stat st;
+
+    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
+    char     ppkgRunDIR[ppkgRunDIRLength];
+    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+
+    if (lstat(ppkgRunDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            if (unlink(ppkgRunDIR) != 0) {
+                perror(ppkgRunDIR);
                 return PPKG_ERROR;
             }
 
-            fprintf(outputFile, "digraph G {\n%s}\n", p);
-
-            free(p);
-
-            if (ferror(outputFile)) {
-                perror(outputFilePath);
-                fclose(outputFile);
-                return PPKG_ERROR;
-            } else {
-                fclose(outputFile);
-                return PPKG_OK;
+            if (mkdir(ppkgRunDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(ppkgRunDIR);
+                    return PPKG_ERROR;
+                }
             }
-        }
-    } else if (outputType == PPKGDependsOutputType_BOX) {
-        size_t dotScriptStrLength = pSize + 14U;
-        char   dotScriptStr[dotScriptStrLength];
-        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
-
-        free(p);
-
-        return ppkg_depends_make_box(dotScriptStr, outputFilePath);
-    } else if (outputType == PPKGDependsOutputType_PNG) {
-        size_t dotScriptStrLength = pSize + 14U;
-        char   dotScriptStr[dotScriptStrLength];
-        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
-
-        free(p);
-
-        if (outputFilePath == NULL) {
-            return ppkg_depends_make_xxx(dotScriptStr, dotScriptStrLength - 1, "-Tpng", NULL);
-        } else {
-            size_t oOptionLength=strlen(outputFilePath) + 3U;
-            char   oOption[oOptionLength];
-            snprintf(oOption, oOptionLength, "-o%s", outputFilePath);
-
-            return ppkg_depends_make_xxx(dotScriptStr, dotScriptStrLength - 1, "-Tpng", oOption);
-        }
-    } else if (outputType == PPKGDependsOutputType_SVG) {
-        size_t dotScriptStrLength = pSize + 14U;
-        char   dotScriptStr[dotScriptStrLength];
-        snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
-
-        free(p);
-
-        if (outputFilePath == NULL) {
-            return ppkg_depends_make_xxx(dotScriptStr, dotScriptStrLength - 1, "-Tsvg", NULL);
-        } else {
-            size_t oOptionLength=strlen(outputFilePath) + 3U;
-            char   oOption[oOptionLength];
-            snprintf(oOption, oOptionLength, "-o%s", outputFilePath);
-
-            return ppkg_depends_make_xxx(dotScriptStr, dotScriptStrLength - 1, "-Tsvg", oOption);
         }
     } else {
-        free(p);
+        if (mkdir(ppkgRunDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(ppkgRunDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+
+    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
+    char     sessionDIR[sessionDIRLength];
+    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+
+    if (lstat(sessionDIR, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            ret = ppkg_rm_r(sessionDIR, false);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            if (mkdir(sessionDIR, S_IRWXU) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+        } else {
+            if (unlink(sessionDIR) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(sessionDIR, S_IRWXU) != 0) {
+                perror(sessionDIR);
+                return PPKG_ERROR;
+            }
+        }
+    } else {
+        if (mkdir(sessionDIR, S_IRWXU) != 0) {
+            perror(sessionDIR);
+            return PPKG_ERROR;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+
+    if (outputType == PPKGDependsOutputType_BOX) {
+        size_t urlEncodedBufLength = 3 * dotScriptStrLength + 1U;
+        char   urlEncodedBuf[urlEncodedBufLength];
+        memset(urlEncodedBuf, 0, urlEncodedBufLength);
+
+        size_t urlEncodedRealLength = 0;
+
+        if (url_encode(urlEncodedBuf, &urlEncodedRealLength, (unsigned char *)dotScriptStr, dotScriptStrLength, true) != 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        size_t   urlLength = urlEncodedRealLength + 66U;
+        char     url[urlLength];
+        snprintf(url, urlLength, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", urlEncodedBuf);
+
+        //printf("url=%s\n", url);
+
+        if (outputFilePath == NULL) {
+            int ret = http_fetch_to_stream(url, stdout, false, false);
+
+            if (ret == -1) {
+                return PPKG_ERROR;
+            }
+
+            if (ret > 0) {
+                return PPKG_ERROR_NETWORK_BASE + ret;
+            }
+
+            return PPKG_OK;
+        } else {
+            size_t   boxFilePathLength = sessionDIRLength + 18U;
+            char     boxFilePath[boxFilePathLength];
+            snprintf(boxFilePath, boxFilePathLength, "%s/dependencies.box", sessionDIR);
+
+            int ret = http_fetch_to_file(url, boxFilePath, false, false);
+
+            if (ret == -1) {
+                perror(outputFilePath);
+                return PPKG_ERROR;
+            }
+
+            if (ret > 0) {
+                return PPKG_ERROR_NETWORK_BASE + ret;
+            } else {
+                return ppkg_rename_or_copy_file(boxFilePath, outputFilePath);
+            }
+        }
+    } 
+
+    ////////////////////////////////////////////////////////////////
+
+    size_t   dotFilePathLength = sessionDIRLength + 18U;
+    char     dotFilePath[dotFilePathLength];
+    snprintf(dotFilePath, dotFilePathLength, "%s/dependencies.dot", sessionDIR);
+
+    int dotFD = open(dotFilePath, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+
+    if (dotFD == -1) {
+        perror(dotFilePath);
+        return PPKG_ERROR;
+    }
+
+    ret = write(dotFD, dotScriptStr, dotScriptStrLength);
+
+    if (ret == -1) {
+        perror(dotFilePath);
+        close(dotFD);
+        return PPKG_ERROR;
+    }
+
+    close(dotFD);
+
+    if ((size_t)ret != dotScriptStrLength) {
+        fprintf(stderr, "not fully written: %s\n", dotFilePath);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////
+
+    if (outputType == PPKGDependsOutputType_DOT) {
+        return ppkg_rename_or_copy_file(dotFilePath, outputFilePath);
+    }
+
+    ////////////////////////////////////////////////////////////////
+
+    size_t   tmpFilePathLength = sessionDIRLength + 18U;
+    char     tmpFilePath[tmpFilePathLength];
+    snprintf(tmpFilePath, tmpFilePathLength, "%s/dependencies.tmp", sessionDIR);
+
+    ////////////////////////////////////////////////////////////////
+
+    int pid = fork();
+
+    if (pid == -1) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (pid == 0) {
+        if (outputType == PPKGDependsOutputType_PNG) {
+            execlp("dot", "dot", "-Tpng", "-o", tmpFilePath, dotFilePath, NULL);
+        } else if (outputType == PPKGDependsOutputType_SVG) {
+            execlp("dot", "dot", "-Tsvg", "-o", tmpFilePath, dotFilePath, NULL);
+        }
+
+        perror("dot");
+        exit(255);
+    } else {
+        int childProcessExitStatusCode;
+
+        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (childProcessExitStatusCode == 0) {
+            return ppkg_rename_or_copy_file(tmpFilePath, outputFilePath);
+        }
+
+        const char * type;
+
+        if (outputType == PPKGDependsOutputType_PNG) {
+            type = "-Tpng";
+        } else if (outputType == PPKGDependsOutputType_SVG) {
+            type = "-Tsvg";
+        }
+
+        if (WIFEXITED(childProcessExitStatusCode)) {
+            fprintf(stderr, "running command 'dot %s -o %s %s' exit with status code: %d\n", type, tmpFilePath, dotFilePath, WEXITSTATUS(childProcessExitStatusCode));
+        } else if (WIFSIGNALED(childProcessExitStatusCode)) {
+            fprintf(stderr, "running command 'dot %s -o %s %s' killed by signal: %d\n", type, tmpFilePath, dotFilePath, WTERMSIG(childProcessExitStatusCode));
+        } else if (WIFSTOPPED(childProcessExitStatusCode)) {
+            fprintf(stderr, "running command 'dot %s -o %s %s' stopped by signal: %d\n", type, tmpFilePath, dotFilePath, WSTOPSIG(childProcessExitStatusCode));
+        }
 
         return PPKG_ERROR;
     }
+}
+
+int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputPath) {
+    char * outputFilePath = NULL;
+
+    if (outputPath != NULL) {
+        struct stat st;
+
+        if (stat(outputPath, &st) == 0 && S_ISDIR(st.st_mode)) {
+            size_t outputFilePathLength = strlen(outputPath) + strlen(packageName) + 20U;
+
+            outputFilePath = (char*) malloc(outputFilePathLength);
+
+            if (outputFilePath == NULL) {
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            }
+
+            const char * outputFileNameSuffix;
+
+            switch (outputType) {
+                case PPKGDependsOutputType_DOT: outputFileNameSuffix = "dot"; break;
+                case PPKGDependsOutputType_BOX: outputFileNameSuffix = "box"; break;
+                case PPKGDependsOutputType_SVG: outputFileNameSuffix = "svg"; break;
+                case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
+            }
+
+            snprintf(outputFilePath, outputFilePathLength, "%s/%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+        } else {
+            size_t outputPathLength = strlen(outputPath);
+
+            if (outputPath[outputPathLength - 1] == '/') {
+                size_t outputFilePathLength = strlen(outputPath) + strlen(packageName) + 20U;
+
+                outputFilePath = (char*) malloc(outputFilePathLength);
+
+                if (outputFilePath == NULL) {
+                    return PPKG_ERROR_MEMORY_ALLOCATE;
+                }
+
+                const char * outputFileNameSuffix;
+
+                switch (outputType) {
+                    case PPKGDependsOutputType_DOT: outputFileNameSuffix = "dot"; break;
+                    case PPKGDependsOutputType_BOX: outputFileNameSuffix = "box"; break;
+                    case PPKGDependsOutputType_SVG: outputFileNameSuffix = "svg"; break;
+                    case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
+                }
+
+                snprintf(outputFilePath, outputFilePathLength, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+            } else {
+                outputFilePath = strdup(outputPath);
+
+                if (outputFilePath == NULL) {
+                    return PPKG_ERROR_MEMORY_ALLOCATE;
+                }
+            }
+        }
+    }
+
+    int ret = ppkg_depends2(packageName, outputType, outputFilePath);
+
+    free(outputFilePath);
+
+    return ret;
 }

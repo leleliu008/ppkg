@@ -1,5 +1,7 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -14,71 +16,73 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
         return PPKG_ERROR_ARG_IS_INVALID;
     }
 
-    const char * const ppkgHomeDir = getenv("PPKG_HOME");
+    const char * const ppkgHomeDIR = getenv("PPKG_HOME");
 
-    if (ppkgHomeDir == NULL) {
-        const char * const userHomeDir = getenv("HOME");
+    if (ppkgHomeDIR == NULL) {
+        const char * const userHomeDIR = getenv("HOME");
 
-        if (userHomeDir == NULL) {
+        if (userHomeDIR == NULL) {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t userHomeDirLength = strlen(userHomeDir);
-
-        if (userHomeDirLength == 0U) {
+        if (userHomeDIR[0] == '\0') {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t   ppkgHomeDirLength = userHomeDirLength + + 7U;
-        char     ppkgHomeDir[ppkgHomeDirLength];
-        snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
+        size_t   defaultUppmHomeDIRLength = strlen(userHomeDIR) + 6U;
+        char     defaultUppmHomeDIR[defaultUppmHomeDIRLength + 1U];
+        snprintf(defaultUppmHomeDIR, defaultUppmHomeDIRLength + 1U, "%s/.ppkg", userHomeDIR);
 
         struct stat st;
 
-        if (stat(ppkgHomeDir, &st) == 0) {
+        if (stat(defaultUppmHomeDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
-                fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgHomeDir);
+                fprintf(stderr, "%s was expected to be a directory, but it was not.\n", defaultUppmHomeDIR);
                 return PPKG_ERROR;
             }
         } else {
-            if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
-                perror(ppkgHomeDir);
-                return PPKG_ERROR;
+            if (mkdir(defaultUppmHomeDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(defaultUppmHomeDIR);
+                    return PPKG_ERROR;
+                }
             }
         }
 
-        size_t n = (bufSize > ppkgHomeDirLength) ? ppkgHomeDirLength : bufSize;
+        size_t n = (bufSize > defaultUppmHomeDIRLength) ? defaultUppmHomeDIRLength : bufSize;
 
-        strncpy(buf, ppkgHomeDir, n);
+        strncpy(buf, defaultUppmHomeDIR, n);
 
         if (outSize != NULL) {
             (*outSize) = n;
         }
     } else {
-        if (ppkgHomeDir[0] == '\0') {
+        if (ppkgHomeDIR[0] == '\0') {
             fprintf(stderr, "'PPKG_HOME' environment variable's value was expected to be a non-empty string, but it was not.\n");
             return PPKG_ERROR;
         }
 
         struct stat st;
 
-        if (stat(ppkgHomeDir, &st) == 0) {
+        if (stat(ppkgHomeDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
-                fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgHomeDir);
+                fprintf(stderr, "%s was expected to be a directory, but it was not.\n", ppkgHomeDIR);
                 return PPKG_ERROR;
             }
         } else {
-            if (mkdir(ppkgHomeDir, S_IRWXU) != 0) {
-                perror(ppkgHomeDir);
-                return PPKG_ERROR;
+            if (mkdir(ppkgHomeDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(ppkgHomeDIR);
+                    return PPKG_ERROR;
+                }
             }
         }
 
-        size_t ppkgHomeDirLength = strlen(ppkgHomeDir);
+        size_t ppkgHomeDIRLength = strlen(ppkgHomeDIR);
 
-        size_t n = (bufSize > ppkgHomeDirLength) ? ppkgHomeDirLength : bufSize;
+        size_t n = (bufSize > ppkgHomeDIRLength) ? ppkgHomeDIRLength : bufSize;
 
-        strncpy(buf, ppkgHomeDir, n);
+        strncpy(buf, ppkgHomeDIR, n);
 
         if (outSize != NULL) {
             (*outSize) = n;

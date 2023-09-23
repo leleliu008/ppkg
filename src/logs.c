@@ -1,9 +1,9 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <unistd.h>
-#include <errno.h>
 #include <dirent.h>
-#include <fnmatch.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -16,22 +16,22 @@ int ppkg_logs(const char * packageName) {
         return ret;
     }
 
-    char   ppkgHomeDir[256];
-    size_t ppkgHomeDirLength;
+    char   ppkgHomeDIR[256];
+    size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDir, 256, &ppkgHomeDirLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, 256, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    size_t   packageMetadataDirLength = ppkgHomeDirLength + strlen(packageName) + 18U;
-    char     packageMetadataDir[packageMetadataDirLength];
-    snprintf(packageMetadataDir, packageMetadataDirLength, "%s/installed/%s/.ppkg", ppkgHomeDir, packageName);
+    size_t   metaInfoDIRLength = ppkgHomeDIRLength + strlen(packageName) + 18U;
+    char     metaInfoDIR[metaInfoDIRLength];
+    snprintf(metaInfoDIR, metaInfoDIRLength, "%s/installed/%s/.ppkg", ppkgHomeDIR, packageName);
 
-    size_t   receiptFilePathLength = packageMetadataDirLength + 13U;
+    size_t   receiptFilePathLength = metaInfoDIRLength + 13U;
     char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/receipt.yml", packageMetadataDir);
+    snprintf(receiptFilePath, receiptFilePathLength, "%s/RECEIPT.yml", metaInfoDIR);
 
     struct stat st;
 
@@ -39,10 +39,10 @@ int ppkg_logs(const char * packageName) {
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    DIR * dir = opendir(packageMetadataDir);
+    DIR * dir = opendir(metaInfoDIR);
 
     if (dir == NULL) {
-        perror(packageMetadataDir);
+        perror(metaInfoDIR);
         return PPKG_ERROR;
     }
 
@@ -56,7 +56,7 @@ int ppkg_logs(const char * packageName) {
                 closedir(dir);
                 return PPKG_OK;
             } else {
-                perror(packageMetadataDir);
+                perror(metaInfoDIR);
                 closedir(dir);
                 return PPKG_ERROR;
             }
@@ -68,9 +68,9 @@ int ppkg_logs(const char * packageName) {
             continue;
         }
 
-        size_t   filepathLength = packageMetadataDirLength + strlen(dir_entry->d_name) + 2U;
+        size_t   filepathLength = metaInfoDIRLength + strlen(dir_entry->d_name) + 2U;
         char     filepath[filepathLength];
-        snprintf(filepath, filepathLength, "%s/%s", packageMetadataDir, dir_entry->d_name);
+        snprintf(filepath, filepathLength, "%s/%s", metaInfoDIR, dir_entry->d_name);
 
         if (stat(filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
             continue;
@@ -85,10 +85,9 @@ int ppkg_logs(const char * packageName) {
         }
 
         if (pid == 0) {
-            char* argv[3] = { (char*)"bat", filepath, NULL };
-            execvp(argv[0], argv);
-            perror(argv[0]);
-            exit(127);
+            execlp("bat", "bat", filepath, NULL);
+            perror("bat");
+            exit(255);
         } else {
             int childProcessExitStatusCode;
 
@@ -99,16 +98,12 @@ int ppkg_logs(const char * packageName) {
             }
 
             if (childProcessExitStatusCode != 0) {
-                size_t   cmdLength = packageMetadataDirLength + filepathLength + 4U;
-                char     cmd[cmdLength];
-                snprintf(cmd, cmdLength, "bat %s", filepath);
-
                 if (WIFEXITED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
+                    fprintf(stderr, "running command 'bat %s' exit with status code: %d\n", filepath, WEXITSTATUS(childProcessExitStatusCode));
                 } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
+                    fprintf(stderr, "running command 'bat %s' killed by signal: %d\n", filepath, WTERMSIG(childProcessExitStatusCode));
                 } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
+                    fprintf(stderr, "running command 'bat %s' stopped by signal: %d\n", filepath, WSTOPSIG(childProcessExitStatusCode));
                 }
 
                 closedir(dir);

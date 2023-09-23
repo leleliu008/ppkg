@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+
+#include <unistd.h>
 #include <sys/stat.h>
 
-#include "core/rm-r.h"
 #include "ppkg.h"
 
 int ppkg_uninstall(const char * packageName, bool verbose) {
@@ -12,36 +13,74 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
         return ret;
     }
 
-    char * userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
+    size_t   packageInstalledRootDIRLength = ppkgHomeDIRLength + strlen(packageName) + 11U;
+    char     packageInstalledRootDIR[packageInstalledRootDIRLength];
+    snprintf(packageInstalledRootDIR, packageInstalledRootDIRLength, "%s/installed", ppkgHomeDIR);
 
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
-
-    size_t packageInstalledDirLength = userHomeDirLength + strlen(packageName) + 20U;
-    char   packageInstalledDir[packageInstalledDirLength];
-    snprintf(packageInstalledDir, packageInstalledDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
+    size_t   packageInstalledLinkDIRLength = packageInstalledRootDIRLength + strlen(packageName) + 2U;
+    char     packageInstalledLinkDIR[packageInstalledLinkDIRLength];
+    snprintf(packageInstalledLinkDIR, packageInstalledLinkDIRLength, "%s/%s", packageInstalledRootDIR, packageName);
 
     struct stat st;
 
-    if (stat(packageInstalledDir, &st) != 0) {
-        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
-    }
+    if (lstat(packageInstalledLinkDIR, &st) == 0) {
+        if (S_ISLNK(st.st_mode)) {
+            size_t   receiptFilePathLength = packageInstalledLinkDIRLength + 20U;
+            char     receiptFilePath[receiptFilePathLength];
+            snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledLinkDIR);
 
-    size_t receiptFilePathLength = packageInstalledDirLength + 20U;
-    char   receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
+            if (lstat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
+                char buf[256] = {0};
 
-    if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-        return rm_r(packageInstalledDir, verbose);
+                ssize_t readSize = readlink(packageInstalledLinkDIR, buf, 255);
+
+                if (readSize == -1) {
+                    perror(packageInstalledLinkDIR);
+                    return PPKG_ERROR;
+                } else if (readSize != 64) {
+                    // package is broken by other tools?
+                    return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
+                }
+
+                size_t   packageInstalledRealDIRLength = packageInstalledRootDIRLength + 66U;
+                char     packageInstalledRealDIR[packageInstalledRealDIRLength];
+                snprintf(packageInstalledRealDIR, packageInstalledRealDIRLength, "%s/%s", packageInstalledRootDIR, buf);
+
+                if (lstat(packageInstalledRealDIR, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        if (unlink(packageInstalledLinkDIR) == 0) {
+                            if (verbose) {
+                                printf("rm %s\n", packageInstalledLinkDIR);
+                            }
+                        } else {
+                            perror(packageInstalledLinkDIR);
+                            return PPKG_ERROR;
+                        }
+
+                        return ppkg_rm_r(packageInstalledRealDIR, verbose);
+                    } else {
+                        // package is broken by other tools?
+                        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
+                    }
+                } else {
+                    // package is broken by other tools?
+                    return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
+                }
+            } else {
+                // package is broken. is not installed completely?
+                return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
+            }
+        }
     } else {
-        // package is broken. is not installed completely?
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 }

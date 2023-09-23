@@ -1,12 +1,16 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+
 #include <jansson.h>
 
 #include "core/log.h"
+
 #include "ppkg.h"
 
 static int package_name_callback(const char * packageName, size_t i, const void * key) {
@@ -36,7 +40,7 @@ int ppkg_info(const char * packageName, const char * key) {
         return ret;
     }
 
-    if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "formula-yaml") == 0)) {
+    if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "--yaml") == 0)) {
         char * formulaFilePath = NULL;
 
         ret = ppkg_formula_locate(packageName, &formulaFilePath);
@@ -94,7 +98,7 @@ int ppkg_info(const char * packageName, const char * key) {
         printf("formula: %s\n", formulaFilePath);
 
         free(formulaFilePath);
-    } else if (strcmp(key, "formula-json") == 0) {
+    } else if (strcmp(key, "--json") == 0) {
         PPKGFormula * formula = NULL;
 
         ret = ppkg_formula_lookup(packageName, &formula);
@@ -116,14 +120,18 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "git-url", json_string(formula->git_url));
         json_object_set_new(root, "git-sha", json_string(formula->git_sha));
         json_object_set_new(root, "git-ref", json_string(formula->git_ref));
+        json_object_set_new(root, "git-ref", json_integer(formula->git_nth));
 
         json_object_set_new(root, "src-url", json_string(formula->src_url));
+        json_object_set_new(root, "src-uri", json_string(formula->src_uri));
         json_object_set_new(root, "src-sha", json_string(formula->src_sha));
 
         json_object_set_new(root, "fix-url", json_string(formula->fix_url));
+        json_object_set_new(root, "fix-uri", json_string(formula->fix_uri));
         json_object_set_new(root, "fix-sha", json_string(formula->fix_sha));
 
         json_object_set_new(root, "res-url", json_string(formula->res_url));
+        json_object_set_new(root, "res-uri", json_string(formula->res_uri));
         json_object_set_new(root, "res-sha", json_string(formula->res_sha));
 
         json_object_set_new(root, "dep-pkg", json_string(formula->dep_pkg));
@@ -141,8 +149,6 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "binbstd", json_boolean(formula->binbstd));
         json_object_set_new(root, "parallel", json_boolean(formula->parallel));
         json_object_set_new(root, "symlink", json_boolean(formula->symlink));
-
-        json_object_set_new(root, "exetype", json_string(formula->exetype));
 
         json_object_set_new(root, "dopatch", json_string(formula->dopatch));
         json_object_set_new(root, "install", json_string(formula->install));
@@ -528,20 +534,6 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "exetype") == 0) {
-        PPKGFormula * formula = NULL;
-
-        ret = ppkg_formula_lookup(packageName, &formula);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        if (formula->exetype != NULL) {
-            printf("%s\n", formula->exetype);
-        }
-
-        ppkg_formula_free(formula);
     } else if (strcmp(key, "dopatch") == 0) {
         PPKGFormula * formula = NULL;
 
@@ -571,86 +563,117 @@ int ppkg_info(const char * packageName, const char * key) {
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "installed-dir") == 0) {
-        char * userHomeDir = getenv("HOME");
+        char   ppkgHomeDIR[256] = {0};
+        size_t ppkgHomeDIRLength;
 
-        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
         }
-
-        size_t userHomeDirLength = strlen(userHomeDir);
-
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
-        char    installedDir[installedDirLength];
-        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20U;
-        char    receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         struct stat st;
 
-        if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            printf("%s\n", installedDir);
+        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char     installedDIR[installedDIRLength];
+        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (stat(installedDIR, &st) == 0) {
+            if (!S_ISDIR(st.st_mode)) {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
         } else {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
-    } else if (strcmp(key, "installed-files") == 0) {
-        char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        size_t receiptFilePathLength = installedDIRLength + 20U;
+        char   receiptFilePath[receiptFilePathLength];
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (stat(receiptFilePath, &st) == 0) {
+            if (S_ISREG(st.st_mode)) {
+                printf("%s\n", installedDIR);
+            } else {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
+        } else {
+            return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
+    } else if (strcmp(key, "installed-files") == 0) {
+        char   ppkgHomeDIR[256] = {0};
+        size_t ppkgHomeDIRLength;
 
-        size_t userHomeDirLength = strlen(userHomeDir);
+        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
-        char    installedDir[installedDirLength];
-        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20U;
-        char    receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
+        if (ret != PPKG_OK) {
+            return ret;
+        }
 
         struct stat st;
 
-        if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char     installedDIR[installedDIRLength];
+        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (stat(installedDIR, &st) == 0) {
+            if (!S_ISDIR(st.st_mode)) {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
+        } else {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t  installedManifestFilePathLength = installedDirLength + 20U;
-        char    installedManifestFilePath[installedManifestFilePathLength];
-        snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s/.ppkg/manifest.txt", installedDir);
+        size_t   receiptFilePathLength = installedDIRLength + 20U;
+        char     receiptFilePath[receiptFilePathLength];
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
 
-        FILE * installedManifestFile = fopen(installedManifestFilePath, "r");
+        if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
+            return PPKG_ERROR_PACKAGE_IS_BROKEN;
+        }
 
-        if (installedManifestFile == NULL) {
-            perror(installedManifestFilePath);
+        size_t   manifestFilePathLength = installedDIRLength + 20U;
+        char     manifestFilePath[manifestFilePathLength];
+        snprintf(manifestFilePath, manifestFilePathLength, "%s/.ppkg/MANIFEST.txt", installedDIR);
+
+        if (stat(manifestFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
+            return PPKG_ERROR_PACKAGE_IS_BROKEN;
+        }
+
+        int manifestFD = open(manifestFilePath, O_RDONLY);
+
+        if (manifestFD == -1) {
+            perror(manifestFilePath);
             return PPKG_ERROR;
         }
 
-        char   buff[1024];
-        size_t size;
+        char buf[1024];
 
         for (;;) {
-            size = fread(buff, 1, 1024, installedManifestFile);
+            ssize_t readSize = read(manifestFD, buf, 1024);
 
-            if (ferror(installedManifestFile)) {
-                perror(installedManifestFilePath);
-                fclose(installedManifestFile);
+            if (readSize == -1) {
+                perror(manifestFilePath);
+                close(manifestFD);
                 return PPKG_ERROR;
             }
 
-            if (size > 0) {
-                if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
-                    perror(NULL);
-                    fclose(installedManifestFile);
-                    return PPKG_ERROR;
-                }
+            if (readSize == 0) {
+                close(manifestFD);
+                break;
             }
 
-            if (feof(installedManifestFile)) {
-                fclose(installedManifestFile);
-                break;
+            ssize_t writeSize = write(STDOUT_FILENO, buf, readSize);
+
+            if (writeSize == -1) {
+                perror(manifestFilePath);
+                close(manifestFD);
+                return PPKG_ERROR;
+            }
+
+            if (writeSize != readSize) {
+                fprintf(stderr, "not fully written to stdout.\n");
+                close(manifestFD);
+                return PPKG_ERROR;
             }
         }
     } else if (strcmp(key, "installed-version") == 0) {
@@ -762,82 +785,109 @@ int ppkg_info(const char * packageName, const char * key) {
 
         ppkg_receipt_free(receipt);
     } else if (strcmp(key, "receipt-path") == 0) {
-        char * userHomeDir = getenv("HOME");
+        char   ppkgHomeDIR[256] = {0};
+        size_t ppkgHomeDIRLength;
 
-        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
         }
-
-        size_t userHomeDirLength = strlen(userHomeDir);
-
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
-        char    installedDir[installedDirLength];
-        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20U;
-        char    receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
 
         struct stat st;
 
-        if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            printf("%s\n", receiptFilePath);
+        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char     installedDIR[installedDIRLength];
+        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (stat(installedDIR, &st) == 0) {
+            if (!S_ISDIR(st.st_mode)) {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
         } else {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
-    } else if (strcmp(key, "receipt-yaml") == 0) {
-        char * userHomeDir = getenv("HOME");
 
-        if (userHomeDir == NULL || userHomeDir[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        size_t receiptFilePathLength = installedDIRLength + 20U;
+        char   receiptFilePath[receiptFilePathLength];
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (stat(receiptFilePath, &st) == 0) {
+            if (S_ISREG(st.st_mode)) {
+                printf("%s\n", receiptFilePath);
+            } else {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
+        } else {
+            return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
+    } else if (strcmp(key, "receipt-yaml") == 0) {
+        char   ppkgHomeDIR[256] = {0};
+        size_t ppkgHomeDIRLength;
 
-        size_t userHomeDirLength = strlen(userHomeDir);
+        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
-        size_t  installedDirLength = userHomeDirLength + strlen(packageName) + 20U;
-        char    installedDir[installedDirLength];
-        snprintf(installedDir, installedDirLength, "%s/.ppkg/installed/%s", userHomeDir, packageName);
-
-        size_t  receiptFilePathLength = installedDirLength + 20U;
-        char    receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", installedDir);
+        if (ret != PPKG_OK) {
+            return ret;
+        }
 
         struct stat st;
 
-        if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
+        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char     installedDIR[installedDIRLength];
+        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (stat(installedDIR, &st) == 0) {
+            if (!S_ISDIR(st.st_mode)) {
+                return PPKG_ERROR_PACKAGE_IS_BROKEN;
+            }
+        } else {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        FILE * receiptFile = fopen(receiptFilePath, "r");
+        size_t   receiptFilePathLength = installedDIRLength + 20U;
+        char     receiptFilePath[receiptFilePathLength];
+        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
 
-        if (receiptFile == NULL) {
+        if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
+            return PPKG_ERROR_PACKAGE_IS_BROKEN;
+        }
+
+        int receiptFD = open(receiptFilePath, O_RDONLY);
+
+        if (receiptFD == -1) {
             perror(receiptFilePath);
             return PPKG_ERROR;
         }
 
-        char   buff[1024];
-        size_t size;
+        char buf[1024];
 
         for (;;) {
-            size = fread(buff, 1, 1024, receiptFile);
+            ssize_t readSize = read(receiptFD, buf, 1024);
 
-            if (ferror(receiptFile)) {
+            if (readSize == -1) {
                 perror(receiptFilePath);
-                fclose(receiptFile);
+                close(receiptFD);
                 return PPKG_ERROR;
             }
 
-            if (size > 0) {
-                if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
-                    perror(NULL);
-                    fclose(receiptFile);
-                    return PPKG_ERROR;
-                }
+            if (readSize == 0) {
+                close(receiptFD);
+                return PPKG_OK;
             }
 
-            if (feof(receiptFile)) {
-                fclose(receiptFile);
-                break;
+            ssize_t writeSize = write(STDOUT_FILENO, buf, readSize);
+
+            if (writeSize == -1) {
+                perror(NULL);
+                close(receiptFD);
+                return PPKG_ERROR;
+            }
+
+            if (writeSize != readSize) {
+                perror(NULL);
+                close(receiptFD);
+                return PPKG_ERROR;
             }
         }
     } else if (strcmp(key, "receipt-json") == 0) {
@@ -862,14 +912,18 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "git-url", json_string(receipt->git_url));
         json_object_set_new(root, "git-sha", json_string(receipt->git_sha));
         json_object_set_new(root, "git-ref", json_string(receipt->git_ref));
+        json_object_set_new(root, "git-nth", json_integer(receipt->git_nth));
 
         json_object_set_new(root, "src-url", json_string(receipt->src_url));
+        json_object_set_new(root, "src-uri", json_string(receipt->src_uri));
         json_object_set_new(root, "src-sha", json_string(receipt->src_sha));
 
         json_object_set_new(root, "fix-url", json_string(receipt->fix_url));
+        json_object_set_new(root, "fix-uri", json_string(receipt->fix_uri));
         json_object_set_new(root, "fix-sha", json_string(receipt->fix_sha));
 
         json_object_set_new(root, "res-url", json_string(receipt->res_url));
+        json_object_set_new(root, "res-uri", json_string(receipt->res_uri));
         json_object_set_new(root, "res-sha", json_string(receipt->res_sha));
 
         json_object_set_new(root, "dep-pkg", json_string(receipt->dep_pkg));
@@ -887,8 +941,6 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "binbstd", json_boolean(receipt->binbstd));
         json_object_set_new(root, "parallel", json_boolean(receipt->parallel));
         json_object_set_new(root, "symlink", json_boolean(receipt->symlink));
-
-        json_object_set_new(root, "exetype", json_string(receipt->exetype));
 
         json_object_set_new(root, "dopatch", json_string(receipt->dopatch));
         json_object_set_new(root, "install", json_string(receipt->install));

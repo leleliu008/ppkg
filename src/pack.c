@@ -1,16 +1,16 @@
 #include <string.h>
+
 #include <unistd.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include "core/log.h"
 #include "core/tar.h"
-#include "core/cp.h"
-#include "core/rm-r.h"
 #include "core/sysinfo.h"
 
 #include "ppkg.h"
 
-int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
+int ppkg_pack(const char * packageName, ArchiveType outputType, const char * outputPath, bool verbose) {
     PPKGReceipt * receipt = NULL;
 
     int ret = ppkg_receipt_parse(packageName, &receipt);
@@ -35,173 +35,147 @@ int ppkg_pack(const char * packageName, ArchiveType type, bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t   packingDirNameLength = strlen(packageName) + strlen(receipt->version) + strlen(osType) + strlen(osArch) + 4U;
-    char     packingDirName[packingDirNameLength];
-    snprintf(packingDirName, packingDirNameLength, "%s-%s-%s-%s", packageName, receipt->version, osType, osArch);
+    size_t   packingDIRNameLength = strlen(packageName) + strlen(receipt->version) + strlen(osType) + strlen(osArch) + 4U;
+    char     packingDIRName[packingDIRNameLength];
+    snprintf(packingDIRName, packingDIRNameLength, "%s-%s-%s-%s", packageName, receipt->version, osType, osArch);
 
     ppkg_receipt_free(receipt);
 
+    /////////////////////////////////////////////////////////////////////////////////
+
+    const char * outputFileExt;
+
+    switch (outputType) {
+        case ArchiveType_tar_gz:  outputFileExt = (char*)".tar.gz";  break;
+        case ArchiveType_tar_xz:  outputFileExt = (char*)".tar.xz";  break;
+        case ArchiveType_tar_lz:  outputFileExt = (char*)".tar.lz";  break;
+        case ArchiveType_tar_bz2: outputFileExt = (char*)".tar.bz2"; break;
+        case ArchiveType_zip:     outputFileExt = (char*)".zip";     break;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+
+    char cwd[PATH_MAX];
+
+    char * p = getcwd(cwd, PATH_MAX);
+
+    if (p == NULL) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+
+    char outputFilePath[PATH_MAX];
+
+    if (outputPath == NULL) {
+        snprintf(outputFilePath, PATH_MAX, "%s/%s%s", cwd, packingDIRName, outputFileExt);
+    } else {
+        struct stat st;
+
+        if (stat(outputPath, &st) == 0 && S_ISDIR(st.st_mode)) {
+            if (outputPath[0] == '/') {
+                snprintf(outputFilePath, PATH_MAX, "%s/%s%s", outputPath, packingDIRName, outputFileExt);
+            } else {
+                snprintf(outputFilePath, PATH_MAX, "%s/%s/%s%s", cwd, outputPath, packingDIRName, outputFileExt);
+            }
+        } else {
+            size_t outputPathLength = strlen(outputPath);
+
+            if (outputPath[outputPathLength - 1U] == '/') {
+                if (outputPath[0] == '/') {
+                    snprintf(outputFilePath, PATH_MAX, "%s%s%s", outputPath, packingDIRName, outputFileExt);
+                } else {
+                    snprintf(outputFilePath, PATH_MAX, "%s/%s%s%s", cwd, outputPath, packingDIRName, outputFileExt);
+                }
+            } else {
+                if (outputPath[0] == '/') {
+                    strncpy(outputFilePath, outputPath, outputPathLength);
+                    outputFilePath[outputPathLength] = '\0';
+                } else {
+                    snprintf(outputFilePath, PATH_MAX, "%s/%s", cwd, outputPath);
+                }
+            }
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////
 
-    const char * const userHomeDir = getenv("HOME");
+    char   ppkgHomeDIR[256] = {0};
+    size_t ppkgHomeDIRLength;
 
-    if (userHomeDir == NULL) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
-    size_t userHomeDirLength = strlen(userHomeDir);
+    char   sessionDIR[256] = {0};
+    size_t sessionDIRLength;
 
-    if (userHomeDirLength == 0) {
-        return PPKG_ERROR_ENV_HOME_NOT_SET;
-    }
+    ret = ppkg_session_dir(sessionDIR, 255, &sessionDIRLength);
 
-    size_t   ppkgHomeDirLength = userHomeDirLength + 7U;
-    char     ppkgHomeDir[ppkgHomeDirLength];
-    snprintf(ppkgHomeDir, ppkgHomeDirLength, "%s/.ppkg", userHomeDir);
-
-    size_t   packageInstalledDirLength = ppkgHomeDirLength + strlen(packageName) + 12U;
-    char     packageInstalledDir[packageInstalledDirLength];
-    snprintf(packageInstalledDir, packageInstalledDirLength, "%s/installed/%s", ppkgHomeDir, packageName);
-
-    size_t   receiptFilePathLength = packageInstalledDirLength + 20U;
-    char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/receipt.yml", packageInstalledDir);
-
-    struct stat st;
-
-    if (stat(receiptFilePath, &st) != 0 || !S_ISREG(st.st_mode)) {
-        return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    size_t   ppkgPackingDirLength = ppkgHomeDirLength + 9U;
-    char     ppkgPackingDir[ppkgPackingDirLength];
-    snprintf(ppkgPackingDir, ppkgPackingDirLength, "%s/packing", ppkgHomeDir);
-
-    if (stat(ppkgPackingDir, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgPackingDir);
-            return PPKG_ERROR;
-        }
-    } else {
-        if (mkdir(ppkgPackingDir, S_IRWXU) != 0) {
-            perror(ppkgPackingDir);
-            return PPKG_ERROR;
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////
-
-    size_t   sessionDirTemplateLength = ppkgPackingDirLength + 8U;
-    char     sessionDirTemplate[sessionDirTemplateLength];
-    snprintf(sessionDirTemplate, sessionDirTemplateLength, "%s/XXXXXX", ppkgPackingDir);
-
-    char *   sessionDir = mkdtemp(sessionDirTemplate);
-
-    if (sessionDir == NULL) {
-        perror(sessionDirTemplate);
+    if (chdir(sessionDIR) != 0) {
+        perror(sessionDIR);
         return PPKG_ERROR;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    if (chdir(sessionDir) != 0) {
-        perror(sessionDir);
+    size_t   packageInstalledDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    char     packageInstalledDIR[packageInstalledDIRLength];
+    snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+    if (symlink(packageInstalledDIR, packingDIRName) != 0) {
+        perror(packageInstalledDIR);
         return PPKG_ERROR;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    if (symlink(packageInstalledDir, packingDirName) != 0) {
-        perror(packingDirName);
-        return PPKG_ERROR;
-    }
+    size_t   tmpFilePathLength = sessionDIRLength + packingDIRNameLength + 10U;
+    char     tmpFilePath[tmpFilePathLength];
+    snprintf(tmpFilePath, tmpFilePathLength, "%s/%s%s", sessionDIR, packingDIRName, outputFileExt);
 
-    /////////////////////////////////////////////////////////////////////////////////
-
-    char * archiveFileType;
-
-    switch (type) {
-        case ArchiveType_tar_gz:  archiveFileType = (char*)".tar.gz";  break;
-        case ArchiveType_tar_xz:  archiveFileType = (char*)".tar.xz";  break;
-        case ArchiveType_tar_lz:  archiveFileType = (char*)".tar.lz";  break;
-        case ArchiveType_tar_bz2: archiveFileType = (char*)".tar.bz2"; break;
-        case ArchiveType_zip:     archiveFileType = (char*)".zip";     break;
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////
-
-    size_t   stageArchiveFilePathLength = sessionDirTemplateLength + packingDirNameLength + 10U;
-    char     stageArchiveFilePath[stageArchiveFilePathLength];
-    snprintf(stageArchiveFilePath, stageArchiveFilePathLength, "%s/%s%s", sessionDir, packingDirName, archiveFileType);
-
-    ret = tar_create(packingDirName, stageArchiveFilePath, type, verbose);
+    ret = tar_create(packingDIRName, tmpFilePath, outputType, verbose);
 
     if (ret != 0) {
         return ret;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////
+    ret = ppkg_rename_or_copy_file(tmpFilePath, outputFilePath);
 
-    size_t   ppkgPackedDirLength = strlen(userHomeDir) + 15U;
-    char     ppkgPackedDir[ppkgPackedDirLength];
-    snprintf(ppkgPackedDir, ppkgPackedDirLength, "%s/.ppkg/packed", userHomeDir);
-
-    if (stat(ppkgPackedDir, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            fprintf(stderr, "'%s\n' was expected to be a directory, but it was not.\n", ppkgPackedDir);
-            return PPKG_ERROR;
-        }
-    } else {
-        if (mkdir(ppkgPackedDir, S_IRWXU) != 0) {
-            perror(ppkgPackedDir);
-            return PPKG_ERROR;
-        }
-    }
-
-    size_t   finalArchiveFilePathLength = ppkgPackedDirLength + packingDirNameLength + 10U;
-    char     finalArchiveFilePath[finalArchiveFilePathLength];
-    snprintf(finalArchiveFilePath, finalArchiveFilePathLength, "%s/%s%s", ppkgPackedDir, packingDirName, archiveFileType);
-
-    if (copy_file(stageArchiveFilePath, finalArchiveFilePath) != 0) {
-        perror(stageArchiveFilePath);
-        return PPKG_ERROR;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    struct stat sb;
-
-    if (stat(finalArchiveFilePath, &sb) != 0) {
-        perror(finalArchiveFilePath);
-        return PPKG_ERROR;
-    }
-
-    off_t nBytes = sb.st_size;
-
-    if (nBytes < 1024) {
-        printf("%s %lu Byte\n", finalArchiveFilePath, nBytes);
-    } else if (nBytes < 1024 * 1024) {
-        printf("%s %lu KB\n", finalArchiveFilePath, nBytes / 1024);
-    } else if (nBytes < 1024 * 1024 * 1024) {
-        printf("%s %lu MB\n", finalArchiveFilePath, nBytes / 1024 / 1024);
-    } else {
-        LOG_ERROR2("file is too large: ", finalArchiveFilePath);
-        return PPKG_ERROR;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    if (unlink(packingDirName) != 0) {
-        perror(packingDirName);
+    struct stat st;
+
+    if (stat(outputFilePath, &st) != 0) {
+        perror(outputFilePath);
         return PPKG_ERROR;
     }
 
-    if (rm_r(sessionDir, verbose) != 0) {
-        perror(sessionDir);
+    off_t nBytes = st.st_size;
+
+    if (nBytes < 1024) {
+        printf("%s %lu Byte\n", outputFilePath, nBytes);
+    } else if (nBytes < 1024 * 1024) {
+        printf("%s %lu KB\n", outputFilePath, nBytes / 1024);
+    } else if (nBytes < 1024 * 1024 * 1024) {
+        printf("%s %lu MB\n", outputFilePath, nBytes / 1024 / 1024);
+    } else {
+        LOG_ERROR2("file is too large: ", tmpFilePath);
         return PPKG_ERROR;
     }
 
-    return PPKG_OK;
+    return ppkg_rm_r(sessionDIR, verbose);
 }

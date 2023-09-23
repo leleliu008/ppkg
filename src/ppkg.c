@@ -142,10 +142,9 @@ int ppkg_main(int argc, char* argv[]) {
     }
 
     if (strcmp(argv[1], "depends") == 0) {
-        int    outputType     = 0;
+        PPKGDependsOutputType outputType = PPKGDependsOutputType_BOX;
 
-        char * outputPath     = NULL;
-        char * outputFilePath = NULL;
+        char * outputPath = NULL;
 
         for (int i = 3; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
@@ -164,19 +163,19 @@ int ppkg_main(int argc, char* argv[]) {
                 }
 
                 if (strcmp(type, "dot") == 0) {
-                    outputType = 1;
+                    outputType = PPKGDependsOutputType_DOT;
                     i++;
                 } else if (strcmp(type, "box") == 0) {
-                    outputType = 2;
+                    outputType = PPKGDependsOutputType_BOX;
                     i++;
                 } else if (strcmp(type, "svg") == 0) {
-                    outputType = 3;
+                    outputType = PPKGDependsOutputType_SVG;
                     i++;
                 } else if (strcmp(type, "png") == 0) {
-                    outputType = 4;
+                    outputType = PPKGDependsOutputType_PNG;
                     i++;
                 } else {
-                    LOG_ERROR2("unrecognized type: ", type);
+                    LOG_ERROR2("unsupported type: ", type);
                     return PPKG_ERROR_ARG_IS_INVALID;
                 }
              } else if (strcmp(argv[i], "-o") == 0) {
@@ -199,91 +198,7 @@ int ppkg_main(int argc, char* argv[]) {
             }
         }
 
-        if (outputPath != NULL) {
-            struct stat st;
-
-            if (stat(outputPath, &st) == 0 && S_ISDIR(st.st_mode)) {
-                size_t outputFilePathLength = strlen(outputPath) + strlen(argv[2]) + 20U;
-
-                outputFilePath = (char*) malloc(outputFilePathLength);
-
-                if (outputFilePath == NULL) {
-                    return PPKG_ERROR_MEMORY_ALLOCATE;
-                }
-
-                const char * outputFileNameSuffix;
-
-                switch (outputType) {
-                    case 0: outputFileNameSuffix = "box"; break;
-                    case 1: outputFileNameSuffix = "dot"; break;
-                    case 2: outputFileNameSuffix = "box"; break;
-                    case 3: outputFileNameSuffix = "svg"; break;
-                    case 4: outputFileNameSuffix = "png"; break;
-                }
-
-                snprintf(outputFilePath, outputFilePathLength, "%s/%s-dependencies.%s", outputPath, argv[2], outputFileNameSuffix);
-            } else {
-                size_t outputPathLength = strlen(outputPath);
-
-                if (outputPath[outputPathLength - 1] == '/') {
-                    size_t outputFilePathLength = strlen(outputPath) + strlen(argv[2]) + 20U;
-
-                    outputFilePath = (char*) malloc(outputFilePathLength);
-
-                    if (outputFilePath == NULL) {
-                        return PPKG_ERROR_MEMORY_ALLOCATE;
-                    }
-
-                    const char * outputFileNameSuffix;
-
-                    switch (outputType) {
-                        case 0: outputFileNameSuffix = "box"; break;
-                        case 1: outputFileNameSuffix = "dot"; break;
-                        case 2: outputFileNameSuffix = "box"; break;
-                        case 3: outputFileNameSuffix = "svg"; break;
-                        case 4: outputFileNameSuffix = "png"; break;
-                    }
-
-                    snprintf(outputFilePath, outputFilePathLength, "%s%s-dependencies.%s", outputPath, argv[2], outputFileNameSuffix);
-                } else {
-                    outputFilePath = strdup(outputPath);
-
-                    if (outputFilePath == NULL) {
-                        return PPKG_ERROR_MEMORY_ALLOCATE;
-                    }
-
-                    // if -t option is not given, let's check if is explicitly specified in filename's suffix
-                    if (outputType == 0) {
-                        if (outputPathLength > 4) {
-                            const char * suffix = outputFilePath + outputPathLength - 4;
-
-                                   if (strcmp(suffix, ".dot") == 0) {
-                                outputType = 1;
-                            } else if (strcmp(suffix, ".box") == 0) {
-                                outputType = 2;
-                            } else if (strcmp(suffix, ".svg") == 0) {
-                                outputType = 3;
-                            } else if (strcmp(suffix, ".png") == 0) {
-                                outputType = 4;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        PPKGDependsOutputType outputTypeEnum;
-
-        switch (outputType) {
-            case 0: outputTypeEnum = PPKGDependsOutputType_BOX; break;
-            case 1: outputTypeEnum = PPKGDependsOutputType_DOT; break;
-            case 2: outputTypeEnum = PPKGDependsOutputType_BOX; break;
-            case 3: outputTypeEnum = PPKGDependsOutputType_SVG; break;
-            case 4: outputTypeEnum = PPKGDependsOutputType_PNG; break;
-        }
-
-
-        int ret = ppkg_depends(argv[2], outputTypeEnum, outputFilePath);
+        int ret = ppkg_depends(argv[2], outputType, outputPath);
 
         if (ret == PPKG_ERROR_ARG_IS_NULL) {
             fprintf(stderr, "Usage: %s depends <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified.\n", argv[0]);
@@ -302,8 +217,6 @@ int ppkg_main(int argc, char* argv[]) {
         } else if (ret == PPKG_ERROR) {
             fprintf(stderr, "occurs error.\n");
         }
-
-        free(outputFilePath);
 
         return ret;
     }
@@ -355,8 +268,8 @@ int ppkg_main(int argc, char* argv[]) {
                 options.logLevel = PPKGLogLevel_very_verbose;
             } else if (strcmp(argv[i], "--dry-run") == 0) {
                 options.dryrun = true;
-            } else if (strcmp(argv[i], "--keep-installing-dir") == 0) {
-                options.keepInstallingDir = true;
+            } else if (strcmp(argv[i], "--keep-session-dir") == 0) {
+                options.keepSessionDIR = true;
             } else if (strcmp(argv[i], "--export-compile-commands-json") == 0) {
                 options.exportCompileCommandsJson = true;
             } else if (strcmp(argv[i], "--enable-ccache") == 0) {
@@ -1008,7 +921,7 @@ int ppkg_main(int argc, char* argv[]) {
     if (strcmp(argv[1], "pack") == 0) {
         ArchiveType outputType = ArchiveType_tar_xz;
 
-        char * outputPath     = NULL;
+        char * outputPath = NULL;
 
         for (int i = 3; i < argc; i++) {
             if (strcmp(argv[i], "-v") == 0) {
@@ -1042,7 +955,7 @@ int ppkg_main(int argc, char* argv[]) {
                     outputType = ArchiveType_tar_bz2;
                     i++;
                 } else {
-                    LOG_ERROR2("unrecognized type: ", type);
+                    LOG_ERROR2("unsupported type: ", type);
                     return PPKG_ERROR_ARG_IS_INVALID;
                 }
              } else if (strcmp(argv[i], "-o") == 0) {
@@ -1065,7 +978,7 @@ int ppkg_main(int argc, char* argv[]) {
             }
         }
 
-        int ret = ppkg_pack(argv[2], outputType, verbose);
+        int ret = ppkg_pack(argv[2], outputType, outputPath, verbose);
 
         if (ret == PPKG_ERROR_ARG_IS_NULL) {
             fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [-t tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);
