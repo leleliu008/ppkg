@@ -11,6 +11,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -162,7 +163,7 @@ static int write_to_file(const char * fp, const char * str) {
 
 static void export_p() {
     for (int i = 0; ; i++) {
-        const char * p = environ[i];
+        const char * p = __environ[i];
 
         if (p == NULL) {
             break;
