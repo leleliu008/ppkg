@@ -16,10 +16,10 @@ int ppkg_logs(const char * packageName) {
         return ret;
     }
 
-    char   ppkgHomeDIR[256];
+    char   ppkgHomeDIR[256] = {0};
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 256, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

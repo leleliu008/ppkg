@@ -3770,7 +3770,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   ppkgHomeDIR[256];
+    char   ppkgHomeDIR[256] = {0};
     size_t ppkgHomeDIRLength;
 
     int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
@@ -3801,7 +3801,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   sessionDIR[256];
+    char   sessionDIR[256] = {0};
     size_t sessionDIRLength;
 
     ret = ppkg_session_dir(sessionDIR, 255, &sessionDIRLength);

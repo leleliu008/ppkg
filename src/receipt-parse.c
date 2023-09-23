@@ -536,10 +536,10 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return ret;
     }
 
-    char   ppkgHomeDIR[256];
+    char   ppkgHomeDIR[256] = {0};
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 256, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

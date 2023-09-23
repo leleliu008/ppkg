@@ -586,8 +586,8 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t receiptFilePathLength = installedDIRLength + 20U;
-        char   receiptFilePath[receiptFilePathLength];
+        size_t   receiptFilePathLength = installedDIRLength + 20U;
+        char     receiptFilePath[receiptFilePathLength];
         snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
 
         if (stat(receiptFilePath, &st) == 0) {

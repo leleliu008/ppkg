@@ -68,10 +68,10 @@ static int ppkg_list_dirs(const char * installedDIR, size_t installedDIRLength, 
 }
 
 int ppkg_env(bool verbose) {
-    char   ppkgHomeDIR[256];
+    char   ppkgHomeDIR[256] = {0};
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 256, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
