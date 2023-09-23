@@ -18,7 +18,8 @@ jobs:
     container: voidlinux/${{ matrix.variant }}
 
     steps:
-      - run: xbps-install -Suy xbps
+      - run: xbps-install -Syu xbps
+      - run: xbps-install -S
       - run: xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
 
       # https://github.com/actions/checkout/issues/334
@@ -59,8 +60,8 @@ jobs:
 
       - run: ./output/bin/ppkg info @all
       - run: ./output/bin/ppkg info libzip
-      - run: ./output/bin/ppkg info libzip formula-yaml
-      - run: ./output/bin/ppkg info libzip formula-json
+      - run: ./output/bin/ppkg info libzip --yaml
+      - run: ./output/bin/ppkg info libzip --json
       - run: ./output/bin/ppkg info libzip summary
       - run: ./output/bin/ppkg info libzip version
       - run: ./output/bin/ppkg info libzip license

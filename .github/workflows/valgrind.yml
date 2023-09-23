@@ -70,8 +70,8 @@ jobs:
 
       - run: $VALGRIND ./output/bin/ppkg info @all
       - run: $VALGRIND ./output/bin/ppkg info libzip
-      - run: $VALGRIND ./output/bin/ppkg info libzip formula-yaml
-      - run: $VALGRIND ./output/bin/ppkg info libzip formula-json
+      - run: $VALGRIND ./output/bin/ppkg info libzip --yaml
+      - run: $VALGRIND ./output/bin/ppkg info libzip --json
       - run: $VALGRIND ./output/bin/ppkg info libzip summary
       - run: $VALGRIND ./output/bin/ppkg info libzip version
       - run: $VALGRIND ./output/bin/ppkg info libzip license

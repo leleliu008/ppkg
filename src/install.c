@@ -161,17 +161,17 @@ static int write_to_file(const char * fp, const char * str) {
     }
 }
 
-static void export_p() {
-    for (int i = 0; ; i++) {
-        const char * p = __environ[i];
+//static void export_p() {
+    //for (int i = 0; ; i++) {
+    //    const char * p = __environ[i];
 
-        if (p == NULL) {
-            break;
-        }
+    //    if (p == NULL) {
+    //        break;
+    //    }
 
-        puts(p);
-    }
-}
+    //    puts(p);
+    //}
+//}
 
 static int fetch_source_if_needed(const PPKGFormula * formula, const char * ppkgDownloadsDIR, const size_t ppkgDownloadsDIRLength, const char * packageWorkingSrcDIR, const size_t packageWorkingSrcDIRLength, const PPKGLogLevel logLevel) {
     struct stat st;
@@ -1184,7 +1184,7 @@ static int install_native_package(
 
     size_t   strBufSize = packageNameLength + strlen(srcUrl) + strlen(srcSha) + 50U;
     char     strBuf[strBufSize];
-    snprintf(strBuf, strBufSize, "%s:%s:%s:%lu:%u", packageName, srcUrl, srcSha, time(NULL), getpid());
+    snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, srcUrl, srcSha, time(NULL), getpid());
 
     char packageInstalledSHA[65];
 
@@ -1672,7 +1672,7 @@ static int generate_install_shell_script_file(const char * packageName, const ch
     fprintf(installShellScriptFile, "NATIVE_OS_EUID='%u'\n", geteuid());
     fprintf(installShellScriptFile, "NATIVE_OS_EGID='%u'\n\n", getegid());
 
-    fprintf(installShellScriptFile, "TIMESTAMP_UNIX='%lu'\n\n", ts);
+    fprintf(installShellScriptFile, "TIMESTAMP_UNIX='%zu'\n\n", ts);
 
     fprintf(installShellScriptFile, "KEEP_SESSION_DIR=%d\n", options.keepSessionDIR);
     fprintf(installShellScriptFile, "BEAR_ENABLED=%d\n", options.enableBear);
@@ -1719,7 +1719,7 @@ static int generate_install_shell_script_file(const char * packageName, const ch
     fprintf(installShellScriptFile, "PACKAGE_GIT_URL='%s'\n", formula->git_url == NULL ? "" : formula->git_url);
     fprintf(installShellScriptFile, "PACKAGE_GIT_SHA='%s'\n", formula->git_sha == NULL ? "" : formula->git_sha);
     fprintf(installShellScriptFile, "PACKAGE_GIT_REF='%s'\n", formula->git_ref == NULL ? "" : formula->git_ref);
-    fprintf(installShellScriptFile, "PACKAGE_GIT_NTH='%lu'\n", formula->git_nth);
+    fprintf(installShellScriptFile, "PACKAGE_GIT_NTH='%zu'\n", formula->git_nth);
 
     fprintf(installShellScriptFile, "PACKAGE_SRC_URL='%s'\n", formula->src_url == NULL ? "" : formula->src_url);
     fprintf(installShellScriptFile, "PACKAGE_SRC_URI='%s'\n", formula->src_uri == NULL ? "" : formula->src_uri);
@@ -2250,7 +2250,7 @@ static int generate_receipt(const char * packageName, const PPKGFormula * formul
         default: libcName = (char*)"";
     }
 
-    fprintf(receiptFile, "\nsignature: %s\ntimestamp: %lu\n\n", PPKG_VERSION, ts);
+    fprintf(receiptFile, "\nsignature: %s\ntimestamp: %zu\n\n", PPKG_VERSION, ts);
 
     fprintf(receiptFile, "build-on:\n    os-arch: %s\n    os-kind: %s\n    os-type: %s\n    os-name: %s\n    os-vers: %s\n    os-ncpu: %u\n    os-libc: %s\n    os-euid: %u\n    os-egid: %u\n", sysinfo.arch, sysinfo.kind, sysinfo.type, sysinfo.name, sysinfo.vers, sysinfo.ncpu, libcName, sysinfo.euid, sysinfo.egid);
 
@@ -2996,7 +2996,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    export_p();
+    //export_p();
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -3004,7 +3004,7 @@ static int ppkg_install_package(
 
     size_t   strBufSize = packageNameLength + strlen(formula->src_url) + strlen(formula->src_sha) + 50U;
     char     strBuf[strBufSize];
-    snprintf(strBuf, strBufSize, "%s:%s:%s:%lu:%u", packageName, formula->src_url, formula->src_sha, ts, getpid());
+    snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, formula->src_url, formula->src_sha, ts, getpid());
 
     char packageInstalledSHA[65];
 
