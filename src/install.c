@@ -944,7 +944,6 @@ static inline int export_environment_variables_1(const char * packageInstalledDI
 }
 
 static inline int export_environment_variables_2(const char * packageInstalledDIR, const size_t packageInstalledDIRLength) {
-    printf("export_environment_variables_2 packageInstalledDIR=%s, packageInstalledDIRLength=%zu", packageInstalledDIR, packageInstalledDIRLength);
     struct stat st;
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -3712,9 +3711,9 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     //////////////////////////////////////////////////////////////////////////////
 
     if (getenv("SSL_CERT_FILE") == NULL) {
-        size_t   cacertFilePathLength = ppkgHomeDIRLength + 31U;
+        size_t   cacertFilePathLength = ppkgHomeDIRLength + 21U;
         char     cacertFilePath[cacertFilePathLength];
-        snprintf(cacertFilePath, cacertFilePathLength, "%s/core/cacert.pem", ppkgHomeDIR);
+        snprintf(cacertFilePath, cacertFilePathLength, "%s/core/etc/cacert.pem", ppkgHomeDIR);
 
         if (stat(cacertFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             // https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
