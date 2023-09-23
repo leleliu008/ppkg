@@ -1,7 +1,7 @@
 #include <string.h>
 
 #include <unistd.h>
-#include <dirent.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "core/log.h"
