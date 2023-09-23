@@ -1185,7 +1185,7 @@ static int install_native_package(
     char     strBuf[strBufSize];
     snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, srcUrl, srcSha, time(NULL), getpid());
 
-    char packageInstalledSHA[65];
+    char packageInstalledSHA[65] = {0};
 
     ret = sha256sum_of_string(packageInstalledSHA, strBuf);
 
@@ -3080,7 +3080,7 @@ static int ppkg_install_package(
     char     strBuf[strBufSize];
     snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, formula->src_url, formula->src_sha, ts, getpid());
 
-    char packageInstalledSHA[65];
+    char packageInstalledSHA[65] = {0};
 
     ret = sha256sum_of_string(packageInstalledSHA, strBuf);
 
@@ -3403,9 +3403,31 @@ static int ppkg_install_package(
         return PPKG_ERROR;
     }
 
-    if (symlink(packageInstalledSHA, packageName) != 0) {
-        perror(packageName);
-        return PPKG_ERROR;
+    for (;;) {
+        if (symlink(packageInstalledSHA, packageName) == 0) {
+            fprintf(stderr, "%s package was successfully installed.\n", packageName);
+            break;
+        } else {
+            if (errno == EEXIST) {
+                if (lstat(packageName, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        ret = ppkg_rm_r(packageName, options.logLevel >= PPKGLogLevel_verbose);
+
+                        if (ret != PPKG_OK) {
+                            return ret;
+                        }
+                    } else {
+                        if (unlink(packageName) != 0) {
+                            perror(packageName);
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+            } else {
+                perror(packageName);
+                return PPKG_ERROR;
+            }
+        }
     }
 
     if (options.keepSessionDIR) {
@@ -3860,11 +3882,13 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
         //printf("%d:%s\n", i, packageName);
 
-        ret = ppkg_check_if_the_given_package_is_installed(packageName);
+        if (!options.force) {
+            ret = ppkg_check_if_the_given_package_is_installed(packageName);
 
-        if (ret == PPKG_OK) {
-            fprintf(stderr, "package already has been installed : %s\n", packageName);
-            continue;
+            if (ret == PPKG_OK) {
+                fprintf(stderr, "package already has been installed : %s\n", packageName);
+                continue;
+            }
         }
 
         if (setenv("PATH", PATH, 1) != 0) {

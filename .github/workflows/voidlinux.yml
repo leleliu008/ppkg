@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: xbps-install -Syu xbps
-      - run: xbps-install -S
+      - run: xbps-install -Suy ca-certificates
       - run: xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
 
       # https://github.com/actions/checkout/issues/334
