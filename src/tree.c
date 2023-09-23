@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <limits.h>
 
 #include "ppkg.h"
 
@@ -39,9 +40,34 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         return PPKG_ERROR_PACKAGE_IS_BROKEN;
     }
 
-    size_t   treeCommandPathLength = ppkgHomeDIRLength + 15U;
-    char     treeCommandPath[treeCommandPathLength];
-    snprintf(treeCommandPath, treeCommandPathLength, "%s/core/bin/tree", ppkgHomeDIR);
+    //////////////////////////////////////////////////////////////////////////////
+
+    char   treeCommandPath[PATH_MAX];
+    size_t treeCommandPathLength;
+
+    const char * const uppmHomeDIR = getenv("UPPM_HOME");
+
+    if (uppmHomeDIR == NULL || uppmHomeDIR[0] == '\0') {
+        const char * const userHomeDIR = getenv("HOME");
+
+        if (userHomeDIR == NULL) {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        }
+
+        if (userHomeDIR[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        }
+
+        treeCommandPathLength = snprintf(treeCommandPath, PATH_MAX, "%s/.uppm/installed/tree/bin/tree", userHomeDIR);
+    } else {
+        treeCommandPathLength = snprintf(treeCommandPath, PATH_MAX, "%s/installed/tree/bin/tree", uppmHomeDIR);
+    }
+
+    if (treeCommandPathLength < 0) {
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
 
     size_t n = argc + 5U;
     char*  p[n];
