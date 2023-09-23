@@ -313,10 +313,25 @@ int ppkg_setup(bool verbose) {
         return ret;
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+
     if (setenv("SSL_CERT_FILE", cacertPemFilePath, 1) != 0) {
         perror("SSL_CERT_FILE");
         return PPKG_ERROR;
     }
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+    const char * PPKG_URL_TRANSFORM = getenv("PPKG_URL_TRANSFORM");
+
+    if (PPKG_URL_TRANSFORM != NULL && PPKG_URL_TRANSFORM[0] != '\0') {
+        if (setenv("UPPM_URL_TRANSFORM", PPKG_URL_TRANSFORM, 1) != 0) {
+            perror("UPPM_URL_TRANSFORM");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
 
     size_t   uppmCmdPathLength = sessionDIRLength + 10U;
     char     uppmCmdPath[uppmCmdPathLength];
@@ -364,25 +379,29 @@ int ppkg_setup(bool verbose) {
     char     ppkgCoreDIR[ppkgCoreDIRLength];
     snprintf(ppkgCoreDIR, ppkgCoreDIRLength, "%s/core", ppkgHomeDIR);
 
-    if (lstat(ppkgCoreDIR, &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
-            ret = ppkg_rm_r(ppkgCoreDIR, verbose);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
+    for (;;) {
+        if (rename(sessionDIR, ppkgCoreDIR) == 0) {
+            return PPKG_OK;
         } else {
-            if (unlink(ppkgCoreDIR) != 0) {
+            if (errno == ENOTEMPTY || errno == EEXIST) {
+                if (lstat(ppkgCoreDIR, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        ret = ppkg_rm_r(ppkgCoreDIR, verbose);
+
+                        if (ret != PPKG_OK) {
+                            return ret;
+                        }
+                    } else {
+                        if (unlink(ppkgCoreDIR) != 0) {
+                            perror(ppkgCoreDIR);
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+            } else {
                 perror(ppkgCoreDIR);
                 return PPKG_ERROR;
             }
         }
-    }
-
-    if (rename(sessionDIR, ppkgCoreDIR) != 0) {
-        perror(ppkgCoreDIR);
-        return PPKG_ERROR;
-    } else {
-        return PPKG_OK;
     }
 }

@@ -3783,6 +3783,17 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
+    const char * PPKG_URL_TRANSFORM = getenv("PPKG_URL_TRANSFORM");
+
+    if (PPKG_URL_TRANSFORM != NULL && PPKG_URL_TRANSFORM[0] != '\0') {
+        if (setenv("UPPM_URL_TRANSFORM", PPKG_URL_TRANSFORM, 1) != 0) {
+            perror("UPPM_URL_TRANSFORM");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     // https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
     // Would you like to configure as much as possible automatically?
     if (setenv("PERL_MM_USE_DEFAULT", "1", 1) != 0) {
