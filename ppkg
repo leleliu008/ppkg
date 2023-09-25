@@ -3989,6 +3989,9 @@ EOF
         CCFLAGS="$CCFLAGS -Os"
         XXFLAGS="$XXFLAGS -Os"
         LDFLAGS="$LDFLAGS -Wl,-S"
+    else
+        CCFLAGS="$CCFLAGS -g -O0"
+        XXFLAGS="$XXFLAGS -g -O0"
     fi
 
     case $NATIVE_OS_KIND in
@@ -4343,14 +4346,12 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PYM" ] && {
         step "install needed python packages via pip3"
 
-        run pip3 --version
-        run pip3 install --upgrade pip setuptools wheel
-        run pip3 --version
+        PIP3="$(command -v pip3)" || abort 1 "command not found: pip3"
 
-        for item in $PACKAGE_DEP_PYM
-        do
-            run pip3 install "$item" --upgrade
-        done
+        run "$PIP3" --version
+        run "$PIP3" install --upgrade pip setuptools wheel
+        run "$PIP3" --version
+        run "$PIP3" install --upgrade "$PACKAGE_DEP_PYM"
     }
 
     #########################################################################################
@@ -4361,22 +4362,32 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
 
+        unset PACKAGE_DEP_PLM_T1
+        unset PACKAGE_DEP_PLM_T2
+
         for item in $PACKAGE_DEP_PLM
         do
-            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
-                note "perl module $item has been already installed."
-                continue
-            fi
-
             if [ "$item" = 'XML::Parser' ] ; then
-                __install_native_package perl-XML-Parser
+                PACKAGE_DEP_PLM_T1='XML::Parser'
             else
-                # Would you like to configure as much as possible automatically? [yes]
-                # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
-                export PERL_MM_USE_DEFAULT=1
-                run cpan "$item"
+                PACKAGE_DEP_PLM_T2="$PACKAGE_DEP_PLM_T2 $item"
             fi
         done
+
+        if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
+            __install_native_package perl-XML-Parser
+        fi
+
+        if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
+            PACKAGE_DEP_PLM_T2="${PACKAGE_DEP_PLM_T2# }"
+        fi
+
+        if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
+            # Would you like to configure as much as possible automatically? [yes]
+            # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
+            export PERL_MM_USE_DEFAULT=1
+            run cpan "$PACKAGE_DEP_PLM_T2"
+        fi
 
         if [ -d "$HOME/perl5/bin" ] ; then
             # cpan install to default local location
