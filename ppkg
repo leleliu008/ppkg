@@ -6670,8 +6670,11 @@ __setup() {
     SESSION_DIR="$PPKG_HOME/run/$$/core"
 
     run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR/etc"
+    run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
+
+    run install -d bin
+    run install -d etc
 
     ##################################################################################
 
