@@ -6936,8 +6936,8 @@ EOF
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.18.0.tar.gz' --output-filename=patchelf-0.18.0.tar.gz
-            run unzip patchelf-0.18.0.tar.gz
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.18.0.zip' --output-filename=patchelf-0.18.0.zip
+            run unzip patchelf-0.18.0.zip
             run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.18.0/src/patchelf.cc
         }
 
