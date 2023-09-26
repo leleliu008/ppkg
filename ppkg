@@ -6936,28 +6936,28 @@ EOF
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' --output-filename=patchelf.src.zip
-            run unzip patchelf.src.zip
-            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.18.0.tar.gz' --output-filename=patchelf-0.18.0.tar.gz
+            run unzip patchelf-0.18.0.tar.gz
+            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.18.0/src/patchelf.cc
         }
 
         step "install base16-encode and base16-decode"
-        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' --output-filename=C-examples.src.zip
-        run unzip C-examples.src.zip
+        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' --output-filename=C-examples-master.zip
+        run unzip C-examples-master.zip
 
-        run cmake -S C-examples-src/algorithm/base16 -B C-examples-src/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples-src/algorithm/base16/build.d
-        run cmake --install C-examples-src/algorithm/base16/build.d
+        run cmake -S C-examples-master/algorithm/base16 -B C-examples-master/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/algorithm/base16/build.d
+        run cmake --install C-examples-master/algorithm/base16/build.d
 
         step "install base64-encode and base64-decode"
-        run cmake -S C-examples-src/library/mbedTLS/base64 -B C-examples-src/library/mbedTLS/base64/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples-src/library/mbedTLS/base64/build.d
-        run cmake --install C-examples-src/library/mbedTLS/base64/build.d
+        run cmake -S C-examples-master/library/mbedTLS/base64 -B C-examples-master/library/mbedTLS/base64/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/library/mbedTLS/base64/build.d
+        run cmake --install C-examples-master/library/mbedTLS/base64/build.d
 
         step "install sysinfo"
-        run cmake -S C-examples-src/utils/sysinfo -B C-examples-src/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples-src/utils/sysinfo/build.d
-        run cmake --install C-examples-src/utils/sysinfo/build.d
+        run cmake -S C-examples-master/utils/sysinfo -B C-examples-master/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
+        run cmake --build   C-examples-master/utils/sysinfo/build.d
+        run cmake --install C-examples-master/utils/sysinfo/build.d
     else
         __setup_uppm
     fi
