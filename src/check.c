@@ -1,9 +1,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
+#include <stdbool.h>
 
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "core/regex/regex.h"
@@ -73,10 +74,10 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName) {
         return ret;
     }
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

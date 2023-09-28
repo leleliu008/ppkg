@@ -2,16 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <limits.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
 int ppkg_list_the_outdated__packages() {
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

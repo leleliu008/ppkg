@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 
@@ -290,10 +291,10 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

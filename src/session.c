@@ -3,15 +3,16 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
 int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -86,9 +87,13 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
 
     size_t sessionDIRLength = strlen(sessionDIR);
 
-    size_t n = sessionDIRLength > bufSize ? bufSize : sessionDIRLength;
+    size_t m = bufSize - 1U;
+
+    size_t n = sessionDIRLength > m ? m : sessionDIRLength;
 
     strncpy(buf, sessionDIR, n);
+
+    buf[n] = '\0';
 
     if (outSize != NULL) {
         (*outSize) = n;

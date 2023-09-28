@@ -3803,10 +3803,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3834,10 +3834,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   sessionDIR[256] = {0};
+    char   sessionDIR[PATH_MAX];
     size_t sessionDIRLength;
 
-    ret = ppkg_session_dir(sessionDIR, 255, &sessionDIRLength);
+    ret = ppkg_session_dir(sessionDIR, PATH_MAX, &sessionDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

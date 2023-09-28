@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include <jansson.h>
@@ -563,10 +564,10 @@ int ppkg_info(const char * packageName, const char * key) {
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "installed-dir") == 0) {
-        char   ppkgHomeDIR[256] = {0};
+        char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -600,10 +601,10 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
     } else if (strcmp(key, "installed-files") == 0) {
-        char   ppkgHomeDIR[256] = {0};
+        char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -785,10 +786,10 @@ int ppkg_info(const char * packageName, const char * key) {
 
         ppkg_receipt_free(receipt);
     } else if (strcmp(key, "receipt-path") == 0) {
-        char   ppkgHomeDIR[256] = {0};
+        char   ppkgHomeDIR[PATH_MAX] = {0};
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -822,10 +823,10 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
     } else if (strcmp(key, "receipt-yaml") == 0) {
-        char   ppkgHomeDIR[256] = {0};
+        char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;

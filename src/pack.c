@@ -101,19 +101,19 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    char   sessionDIR[256] = {0};
+    char   sessionDIR[PATH_MAX] = {0};
     size_t sessionDIRLength;
 
-    ret = ppkg_session_dir(sessionDIR, 255, &sessionDIRLength);
+    ret = ppkg_session_dir(sessionDIR, PATH_MAX, &sessionDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -167,11 +167,11 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
     off_t nBytes = st.st_size;
 
     if (nBytes < 1024) {
-        printf("%s %lu Byte\n", outputFilePath, nBytes);
+        printf("%s %zu Byte\n", outputFilePath, nBytes);
     } else if (nBytes < 1024 * 1024) {
-        printf("%s %lu KB\n", outputFilePath, nBytes / 1024);
+        printf("%s %zu KB\n", outputFilePath, nBytes / 1024);
     } else if (nBytes < 1024 * 1024 * 1024) {
-        printf("%s %lu MB\n", outputFilePath, nBytes / 1024 / 1024);
+        printf("%s %zu MB\n", outputFilePath, nBytes / 1024 / 1024);
     } else {
         LOG_ERROR2("file is too large: ", tmpFilePath);
         return PPKG_ERROR;

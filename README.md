@@ -275,8 +275,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg setup
     ```
 
-    This command is only available for POSIX-Shell-based implementation.
-
     This command is actually to do two things:
 
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ppkg/core`
@@ -631,8 +629,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **PPKG_XTRACE**
 
     for debugging purposes.
-
-    this environment variable only affects POSIX-Shell-based implementation.
 
     enables `set -x`:
 

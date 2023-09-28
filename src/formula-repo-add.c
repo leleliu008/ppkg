@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <fcntl.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -35,10 +36,10 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

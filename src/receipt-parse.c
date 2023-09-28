@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <limits.h>
+
 #include <yaml.h>
 
 #include "core/regex/regex.h"
@@ -72,7 +74,7 @@ void ppkg_receipt_dump(PPKGReceipt * receipt) {
     printf("git_url: %s\n", receipt->git_url);
     printf("git_sha: %s\n", receipt->git_sha);
     printf("git_ref: %s\n", receipt->git_ref);
-    printf("git_nth: %lu\n", receipt->git_nth);
+    printf("git_nth: %zu\n", receipt->git_nth);
 
     printf("src_url: %s\n", receipt->src_url);
     printf("src_uri: %s\n", receipt->src_uri);
@@ -536,10 +538,10 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return ret;
     }
 
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

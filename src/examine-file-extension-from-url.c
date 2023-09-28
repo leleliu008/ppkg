@@ -25,8 +25,6 @@ int ppkg_examine_file_extension_from_url(char buf[], size_t maxSize, const char 
         }
     }
 
-    //printf("url=%s\nurlLength=%lu\n", url, urlLength);
-
     if (urlLength < 3U) {
         return PPKG_ERROR_ARG_IS_INVALID;
     }

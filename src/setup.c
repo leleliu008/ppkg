@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -14,10 +15,10 @@
 #include "ppkg.h"
 
 int ppkg_setup(bool verbose) {
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

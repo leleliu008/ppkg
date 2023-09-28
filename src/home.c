@@ -49,9 +49,13 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
             }
         }
 
-        size_t n = (bufSize > defaultUppmHomeDIRLength) ? defaultUppmHomeDIRLength : bufSize;
+        size_t m = bufSize - 1U;
+
+        size_t n = (m > defaultUppmHomeDIRLength) ? defaultUppmHomeDIRLength : m;
 
         strncpy(buf, defaultUppmHomeDIR, n);
+
+        buf[n] = '\0';
 
         if (outSize != NULL) {
             (*outSize) = n;
@@ -80,9 +84,13 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
 
         size_t ppkgHomeDIRLength = strlen(ppkgHomeDIR);
 
-        size_t n = (bufSize > ppkgHomeDIRLength) ? ppkgHomeDIRLength : bufSize;
+        size_t m = bufSize - 1U;
+
+        size_t n = (m > ppkgHomeDIRLength) ? ppkgHomeDIRLength : m;
 
         strncpy(buf, ppkgHomeDIR, n);
+
+        buf[n] = '\0';
 
         if (outSize != NULL) {
             (*outSize) = n;

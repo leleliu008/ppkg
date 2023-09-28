@@ -3,15 +3,16 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
 int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
-    char   ppkgHomeDIR[256] = {0};
+    char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, 255, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

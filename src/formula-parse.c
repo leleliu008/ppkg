@@ -86,7 +86,7 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("git_url: %s\n", formula->git_url);
     printf("git_sha: %s\n", formula->git_sha);
     printf("git_ref: %s\n", formula->git_ref);
-    printf("git_nth: %lu\n", formula->git_nth);
+    printf("git_nth: %zu\n", formula->git_nth);
 
     printf("src_url: %s\n", formula->src_url);
     printf("src_uri: %s\n", formula->src_uri);
