@@ -3486,10 +3486,10 @@ __install_the_given_packages() {
             ;;
         libbz2)
             NATIVE_PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
+            NATIVE_PACKAGE_SRC_SHA='96a2e42fbde6f59fce10bcbcda62aa90b9514bd9295914f7470e98c54eac38f2'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
             ;;
         perl)
             NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
@@ -3499,8 +3499,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         openssl)
-            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
             NATIVE_PACKAGE_DEPENDENCIES='perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
@@ -3590,8 +3590,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
-            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-            NATIVE_PACKAGE_SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz'
+            NATIVE_PACKAGE_SRC_SHA='a12a0a013a30b846c786c010f2c19dd36b7298d888f7c4bd1581d90ce18b5e58'
             NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
@@ -7428,7 +7428,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.2.2
+    PPKG_VERSION=0.2.3
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
