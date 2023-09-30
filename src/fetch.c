@@ -153,16 +153,20 @@ int ppkg_fetch(const char * packageName, bool verbose) {
             }
 
             if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-                perror(ppkgDownloadsDIR);
-                ppkg_formula_free(formula);
-                return PPKG_ERROR;
+                if (errno != EEXIST) {
+                    perror(ppkgDownloadsDIR);
+                    ppkg_formula_free(formula);
+                    return PPKG_ERROR;
+                }
             }
         }
     } else {
         if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-            perror(ppkgDownloadsDIR);
-            ppkg_formula_free(formula);
-            return PPKG_ERROR;
+            if (errno != EEXIST) {
+                perror(ppkgDownloadsDIR);
+                ppkg_formula_free(formula);
+                return PPKG_ERROR;
+            }
         }
     }
 

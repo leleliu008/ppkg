@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "exe.h"
@@ -182,7 +183,7 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
     return 0;
 }
 
-int exe_where(const char * commandName, char buf[], size_t * writtenSize, size_t maxSize) {
+int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * writtenSize) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;
@@ -198,7 +199,7 @@ int exe_where(const char * commandName, char buf[], size_t * writtenSize, size_t
         return -1;
     }
 
-    if (maxSize == 0U) {
+    if (bufSize == 0U) {
         errno = EINVAL;
         return -1;
     }
@@ -223,16 +224,20 @@ int exe_where(const char * commandName, char buf[], size_t * writtenSize, size_t
 
     char * PATHItem = strtok(PATH2, ":");
 
+    char   pathBuf[PATH_MAX];
+
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
-            char     fullPath[fullPathLength];
-            snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
+            size_t   pathLength = strlen(PATHItem) + commandNameLength + 1U;
+            snprintf(pathBuf, pathLength + 1U, "%s/%s", PATHItem, commandName);
 
-            if (access(fullPath, X_OK) == 0) {
-                size_t n = (maxSize > fullPathLength) ? fullPathLength : maxSize;
+            if (access(pathBuf, X_OK) == 0) {
+                size_t m = bufSize - 1U;
+                size_t n = (m > pathLength) ? pathLength : m;
 
-                strncpy(buf, fullPath, n);
+                strncpy(buf, pathBuf, n);
+
+                buf[n] = '\0';
 
                 if (writtenSize != NULL) {
                     (*writtenSize) = n;

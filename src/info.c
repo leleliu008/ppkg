@@ -121,7 +121,7 @@ int ppkg_info(const char * packageName, const char * key) {
         json_object_set_new(root, "git-url", json_string(formula->git_url));
         json_object_set_new(root, "git-sha", json_string(formula->git_sha));
         json_object_set_new(root, "git-ref", json_string(formula->git_ref));
-        json_object_set_new(root, "git-ref", json_integer(formula->git_nth));
+        json_object_set_new(root, "git-nth", json_integer(formula->git_nth));
 
         json_object_set_new(root, "src-url", json_string(formula->src_url));
         json_object_set_new(root, "src-uri", json_string(formula->src_uri));

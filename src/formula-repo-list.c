@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <limits.h>
 #include <dirent.h>
 #include <sys/stat.h>
 

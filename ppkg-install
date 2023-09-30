@@ -297,6 +297,76 @@ gow() {
 # {{{ cargow
 
 cargow() {
+    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
+
+    if [ "$LINK_TYPE" = 'static-only' ] ; then
+        if [ "$NATIVE_OS_KIND" != darwin ] ; then
+            if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+            fi
+        fi
+    fi
+
+    # https://github.com/rust-lang/rust/issues/89626
+    if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
+        CFLAGS="$CFLAGS -mno-outline-atomics"
+    fi
+
+    # https://libraries.io/cargo/cc
+    # https://crates.io/crates/cc
+    # https://docs.rs/cc/latest/cc/
+    # https://github.com/alexcrichton/cc-rs
+    export HOST_CC="$CC"
+    export HOST_CFLAGS="$CFLAGS $CPPFLAGS"
+
+    export HOST_CXX="$CXX"
+    export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
+
+    export HOST_AR="$AR"
+
+    export TARGET_CC="$CC"
+    export TARGET_CFLAGS="$CFLAGS $CPPFLAGS"
+
+    export TARGET_CXX="$CXX"
+    export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
+
+    export TARGET_AR="$AR"
+
+
+    # https://libraries.io/cargo/pkg-config
+    # https://crates.io/crates/pkg-config
+    # https://docs.rs/pkg-config/latest/pkg_config/
+    # https://github.com/rust-lang/pkg-config-rs
+    # export TARGET_PKG_CONFIG_ALLOW_CROSS=1
+
+
+    # https://libraries.io/cargo/cmake
+    # https://crates.io/crates/cmake
+    # https://docs.rs/cmake/latest/cmake/
+    # https://github.com/alexcrichton/cmake-rs
+    # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
+    # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
+
+
+    for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+    do
+        case $item in
+            openssl)
+                # https://docs.rs/openssl/0.10.35/openssl/
+                export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                ;;
+            openssl@1.1)
+                # https://docs.rs/openssl/0.10.35/openssl/
+                export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
+                ;;
+        esac
+    done
+
+    env | grep CARGO_
+    env | grep RUST
+
     run rustup target add "$RUST_TARGET"
 
     case $1 in
@@ -648,32 +718,6 @@ EOF
         fi
     fi
 
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
-
-    CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
-
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
-
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-        esac
-    else
-        case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-        esac
-    fi
-
-    if [ "$LOG_LEVEL" -gt 0 ] ; then
-        run cat "$CMAKE_PROJECT_INCLUDE"
-    fi
-
     CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
 
     run "$CMAKE" \
@@ -742,16 +786,9 @@ xmakew() {
 ##############################################################################
 # {{{ mesonw
 
-# https://mesonbuild.com/Cross-compilation.html
-# run in a subshell
+# https://mesonbuild.com/Native-environments.html
 mesonw() {
-    unset MESON_BUILD_DEFAULT_LIBRARY
-
-    case $INSTALL_LIB in
-        static|shared|both) MESON_BUILD_DEFAULT_LIBRARY="$INSTALL_LIB"
-    esac
-
-    MESON_NATIVE_FILE="$PACKAGE_BCACHED_DIR/native-file.ini"
+    MESON_NATIVE_FILE="$PACKAGE_WORKING_DIR/native-file.ini"
 
     cat > "$MESON_NATIVE_FILE" <<EOF
 [binaries]
@@ -767,20 +804,28 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    MESON=$(command -v meson) || abort 1 "command not found: meson"
-    NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
+    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$BUILD_TYPE --backend=ninja --pkg-config-path='$PKG_CONFIG_PATH' --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
 
-    run "$MESON" setup \
-        --prefix="$PACKAGE_INSTALL_DIR" \
-        --buildtype="$BUILD_TYPE" \
-        --backend=ninja \
-        --pkg-config-path="$PKG_CONFIG_PATH" \
-        --native-file="$MESON_NATIVE_FILE" \
-        -Ddefault_library="$MESON_BUILD_DEFAULT_LIBRARY" \
-        -Dlibdir=lib \
-        "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
-    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" &&
-    run "$NINJA" -C "$PACKAGE_BCACHED_DIR" install
+    case $INSTALL_LIB in
+        static|shared|both) MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=$INSTALL_LIB"
+    esac
+
+    case $LINK_TYPE in
+        static-only|static-prefered) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+    esac
+
+    MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
+    MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
+    fi
+
+    MESON=$(command -v meson) || abort 1 "command not found: meson"
+
+    run "$MESON" setup   "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+    run "$MESON" compile "$MESON_COMPILE_ARGS" &&
+    run "$MESON" install "$MESON_INSTALL_ARGS"
 }
 
 to_meson_array() {
@@ -798,15 +843,280 @@ to_meson_array() {
     printf '[%s]\n' "$RESULT"
 }
 
+__adjust_elf_files_for_the_given_target() {
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$("$PPKG" util base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        [ -w "$FILEPATH" ] || continue
+
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 18 "$FILEPATH" | "$PPKG" util base16-encode)"
+
+        ELF_TYPE_EXECUTABLE=no
+        ELF_TYPE_SHAREDABLE=no
+
+        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+        case $FILE_HEADER_ACTUAL in
+            7F454C460[12]01010[039]00000000000000000100)
+                continue
+                ;;
+            7F454C460[12]01010[039]00000000000000000200)
+                # little-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]01010[039]00000000000000000300)
+                # little-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000001)
+                continue
+                ;;
+            7F454C460[12]02010[039]00000000000000000002)
+                # big-endian mode
+                ELF_TYPE_EXECUTABLE=yes
+                ;;
+            7F454C460[12]02010[039]00000000000000000003)
+                # big-endian mode
+                ELF_TYPE_SHAREDABLE=yes
+                ;;
+            7F454C46*)
+                abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                ;;
+            *)  continue
+        esac
+
+        # https://github.com/NixOS/patchelf/issues/371
+
+        if [ "$BUILD_TYPE" = release ] ; then
+            if [ "$ELF_TYPE_EXECUTABLE" = yes ] ; then
+                # freebsd's strip has problem
+                if [ "$NATIVE_OS_KIND" != freebsd ] ; then
+                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                fi
+            fi
+        fi
+
+        if [ "$ELF_TYPE_EXECUTABLE" = yes ] || [ "$ELF_TYPE_SHAREDABLE" = yes ] ; then
+            DT_NEEDED=
+            DT_NEEDED="$(patchelf --print-needed "$FILEPATH" 2>/dev/null || true)"
+
+            DT_RUNPATH=
+            DT_RUNPATH="$(patchelf --print-rpath "$FILEPATH" 2>/dev/null | tr ':' ' ')"
+
+            if [ -n "$DT_RUNPATH" ] ; then
+                run patchelf --remove-rpath "$FILEPATH"
+            fi
+
+            unset RUNPATH
+
+            PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+
+            if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+                for NEEDED in $DT_NEEDED
+                do
+                    if [ -e "$PACKAGE_LIBRARY_DIR/$NEEDED" ] ; then
+                        RUNPATH="$PACKAGE_LIBRARY_DIR"
+                        break
+                    fi
+                done
+            fi
+
+            for NEEDED in $DT_NEEDED
+            do
+                case $NEEDED in
+                    libc.so.6) ;;
+                    libm.so.6) ;;
+                    libgcc_s.so.1) ;;
+                    ld-linux-x86-64.so.2) ;;
+                    *)  for LIBDIR in $DT_RUNPATH
+                        do
+                            if [ "$LIBDIR" = "$PACKAGE_LIBRARY_DIR" ] ; then
+                                continue
+                            fi
+
+                            if [ "$LIBDIR" = "$PACKAGE_WORKING_DIR/lib" ] ; then
+                                continue
+                            fi
+
+                            if [ -e "$LIBDIR/$NEEDED" ] ; then
+                                if [ -z "$RUNPATH" ] ; then
+                                    RUNPATH="$LIBDIR"
+                                else
+                                    RUNPATH="$RUNPATH:$LIBDIR"
+                                fi
+                                break
+                            fi
+                        done
+                esac
+            done
+
+            if [ -n "$RUNPATH" ] ; then
+                run patchelf --set-rpath "$RUNPATH" "$FILEPATH"
+            fi
+        fi
+    done
+}
+
+__adjust_mach_o_files_for_the_given_target() {
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$("$PPKG" util base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 16 "$FILEPATH" | "$PPKG" util base16-encode)"
+
+        # https://github.com/aidansteele/osx-abi-macho-file-format-reference
+        case $FILE_HEADER_ACTUAL in
+            CFFAEDFE0C000001000000000[26]000000)
+                # arm64
+                ;;
+            CFFAEDFE07000001030000000[26]000000)
+                # x86_64
+                ;;
+            *)  continue
+        esac
+
+        DT_SONAME=
+        DT_SONAME="$( otool -l "$FILEPATH" | grep LC_ID_DYLIB   -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_NEEDED=
+        DT_NEEDED="$( otool -l "$FILEPATH" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        DT_RUNPATH=
+        DT_RUNPATH="$(otool -l "$FILEPATH" | grep LC_RPATH      -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)"
+
+        if [ -z "$DT_NEEDED" ] ; then
+            abort 1 "no dependent shared libraries found in $FILEPATH"
+        fi
+
+        echo "DT_SONAME=\n$DT_SONAME"
+        echo "DT_NEEDED=\n$DT_NEEDED"
+        echo "DT_RUNPATH=\n$DT_RUNPATH"
+
+        case $DT_SONAME in
+            '') ;;
+            @*) ;;
+            /*) ;;
+            lib*.dylib) run install_name_tool -id "@rpath/$DT_SONAME" "$FILEPATH"
+        esac
+
+        for NEEDED in $DT_NEEDED
+        do
+            case $NEEDED in
+                lib*.dylib)
+                    run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$FILEPATH"
+            esac
+        done
+
+        if [ "$BUILD_TYPE" = release ] ; then
+            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+        fi
+    done
+}
+
+__adjust_la_files_for_the_given_target() {
+    [ -d "$PACKAGE_INSTALL_DIR/lib" ] || {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name "*.la")"
+
+    [ -z "$LA_FILES" ] && {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    for lafile in $LA_FILES
+    do
+        sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
+        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$lafile"
+        sed_in_place "s|-R[^' ]*||g"               "$lafile"
+        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
+        #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
+    done
+}
+
+__adjust_pc_files_for_the_given_target() {
+    [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || {
+        note "no .pc files installed, skipped"
+        return 0
+    }
+
+    PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name "*.pc")"
+
+    [ -z "$PC_FILES" ] && {
+        note "no .pc files installed, skipped"
+        return 0
+    }
+
+    # cc: error: unrecognized command line option ‘-R’
+    for pcfile in $PC_FILES
+    do
+        sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
+        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
+        sed_in_place "s|-R[^' ]*||g"               "$pcfile"
+        sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
+        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
+        #sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
+
+        if grep 'Libs.private:' "$pcfile" > /dev/null ; then
+            if grep 'Libs:' "$pcfile" > /dev/null ; then
+                LIBS_PRIVATE_CONTENT=$(sed -n '/Libs.private:/p' "$pcfile" | cut -c14-)
+                sed_in_place "/Libs:/s|\$|$LIBS_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Libs.private:/d' "$pcfile"
+            else
+                sed_in_place 's|Libs.private:|Libs:|' "$pcfile"
+            fi
+        fi
+
+        if grep 'Requires.private:' "$pcfile" > /dev/null ; then
+            if grep 'Requires:' "$pcfile" > /dev/null ; then
+                REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
+                sed_in_place "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Requires.private:/d' "$pcfile"
+            else
+                sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
+            fi
+        fi
+    done
+}
+
 # }}}
 ##############################################################################
 # {{{ main
+
+for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+do
+    DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
+
+    DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
+    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/include'"
+    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/lib'"
+    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_BINARY__DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/bin'"
+done
 
 if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
     run cd "$PACKAGE_BSCRIPT_DIR"
 fi
 
-dopatch "$PACKAGE_NAME"
+dopatch
 
 if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
     run cd "$PACKAGE_BSCRIPT_DIR"
@@ -838,19 +1148,33 @@ elif [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = 1 ] ; then
     fi
 fi
 
-
 if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
-    run cd "$PACKAGE_BSCRIPT_DIR"
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run cd "$PACKAGE_BSCRIPT_DIR"
+    fi
 else
     run install -d "$PACKAGE_BCACHED_DIR"
     run cd "$PACKAGE_BCACHED_DIR"
 fi
 
 if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
-    run rm -rf "$PACKAGE_INSTALL_DIR"
+    abort 1 "$PACKAGE_INSTALL_DIR already exists."
 fi
 
-dobuild "$PACKAGE_NAME"
+dobuild
+
+cd "$PACKAGE_INSTALL_DIR"
+
+if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    __adjust_mach_o_files_for_the_given_target "$@"
+else
+    __adjust_elf_files_for_the_given_target "$@"
+fi
+
+if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
+    __adjust_la_files_for_the_given_target "$@"
+    __adjust_pc_files_for_the_given_target "$@"
+fi
 
 # }}}
 ##############################################################################

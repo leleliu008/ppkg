@@ -72,7 +72,7 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
     // https://curl.se/libcurl/c/CURLOPT_TIMEOUT.html
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
+    //curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
 
     // https://curl.se/libcurl/c/CURLOPT_VERBOSE.html
     curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose ? 1 : 0);

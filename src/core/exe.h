@@ -30,6 +30,6 @@ int exe_lookup(const char * commandName, char **  pathP, size_t * pathLength);
  *  On PATH is not set, -2 is returned.
  *  On PATH is set a empty string, -3 is returned.
  */
-int exe_where(const char * commandName, char buf[], size_t * writtenSize, size_t maxSize);
+int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * writtenSize);
 
 #endif

@@ -5,9 +5,9 @@
 #include <string.h>
 #include <stdbool.h>
 
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
+//#ifndef __USE_GNU
+//#define __USE_GNU
+//#endif
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -29,6 +29,7 @@
 
 
 static int run_cmd(char * cmd, int output2FD) {
+    puts(cmd);
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -37,7 +38,7 @@ static int run_cmd(char * cmd, int output2FD) {
     }
 
     if (pid == 0) {
-        if (output2FD > 0) {
+        if (output2FD > STDERR_FILENO) {
             if (dup2(output2FD, STDOUT_FILENO) < 0) {
                 perror(NULL);
                 exit(253);
@@ -60,6 +61,14 @@ static int run_cmd(char * cmd, int output2FD) {
             argv[argc] = arg;
             argc++;
             arg = strtok(NULL, " ");
+        }
+
+        for (int i = 0; ;i++) {
+            if (argv[i] == NULL) {
+                break;
+            } else {
+                printf("%2d:%s\n", i, argv[i]);
+            }
         }
 
         ////////////////////////////////////////
@@ -713,8 +722,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
         case NATIVE_PACKAGE_ID_LIBBZ2:
             nativePackage->name = "libbz2";
             nativePackage->srcUrl = "https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz";
-            nativePackage->srcSha = "0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759";
-            nativePackage->buildConfigureArgs = "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON";
+            nativePackage->srcSha = "96a2e42fbde6f59fce10bcbcda62aa90b9514bd9295914f7470e98c54eac38f2";
+            nativePackage->buildConfigureArgs = "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
             break;
         case NATIVE_PACKAGE_ID_PERL:
@@ -725,8 +734,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_OPENSSL:
             nativePackage->name = "openssl";
-            nativePackage->srcUrl = "https://www.openssl.org/source/openssl-3.0.5.tar.gz";
-            nativePackage->srcSha = "aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a";
+            nativePackage->srcUrl = "https://www.openssl.org/source/openssl-3.1.1.tar.gz";
+            nativePackage->srcSha = "b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674";
             nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;
@@ -823,8 +832,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_PYTHON3:
             nativePackage->name = "python3";
-            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz";
-            nativePackage->srcSha = "2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849";
+            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz";
+            nativePackage->srcSha = "a12a0a013a30b846c786c010f2c19dd36b7298d888f7c4bd1581d90ce18b5e58";
             nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
             nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBBZ2;
             nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBLZMA;
@@ -834,7 +843,7 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             nativePackage->depPackageIDArray[6] = NATIVE_PACKAGE_ID_SQLITE3;
             nativePackage->depPackageIDArray[7] = NATIVE_PACKAGE_ID_PERL;
             nativePackage->depPackageIDArray[8] = NATIVE_PACKAGE_ID_OPENSSL;
-            nativePackage->buildConfigureArgs = "--with-system-expat --with-system-ffi --with-openssl=$PPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling";
+            nativePackage->buildConfigureArgs = "--with-system-expat --with-system-ffi --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;
         case NATIVE_PACKAGE_ID_PERL_XML_PARSER:
@@ -846,14 +855,14 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;
         default:
-            fprintf(stderr, "unknown native package id: %d", packageID);
+            fprintf(stderr, "unknown native package id: %d\n", packageID);
             return PPKG_ERROR;
     }
 
     return PPKG_OK;
 }
 
-static inline int export_environment_variables_1(const char * packageInstalledDIR, const size_t packageInstalledDIRLength) {
+static int export_environment_variables_for_build_tools(const char * packageInstalledDIR, const size_t packageInstalledDIRLength) {
     struct stat st;
 
     size_t   includeDIRLength = packageInstalledDIRLength + 9U;
@@ -903,9 +912,9 @@ static inline int export_environment_variables_1(const char * packageInstalledDI
                 return PPKG_ERROR;
             }
         } else {
-            size_t   newLDFLAGSLength = libDIRLength + strlen(LDFLAGS) + 4U;
+            size_t   newLDFLAGSLength = (libDIRLength << 1U) + strlen(LDFLAGS) + 15U;
             char     newLDFLAGS[newLDFLAGSLength];
-            snprintf(newLDFLAGS, newLDFLAGSLength, "-L%s %s", libDIR, LDFLAGS);
+            snprintf(newLDFLAGS, newLDFLAGSLength, "-L%s -Wl,-rpath,%s %s", libDIR, libDIR, LDFLAGS);
 
             if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
                 perror("LDFLAGS");
@@ -943,10 +952,8 @@ static inline int export_environment_variables_1(const char * packageInstalledDI
     return PPKG_OK;
 }
 
-static inline int export_environment_variables_2(const char * packageInstalledDIR, const size_t packageInstalledDIRLength) {
+static int export_environment_variables_for_other_tools(const char * packageInstalledDIR, const size_t packageInstalledDIRLength) {
     struct stat st;
-
-    ////////////////////////////////////////////////////////////////////////////////////////
 
     size_t   binDIRLength = packageInstalledDIRLength + 5U;
     char     binDIR[binDIRLength];
@@ -1026,6 +1033,13 @@ static inline int export_environment_variables_2(const char * packageInstalledDI
     return PPKG_OK;
 }
 
+typedef struct {
+    const char * name;
+    const char * libs;
+    const char * env1;
+    const char * env2;
+} XX;
+
 static int install_native_package(
         int nativePackageID,
         const char * downloadsDIR,
@@ -1067,7 +1081,11 @@ static int install_native_package(
     const char * buildConfigureArgs = nativePackage.buildConfigureArgs;
     int          buildSystemType = nativePackage.buildSystemType;
 
-    printf("install native package : %s", packageName);
+    if (buildConfigureArgs == NULL) {
+        buildConfigureArgs = "";
+    }
+
+    printf("install native package : %s\n", packageName);
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -1090,8 +1108,19 @@ static int install_native_package(
             }
 
             if (strcmp(buf, srcSha) == 0) {
-                fprintf(stderr, "native package '%s' already has been installed, skipped.", packageName);
-                return PPKG_OK;
+                fprintf(stderr, "native package '%s' already has been installed.\n", packageName);
+
+                size_t   packageInstalledDIRLength = nativePackageInstalledRootDIRLength + packageNameLength + 2U;
+                char     packageInstalledDIR[packageInstalledDIRLength];
+                snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", nativePackageInstalledRootDIR, packageName);
+
+                ret = export_environment_variables_for_build_tools(packageInstalledDIR, packageInstalledDIRLength);
+
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
+
+                return export_environment_variables_for_other_tools(packageInstalledDIR, packageInstalledDIRLength);
             }
         } else {
             fprintf(stderr, "%s was expected to be a regular file, but it was not.\n", receiptFilePath);
@@ -1101,7 +1130,7 @@ static int install_native_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t   nativePackageWorkingTopDIRLength = nativePackageInstallingRootDIRLength + packageNameLength + 10U;
+    size_t   nativePackageWorkingTopDIRLength = nativePackageInstallingRootDIRLength + packageNameLength + 2U;
     char     nativePackageWorkingTopDIR[nativePackageWorkingTopDIRLength];
     snprintf(nativePackageWorkingTopDIR, nativePackageWorkingTopDIRLength, "%s/%s", nativePackageInstallingRootDIR, packageName);
 
@@ -1193,7 +1222,7 @@ static int install_native_package(
         return ret;
     }
 
-    size_t   packageInstalledDIRLength = nativePackageInstalledRootDIRLength + 2U;
+    size_t   packageInstalledDIRLength = nativePackageInstalledRootDIRLength + 66U;
     char     packageInstalledDIR[packageInstalledDIRLength];
     snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", nativePackageInstalledRootDIR, packageInstalledSHA);
 
@@ -1216,14 +1245,30 @@ static int install_native_package(
         return PPKG_ERROR;
     }
 
-    if (nativePackageID == NATIVE_PACKAGE_ID_PYTHON3) {
-        if (unsetenv("PYTHONHOME") < 0) {
-            perror("unsetenv PYTHONHOME");
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t   packageInstalledLibraryDIRLength = packageInstalledDIRLength + 5U;
+    char     packageInstalledLibraryDIR[packageInstalledLibraryDIRLength];
+    snprintf(packageInstalledLibraryDIR, packageInstalledLibraryDIRLength, "%s/lib", packageInstalledDIR);
+
+    const char * const LDFLAGS = getenv("LDFLAGS");
+
+    if (LDFLAGS == NULL || LDFLAGS[0] == '\0') {
+        size_t   newLDFLAGSLength = packageInstalledLibraryDIRLength + 12U;
+        char     newLDFLAGS[newLDFLAGSLength];
+        snprintf(newLDFLAGS, newLDFLAGSLength, "-Wl,-rpath,%s", packageInstalledLibraryDIR);
+
+        if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
+            perror("LDFLAGS");
             return PPKG_ERROR;
         }
+    } else {
+        size_t   newLDFLAGSLength = packageInstalledLibraryDIRLength + strlen(LDFLAGS) + 15U;
+        char     newLDFLAGS[newLDFLAGSLength];
+        snprintf(newLDFLAGS, newLDFLAGSLength, "-Wl,-rpath,%s %s", packageInstalledLibraryDIR, LDFLAGS);
 
-        if (unsetenv("PYTHONPATH") < 0) {
-            perror("unsetenv PYTHONPATH");
+        if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
+            perror("LDFLAGS");
             return PPKG_ERROR;
         }
     }
@@ -1234,7 +1279,7 @@ static int install_native_package(
         char   cmakePath[PATH_MAX];
         size_t cmakePathLength = 0U;
 
-        int ret = exe_where("cmake", cmakePath, &cmakePathLength, PATH_MAX - 1U);
+        int ret = exe_where("cmake", cmakePath, PATH_MAX, &cmakePathLength);
 
         if (ret < 0) {
             perror(NULL);
@@ -1260,7 +1305,7 @@ static int install_native_package(
 
         size_t   buildPhaseCmdLength = cmakePathLength + 30U;
         char     buildPhaseCmd[buildPhaseCmdLength];
-        snprintf(buildPhaseCmd, buildPhaseCmdLength, "%s --build build.d -- --jobs=%zu", cmakePath, njobs);
+        snprintf(buildPhaseCmd, buildPhaseCmdLength, "%s --build build.d -- -j%zu", cmakePath, njobs);
 
         ret = run_cmd(buildPhaseCmd, STDOUT_FILENO);
 
@@ -1281,12 +1326,81 @@ static int install_native_package(
         }
     } else if (buildSystemType == BUILD_SYSTEM_TYPE_CONFIGURE) {
         if (nativePackageID == NATIVE_PACKAGE_ID_PYTHON3) {
+            XX xx[5] = {
+                { "zlib",   "-lz",   "ZLIB_CFLAGS",  "ZLIB_LIBS"},
+                { "libbz2", "-lbz2", "BZIP2_CFLAGS", "BZIP2_LIBS"},
+                { "liblzma", "-llzma", "LIBLZMA_CFLAGS", "LIBLZMA_LIBS"},
+                { "sqlite3", "-lsqlite3", "LIBSQLITE3_CFLAGS", "LIBSQLITE3_LIBS"},
+                { "gdbm", "-lgdbm -lgdbm_compat", "GDBM_CFLAGS", "GDBM_LIBS"},
+            };
 
+            for (int i = 0; i < 5; i++) {
+                size_t   ccflagsSLength = nativePackageInstalledRootDIRLength + strlen(xx[i].name) + 15U;
+                char     ccflags[ccflagsSLength];
+                snprintf(ccflags, ccflagsSLength, "-I%s/%s/include", nativePackageInstalledRootDIR, xx[i].name);
+
+                size_t   ldflagsSLength = nativePackageInstalledRootDIRLength + strlen(xx[i].name) + strlen(xx[i].libs) + 10U;
+                char     ldflags[ldflagsSLength];
+                snprintf(ldflags, ldflagsSLength, "-L%s/%s/lib %s", nativePackageInstalledRootDIR, xx[i].name, xx[i].libs);
+
+                if (setenv(xx[i].env1, ccflags, 1) != 0) {
+                    perror(xx[i].env1);
+                    return PPKG_ERROR;
+                }
+
+                if (setenv(xx[i].env2, ldflags, 1) != 0) {
+                    perror(xx[i].env2);
+                    return PPKG_ERROR;
+                }
+            }
+
+            if (setenv("LIBS", "-lm", 1) != 0) {
+                perror("LIBS");
+                return PPKG_ERROR;
+            }
+
+            if (unsetenv("PYTHONHOME") < 0) {
+                perror("unsetenv PYTHONHOME");
+                return PPKG_ERROR;
+            }
+
+            if (unsetenv("PYTHONPATH") < 0) {
+                perror("unsetenv PYTHONPATH");
+                return PPKG_ERROR;
+            }
+
+            const char * const CPPFLAGS = getenv("CPPFLAGS");
+
+            if (CPPFLAGS != NULL && CPPFLAGS[0] != '\0') {
+                const char * const CCFLAGS = getenv("CFLAGS");
+
+                size_t   newCFLAGSLength = strlen(CCFLAGS) + strlen(CPPFLAGS) + 2U;
+                char     newCFLAGS[newCFLAGSLength];
+                snprintf(newCFLAGS, newCFLAGSLength, "%s %s", CCFLAGS, CPPFLAGS);
+
+                if (setenv("CFLAGS", newCFLAGS, 1) != 0) {
+                    perror("CFLAGS");
+                    return PPKG_ERROR;
+                }
+            }
+
+            printf("CCFLAGS=%s\n", getenv("CFLAGS"));
+            printf("LDFLAGS=%s\n", getenv("LDFLAGS"));
+
+            size_t   configurePhaseCmdLength = packageInstalledDIRLength + nativePackageInstalledRootDIRLength + strlen(buildConfigureArgs) + 60U;
+            char     configurePhaseCmd[configurePhaseCmdLength];
+            snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s --with-openssl=%s/openssl %s %s", packageInstalledDIR, nativePackageInstalledRootDIR, (logLevel == PPKGLogLevel_silent) ? "--silent" : "", buildConfigureArgs);
+
+            ret = run_cmd(configurePhaseCmd, STDOUT_FILENO);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
         } else if (nativePackageID == NATIVE_PACKAGE_ID_PERL_XML_PARSER) {
             char   perlPath[PATH_MAX];
             size_t perlPathLength = 0U;
 
-            int ret = exe_where("perl", perlPath, &perlPathLength, PATH_MAX - 1U);
+            int ret = exe_where("perl", perlPath, PATH_MAX, &perlPathLength);
 
             if (ret < 0) {
                 perror(NULL);
@@ -1308,7 +1422,7 @@ static int install_native_package(
                 return ret;
             }
         } else if (nativePackageID == NATIVE_PACKAGE_ID_PERL) {
-            size_t   configurePhaseCmdLength = packageInstalledDIRLength + 110U;
+            size_t   configurePhaseCmdLength = (packageInstalledDIRLength * 3) + 170U;
             char     configurePhaseCmd[configurePhaseCmdLength];
             snprintf(configurePhaseCmd, configurePhaseCmdLength, "./Configure -Dprefix=%s -Dman1dir=%s/share/man/man1 -Dman3dir=%s/share/man/man3 -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true", packageInstalledDIR, packageInstalledDIR, packageInstalledDIR);
 
@@ -1338,7 +1452,7 @@ static int install_native_package(
 
             //////////////////////////////////////////////////////////////////////////////
 
-            size_t   configurePhaseCmdLength = (packageInstalledDIRLength << 1) + 73U;
+            size_t   configurePhaseCmdLength = (packageInstalledDIRLength * 3) + 100U;
             char     configurePhaseCmd[configurePhaseCmdLength];
             snprintf(configurePhaseCmd, configurePhaseCmdLength, "./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=%s --libdir=%s/lib --openssldir=%s/etc/ssl", packageInstalledDIR, packageInstalledDIR, packageInstalledDIR);
 
@@ -1364,7 +1478,7 @@ static int install_native_package(
         char   gmakePath[PATH_MAX];
         size_t gmakePathLength = 0U;
 
-        int ret = exe_where("gmake", gmakePath, &gmakePathLength, PATH_MAX - 1U);
+        int ret = exe_where("gmake", gmakePath, PATH_MAX, &gmakePathLength);
 
         if (ret < 0) {
             perror(NULL);
@@ -1372,7 +1486,7 @@ static int install_native_package(
         }
 
         if (gmakePathLength == 0U) {
-            ret = exe_where("make", gmakePath, &gmakePathLength, PATH_MAX - 1U);
+            ret = exe_where("make", gmakePath, PATH_MAX, &gmakePathLength);
 
             if (ret < 0) {
                 perror(NULL);
@@ -1410,7 +1524,7 @@ static int install_native_package(
         }
     }
 
-    size_t   receiptFilePath2Length = packageInstalledDIRLength + 78U;
+    size_t   receiptFilePath2Length = packageInstalledDIRLength + 14U;
     char     receiptFilePath2[receiptFilePath2Length];
     snprintf(receiptFilePath2, receiptFilePath2Length, "%s/receipt.txt", packageInstalledDIR);
 
@@ -1420,107 +1534,58 @@ static int install_native_package(
         return ret;
     }
 
-    ret = export_environment_variables_1(packageInstalledDIR, packageInstalledDIRLength);
+    if (chdir(nativePackageInstalledRootDIR) != 0) {
+        perror(nativePackageInstalledRootDIR);
+        return PPKG_ERROR;
+    }
+
+    for (;;) {
+        if (symlink(packageInstalledSHA, packageName) == 0) {
+            fprintf(stderr, "native package '%s' was successfully installed.\n", packageName);
+            break;
+        } else {
+            if (errno == EEXIST) {
+                if (lstat(packageName, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        ret = ppkg_rm_r(packageName, logLevel >= PPKGLogLevel_verbose);
+
+                        if (ret != PPKG_OK) {
+                            return ret;
+                        }
+                    } else {
+                        if (unlink(packageName) != 0) {
+                            perror(packageName);
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+            } else {
+                perror(packageName);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    ret = export_environment_variables_for_build_tools(packageInstalledDIR, packageInstalledDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    return export_environment_variables_2(packageInstalledDIR, packageInstalledDIRLength);
+    return export_environment_variables_for_other_tools(packageInstalledDIR, packageInstalledDIRLength);
 }
 
 static int install_dependent_packages_via_uppm(
-        const char * spaceSeparatedUPPMPackageNames,
+        const char * uppmPackageNames,
+        const size_t uppmPackageNamesLength,
         const char * ppkgCoreBinDIR,
         const size_t ppkgCoreBinDIRLength,
-        const char * ppkgDownloadsDIR,
-        const size_t ppkgDownloadsDIRLength,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
-        const char * nativePackageInstallingRootDIR,
-        const size_t nativePackageInstallingRootDIRLength,
-        const char * nativePackageInstalledRootDIR,
-        const size_t nativePackageInstalledRootDIRLength,
-        const bool   isNativeOSNetBSD,
-        const bool   isNativeOSOpenBSD,
-        const bool   isNativeOSDarwin,
-        const size_t njobs,
-        const PPKGInstallOptions options) {
-    // these packages are not relocatable, we should build them from source locally.
-    bool needToBuildRuby     = false;
-    bool needToBuildPerl     = false;
-    bool needToBuildPython3  = false;
-    bool needToBuildLibtool  = false;
-    bool needToBuildAutomake = false;
-    bool needToBuildAutoconf = false;
-    bool needToBuildTexinfo  = false;
-    bool needToBuildHelp2man = false;
-    bool needToBuildIntltool = false;
+        bool  requestToInstallCmake,
+        bool  isNativeOSNetBSD) {
 
-    size_t spaceSeparatedUPPMPackageNamesLength = (spaceSeparatedUPPMPackageNames == NULL) ? 0U : strlen(spaceSeparatedUPPMPackageNames);
-
-    size_t   allSpaceSeparatedUPPMPackageNamesCapcity = spaceSeparatedUPPMPackageNamesLength + 100U;
-    char     allSpaceSeparatedUPPMPackageNames[allSpaceSeparatedUPPMPackageNamesCapcity];
-    snprintf(allSpaceSeparatedUPPMPackageNames, 70U, "bash coreutils findutils gsed gawk grep tree pkgconf %s %s", isNativeOSDarwin ? "" : "patchelf", options.enableCcache ? "ccache" : "");
-
-    if (spaceSeparatedUPPMPackageNames != NULL) {
-        size_t allSpaceSeparatedUPPMPackageNamesLength = strlen(allSpaceSeparatedUPPMPackageNames);
-
-        char    spaceSeparatedUPPMPackageNamesCopy[spaceSeparatedUPPMPackageNamesLength + 1U];
-        strncpy(spaceSeparatedUPPMPackageNamesCopy, spaceSeparatedUPPMPackageNames, spaceSeparatedUPPMPackageNamesLength);
-
-        spaceSeparatedUPPMPackageNamesCopy[spaceSeparatedUPPMPackageNamesLength] = '\0';
-
-        char * depPackageName = strtok(spaceSeparatedUPPMPackageNamesCopy, " ");
-
-        while (depPackageName != NULL) {
-            if (strcmp(depPackageName, "ruby") == 0) {
-                needToBuildRuby = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake cmake", 12U);
-                allSpaceSeparatedUPPMPackageNamesLength += 12U;
-            } else if (strcmp(depPackageName, "perl") == 0) {
-                needToBuildPerl = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake", 6U);
-                allSpaceSeparatedUPPMPackageNamesLength += 6U;
-            } else if (strcmp(depPackageName, "python3") == 0) {
-                needToBuildPython3 = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake cmake", 12U);
-                allSpaceSeparatedUPPMPackageNamesLength += 12U;
-            } else if (strcmp(depPackageName, "texinfo") == 0) {
-                needToBuildTexinfo = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake", 6U);
-                allSpaceSeparatedUPPMPackageNamesLength += 6U;
-            } else if (strcmp(depPackageName, "help2man") == 0) {
-                needToBuildHelp2man = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake", 6U);
-                allSpaceSeparatedUPPMPackageNamesLength += 6U;
-            } else if (strcmp(depPackageName, "intltool") == 0) {
-                needToBuildIntltool = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake cmake", 12U);
-                allSpaceSeparatedUPPMPackageNamesLength += 12U;
-            } else if (strcmp(depPackageName, "libtool") == 0) {
-                needToBuildLibtool = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake gm4", 10U);
-                allSpaceSeparatedUPPMPackageNamesLength += 10U;
-            } else if (strcmp(depPackageName, "autoconf") == 0) {
-                needToBuildAutoconf = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake gm4", 10U);
-                allSpaceSeparatedUPPMPackageNamesLength += 10U;
-            } else if (strcmp(depPackageName, "automake") == 0) {
-                needToBuildAutomake = true;
-                strncpy(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, " gmake gm4", 10U);
-                allSpaceSeparatedUPPMPackageNamesLength += 10U;
-            } else {
-                size_t len = strlen(depPackageName) + 2U;
-                snprintf(allSpaceSeparatedUPPMPackageNames + allSpaceSeparatedUPPMPackageNamesLength, len, " %s", depPackageName);
-                allSpaceSeparatedUPPMPackageNamesLength += len - 1U;
-            }
-
-            depPackageName = strtok(NULL, " ");
-        }
-    }
-
-    if (isNativeOSNetBSD) {
+    if (requestToInstallCmake && isNativeOSNetBSD) {
         char cmd[28];
 
         if (geteuid() == 0) {
@@ -1548,9 +1613,9 @@ static int install_dependent_packages_via_uppm(
         return ret;
     }
 
-    size_t   uppmInstallCmdLength = ppkgCoreBinDIRLength + strlen(allSpaceSeparatedUPPMPackageNames) + 15U;
+    size_t   uppmInstallCmdLength = ppkgCoreBinDIRLength + uppmPackageNamesLength + 15U;
     char     uppmInstallCmd[uppmInstallCmdLength];
-    snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, allSpaceSeparatedUPPMPackageNames);
+    snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, uppmPackageNames);
 
     ret = run_cmd(uppmInstallCmd, STDOUT_FILENO);
 
@@ -1560,15 +1625,19 @@ static int install_dependent_packages_via_uppm(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char * uppmPackageName = strtok(allSpaceSeparatedUPPMPackageNames, " ");
+    char    uppmPackageNamesCopy[uppmPackageNamesLength + 1U];
+    strncpy(uppmPackageNamesCopy, uppmPackageNames, uppmPackageNamesLength);
+
+    uppmPackageNamesCopy[uppmPackageNamesLength] = '\0';
+
+    char * uppmPackageName = strtok(uppmPackageNamesCopy, " ");
 
     while (uppmPackageName != NULL) {
         size_t   uppmPackageInstalledDIRLength = uppmPackageInstalledRootDIRLength + strlen(uppmPackageName) + 2U;
         char     uppmPackageInstalledDIR[uppmPackageInstalledDIRLength];
         snprintf(uppmPackageInstalledDIR, uppmPackageInstalledDIRLength, "%s/%s", uppmPackageInstalledRootDIR, uppmPackageName);
 
-        puts(uppmPackageInstalledDIR);
-        ret = export_environment_variables_2(uppmPackageInstalledDIR, uppmPackageInstalledDIRLength);
+        ret = export_environment_variables_for_other_tools(uppmPackageInstalledDIR, uppmPackageInstalledDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1577,68 +1646,10 @@ static int install_dependent_packages_via_uppm(
         uppmPackageName = strtok(NULL, " ");
     }
 
-    //////////////////////////////////////////////////////////////////////////////
-
-    int nativePackageIDArray[20] = {0};
-    int nativePackageIDArraySize = 0;
-
-    if (needToBuildPerl) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PERL;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildLibtool) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_LIBTOOL;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildAutoconf) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOCONF;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildAutomake) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOMAKE;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildTexinfo) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_TEXINFO;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildHelp2man) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_HELP2MAN;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildPython3) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PYTHON3;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildRuby) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_RUBY;
-        nativePackageIDArraySize++;
-    }
-
-    if (needToBuildIntltool) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_INTLTOOL;
-        nativePackageIDArraySize++;
-    }
-
-    for (int i = 0; i < nativePackageIDArraySize; i++) {
-        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, njobs, options.logLevel, isNativeOSOpenBSD);
-
-        if (ret != PPKG_OK) {
-            return PPKG_ERROR;
-        }
-    }
-
     return PPKG_OK;
 }
 
-static int generate_install_shell_script_file(const char * packageName, const char * installShellScriptFilePath, const SysInfo sysinfo, const char * currentExecutablePath, const time_t ts, PPKGInstallOptions options, const PPKGFormula * formula, const size_t njobs, const bool isNativeOSDarwin, const char * ppkgHomeDIR, const char * ppkgCoreDIR, const char * ppkgCoreBinDIR, const char * ppkgCoreLibexecDIR, const char * ppkgDownloadsDIR, const char * sessionDIR, const char * packageWorkingTopDIR, const char * packageWorkingSrcDIR, const char * packageWorkingFixDIR, const char * packageWorkingResDIR, const char * packageWorkingBinDIR, const char * packageWorkingLibDIR, const char * packageWorkingIncDIR, const char * packageWorkingTmpDIR, const char * packageInstalledDIR, const char * packageMetaInfoDIR, const char ** recursiveDependentPackageNameArrayList, const size_t recursiveDependentPackageNameArrayListSize) {
+static int generate_install_shell_script_file(const char * packageName, const char * installShellScriptFilePath, const SysInfo sysinfo, const char * currentExecutablePath, const time_t ts, PPKGInstallOptions options, const PPKGFormula * formula, const size_t njobs, const bool isNativeOSDarwin, const char * ppkgHomeDIR, const char * ppkgCoreDIR, const char * ppkgCoreBinDIR, const char * ppkgCoreLibexecDIR, const char * ppkgDownloadsDIR, const char * sessionDIR, const char * packageWorkingTopDIR, const char * packageWorkingSrcDIR, const char * packageWorkingFixDIR, const char * packageWorkingResDIR, const char * packageWorkingBinDIR, const char * packageWorkingLibDIR, const char * packageWorkingIncDIR, const char * packageWorkingTmpDIR, const char * packageInstalledDIR, const char * packageMetaInfoDIR, const char * recursiveDependentPackageNamesString, const size_t recursiveDependentPackageNamesStringSize) {
     FILE * installShellScriptFile = fopen(installShellScriptFilePath, "w");
 
     if (installShellScriptFile == NULL) {
@@ -1785,41 +1796,7 @@ static int generate_install_shell_script_file(const char * packageName, const ch
 
     fprintf(installShellScriptFile, "SESSION_DIR='%s'\n\n", sessionDIR);
 
-    //////////////////////////////////////////////////////////////////////////////
-
-    char * recursiveDependentPackageNamesString        = NULL;
-    size_t recursiveDependentPackageNamesStringSize    = 0U;
-    size_t recursiveDependentPackageNamesStringCapcity = 0U;
-
-    for (size_t i = 1U; i < recursiveDependentPackageNameArrayListSize; i++) {
-        //printf("%s:: %s\n", packageName, recursiveDependentPackageNameArrayList[i]);
-
-        const char * recursiveDependentPackageName = recursiveDependentPackageNameArrayList[i];
-        size_t recursiveDependentPackageNameLength = strlen(recursiveDependentPackageName);
-
-        if (recursiveDependentPackageNameLength + recursiveDependentPackageNamesStringSize >= recursiveDependentPackageNamesStringCapcity) {
-            char * p = (char*)realloc(recursiveDependentPackageNamesString, (recursiveDependentPackageNamesStringCapcity + 256U) * sizeof(char));
-
-            if (p == NULL) {
-                free(recursiveDependentPackageNamesString);
-                recursiveDependentPackageNamesString = NULL;
-                return PPKG_ERROR_MEMORY_ALLOCATE;
-            }
-
-            memset(p + recursiveDependentPackageNamesStringSize, 0, 256);
-
-            recursiveDependentPackageNamesString = p;
-            recursiveDependentPackageNamesStringCapcity += 256U;
-        }
-
-        snprintf(recursiveDependentPackageNamesString + recursiveDependentPackageNamesStringSize, recursiveDependentPackageNameLength + 2U, "%s ", recursiveDependentPackageName);
-        recursiveDependentPackageNamesStringSize += recursiveDependentPackageNameLength + 1U;
-    }
-
     fprintf(installShellScriptFile, "RECURSIVE_DEPENDENT_PACKAGE_NAMES='%s'\n\n", recursiveDependentPackageNamesString == NULL ? "" : recursiveDependentPackageNamesString);
-
-    free(recursiveDependentPackageNamesString);
-    recursiveDependentPackageNamesString = NULL;
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -2057,7 +2034,7 @@ static int adjust_macho_files(const char * packageInstalledDIR, size_t packageIn
     return PPKG_OK;
 }
 
-static int backup_formulas(const char * sessionDIR, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRLength, const char * * recursiveDependentPackageNameArrayList, const size_t recursiveDependentPackageNameArrayListSize) {
+static int backup_formulas(const char * sessionDIR, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRLength, const char * recursiveDependentPackageNamesString, const size_t recursiveDependentPackageNamesStringSize) {
     size_t   packageInstalledFormulaDIRLength = packageMetaInfoDIRLength + 9U;
     char     packageInstalledFormulaDIR[packageInstalledFormulaDIRLength];
     snprintf(packageInstalledFormulaDIR, packageInstalledFormulaDIRLength, "%s/formula", packageMetaInfoDIR);
@@ -2067,9 +2044,14 @@ static int backup_formulas(const char * sessionDIR, const char * packageMetaInfo
         return PPKG_ERROR;
     }
 
-    for (size_t i = 0U; i < recursiveDependentPackageNameArrayListSize; i++) {
-        const char * packageName = recursiveDependentPackageNameArrayList[i];
-        const char   packageNameLength = strlen(packageName);
+    size_t  recursiveDependentPackageNamesStringCopyCapcity = recursiveDependentPackageNamesStringSize + 1U;
+    char    recursiveDependentPackageNamesStringCopy[recursiveDependentPackageNamesStringCopyCapcity];
+    strncpy(recursiveDependentPackageNamesStringCopy, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringCopyCapcity);
+
+    char * packageName = strtok(recursiveDependentPackageNamesStringCopy, " ");
+
+    while (packageName != NULL) {
+        size_t packageNameLength = strlen(packageName);
 
         size_t   fromFilePathLength = strlen(sessionDIR) + packageNameLength  + 6U;
         char     fromFilePath[fromFilePathLength];
@@ -2084,6 +2066,8 @@ static int backup_formulas(const char * sessionDIR, const char * packageMetaInfo
         if (ret != PPKG_OK) {
             return ret;
         }
+
+        packageName = strtok(NULL, " ");
     }
 
     return PPKG_OK;
@@ -2364,8 +2348,8 @@ static int ppkg_install_package(
         const size_t ppkgHomeDIRLength,
         const char * sessionDIR,
         const size_t sessionDIRLength,
-        const char * * recursiveDependentPackageNameArrayList,
-        const size_t   recursiveDependentPackageNameArrayListSize) {
+        const char * recursiveDependentPackageNamesString,
+        const size_t recursiveDependentPackageNamesStringSize) {
     fprintf(stderr, "%s=============== Installing%s %s%s%s %s===============%s\n", COLOR_PURPLE, COLOR_OFF, COLOR_GREEN, packageName, COLOR_OFF, COLOR_PURPLE, COLOR_OFF);
 
     size_t njobs;
@@ -2454,7 +2438,7 @@ static int ppkg_install_package(
     char     ppkgCoreBinDIR[ppkgCoreBinDIRLength];
     snprintf(ppkgCoreBinDIR, ppkgCoreBinDIRLength, "%s/bin", ppkgCoreDIR);
 
-    int ret = export_environment_variables_2(ppkgCoreDIR, ppkgCoreDIRLength);
+    int ret = export_environment_variables_for_other_tools(ppkgCoreDIR, ppkgCoreDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -2666,8 +2650,8 @@ static int ppkg_install_package(
             char * libcName;
 
             switch(sysinfo.libc) {
-                case 1:  libcName = (char*)"glibc"; break;
-                case 2:  libcName = (char*)"musl";  break;
+                case 1:  libcName = (char*)"gnu";  break;
+                case 2:  libcName = (char*)"musl"; break;
                 default: libcName = (char*)"xxxx";
             }
 
@@ -2879,10 +2863,194 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-
     size_t   ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
     char     ppkgDownloadsDIR[ppkgDownloadsDIRLength];
     snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
+
+    if (stat(ppkgDownloadsDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            if (unlink(ppkgDownloadsDIR) != 0) {
+                perror(ppkgDownloadsDIR);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(ppkgDownloadsDIR);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+    } else {
+        if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(ppkgDownloadsDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    // these packages are not relocatable, we should build them from source locally.
+    bool requestToBuildRuby     = false;
+    bool requestToBuildPerl     = false;
+    bool requestToBuildPython3  = false;
+    bool requestToBuildLibtool  = false;
+    bool requestToBuildAutomake = false;
+    bool requestToBuildAutoconf = false;
+    bool requestToBuildTexinfo  = false;
+    bool requestToBuildHelp2man = false;
+    bool requestToBuildIntltool = false;
+
+    size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
+
+    size_t uppmPackageNamesCapcity = depPackageNamesLength + 100U;
+    char   uppmPackageNames[uppmPackageNamesCapcity];
+    int    uppmPackageNamesLength = snprintf(uppmPackageNames, 70U, "bash coreutils findutils gsed gawk grep tree pkgconf%s%s", isNativeOSDarwin ? "" : " patchelf", options.enableCcache ? " ccache" : "");
+
+    if (uppmPackageNamesLength < 0) {
+        return PPKG_ERROR;
+    }
+
+    bool requestToInstallCmake = false;
+    bool requestToInstallGmake = false;
+    bool requestToInstallGm4   = false;
+
+    if (formula->dep_upp != NULL) {
+        size_t  depPackageNamesCopyCapcity = depPackageNamesLength + 1U;
+        char    depPackageNamesCopy[depPackageNamesCopyCapcity];
+        strncpy(depPackageNamesCopy, formula->dep_upp, depPackageNamesCopyCapcity);
+
+        char * depPackageName = strtok(depPackageNamesCopy, " ");
+
+        while (depPackageName != NULL) {
+            if (strcmp(depPackageName, "ruby") == 0) {
+                requestToBuildRuby = true;
+                requestToInstallGmake = true;
+            } else if (strcmp(depPackageName, "perl") == 0) {
+                requestToBuildPerl = true;
+                requestToInstallGmake = true;
+            } else if (strcmp(depPackageName, "python3") == 0) {
+                requestToBuildPython3 = true;
+                requestToInstallGmake = true;
+                requestToInstallCmake = true;
+            } else if (strcmp(depPackageName, "texinfo") == 0) {
+                requestToBuildTexinfo = true;
+                requestToInstallGmake = true;
+            } else if (strcmp(depPackageName, "help2man") == 0) {
+                requestToBuildHelp2man = true;
+                requestToInstallGmake = true;
+            } else if (strcmp(depPackageName, "intltool") == 0) {
+                requestToBuildIntltool = true;
+                requestToInstallGmake = true;
+                requestToInstallCmake = true;
+            } else if (strcmp(depPackageName, "libtool") == 0) {
+                requestToBuildLibtool = true;
+                requestToInstallGmake = true;
+                requestToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "autoconf") == 0) {
+                requestToBuildAutoconf = true;
+                requestToInstallGmake = true;
+                requestToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "automake") == 0) {
+                requestToBuildAutomake = true;
+                requestToInstallGmake = true;
+                requestToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "cmake") == 0) {
+                requestToInstallCmake = true;
+            } else if (strcmp(depPackageName, "gmake") == 0) {
+                requestToInstallGmake = true;
+            } else {
+                int len = snprintf(uppmPackageNames + uppmPackageNamesLength, strlen(depPackageName) + 2U, " %s", depPackageName);
+
+                if (len < 0) {
+                    return PPKG_ERROR;
+                }
+
+                uppmPackageNamesLength += len;
+            }
+
+            depPackageName = strtok(NULL, " ");
+        }
+
+        if (requestToInstallCmake) {
+            if (!isNativeOSNetBSD) {
+                strncpy(uppmPackageNames + uppmPackageNamesLength, " cmake", 6U);
+                uppmPackageNamesLength += 6U;
+            }
+        }
+
+        if (requestToInstallGmake) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " gmake", 6U);
+            uppmPackageNamesLength += 6U;
+        }
+
+        if (requestToInstallGm4) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " gm4", 4U);
+            uppmPackageNamesLength += 4U;
+        }
+
+        uppmPackageNames[uppmPackageNamesLength] = '\0';
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreBinDIR, ppkgCoreBinDIRLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake, isNativeOSNetBSD);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    int nativePackageIDArray[20] = {0};
+    int nativePackageIDArraySize = 0;
+
+    if (requestToBuildPerl) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PERL;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildLibtool) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_LIBTOOL;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildAutoconf) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOCONF;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildAutomake) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOMAKE;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildTexinfo) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_TEXINFO;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildHelp2man) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_HELP2MAN;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildPython3) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PYTHON3;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildRuby) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_RUBY;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildIntltool) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_INTLTOOL;
+        nativePackageIDArraySize++;
+    }
 
     size_t   nativePackageInstallingRootDIRLength = packageWorkingTopDIRLength + 8U;
     char     nativePackageInstallingRootDIR[nativePackageInstallingRootDIRLength];
@@ -2892,10 +3060,40 @@ static int ppkg_install_package(
     char     nativePackageInstalledRootDIR[nativePackageInstalledRootDIRLength];
     snprintf(nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, "%s/native", ppkgHomeDIR);
 
-    ret = install_dependent_packages_via_uppm(formula->dep_upp, ppkgCoreBinDIR, ppkgCoreBinDIRLength, ppkgDownloadsDIR, ppkgDownloadsDIRLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, isNativeOSNetBSD, isNativeOSOpenBSD, isNativeOSDarwin, njobs, options);
+    for (int i = 0; i < nativePackageIDArraySize; i++) {
+        const ENV envs[4] = {
+            { "CFLAGS", ccflags },
+            { "CXXFLAGS", cxxflags },
+            { "CPPFLAGS", cppflags },
+            { "LDFLAGS", ldflags },
+        };
 
-    if (ret != PPKG_OK) {
-        return ret;
+        for (int i = 0; i < 4; i++) {
+            const char * name  = envs[i].name;
+            const char * value = envs[i].value;
+
+            if (value != NULL) {
+                if (setenv(name, value, 1) != 0) {
+                    perror(name);
+                    return PPKG_ERROR;
+                }
+
+                size_t   name2Length = strlen(name) + 11U;
+                char     name2[name2Length];
+                snprintf(name2, name2Length, "%s_FOR_BUILD", name);
+
+                if (setenv(name2, value, 1) != 0) {
+                    perror(name2);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+
+        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, njobs, options.logLevel, isNativeOSOpenBSD);
+
+        if (ret != PPKG_OK) {
+            return PPKG_ERROR;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -2938,27 +3136,63 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    for (size_t i = 1U; i < recursiveDependentPackageNameArrayListSize; i++) {
-        //printf("%s:: %s\n", packageName, recursiveDependentPackageNameArrayList[i]);
+    const ENV envs2[4] = {
+        { "CFLAGS", ccflags },
+        { "CXXFLAGS", cxxflags },
+        { "CPPFLAGS", cppflags },
+        { "LDFLAGS", ldflags },
+    };
 
-        const char * recursiveDependentPackageName = recursiveDependentPackageNameArrayList[i];
-        size_t recursiveDependentPackageNameLength = strlen(recursiveDependentPackageName);
+    for (int i = 0; i < 4; i++) {
+        const char * name  = envs2[i].name;
+        const char * value = envs2[i].value;
 
-        size_t   ppkgPackageInstalledDIRLength = ppkgHomeDIRLength + recursiveDependentPackageNameLength + 12U;
-        char     ppkgPackageInstalledDIR[ppkgPackageInstalledDIRLength];
-        snprintf(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, recursiveDependentPackageName);
+        if (value != NULL) {
+            if (setenv(name, value, 1) != 0) {
+                perror(name);
+                return PPKG_ERROR;
+            }
 
-        ret = export_environment_variables_1(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength);
+            size_t   name2Length = strlen(name) + 11U;
+            char     name2[name2Length];
+            snprintf(name2, name2Length, "%s_FOR_BUILD", name);
 
-        if (ret != PPKG_OK) {
-            return ret;
+            if (setenv(name2, value, 1) != 0) {
+                perror(name2);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (recursiveDependentPackageNamesString != NULL) {
+        size_t  recursiveDependentPackageNamesStringCopyCapcity = recursiveDependentPackageNamesStringSize + 1U;
+        char    recursiveDependentPackageNamesStringCopy[recursiveDependentPackageNamesStringCopyCapcity];
+        strncpy(recursiveDependentPackageNamesStringCopy, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringCopyCapcity);
+
+        const char * dependentPackageName = strtok(recursiveDependentPackageNamesStringCopy, " ");
+
+        while (dependentPackageName != NULL) {
+            size_t   ppkgPackageInstalledDIRLength = ppkgHomeDIRLength + strlen(dependentPackageName) + 12U;
+            char     ppkgPackageInstalledDIR[ppkgPackageInstalledDIRLength];
+            snprintf(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, dependentPackageName);
+
+            ret = export_environment_variables_for_build_tools(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            ret = export_environment_variables_for_other_tools(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            dependentPackageName = strtok(NULL, " ");
         }
 
-        ret = export_environment_variables_2(ppkgPackageInstalledDIR, ppkgPackageInstalledDIRLength);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -3076,9 +3310,9 @@ static int ppkg_install_package(
 
     time_t ts = time(NULL);
 
-    size_t   strBufSize = packageNameLength + strlen(formula->src_url) + strlen(formula->src_sha) + 50U;
+    size_t   strBufSize = packageNameLength + 50U;
     char     strBuf[strBufSize];
-    snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, formula->src_url, formula->src_sha, ts, getpid());
+    snprintf(strBuf, strBufSize, "%s:%zu:%u", packageName, ts, getpid());
 
     char packageInstalledSHA[65] = {0};
 
@@ -3102,7 +3336,7 @@ static int ppkg_install_package(
     char     installShellScriptFilePath[installShellScriptFilePathLength];
     snprintf(installShellScriptFilePath, installShellScriptFilePathLength, "%s/install.sh", packageWorkingTopDIR);
 
-    ret = generate_install_shell_script_file(packageName, installShellScriptFilePath, sysinfo, currentExecutablePath, ts, options, formula, njobs, isNativeOSDarwin, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNameArrayList, recursiveDependentPackageNameArrayListSize);
+    ret = generate_install_shell_script_file(packageName, installShellScriptFilePath, sysinfo, currentExecutablePath, ts, options, formula, njobs, isNativeOSDarwin, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3368,8 +3602,8 @@ static int ppkg_install_package(
         }
     }
 
-    if (recursiveDependentPackageNameArrayListSize != 0U) {
-        ret = backup_formulas(sessionDIR, packageMetaInfoDIR, packageMetaInfoDIRLength, recursiveDependentPackageNameArrayList, recursiveDependentPackageNameArrayListSize);
+    if (recursiveDependentPackageNamesString != NULL) {
+        ret = backup_formulas(sessionDIR, packageMetaInfoDIR, packageMetaInfoDIRLength, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -3442,58 +3676,91 @@ typedef struct {
     PPKGFormula * formula;
 } PPKGPackage;
 
-typedef struct {
-    char ** array;
-    size_t  size;
-    size_t  capcity;
-} RecursiveDependentPackageNameArrayList;
+static int getRecursiveDependentPackageNamesStringBuffer(char * packageName, PPKGPackage ** packageSet, size_t packageSetSize, char ** precursiveDependentPackageNamesStringBuffer, size_t * precursiveDependentPackageNamesStringBufferSize, size_t * precursiveDependentPackageNamesStringBufferCapcity) {
+    PPKGPackage * package = NULL;
 
-static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPackage ** packageSet, size_t packageSetSize, char *** precursiveDependentPackageNameArrayList, size_t * precursiveDependentPackageNameArrayListSize, size_t * precursiveDependentPackageNameArrayListCapcity) {
-    char * * recursiveDependentPackageNameArrayList        = (*precursiveDependentPackageNameArrayList);
-    size_t   recursiveDependentPackageNameArrayListSize    = (*precursiveDependentPackageNameArrayListSize);
-    size_t   recursiveDependentPackageNameArrayListCapcity = (*precursiveDependentPackageNameArrayListCapcity);
+    for (size_t i = 0U; i < packageSetSize; i++) {
+        if (strcmp(packageSet[i]->packageName, packageName) == 0) {
+            package = packageSet[i];
+            break;
+        }
+    }
 
+    PPKGFormula * formula = package->formula;
 
-    size_t   packageNameStackCapcity = 10U;
-    size_t   packageNameStackSize    = 1U;
-    char * * packageNameStack = (char**)malloc(10 * sizeof(char*));
+    if (formula->dep_pkg == NULL) {
+        return PPKG_OK;
+    }
+
+    size_t   packageNameStackCapcity = 8U;
+    size_t   packageNameStackSize    = 0U;
+    char * * packageNameStack = (char**)malloc(8 * sizeof(char*));
 
     if (packageNameStack == NULL) {
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    packageNameStack[0] = packageName;
+    size_t  depPackageNamesLength = strlen(formula->dep_pkg);
+
+    size_t  depPackageNamesCopyCapcity = depPackageNamesLength + 1U;
+    char    depPackageNamesCopy[depPackageNamesCopyCapcity];
+    strncpy(depPackageNamesCopy, formula->dep_pkg, depPackageNamesCopyCapcity);
+
+    char * depPackageName = strtok(depPackageNamesCopy, " ");
+
+    while (depPackageName != NULL) {
+        packageNameStack[packageNameStackSize] = depPackageName;
+        packageNameStackSize++;
+        depPackageName = strtok(NULL, " ");
+    }
 
     ////////////////////////////////////////////////////////////////
 
-    while (packageNameStackSize > 0) {
-        char * packageName = packageNameStack[packageNameStackSize - 1];
-        packageNameStack[packageNameStackSize - 1] = NULL;
+    char * recursiveDependentPackageNamesStringBuffer        = (*precursiveDependentPackageNamesStringBuffer);
+    size_t recursiveDependentPackageNamesStringBufferSize    = (*precursiveDependentPackageNamesStringBufferSize);
+    size_t recursiveDependentPackageNamesStringBufferCapcity = (*precursiveDependentPackageNamesStringBufferCapcity);
+
+    ////////////////////////////////////////////////////////////////
+
+    while (packageNameStackSize != 0U) {
+        char * packageName = packageNameStack[packageNameStackSize - 1U];
+        packageNameStack[packageNameStackSize - 1U] = NULL;
         packageNameStackSize--;
 
         ////////////////////////////////////////////////////////////////
 
-        bool alreadyInRecursiveDependentPackageNameArrayList = false;
+        if (recursiveDependentPackageNamesStringBuffer != NULL) {
+            bool alreadyInRecursiveDependentPackageNamesStringBuffer = false;
 
-        for (size_t i = 0; i < recursiveDependentPackageNameArrayListSize; i++) {
-            if (strcmp(recursiveDependentPackageNameArrayList[i], packageName) == 0) {
-                alreadyInRecursiveDependentPackageNameArrayList = true;
-                break;
+            size_t  recursiveDependentPackageNamesStringBufferCopyCapcity = recursiveDependentPackageNamesStringBufferSize + 1U;
+            char    recursiveDependentPackageNamesStringBufferCopy[recursiveDependentPackageNamesStringBufferCopyCapcity];
+            strncpy(recursiveDependentPackageNamesStringBufferCopy, recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferCopyCapcity);
+
+            char * dependentPackageName = strtok(recursiveDependentPackageNamesStringBufferCopy, " ");
+
+            while (dependentPackageName != NULL) {
+                if (strcmp(dependentPackageName, packageName) == 0) {
+                    alreadyInRecursiveDependentPackageNamesStringBuffer = true;
+                    break;
+                }
+                dependentPackageName = strtok(NULL, " ");
             }
-        }
 
-        if (alreadyInRecursiveDependentPackageNameArrayList) {
-            continue;
+            if (alreadyInRecursiveDependentPackageNamesStringBuffer) {
+                continue;
+            }
         }
 
         ////////////////////////////////////////////////////////////////
 
-        if (recursiveDependentPackageNameArrayListSize == recursiveDependentPackageNameArrayListCapcity) {
-            char ** p = (char**)realloc(recursiveDependentPackageNameArrayList, (recursiveDependentPackageNameArrayListCapcity + 10) * sizeof(char*));
+        size_t packageNameLength = strlen(packageName);
+
+        if ((recursiveDependentPackageNamesStringBufferSize + packageNameLength + 2U) > recursiveDependentPackageNamesStringBufferCapcity) {
+            char * p = (char*)realloc(recursiveDependentPackageNamesStringBuffer, (recursiveDependentPackageNamesStringBufferCapcity + 256U) * sizeof(char*));
 
             if (p == NULL) {
-                free(recursiveDependentPackageNameArrayList);
-                recursiveDependentPackageNameArrayList = NULL;
+                free(recursiveDependentPackageNamesStringBuffer);
+                recursiveDependentPackageNamesStringBuffer = NULL;
 
                 free(packageNameStack);
                 packageNameStack = NULL;
@@ -3501,12 +3768,20 @@ static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPac
                 return PPKG_ERROR_MEMORY_ALLOCATE;
             }
 
-            recursiveDependentPackageNameArrayList = p;
-            recursiveDependentPackageNameArrayListCapcity += 10;
+            recursiveDependentPackageNamesStringBuffer = p;
+            recursiveDependentPackageNamesStringBufferCapcity += 256U;
         }
 
-        recursiveDependentPackageNameArrayList[recursiveDependentPackageNameArrayListSize] = packageName;
-        recursiveDependentPackageNameArrayListSize++;
+        if (recursiveDependentPackageNamesStringBufferSize == 0U) {
+            strncpy(recursiveDependentPackageNamesStringBuffer, packageName, packageNameLength);
+            recursiveDependentPackageNamesStringBufferSize = packageNameLength;
+            recursiveDependentPackageNamesStringBuffer[recursiveDependentPackageNamesStringBufferSize] = '\0';
+        } else {
+            recursiveDependentPackageNamesStringBuffer[recursiveDependentPackageNamesStringBufferSize] = ' ';
+            strncpy(recursiveDependentPackageNamesStringBuffer + recursiveDependentPackageNamesStringBufferSize + 1U, packageName, packageNameLength);
+            recursiveDependentPackageNamesStringBufferSize += packageNameLength + 1U;
+            recursiveDependentPackageNamesStringBuffer[recursiveDependentPackageNamesStringBufferSize] = '\0';
+        }
 
         ////////////////////////////////////////////////////////////////
 
@@ -3535,7 +3810,7 @@ static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPac
             while (depPackageName != NULL) {
                 PPKGPackage * depPackage = NULL;
 
-                for (size_t i = 0; i < packageSetSize; i++) {
+                for (size_t i = 0U; i < packageSetSize; i++) {
                     if (strcmp(packageSet[i]->packageName, depPackageName) == 0) {
                         depPackage = packageSet[i];
                         break;
@@ -3545,11 +3820,11 @@ static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPac
                 ////////////////////////////////////////////////////////////////
 
                 if (packageNameStackSize == packageNameStackCapcity) {
-                    char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10) * sizeof(char*));
+                    char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 8U) * sizeof(char*));
 
                     if (p == NULL) {
-                        free(recursiveDependentPackageNameArrayList);
-                        recursiveDependentPackageNameArrayList = NULL;
+                        free(recursiveDependentPackageNamesStringBuffer);
+                        recursiveDependentPackageNamesStringBuffer = NULL;
 
                         free(packageNameStack);
                         packageNameStack = NULL;
@@ -3558,7 +3833,7 @@ static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPac
                     }
 
                     packageNameStack = p;
-                    packageNameStackCapcity += 10;
+                    packageNameStackCapcity += 8U;
                 }
 
                 packageNameStack[packageNameStackSize] = depPackage->packageName;
@@ -3566,16 +3841,16 @@ static int getRecursiveDependentPackageNameArrayList(char * packageName, PPKGPac
 
                 ////////////////////////////////////////////////////////////////
 
-                depPackageName = strtok (NULL, " ");
+                depPackageName = strtok(NULL, " ");
             }
         }
     }
 
     free(packageNameStack);
 
-    (*precursiveDependentPackageNameArrayList)        = recursiveDependentPackageNameArrayList;
-    (*precursiveDependentPackageNameArrayListSize)    = recursiveDependentPackageNameArrayListSize;
-    (*precursiveDependentPackageNameArrayListCapcity) = recursiveDependentPackageNameArrayListCapcity;
+    (*precursiveDependentPackageNamesStringBuffer)        = recursiveDependentPackageNamesStringBuffer;
+    (*precursiveDependentPackageNamesStringBufferSize)    = recursiveDependentPackageNamesStringBufferSize;
+    (*precursiveDependentPackageNamesStringBufferCapcity) = recursiveDependentPackageNamesStringBufferCapcity;
 
     return PPKG_OK;
 }
@@ -3803,6 +4078,17 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
+    const char * unsetenvs[5] = {"CFLAGS", "CPPFLAGS", "LDFLAGS", "LIBS", "TARGET_ARCH"};
+
+    for (int i = 0; i < 5; i++) {
+        if (unsetenv(unsetenvs[i]) != 0) {
+            perror(unsetenvs[i]);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
@@ -3891,7 +4177,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         PPKGPackage * package = packageSet[i];
         char * packageName = package->packageName;
 
-        //printf("%d:%s\n", i, packageName);
+        fprintf(stderr, "start:%d:%s\n", i, packageName);
 
         if (!options.force) {
             ret = ppkg_check_if_the_given_package_is_installed(packageName);
@@ -3907,24 +4193,28 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
             goto finalize;
         }
 
-        char * * recursiveDependentPackageNameArrayList        = NULL;
-        size_t   recursiveDependentPackageNameArrayListSize    = 0U;
-        size_t   recursiveDependentPackageNameArrayListCapcity = 0U;
+        char * recursiveDependentPackageNamesStringBuffer        = NULL;
+        size_t recursiveDependentPackageNamesStringBufferSize    = 0U;
+        size_t recursiveDependentPackageNamesStringBufferCapcity = 0U;
 
-        ret = getRecursiveDependentPackageNameArrayList(packageName, packageSet, packageSetSize, &recursiveDependentPackageNameArrayList, &recursiveDependentPackageNameArrayListSize, &recursiveDependentPackageNameArrayListCapcity);
+        ret = getRecursiveDependentPackageNamesStringBuffer(packageName, packageSet, packageSetSize, &recursiveDependentPackageNamesStringBuffer, &recursiveDependentPackageNamesStringBufferSize, &recursiveDependentPackageNamesStringBufferCapcity);
+
+        if (ret != PPKG_OK) {
+            goto finalize;
+        }
+
+        //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
+
+        ret = ppkg_install_package(packageName, package->formula, options, toolchain, sysinfo, currentExecutablePath, ppkgHomeDIR, ppkgHomeDIRLength, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+
+        free(recursiveDependentPackageNamesStringBuffer);
+        recursiveDependentPackageNamesStringBuffer = NULL;
 
         if (ret != PPKG_OK) {
             goto finalize;
         }
 
-        ret = ppkg_install_package(packageName, package->formula, options, toolchain, sysinfo, currentExecutablePath, ppkgHomeDIR, ppkgHomeDIRLength, sessionDIR, sessionDIRLength, (const char **)recursiveDependentPackageNameArrayList, recursiveDependentPackageNameArrayListSize);
-
-        free(recursiveDependentPackageNameArrayList);
-        recursiveDependentPackageNameArrayList = NULL;
-
-        if (ret != PPKG_OK) {
-            goto finalize;
-        }
+        fprintf(stderr, "over:%d:%s\n", i, packageName);
     }
 
 finalize:

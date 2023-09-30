@@ -1,12 +1,14 @@
-#include <git2.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
+#include <git2.h>
 
 #include "core/url-transform.h"
 
@@ -56,13 +58,11 @@ int git_credential_acquire_callback(git_credential **credential, const char *url
         return 1;
     }
 
-    size_t userHomeDIRLength = strlen(userHomeDIR);
-
-    if (userHomeDIRLength == 0U) {
+    if (userHomeDIR[0] == '\0') {
         return 1;
     }
 
-    size_t   sshPrivateKeyFilePathLength = userHomeDIRLength + 20U;
+    size_t   sshPrivateKeyFilePathLength = strlen(userHomeDIR) + 20U;
     char     sshPrivateKeyFilePath[sshPrivateKeyFilePathLength];
     snprintf(sshPrivateKeyFilePath, sshPrivateKeyFilePathLength, "%s/.ssh/id_rsa", userHomeDIR);
 
