@@ -104,7 +104,7 @@ int ppkg_setup(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * const ppkgInstallScriptUrl = "https://raw.githubusercontent.com/leleliu008/ppkg/dev/ppkg-install";
+    const char * const ppkgInstallScriptUrl = "https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-install";
 
     size_t   ppkgInstallScriptFilePathLength = libexecDIRLength + 14U;
     char     ppkgInstallScriptFilePath[ppkgInstallScriptFilePathLength];
@@ -125,7 +125,7 @@ int ppkg_setup(bool verbose) {
 
         size_t   wrapperCompilerSourceUrlLength = sessionDIRLength + 75U;
         char     wrapperCompilerSourceUrl[wrapperCompilerSourceUrlLength];
-        snprintf(wrapperCompilerSourceUrl, wrapperCompilerSourceUrlLength, "https://raw.githubusercontent.com/leleliu008/ppkg/dev/ppkg-wrapper-%s.c", compiler);
+        snprintf(wrapperCompilerSourceUrl, wrapperCompilerSourceUrlLength, "https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-wrapper-%s.c", compiler);
 
         size_t   wrapperCompilerSourceFilePathLength = sessionDIRLength + 16U;
         char     wrapperCompilerSourceFilePath[wrapperCompilerSourceFilePathLength];
