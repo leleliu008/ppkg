@@ -1,211 +1,575 @@
-name: publish
+name: publish ppkg
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
-  netbsd:
-    runs-on: macos-12
-    
-    steps:
-      - uses: actions/checkout@v3
 
+  check:
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - id:  check-if-has-new-commit
+        run: |
+          cat > QUERY <<EOF
+          {
+            repository(owner: "leleliu008", name: "ppkg") {
+                latestRelease {
+                  name
+                }
+            }
+          }
+          EOF
+
+          LATEST_RELEASE_GIT_SHA="$(gh api graphql -f "query=$(cat QUERY)" --jq .data.repository.latestRelease.name | cut -d+ -f2)"
+
+          printf 'LATEST_RELEASE_GIT_SHA=%s\n' "$LATEST_RELEASE_GIT_SHA"
+
+          if [ "$LATEST_RELEASE_GIT_SHA" = ${{ github.sha }} ] ; then
+              printf 'HAS_NEW_COMMIT=no\n'        >> "$GITHUB_OUTPUT"
+          else
+              printf 'HAS_NEW_COMMIT=yes\n'       >> "$GITHUB_OUTPUT"
+          fi
+
+          printf 'GIT_SHA=%s\n' ${{ github.sha }} >> "$GITHUB_OUTPUT"
+
+    outputs:
+      if-has-new-commit: ${{ steps.check-if-has-new-commit.outputs.HAS_NEW_COMMIT }}
+      git-sha:           ${{ steps.check-if-has-new-commit.outputs.GIT_SHA }}
+
+
+  netbsd-amd64:
+    needs: check
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: macos-12
+
+    steps:
       - uses: leleliu008/github-actions-vagrant@main
         with:
-          mem: 2048
+          mem: 8192
           box: generic/netbsd9
           run: |
-            run sudo pkgin -y install curl
+            export HOME=/home/vagrant
 
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+            run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
+            run sudo update-ca-certificates
+
+            unset ETCCERTSDIR
+
+            ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
+
+            if [ -n "$ETCCERTSDIR" ] ; then
+                export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
+            fi
+
+            run sudo pkgin -y update
+            run sudo pkgin -y install llvm
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
             run chmod a+x ppkg
-            run ./ppkg setup --use-system-package-manager
+            run ./ppkg setup
             run ./ppkg update
 
+            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
 
-            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
-
-            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-
-            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+            run ./ppkg install ppkg --link-type=static-only --install-lib=static
             run ./ppkg pack    ppkg
 
-      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-netbsd-amd64.tar.xz .
+      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/.ppkg/packed/ppkg-*-netbsd-amd64.tar.xz .
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ppkg-netbsd-tar-xz
-          path: ${{ github.workspace }}/ppkg-*.tar.xz
+          name: ppkg---netbsd-amd64-tar-xz
+          path: ppkg-*-netbsd-amd64.tar.xz
 
-  openbsd:
-    needs: netbsd
+
+  openbsd-amd64:
+    needs: [check, netbsd-amd64]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
     runs-on: macos-12
-    
+
+    env:
+      VAGRANT_LOG: info
+      # https://www.vagrantup.com/docs/other/debugging
+
     steps:
-      - uses: actions/checkout@v3
+      - run: |
+          echo 'set -e' > shell.sh
 
-      - uses: leleliu008/github-actions-vagrant@main
-        with:
-          mem: 2048
-          box: generic/openbsd7
-          run: |
-            run sudo pkg_add curl
+          export -p | grep 'GITHUB_' >> shell.sh
 
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
-            run chmod a+x ppkg
-            run ./ppkg setup --use-system-package-manager
-            run ./ppkg update
+          cat >> shell.sh <<'EOF'
+          run() {
+            printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+            eval "$*"
+          }
 
+          run sudo pkg_add curl gtar-- gcc%11
 
-            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
+          run sudo ln -s /usr/local/bin/gtar /usr/bin/tar
 
-            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
+          export HOME=/home/vagrant
+          export LD_LIBRARY_PATH=/usr/local/lib
 
-            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
-            run ./ppkg pack    ppkg
+          run cd /home/vagrant/${{ github.repository }}
+          run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup
+          run ./ppkg update
 
-      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-openbsd-amd64.tar.xz .
+          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+          run ./ppkg install ppkg --link-type=static-only --install-lib=static
+          run ./ppkg pack    ppkg -o .
+
+          ls ppkg-*-openbsd-amd64.tar.xz > name.txt
+
+          run curl -LO https://raw.githubusercontent.com/emikulic/darkhttpd/master/darkhttpd.c
+          run cc -o darkhttpd darkhttpd.c
+          run ./darkhttpd . --port 8080 &
+          EOF
+
+          cat shell.sh
+
+      - run: |
+          tee Vagrantfile <<EOF
+          Vagrant.configure("2") do |config|
+            config.vm.box = "generic/openbsd7"
+
+            config.vm.provider "virtualbox" do |vb|
+              vb.memory = "8192"
+            end
+
+            config.vm.network "forwarded_port", guest: 8080, host: 8080
+            config.vm.synced_folder ".", "/home/vagrant/${{ github.repository }}", type: "rsync"
+            config.vm.provision "shell", path: "shell.sh"
+          end
+          EOF
+
+      - run: vagrant up --provider virtualbox --provision
+
+      - run: curl -O http://localhost:8080/name.txt
+      - run: curl -O http://localhost:8080/$(cat name.txt)
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ppkg-openbsd-tar-xz
-          path: ${{ github.workspace }}/ppkg-*.tar.xz
+          name: ppkg---openbsd-amd64-tar-xz
+          path: ppkg-*-openbsd-amd64.tar.xz
 
-  freebsd:
-    needs: openbsd
+
+  freebsd-amd64:
+    needs: [check, openbsd-amd64]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
     runs-on: macos-12
-    
-    steps:
-      - uses: actions/checkout@v3
 
+    steps:
       - uses: leleliu008/github-actions-vagrant@main
         with:
-          mem: 2048
+          mem: 8192
           box: generic/freebsd13
           run: |
-            run pkg install -y curl
+            export HOME=/home/vagrant
 
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+            run pkg install -y gcc curl libnghttp2
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
             run chmod a+x ppkg
-            run ./ppkg setup --use-system-package-manager
+            run ./ppkg setup
             run ./ppkg update
 
+            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
 
-            V=$(sed -n '/SET(PROJECT_VERSION /p' CMakeLists.txt | sed 's|SET(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
-
-            printf '%s\n' "git-sha: ${{ github.sha }}" >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "src-url: dir://$PWD"        >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-            printf '%s\n' "version: $V"                >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml
-
-            run ./ppkg install ppkg --link-type=static-prefered --install-lib=static
+            run ./ppkg install ppkg --link-type=static-only --install-lib=static
             run ./ppkg pack    ppkg
 
-      - run:  scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/opt/ppkg/cache.d/bin/ppkg-1.0.0-freebsd-amd64.tar.xz .
+      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/.ppkg/packed/ppkg-*-freebsd-amd64.tar.xz .
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ppkg-freebsd-tar-xz
-          path: ${{ github.workspace }}/ppkg-*.tar.xz
+          name: ppkg---freebsd-amd64-tar-xz
+          path: ppkg-*-freebsd-amd64.tar.xz
 
 
   macos:
-    needs: freebsd
-    runs-on: macos-latest
+    needs: [check, freebsd-amd64]
+    if: needs.check.outputs.if-has-new-commit == 'yes' 
 
-    env:
-      ACLOCAL_PATH: /usr/local/share/aclocal
-      MACOSX_DEPLOYMENT_TARGET: 10.15
+    runs-on: macos-12
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target-version: ['10.15', '11.0', '12.0', '13.0']
+        target-arch: [x86_64, arm64]
 
     steps:
-      - uses: actions/checkout@main
-
-      - run: brew uninstall go@1.17
-
-      - run: brew update
-      - run: brew install --overwrite python@3.10 python@3.11
-
-      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
-      - run: chmod a+x ppkg
-      - run: ./ppkg setup --use-system-package-manager
-      - run: ./ppkg update
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
+      - run: chmod a+x xcpkg
+      - run: ./xcpkg setup
+      - run: ./xcpkg update
 
       - run: |
-          v=$(sed -n '/set(project_version /p' cmakelists.txt | sed 's|set(project_version[[:space:]]*\(.*\))|\1|')
-          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<eof
-          git-sha: ${{ github.sha }}
-          src-url: dir://$pwd
-          version: $v
-          eof
+          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.xcpkg/repos.d/offical-core/formula/ppkg.yml
 
-      - run: ./ppkg install ppkg --link-type=static-prefered --install-lib=static
-      - run: ./ppkg pack    ppkg
+      - run: ./xcpkg install MacOSX/${{ matrix.target-version }}/${{ matrix.target-arch }}/ppkg --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg pack    MacOSX/${{ matrix.target-version }}/${{ matrix.target-arch }}/ppkg -o .
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ppkg-macos-tar-xz
-          path: /opt/ppkg/cache.d/bin/*.tar.xz
+          name: ppkg---macos${{ matrix.target-version }}-${{ matrix.target-arch }}-tar-xz
+          path: ppkg-*-macos*.tar.xz
 
-  linux:
-    needs: macos
+
+  linux-x86_64:
+    needs: [check, macos]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
     runs-on: ubuntu-latest
 
     container: alpine:3.16
 
-    env:
-      ACLOCAL_PATH: /usr/share/aclocal
-      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-
     steps:
       - run: apk update
-      - run: apk add git
+      - run: apk add wget g++ libc-dev linux-headers
 
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v3
 
-      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
+      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
-      - run: ./ppkg setup --use-system-package-manager
+      - run: ./ppkg setup
       - run: ./ppkg update
 
       - run: |
-          V=$(sed -n '/set(PROJECT_VERSION /p' CMakeLists.txt | sed 's|set(PROJECT_VERSION[[:space:]]*\(.*\))|\1|')
-          cat >> /opt/ppkg/repos.d/offical-core/formula/ppkg.yml <<EOF
-          git-sha: ${{ github.sha }}
-          src-url: dir://$PWD
-          version: $V
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+      - run: ./ppkg install ppkg --link-type=static-only --install-lib=static
+      - run: ./ppkg pack    ppkg -o .
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ppkg---linux-x86_64-tar-xz
+          path: ppkg-*-linux-x86_64.tar.xz
+
+
+  linux-aarch64:
+    needs: [check, linux-x86_64]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          cat > run.sh <<EOF
+          set -e
+
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
+
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run apk update
+          run apk add wget g++ libc-dev linux-headers
+
+          run wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup
+          run ./ppkg update
+
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+          run ./ppkg install ppkg --link-type=static-only --install-lib=static
+          run ./ppkg pack    ppkg -o .
           EOF
 
-      - run: ./ppkg install ppkg gh --link-type=static-only --install-lib=static
-      - run: ./ppkg pack    ppkg
+          chmod +x run.sh
+
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine arm64v8/alpine sh run.sh
+
+      - run: ls
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ppkg---linux-aarch64-tar-xz
+          path: ppkg-*-linux-aarch64.tar.xz
+
+
+  linux-ppc64le:
+    needs: [check, linux-aarch64]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          cat > run.sh <<EOF
+          set -e
+
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
+
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run apk update
+          run apk add wget g++ libc-dev linux-headers
+
+          run wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup
+          run ./ppkg update
+
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+          run ./ppkg install ppkg --link-type=static-only --install-lib=static
+          run ./ppkg pack    ppkg -o .
+          EOF
+
+          chmod +x run.sh
+
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine ppc64le/alpine sh run.sh
+
+      - run: ls
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ppkg---linux-ppc64le-tar-xz
+          path: ppkg-*-linux-ppc64le.tar.xz
+
+
+  linux-riscv64:
+    needs: [check, linux-ppc64le]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          cat > run.sh <<EOF
+          set -e
+
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
+
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run apk update
+          run apk add wget g++ libc-dev linux-headers
+
+          run wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup
+          run ./ppkg update
+
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+          run ./ppkg install ppkg --link-type=static-only --install-lib=static
+          run ./ppkg pack    ppkg -o .
+          EOF
+
+          chmod +x run.sh
+
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine riscv64/alpine:edge sh run.sh
+
+      - run: ls
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ppkg---linux-riscv64-tar-xz
+          path: ppkg-*-linux-riscv64.tar.xz
+
+
+
+  linux-s390x:
+    needs: [check, linux-riscv64]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          cat > run.sh <<EOF
+          set -e
+
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
+
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run apk update
+          run apk add wget g++ libc-dev linux-headers
+
+          run wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+          run ./ppkg setup
+          run ./ppkg update
+
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+
+          run ./ppkg install ppkg gh --link-type=static-only --install-lib=static
+          run ./ppkg pack    ppkg -o .
+          EOF
+
+          chmod +x run.sh
+
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine s390x/alpine sh run.sh
+
+      - run: ls
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ppkg---linux-s390x-tar-xz
+          path: ppkg-*-linux-s390x.tar.xz
+
+
+  publish:
+    needs: [check, linux-s390x]
+    if: needs.check.outputs.if-has-new-commit == 'yes'
+
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---netbsd-amd64-tar-xz
+          path: .
 
       - uses: actions/download-artifact@v3
         with:
-          name: ppkg-netbsd-tar-xz
-          path: /opt/ppkg/cache.d/bin/
+          name: ppkg---openbsd-amd64-tar-xz
+          path: .
 
       - uses: actions/download-artifact@v3
         with:
-          name: ppkg-opensbd-tar-xz
-          path: /opt/ppkg/cache.d/bin/
+          name: ppkg---freebsd-amd64-tar-xz
+          path: .
 
       - uses: actions/download-artifact@v3
         with:
-          name: ppkg-freebsd-tar-xz
-          path: /opt/ppkg/cache.d/bin/
+          name: ppkg---macos10.15-x86_64-tar-xz
+          path: .
 
       - uses: actions/download-artifact@v3
         with:
-          name: ppkg-macos-tar-xz
-          path: /opt/ppkg/cache.d/bin/
+          name: ppkg---macos11.0-x86_64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---macos12.0-x86_64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---macos13.0-x86_64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---macos11.0-arm64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---macos12.0-arm64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---macos13.0-arm64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---linux-x86_64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---linux-aarch64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---linux-ppc64le-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---linux-riscv64-tar-xz
+          path: .
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ppkg---linux-s390x-tar-xz
+          path: .
 
       - run: ls -a
-      - run: ls /opt/ppkg/cache.d/bin
 
-      - run: printf '%s\n' "$RELEASE_TOKEN" | /opt/ppkg/installed/gh/bin/gh auth login --with-token
+      - run: |
+          printf 'build-from: https://github.com/leleliu008/ppkg/tree/%s\n\n' ${{ needs.check.outputs.git-sha }} > notes.md
+          printf 'sha256sum:\n```\n%s\n```\n' "$(sha256sum ppkg-*.tar.xz)" >> notes.md
 
-      - run: git config --global --add safe.directory /__w/ppkg/uppm
+          VERSION="$(ls ppkg-*-linux-x86_64.tar.xz | cut -d- -f2)"
+          TAGNAME="$VERSION+${{ needs.check.outputs.git-sha }}"
 
-      - run: /opt/ppkg/installed/gh/bin/gh release create $(./ppkg info ppkg version) /opt/ppkg/cache.d/bin/*
+          # to avaid: failed to run git: fatal: not a git repository (or any of the parent directories): .git
+          git -c init.defaultBranch=master init
+          git remote add origin ${{ github.repositoryUrl }}
+
+          gh release create "$TAGNAME" ppkg-*.tar.xz --title "$TAGNAME" --notes-file notes.md
