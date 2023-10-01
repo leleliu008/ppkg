@@ -5,10 +5,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-//#ifndef __USE_GNU
-//#define __USE_GNU
-//#endif
-
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
@@ -29,7 +25,6 @@
 
 
 static int run_cmd(char * cmd, int output2FD) {
-    puts(cmd);
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -61,14 +56,6 @@ static int run_cmd(char * cmd, int output2FD) {
             argv[argc] = arg;
             argc++;
             arg = strtok(NULL, " ");
-        }
-
-        for (int i = 0; ;i++) {
-            if (argv[i] == NULL) {
-                break;
-            } else {
-                printf("%2d:%s\n", i, argv[i]);
-            }
         }
 
         ////////////////////////////////////////
@@ -3639,7 +3626,7 @@ static int ppkg_install_package(
 
     for (;;) {
         if (symlink(packageInstalledSHA, packageName) == 0) {
-            fprintf(stderr, "%s package was successfully installed.\n", packageName);
+            fprintf(stderr, "package '%s' was successfully installed.\n", packageName);
             break;
         } else {
             if (errno == EEXIST) {
@@ -4177,8 +4164,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         PPKGPackage * package = packageSet[i];
         char * packageName = package->packageName;
 
-        fprintf(stderr, "start:%d:%s\n", i, packageName);
-
         if (!options.force) {
             ret = ppkg_check_if_the_given_package_is_installed(packageName);
 
@@ -4213,8 +4198,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
         if (ret != PPKG_OK) {
             goto finalize;
         }
-
-        fprintf(stderr, "over:%d:%s\n", i, packageName);
     }
 
 finalize:

@@ -843,7 +843,7 @@ to_meson_array() {
     printf '[%s]\n' "$RESULT"
 }
 
-__adjust_elf_files_for_the_given_target() {
+__adjust_elf_files() {
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
 
@@ -964,7 +964,7 @@ __adjust_elf_files_for_the_given_target() {
     done
 }
 
-__adjust_mach_o_files_for_the_given_target() {
+__adjust_mach_o_files() {
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
 
@@ -1027,18 +1027,8 @@ __adjust_mach_o_files_for_the_given_target() {
     done
 }
 
-__adjust_la_files_for_the_given_target() {
-    [ -d "$PACKAGE_INSTALL_DIR/lib" ] || {
-        note "no .la files installed, skipped"
-        return 0
-    }
-
+__adjust_la_files() {
     LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name "*.la")"
-
-    [ -z "$LA_FILES" ] && {
-        note "no .la files installed, skipped"
-        return 0
-    }
 
     for lafile in $LA_FILES
     do
@@ -1050,18 +1040,10 @@ __adjust_la_files_for_the_given_target() {
     done
 }
 
-__adjust_pc_files_for_the_given_target() {
-    [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || {
-        note "no .pc files installed, skipped"
-        return 0
-    }
+__adjust_pc_files() {
+    [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || return 0
 
     PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name "*.pc")"
-
-    [ -z "$PC_FILES" ] && {
-        note "no .pc files installed, skipped"
-        return 0
-    }
 
     # cc: error: unrecognized command line option ‘-R’
     for pcfile in $PC_FILES
@@ -1158,22 +1140,22 @@ else
 fi
 
 if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
-    abort 1 "$PACKAGE_INSTALL_DIR already exists."
+    abort 1 "$PACKAGE_INSTALL_DIR directory already exists."
 fi
 
 dobuild
 
 cd "$PACKAGE_INSTALL_DIR"
 
-if [ "$NATIVE_OS_KIND" = darwin ] ; then
-    __adjust_mach_o_files_for_the_given_target "$@"
-else
-    __adjust_elf_files_for_the_given_target "$@"
+if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
+    __adjust_la_files
+    __adjust_pc_files
 fi
 
-if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
-    __adjust_la_files_for_the_given_target "$@"
-    __adjust_pc_files_for_the_given_target "$@"
+if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    __adjust_mach_o_files
+else
+    __adjust_elf_files
 fi
 
 # }}}
