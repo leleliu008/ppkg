@@ -14,8 +14,10 @@ A portable package manager for Unix-like system.
 
 This software provides two implementations:
 
-1. implemented in `POSIX Shell`, the source code is on `master` branch.
-2. implemented in `C`, the source code is on `dev` branch.
+|implemented in language|branch|
+|-|-|
+|implemented in `POSIX Shell`|[master](https://github.com/leleliu008/ppkg/tree/master)|
+|implemented in `C`|[c](https://github.com/leleliu008/ppkg/tree/c)|
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 

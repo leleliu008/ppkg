@@ -5042,33 +5042,18 @@ $DOT_CONTENT
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
         step "config environment variables for go"
 
+        # https://golang.org/doc/install/source#environment
+        unset GOOS
+        unset GOARCH
+
+        export GO111MODULE='auto'
+
         # https://pkg.go.dev/cmd/cgo
         export CGO_ENABLED=0
         export CGO_CFLAGS="$CFLAGS"
         export CGO_CXXFLAGS="$CXXFLAGS"
         export CGO_CPPFLAGS="$CPPFLAGS"
         export CGO_LDFLAGS="$LDFLAGS"
-
-        export GO111MODULE='auto'
-
-        if [ "$COUNTRY" = china ] ; then
-            export GOPROXY='https://goproxy.cn'
-        fi
-
-        # https://golang.org/doc/install/source#environment
-        unset GOOS
-        unset GOARCH
-
-        # export GOOS="$TARGET_OS_TYPE"
-
-        # case $TARGET_OS_ARCH in
-        #     armv7*)  export GOARCH=arm   ;;
-        #     arm64*)  export GOARCH=arm64 ;;
-        #     aarch64) export GOARCH=arm64 ;;
-        #     i386)    export GOARCH=386   ;;
-        #     i686)    export GOARCH=386   ;;
-        #     x86_64)  export GOARCH=amd64 ;;
-        # esac
     fi
 
     #########################################################################################
