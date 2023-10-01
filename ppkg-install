@@ -244,7 +244,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$LOG_LEVEL" -gt 0 ] ; then
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -599,12 +599,12 @@ cmakew() {
         *)       BUILD_SHARED_LIBS=ON
     esac
 
-    if [ "$LOG_LEVEL" -eq 0 ] ; then
-        CMAKE_VERBOSE_MAKEFILE=OFF
-        CMAKE_COLOR_MAKEFILE=OFF
-    else
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
         CMAKE_VERBOSE_MAKEFILE=ON
         CMAKE_COLOR_MAKEFILE=ON
+    else
+        CMAKE_VERBOSE_MAKEFILE=OFF
+        CMAKE_COLOR_MAKEFILE=OFF
     fi
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
@@ -710,7 +710,7 @@ set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
-    if [ "$LOG_LEVEL" -gt 0 ] ; then
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
         if command -v bat > /dev/null ; then
             run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
         else
@@ -845,7 +845,7 @@ to_meson_array() {
 
 __adjust_elf_files() {
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec "$PPKG" util base64-encode '{}' \; -printf '\n')"
 
     for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
     do
@@ -966,7 +966,7 @@ __adjust_elf_files() {
 
 __adjust_mach_o_files() {
     BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec "$PPKG" util base64-encode '{}' \;)"
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find . -not -name . -type f -exec "$PPKG" util base64-encode '{}' \; -printf '\n')"
 
     for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
     do
@@ -1081,6 +1081,14 @@ __adjust_pc_files() {
 # }}}
 ##############################################################################
 # {{{ main
+
+if [ -z "$PACKAGE_BSCRIPT" ] ; then
+    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
+else
+    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
+fi
+
+PACKAGE_BCACHED_DIR="$PACKAGE_INSTALLING_SRC_DIR/_"
 
 for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
 do

@@ -377,6 +377,7 @@ typedef struct {
     bool   enableCcache;
     bool   enableBear;
     bool   dryrun;
+    bool   xtrace;
     bool   force;
 
     size_t parallelJobsCount;

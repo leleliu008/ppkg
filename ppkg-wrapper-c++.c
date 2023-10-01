@@ -109,14 +109,9 @@ int main(int argc, char* argv[]) {
     if (SYSROOT == NULL || SYSROOT[0] == '\0') {
         argv2[argc] = NULL;
 
-        for (int i = 0; argv2[i] != NULL; i++) {
-            fprintf(stderr, "%s ", argv2[i]);
-        }
-        fprintf(stderr, "\n");
-
         execv (compiler, argv2);
         perror(compiler);
-        return 255;
+        exit(255);
     } else {
         size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
         char     sysrootArg[sysrootArgLength];
@@ -125,13 +120,8 @@ int main(int argc, char* argv[]) {
         argv2[argc]     = sysrootArg;
         argv2[argc + 1] = NULL;
 
-        for (int i = 0; argv2[i] != NULL; i++) {
-            fprintf(stderr, "%s ", argv2[i]);
-        }
-        fprintf(stderr, "\n");
-
         execv (compiler, argv2);
         perror(compiler);
-        return 255;
+        exit(255);
     }
 }

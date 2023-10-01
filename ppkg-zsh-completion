@@ -179,7 +179,6 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                        '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
@@ -188,6 +187,7 @@ function _ppkg() {
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -196,7 +196,6 @@ function _ppkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--toolchain=-[set which toolchain to use]:toolchain:()' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
@@ -205,6 +204,7 @@ function _ppkg() {
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -221,6 +221,7 @@ function _ppkg() {
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \

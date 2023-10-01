@@ -1636,13 +1636,43 @@ static int install_dependent_packages_via_uppm(
     return PPKG_OK;
 }
 
-static int generate_install_shell_script_file(const char * packageName, const char * installShellScriptFilePath, const SysInfo sysinfo, const char * currentExecutablePath, const time_t ts, PPKGInstallOptions options, const PPKGFormula * formula, const size_t njobs, const bool isNativeOSDarwin, const char * ppkgHomeDIR, const char * ppkgCoreDIR, const char * ppkgCoreBinDIR, const char * ppkgCoreLibexecDIR, const char * ppkgDownloadsDIR, const char * sessionDIR, const char * packageWorkingTopDIR, const char * packageWorkingSrcDIR, const char * packageWorkingFixDIR, const char * packageWorkingResDIR, const char * packageWorkingBinDIR, const char * packageWorkingLibDIR, const char * packageWorkingIncDIR, const char * packageWorkingTmpDIR, const char * packageInstalledDIR, const char * packageMetaInfoDIR, const char * recursiveDependentPackageNamesString, const size_t recursiveDependentPackageNamesStringSize) {
-    FILE * installShellScriptFile = fopen(installShellScriptFilePath, "w");
+typedef struct {
+    const char * name;
+    const char * value;
+} KV;
 
-    if (installShellScriptFile == NULL) {
-        perror(installShellScriptFilePath);
-        return PPKG_ERROR;
-    }
+typedef struct {
+    const char * name;
+    bool         value;
+} KB;
+
+typedef struct {
+    const char * name;
+    size_t       value;
+} KU;
+
+static int generate_install_shell_script_file(const char * packageName, const char * installShellScriptFilePath, const SysInfo sysinfo, const char * currentExecutablePath, const time_t ts, PPKGInstallOptions options, const PPKGFormula * formula, const size_t njobs, const bool isNativeOSDarwin, const char * ppkgHomeDIR, const char * ppkgCoreDIR, const char * ppkgCoreBinDIR, const char * ppkgCoreLibexecDIR, const char * ppkgDownloadsDIR, const char * sessionDIR, const char * packageWorkingTopDIR, const char * packageWorkingSrcDIR, const char * packageWorkingFixDIR, const char * packageWorkingResDIR, const char * packageWorkingBinDIR, const char * packageWorkingLibDIR, const char * packageWorkingIncDIR, const char * packageWorkingTmpDIR, const char * packageInstalledDIR, const char * packageMetaInfoDIR, const char * recursiveDependentPackageNamesString, const size_t recursiveDependentPackageNamesStringSize) {
+    KB kbs[] = {
+        {"KEEP_SESSION_DIR", options.keepSessionDIR},
+        {"BEAR_ENABLED", options.enableBear},
+        {"CCACHE_ENABLED", options.enableCcache},
+        {"EXPORT_COMPILE_COMMANDS_JSON", options.exportCompileCommandsJson},
+        {"PACKAGE_BINBSTD", formula->binbstd},
+        {"PACKAGE_SYMLINK", formula->symlink},
+        {"PACKAGE_PARALLEL", formula->parallel},
+        {"PACKAGE_BUILD_IN_BSCRIPT_DIR", formula->binbstd},
+        {"PACKAGE_BUILD_SYSTEM_AUTOGENSH", formula->useBuildSystemAutogen},
+        {"PACKAGE_BUILD_SYSTEM_AUTOTOOLS", formula->useBuildSystemAutotools},
+        {"PACKAGE_BUILD_SYSTEM_CONFIGURE", formula->useBuildSystemConfigure},
+        {"PACKAGE_BUILD_SYSTEM_CMAKE", formula->useBuildSystemCmake},
+        {"PACKAGE_BUILD_SYSTEM_XMAKE", formula->useBuildSystemXmake},
+        {"PACKAGE_BUILD_SYSTEM_GMAKE", formula->useBuildSystemGmake},
+        {"PACKAGE_BUILD_SYSTEM_NINJA", formula->useBuildSystemNinja},
+        {"PACKAGE_BUILD_SYSTEM_MESON", formula->useBuildSystemMeson},
+        {"PACKAGE_BUILD_SYSTEM_CARGO", formula->useBuildSystemCargo},
+        {"PACKAGE_BUILD_SYSTEM_GO", formula->useBuildSystemGolang},
+        {NULL,false}
+    };
 
     char * libcName;
 
@@ -1652,151 +1682,205 @@ static int generate_install_shell_script_file(const char * packageName, const ch
         default: libcName = (char*)"";
     }
 
-    const char * const PPKG_XTRACE = getenv("PPKG_XTRACE");
-
-    fprintf(installShellScriptFile, "set -x\n");
-    fprintf(installShellScriptFile, "set -e\n\n");
-    fprintf(installShellScriptFile, "export -p\n\n");
-
-    fprintf(installShellScriptFile, "NATIVE_OS_NCPU='%u'\n", sysinfo.ncpu);
-    fprintf(installShellScriptFile, "NATIVE_OS_ARCH='%s'\n", sysinfo.arch);
-    fprintf(installShellScriptFile, "NATIVE_OS_KIND='%s'\n", sysinfo.kind);
-    fprintf(installShellScriptFile, "NATIVE_OS_TYPE='%s'\n", sysinfo.type);
-    fprintf(installShellScriptFile, "NATIVE_OS_CODE='%s'\n", sysinfo.code);
-    fprintf(installShellScriptFile, "NATIVE_OS_NAME='%s'\n", sysinfo.name);
-    fprintf(installShellScriptFile, "NATIVE_OS_VERS='%s'\n", sysinfo.vers);
-    fprintf(installShellScriptFile, "NATIVE_OS_LIBC='%s'\n", libcName);
-    fprintf(installShellScriptFile, "NATIVE_OS_EUID='%u'\n", geteuid());
-    fprintf(installShellScriptFile, "NATIVE_OS_EGID='%u'\n\n", getegid());
-
-    fprintf(installShellScriptFile, "TIMESTAMP_UNIX='%zu'\n\n", ts);
-
-    fprintf(installShellScriptFile, "KEEP_SESSION_DIR=%d\n", options.keepSessionDIR);
-    fprintf(installShellScriptFile, "BEAR_ENABLED=%d\n", options.enableBear);
-    fprintf(installShellScriptFile, "CCACHE_ENABLED=%d\n", options.enableCcache);
-    fprintf(installShellScriptFile, "EXPORT_COMPILE_COMMANDS_JSON=%d\n", options.exportCompileCommandsJson);
-    fprintf(installShellScriptFile, "LOG_LEVEL=%d\n", options.logLevel);
-    fprintf(installShellScriptFile, "BUILD_TYPE='%s'\n", options.buildType == PPKGBuildType_release ? "release" : "debug");
-
-    fprintf(installShellScriptFile, "BUILD_NJOBS=%zu\n", njobs);
+    const char * linkType;
 
     switch (options.linkType) {
-        case PPKGLinkType_static_only:     fprintf(installShellScriptFile, "LINK_TYPE='static-only'\n\n");     break;
-        case PPKGLinkType_shared_only:     fprintf(installShellScriptFile, "LINK_TYPE='shared-only'\n\n");     break;
-        case PPKGLinkType_static_prefered: fprintf(installShellScriptFile, "LINK_TYPE='static-prefered'\n\n"); break;
-        case PPKGLinkType_shared_prefered: fprintf(installShellScriptFile, "LINK_TYPE='shared-prefered'\n\n"); break;
+        case PPKGLinkType_static_only:     linkType = "static-only";     break;
+        case PPKGLinkType_shared_only:     linkType = "shared-only";     break;
+        case PPKGLinkType_static_prefered: linkType = "static-prefered"; break;
+        case PPKGLinkType_shared_prefered: linkType = "shared-prefered"; break;
     }
 
-    fprintf(installShellScriptFile, "INSTALL_LIB='both'\n\n");
+    KV kvs[] = {
+        {"NATIVE_OS_ARCH", sysinfo.arch },
+        {"NATIVE_OS_KIND", sysinfo.kind },
+        {"NATIVE_OS_TYPE", sysinfo.type },
+        {"NATIVE_OS_CODE", sysinfo.code },
+        {"NATIVE_OS_NAME", sysinfo.name },
+        {"NATIVE_OS_VERS", sysinfo.vers },
+        {"NATIVE_OS_LIBC", libcName },
+        {"BUILD_TYPE", options.buildType == PPKGBuildType_release ? "release" : "debug"},
+        {"LINK_TYPE", linkType},
+        {"INSTALL_LIB", "both"},
+        {"STATIC_LIBRARY_SUFFIX", ".a"},
+        {"SHARED_LIBRARY_SUFFIX", isNativeOSDarwin ? ".dylib" : ".so"},
+        {"PPKG_VERSION", PPKG_VERSION},
+        {"PPKG", currentExecutablePath},
+        {"PPKG_HOME", ppkgHomeDIR},
+        {"PPKG_CORE_DIR", ppkgCoreDIR},
+        {"PPKG_CORE_BIN_DIR", ppkgCoreBinDIR},
+        {"PPKG_DOWNLOADS_DIR", ppkgDownloadsDIR},
+        {"PACKAGE_NAME", packageName},
+        {"PACKAGE_SUMMARY", formula->summary},
+        {"PACKAGE_VERSION", formula->version},
+        {"PACKAGE_LICENSE", formula->license},
+        {"PACKAGE_WEB_URL", formula->web_url},
+        {"PACKAGE_GIT_URL", formula->git_url},
+        {"PACKAGE_GIT_SHA", formula->git_sha},
+        {"PACKAGE_GIT_REF", formula->git_ref},
+        {"PACKAGE_SRC_URL", formula->src_url},
+        {"PACKAGE_SRC_URI", formula->src_uri},
+        {"PACKAGE_SRC_SHA", formula->src_sha},
+        {"PACKAGE_FIX_URL", formula->fix_url},
+        {"PACKAGE_FIX_URI", formula->fix_uri},
+        {"PACKAGE_FIX_SHA", formula->fix_sha},
+        {"PACKAGE_RES_URL", formula->res_url},
+        {"PACKAGE_RES_URI", formula->res_uri},
+        {"PACKAGE_RES_SHA", formula->res_sha},
+        {"PACKAGE_DEP_PKG", formula->dep_pkg},
+        {"PACKAGE_DEP_UPP", formula->dep_upp},
+        {"PACKAGE_DEP_PYM", formula->dep_pym},
+        {"PACKAGE_DEP_PLM", formula->dep_plm},
+        {"PACKAGE_BSYSTEM", formula->bsystem},
+        {"PACKAGE_BSCRIPT", formula->bscript},
+        {"PACKAGE_PPFLAGS", formula->ppflags},
+        {"PACKAGE_CCFLAGS", formula->ccflags},
+        {"PACKAGE_XXFLAGS", formula->xxflags},
+        {"PACKAGE_LDFLAGS", formula->ldflags},
+        {"PACKAGE_FORMULA_FILEPATH", formula->path},
+        {"PACKAGE_INSTALLING_SRC_DIR", packageWorkingSrcDIR},
+        {"PACKAGE_INSTALLING_FIX_DIR", packageWorkingFixDIR},
+        {"PACKAGE_INSTALLING_RES_DIR", packageWorkingResDIR},
+        {"PACKAGE_INSTALLING_BIN_DIR", packageWorkingBinDIR},
+        {"PACKAGE_INSTALLING_INC_DIR", packageWorkingIncDIR},
+        {"PACKAGE_INSTALLING_LIB_DIR", packageWorkingLibDIR},
+        {"PACKAGE_INSTALLING_TMP_DIR", packageWorkingTmpDIR},
+        {"PACKAGE_WORKING_DIR", packageWorkingTopDIR},
+        {"PACKAGE_INSTALL_DIR", packageInstalledDIR},
+        {"PACKAGE_METAINF_DIR", packageMetaInfoDIR},
+        {"SESSION_DIR", sessionDIR},
+        {"RECURSIVE_DEPENDENT_PACKAGE_NAMES", recursiveDependentPackageNamesString},
+        {NULL, NULL},
+    };
 
-    fprintf(installShellScriptFile, "STATIC_LIBRARY_SUFFIX='.a'\n");
+    int fd = open(installShellScriptFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
 
-    if (isNativeOSDarwin) {
-        fprintf(installShellScriptFile, "SHARED_LIBRARY_SUFFIX='.dylib'\n\n");
-    } else {
-        fprintf(installShellScriptFile, "SHARED_LIBRARY_SUFFIX='.so'\n\n");
+    if (fd == -1) {
+        perror(installShellScriptFilePath);
+        return PPKG_ERROR;
     }
 
-    fprintf(installShellScriptFile, "PPKG_VERSION='%s'\n", PPKG_VERSION);
-    fprintf(installShellScriptFile, "PPKG='%s'\n", currentExecutablePath);
-    fprintf(installShellScriptFile, "PPKG_HOME='%s'\n", ppkgHomeDIR);
-    fprintf(installShellScriptFile, "PPKG_CORE_DIR='%s'\n", ppkgCoreDIR);
-    fprintf(installShellScriptFile, "PPKG_CORE_BIN_DIR='%s'\n", ppkgCoreBinDIR);
-    fprintf(installShellScriptFile, "PPKG_DOWNLOADS_DIR='%s'\n", ppkgDownloadsDIR);
-    fprintf(installShellScriptFile, "PPKG_FORMULA_REPO_ROOT='%s/repos.d'\n", ppkgHomeDIR);
-    fprintf(installShellScriptFile, "PPKG_PACKAGE_INSTALLED_ROOT='%s/installed'\n", ppkgHomeDIR);
-    fprintf(installShellScriptFile, "PPKG_PACKAGE_SYMLINKED_ROOT='%s/symlinked'\n\n", ppkgHomeDIR);
+    int ret;
 
-    fprintf(installShellScriptFile, "PACKAGE_NAME='%s'\n", packageName);
-    fprintf(installShellScriptFile, "PACKAGE_SUMMARY='%s'\n", formula->summary);
-    fprintf(installShellScriptFile, "PACKAGE_VERSION='%s'\n", formula->version);
-    fprintf(installShellScriptFile, "PACKAGE_LICENSE='%s'\n", formula->license == NULL ? "" : formula->license);
-    fprintf(installShellScriptFile, "PACKAGE_WEB_URL='%s'\n", formula->web_url);
+    if (options.xtrace) {
+        ret = dprintf(fd, "set -x\n");
 
-    fprintf(installShellScriptFile, "PACKAGE_GIT_URL='%s'\n", formula->git_url == NULL ? "" : formula->git_url);
-    fprintf(installShellScriptFile, "PACKAGE_GIT_SHA='%s'\n", formula->git_sha == NULL ? "" : formula->git_sha);
-    fprintf(installShellScriptFile, "PACKAGE_GIT_REF='%s'\n", formula->git_ref == NULL ? "" : formula->git_ref);
-    fprintf(installShellScriptFile, "PACKAGE_GIT_NTH='%zu'\n", formula->git_nth);
-
-    fprintf(installShellScriptFile, "PACKAGE_SRC_URL='%s'\n", formula->src_url == NULL ? "" : formula->src_url);
-    fprintf(installShellScriptFile, "PACKAGE_SRC_URI='%s'\n", formula->src_uri == NULL ? "" : formula->src_uri);
-    fprintf(installShellScriptFile, "PACKAGE_SRC_SHA='%s'\n", formula->src_sha == NULL ? "" : formula->src_sha);
-
-    fprintf(installShellScriptFile, "PACKAGE_FIX_URL='%s'\n", formula->fix_url == NULL ? "" : formula->fix_url);
-    fprintf(installShellScriptFile, "PACKAGE_FIX_URI='%s'\n", formula->fix_uri == NULL ? "" : formula->fix_uri);
-    fprintf(installShellScriptFile, "PACKAGE_FIX_SHA='%s'\n", formula->fix_sha == NULL ? "" : formula->fix_sha);
-
-    fprintf(installShellScriptFile, "PACKAGE_RES_URL='%s'\n", formula->res_url == NULL ? "" : formula->res_url);
-    fprintf(installShellScriptFile, "PACKAGE_RES_URI='%s'\n", formula->res_uri == NULL ? "" : formula->res_uri);
-    fprintf(installShellScriptFile, "PACKAGE_RES_SHA='%s'\n", formula->res_sha == NULL ? "" : formula->res_sha);
-
-    fprintf(installShellScriptFile, "PACKAGE_DEP_PKG='%s'\n", formula->dep_pkg == NULL ? "" : formula->dep_pkg);
-    fprintf(installShellScriptFile, "PACKAGE_DEP_UPP='%s'\n", formula->dep_upp == NULL ? "" : formula->dep_upp);
-    fprintf(installShellScriptFile, "PACKAGE_DEP_PYM='%s'\n", formula->dep_pym == NULL ? "" : formula->dep_pym);
-    fprintf(installShellScriptFile, "PACKAGE_DEP_PLM='%s'\n", formula->dep_plm == NULL ? "" : formula->dep_plm);
-
-    fprintf(installShellScriptFile, "PACKAGE_BSYSTEM='%s'\n", formula->bsystem == NULL ? "" : formula->bsystem);
-    fprintf(installShellScriptFile, "PACKAGE_BSCRIPT='%s'\n", formula->bscript == NULL ? "" : formula->bscript);
-    fprintf(installShellScriptFile, "PACKAGE_BINBSTD=%d\n",   formula->binbstd);
-    fprintf(installShellScriptFile, "PACKAGE_SYMLINK=%d\n",   formula->symlink);
-    fprintf(installShellScriptFile, "PACKAGE_PARALLEL=%d\n",  formula->parallel);
-
-    fprintf(installShellScriptFile, "PACKAGE_PPFLAGS='%s'\n", formula->ppflags == NULL ? "" : formula->ppflags);
-    fprintf(installShellScriptFile, "PACKAGE_CCFLAGS='%s'\n", formula->ccflags == NULL ? "" : formula->ccflags);
-    fprintf(installShellScriptFile, "PACKAGE_XXFLAGS='%s'\n", formula->xxflags == NULL ? "" : formula->xxflags);
-    fprintf(installShellScriptFile, "PACKAGE_LDFLAGS='%s'\n", formula->ldflags == NULL ? "" : formula->ldflags);
-
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_AUTOGENSH=%d\n", formula->useBuildSystemAutogen);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_AUTOTOOLS=%d\n", formula->useBuildSystemAutotools);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_CONFIGURE=%d\n", formula->useBuildSystemConfigure);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_CMAKE=%d\n", formula->useBuildSystemCmake);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_XMAKE=%d\n", formula->useBuildSystemXmake);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_GMAKE=%d\n", formula->useBuildSystemGmake);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_NINJA=%d\n", formula->useBuildSystemNinja);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_MESON=%d\n", formula->useBuildSystemMeson);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_CARGO=%d\n", formula->useBuildSystemCargo);
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_SYSTEM_GO=%d\n",    formula->useBuildSystemGolang);
-
-    fprintf(installShellScriptFile, "PACKAGE_BUILD_IN_BSCRIPT_DIR=%d\n", formula->binbstd);
-
-    fprintf(installShellScriptFile, "PACKAGE_FORMULA_FILEPATH='%s'\n\n", formula->path);
-
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_SRC_DIR='%s'\n", packageWorkingSrcDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_FIX_DIR='%s'\n", packageWorkingFixDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_RES_DIR='%s'\n", packageWorkingResDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_BIN_DIR='%s'\n", packageWorkingBinDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_INC_DIR='%s'\n", packageWorkingIncDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_LIB_DIR='%s'\n", packageWorkingLibDIR);
-    fprintf(installShellScriptFile, "PACKAGE_INSTALLING_TMP_DIR='%s'\n\n", packageWorkingTmpDIR);
-
-    fprintf(installShellScriptFile, "PACKAGE_WORKING_DIR='%s'\n",   packageWorkingTopDIR);
-    fprintf(installShellScriptFile, "PACKAGE_BCACHED_DIR='%s/_'\n", packageWorkingSrcDIR);
-
-    if (formula->bscript == NULL) {
-        fprintf(installShellScriptFile, "PACKAGE_BSCRIPT_DIR='%s'\n",    packageWorkingSrcDIR);
-    } else {
-        fprintf(installShellScriptFile, "PACKAGE_BSCRIPT_DIR='%s/%s'\n", packageWorkingSrcDIR, formula->bscript);
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
     }
 
-    fprintf(installShellScriptFile, "PACKAGE_INSTALL_DIR='%s'\n",   packageInstalledDIR);
-    fprintf(installShellScriptFile, "PACKAGE_METAINF_DIR='%s'\n\n", packageMetaInfoDIR);
+    ret = dprintf(fd, "set -e\n\n");
 
-    fprintf(installShellScriptFile, "SESSION_DIR='%s'\n\n", sessionDIR);
-
-    fprintf(installShellScriptFile, "RECURSIVE_DEPENDENT_PACKAGE_NAMES='%s'\n\n", recursiveDependentPackageNamesString == NULL ? "" : recursiveDependentPackageNamesString);
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    fprintf(installShellScriptFile, "dopatch() {\n%s\n}\n\n", formula->dopatch == NULL ? ":" : formula->dopatch);
-    fprintf(installShellScriptFile, "dobuild() {\n%s\n}\n\n", formula->install);
-
-    if (PPKG_XTRACE == NULL || PPKG_XTRACE[0] == '\0') {
-        fprintf(installShellScriptFile, "set +x\n\n");
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
     }
 
-    fprintf(installShellScriptFile, ". %s/ppkg-install\n", ppkgCoreLibexecDIR);
+    ret = dprintf(fd, "TIMESTAMP_UNIX=%zu\n", ts);
 
-    fclose(installShellScriptFile);
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "NATIVE_OS_NCPU=%u\n", sysinfo.ncpu);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "NATIVE_OS_EUID=%u\n", geteuid());
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "NATIVE_OS_EGID=%u\n", getegid());
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "LOG_LEVEL=%d\n", options.logLevel);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "BUILD_NJOBS=%zu\n", njobs);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "PACKAGE_GIT_NTH=%zu\n", formula->git_nth);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    for (int i = 0; kbs[i].name != NULL; i++) {
+        ret = dprintf(fd, "%s=%d\n", kbs[i].name, kbs[i].value);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    for (int i = 0; kvs[i].name != NULL; i++) {
+        ret = dprintf(fd, "%s='%s'\n", kvs[i].name, (kvs[i].value == NULL) ? "" : kvs[i].value);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    ret = dprintf(fd, "PPKG_PACKAGE_INSTALLED_ROOT='%s/installed'\n", ppkgHomeDIR);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "PPKG_PACKAGE_SYMLINKED_ROOT='%s/symlinked'\n\n", ppkgHomeDIR);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "dopatch() {\n%s\n}\n\n", formula->dopatch == NULL ? ":" : formula->dopatch);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, "dobuild() {\n%s\n}\n\n", formula->install);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    ret = dprintf(fd, ". %s/ppkg-install\n", ppkgCoreLibexecDIR);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    close(fd);
 
     return PPKG_OK;
 }
@@ -2449,7 +2533,7 @@ static int ppkg_install_package(
     char   ldflags[ldflagsLength];
 
     if (options.buildType == PPKGBuildType_release) {
-        if (options.logLevel >= PPKGLogLevel_verbose) {
+        if (options.logLevel >= PPKGLogLevel_very_verbose) {
             snprintf(cxxflags, cxxflagsLength, "%s %s", toolchain.cxxflags, "-Os -v");
             snprintf(ccflags, ccflagsLength, "%s %s", toolchain.ccflags, "-Os -v");
             snprintf(ldflags, ldflagsLength, "%s %s", toolchain.ldflags, "-Wl,-S -Wl,-v");
@@ -2459,7 +2543,7 @@ static int ppkg_install_package(
             snprintf(ldflags, ldflagsLength, "%s %s", toolchain.ldflags, "-Wl,-S");
         }
     } else {
-        if (options.logLevel >= PPKGLogLevel_verbose) {
+        if (options.logLevel >= PPKGLogLevel_very_verbose) {
             snprintf(cxxflags, cxxflagsLength, "%s %s", toolchain.cxxflags, "-g -O0 -v");
             snprintf(ccflags, ccflagsLength, "%s %s", toolchain.ccflags, "-g -O0 -v");
             snprintf(ldflags, ldflagsLength, "%s %s", toolchain.ldflags, "-Wl,-v");
@@ -4037,6 +4121,28 @@ finalize:
 }
 
 int ppkg_install(const char * packageName, PPKGInstallOptions options) {
+    // redirect all stdout and stderr to /dev/null
+    if (options.logLevel == PPKGLogLevel_silent) {
+        int fd = open("/dev/null", O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
+        if (fd < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (dup2(fd, STDOUT_FILENO) < 0) {
+            perror(NULL);
+            close(fd);
+            return PPKG_ERROR;
+        }
+
+        if (dup2(fd, STDERR_FILENO) < 0) {
+            perror(NULL);
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
     const char * const PATH = getenv("PATH");
 
     if (PATH == NULL || PATH[0] == '\0') {

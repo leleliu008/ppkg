@@ -261,7 +261,9 @@ int ppkg_main(int argc, char* argv[]) {
         int packageNameIndexArraySize = 0;
 
         for (int i = 2; i < argc; i++) {
-            if (strcmp(argv[i], "-q") == 0) {
+            if (strcmp(argv[i], "-x") == 0) {
+                options.xtrace = true;
+            } else if (strcmp(argv[i], "-q") == 0) {
                 options.logLevel = PPKGLogLevel_silent;
             } else if (strcmp(argv[i], "-v") == 0) {
                 options.logLevel = PPKGLogLevel_verbose;
