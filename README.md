@@ -14,8 +14,10 @@ A portable package manager for Unix-like system.
 
 This software provides two implementations:
 
-1. implemented in `POSIX Shell`, the source code is on `master` branch.
-2. implemented in `C`, the source code is on `dev` branch.
+|implemented in language|branch|
+|-|-|
+|implemented in `POSIX Shell`|[master](https://github.com/leleliu008/ppkg/tree/master)|
+|implemented in `C`|[c](https://github.com/leleliu008/ppkg/tree/c)|
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 
@@ -72,7 +74,7 @@ export PATH="$VCPKG_ROOT:$PATH"
 
 vcpkg install curl openssl libgit2 libarchive libyaml jansson
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
@@ -86,7 +88,7 @@ cmake --install build.d
 apt -y update
 apt -y install git cmake ninja-build pkg-config gcc libcurl4 libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev zlib1g-dev
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -100,7 +102,7 @@ cmake --install build.d
 dnf -y update
 dnf -y install git cmake ninja-build pkg-config gcc libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -114,7 +116,7 @@ cmake --install build.d
 pacman -Syyuu --noconfirm
 pacman -S     --noconfirm git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson zlib
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -127,7 +129,7 @@ cmake --install build.d
 ```bash
 apk add git cmake ninja pkgconf gcc libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev zlib-dev
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -141,7 +143,7 @@ cmake --install build.d
 xbps-install -Suy xbps
 xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -154,7 +156,7 @@ cmake --install build.d
 ```bash
 emerge dev-vcs/git cmake dev-util/ninja gcc pkg-config net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-libs/zlib
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -168,7 +170,7 @@ cmake --install build.d
 zypper update  -y  
 zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel zlib-devel
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -182,7 +184,7 @@ cmake --install build.d
 brew update
 brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive zlib
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
@@ -207,7 +209,7 @@ cmake --install build.d
 ```bash
 pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson zlib
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -220,7 +222,7 @@ cmake --install build.d
 ```bash
 pkg_add git cmake ninja pkgconf llvm curl libgit2 libarchive libyaml jansson zlib
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -235,7 +237,7 @@ pkgin -y install git mozilla-rootcerts cmake ninja-build pkg-config clang curl o
 
 mozilla-rootcerts install
 
-git clone --depth=1 https://github.com/leleliu008/ppkg
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -612,6 +614,12 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
+- **GOPROXY**
+
+    ```bash
+    export GOPROXY='https://goproxy.cn'
+    ```
+
 - **PPKG_URL_TRANSFORM**
 
     ```bash
@@ -634,22 +642,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     export PPKG_XTRACE=1
-    ```
-
-- **other relevant environment variables**
-
-    |utility|reference|
-    |-|-|
-    |[cmake](https://cmake.org/)|[reference](https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html)|
-    |[cargo](https://doc.rust-lang.org/cargo/)|[reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html)|
-    |[go](https://golang.org/)|[reference](https://golang.org/doc/install/source#environment)|
-    |[pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)|[reference](https://www.linuxhowtos.org/manpages/1/pkg-config.htm#lbAF)|
-    |[aclocal](https://www.gnu.org/software/automake/manual/html_node/configure.html)|[reference](https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html)|
-
-    example:
-
-    ```bash
-    export GOPROXY='https://goproxy.cn'
     ```
 
 ## ppkg formula
