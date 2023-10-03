@@ -77,9 +77,9 @@ jobs:
             ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
 
             run ./ppkg install ppkg --link-type=static-only --install-lib=static
-            run ./ppkg pack    ppkg
+            run ./ppkg pack    ppkg -o /home/vagrant
 
-      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/.ppkg/packed/ppkg-*-netbsd-amd64.tar.xz .
+      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/ppkg-*-netbsd-amd64.tar.xz .
 
       - uses: actions/upload-artifact@v3
         with:
@@ -186,9 +186,9 @@ jobs:
             ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
 
             run ./ppkg install ppkg --link-type=static-only --install-lib=static
-            run ./ppkg pack    ppkg
+            run ./ppkg pack    ppkg -o /home/vagrant
 
-      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/.ppkg/packed/ppkg-*-freebsd-amd64.tar.xz .
+      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/ppkg-*-freebsd-amd64.tar.xz .
 
       - uses: actions/upload-artifact@v3
         with:
