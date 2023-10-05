@@ -217,8 +217,8 @@ jobs:
       - run: |
           ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.xcpkg/repos.d/offical-core/formula/ppkg.yml
 
-      - run: ./xcpkg install MacOSX/${{ matrix.target-version }}/${{ matrix.target-arch }}/ppkg --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg pack    MacOSX/${{ matrix.target-version }}/${{ matrix.target-arch }}/ppkg -o .
+      - run: ./xcpkg install ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg pack    ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} -o .
 
       - uses: actions/upload-artifact@v3
         with:
