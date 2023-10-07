@@ -171,13 +171,15 @@ install_pc_file() {
 # {{{ gow
 
 gow() {
-    if command -v bat > /dev/null ; then
-        run "go env | bat --language=bash --paging=never --style=plain"
-    else
-        run "go env"
-    fi
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        if command -v bat > /dev/null ; then
+            run "go env | bat --language=bash --paging=never --style=plain"
+        else
+            run "go env"
+        fi
 
-    printf '\n'
+        printf '\n'
+    fi
 
     # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
@@ -390,7 +392,7 @@ cargow() {
 
             CARGO_BUILD_ARGS="$*"
 
-            if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
+            if [ -z "$CARGO_BUILD_ARG_VV" ] && [ "$LOG_LEVEL" -ge 2 ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
             fi
 
@@ -427,7 +429,7 @@ cargow() {
 
             CARGO_INSTALL_ARGS="$*"
 
-            if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
+            if [ -z "$CARGO_INSTALL_ARG_VV" ] && [ "$LOG_LEVEL" -ge 2 ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
             fi
 
@@ -472,7 +474,9 @@ cargow() {
             CARGO_CINSTALL_ARGS="$*"
 
             if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
-                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+                if [ "$LOG_LEVEL" -ge 2 ] ; then
+                    CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+                fi
             fi
 
             if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then

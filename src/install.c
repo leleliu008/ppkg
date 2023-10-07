@@ -527,9 +527,9 @@ static int setup_rust_toolchain(const PPKGInstallOptions options, const char * s
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t   defaultCargoHomeDIRSize = strlen(userHomeDIR) + 8U;
-        char     defaultCargoHomeDIR[defaultCargoHomeDIRSize];
-        snprintf(defaultCargoHomeDIR, defaultCargoHomeDIRSize, "%s/.cargo", userHomeDIR);
+        size_t   defaultCargoHomeDIRCapcity = strlen(userHomeDIR) + 8U;
+        char     defaultCargoHomeDIR[defaultCargoHomeDIRCapcity];
+        snprintf(defaultCargoHomeDIR, defaultCargoHomeDIRCapcity, "%s/.cargo", userHomeDIR);
 
         struct stat st;
 
@@ -568,16 +568,25 @@ static int setup_rust_toolchain(const PPKGInstallOptions options, const char * s
         }
     }
 
-    char * rustupCommandPath = NULL;
+    char   rustupCommandPath[PATH_MAX];
+    size_t rustupCommandPathLength = 0U;
 
-    int ret = exe_lookup("rustup", &rustupCommandPath, NULL);
+    int ret = exe_where("rustup", rustupCommandPath, PATH_MAX, &rustupCommandPathLength);
 
-    if (ret == 0) {
-        free(rustupCommandPath);
-        return PPKG_OK;
+    if (ret == -1) {
+        perror(NULL);
+        return PPKG_ERROR;
     }
 
-    if (ret == PPKG_ERROR_NOT_FOUND) {
+    if (ret == -2) {
+        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    }
+
+    if (ret == -3) {
+        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    }
+
+    if (rustupCommandPathLength == 0U) {
         LOG_INFO("rustup command is required, but it is not found on this machine, ppkg will install it via running shell script.");
 
         size_t   rustupInitScriptFilePathLength = sessionDIRLength + 16U;
@@ -639,17 +648,25 @@ static int setup_rust_toolchain(const PPKGInstallOptions options, const char * s
             return PPKG_ERROR_ENV_PATH_NOT_SET;
         }
 
-        size_t   newPATHLength = strlen(cargoHomeDIR) + 2U;
-        char     newPATH[newPATHLength];
-        snprintf(newPATH, newPATHLength, "%s:%s", cargoHomeDIR, PATH);
+        size_t   cargoBinDIRSize = strlen(cargoHomeDIR) + 5U;
+        char     cargoBinDIR[cargoBinDIRSize];
+        snprintf(cargoBinDIR, cargoBinDIRSize, "%s/bin", cargoHomeDIR);
 
-        if (setenv("PATH", newPATH, 1) != 0) {
-            perror("PATH");
-            return PPKG_ERROR;
+        struct stat st;
+
+        if (stat(cargoBinDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
+            size_t   newPATHLength = cargoBinDIRSize + strlen(PATH) + 2U;
+            char     newPATH[newPATHLength];
+            snprintf(newPATH, newPATHLength, "%s:%s", cargoBinDIR, PATH);
+
+            if (setenv("PATH", newPATH, 1) != 0) {
+                perror("PATH");
+                return PPKG_ERROR;
+            }
         }
-    } else {
-        return ret;
     }
+
+    return PPKG_OK;
 }
 
 

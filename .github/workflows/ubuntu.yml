@@ -93,6 +93,8 @@ jobs:
       - run: apt -y install g++ linux-headers-generic
 
       - run: ./output/bin/ppkg install libzip
+      - run: ./output/bin/ppkg install sd
+      - run: ./output/bin/ppkg install gh
 
       - run: ./output/bin/ppkg tree libzip
 

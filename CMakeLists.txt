@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(ppkg C)
 
-set(PROJECT_VERSION       0.20.0)
+set(PROJECT_VERSION 0.1000.0)
 
 string(REPLACE "." ";" PROJECT_VERSION_PART_LIST ${PROJECT_VERSION})
 list(GET PROJECT_VERSION_PART_LIST 0 PROJECT_VERSION_MAJOR)
@@ -26,7 +26,7 @@ if ("${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
     set(LINK_STATIC_LIBS ON)
 
     if ("${CMAKE_SYSTEM_NAME}" STREQUAL Darwin)
-        message(FATAL_ERROR "macOS DO NOT support static link the c runtime.")
+        message(FATAL_ERROR "macOS has no static libc to be linked.")
     endif()
 endif()
 
