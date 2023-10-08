@@ -531,67 +531,35 @@ static int setup_rust_toolchain(const PPKGInstallOptions options, const char * s
         char     defaultCargoHomeDIR[defaultCargoHomeDIRCapcity];
         snprintf(defaultCargoHomeDIR, defaultCargoHomeDIRCapcity, "%s/.cargo", userHomeDIR);
 
-        struct stat st;
-
-        if (stat(defaultCargoHomeDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-            if (setenv("CARGO_HOME", defaultCargoHomeDIR, 1) != 0) {
-                perror("CARGO_HOME");
-                return PPKG_ERROR;
-            }
-
-            cargoHomeDIR = getenv("CARGO_HOME");
-        }
-    }
-
-    if (cargoHomeDIR != NULL && cargoHomeDIR[0] != '\0') {
-        const char * const PATH = getenv("PATH");
-
-        if (PATH == NULL || PATH[0] == '\0') {
-            return PPKG_ERROR_ENV_PATH_NOT_SET;
+        if (setenv("CARGO_HOME", defaultCargoHomeDIR, 1) != 0) {
+            perror("CARGO_HOME");
+            return PPKG_ERROR;
         }
 
-        size_t   cargoBinDIRSize = strlen(cargoHomeDIR) + 5U;
-        char     cargoBinDIR[cargoBinDIRSize];
-        snprintf(cargoBinDIR, cargoBinDIRSize, "%s/bin", cargoHomeDIR);
-
-        struct stat st;
-
-        if (stat(cargoBinDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-            size_t   newPATHLength = cargoBinDIRSize + strlen(PATH) + 2U;
-            char     newPATH[newPATHLength];
-            snprintf(newPATH, newPATHLength, "%s:%s", cargoBinDIR, PATH);
-
-            if (setenv("PATH", newPATH, 1) != 0) {
-                perror("PATH");
-                return PPKG_ERROR;
-            }
-        }
+        cargoHomeDIR = getenv("CARGO_HOME");
     }
 
-    char   rustupCommandPath[PATH_MAX];
-    size_t rustupCommandPathLength = 0U;
+    size_t cargoHomeDIRLength = strlen(cargoHomeDIR);
 
-    int ret = exe_where("rustup", rustupCommandPath, PATH_MAX, &rustupCommandPathLength);
+    size_t   rustupCommandPathCapcity = cargoHomeDIRLength + 12U;
+    char     rustupCommandPath[rustupCommandPathCapcity];
+    snprintf(rustupCommandPath, rustupCommandPathCapcity, "%s/bin/rustup", cargoHomeDIR);
 
-    if (ret == -1) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
+    size_t   cargoCommandPathCapcity = cargoHomeDIRLength + 11U;
+    char     cargoCommandPath[cargoCommandPathCapcity];
+    snprintf(cargoCommandPath, cargoCommandPathCapcity, "%s/bin/cargo", cargoHomeDIR);
 
-    if (ret == -2) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
-    }
+    struct stat st;
 
-    if (ret == -3) {
-        return PPKG_ERROR_ENV_PATH_NOT_SET;
-    }
+    bool  cargoExist = (stat(cargoCommandPath, &st) == 0) && S_ISREG(st.st_mode);
+    bool rustupExist = (stat(rustupCommandPath, &st) == 0) && S_ISREG(st.st_mode);
 
-    if (rustupCommandPathLength == 0U) {
-        LOG_INFO("rustup command is required, but it is not found on this machine, ppkg will install it via running shell script.");
+    if (!(cargoExist && rustupExist)) {
+        LOG_INFO("rustup and cargo commands are required, but they are not found on this machine, ppkg will install them via running shell script.");
 
-        size_t   rustupInitScriptFilePathLength = sessionDIRLength + 16U;
-        char     rustupInitScriptFilePath[rustupInitScriptFilePathLength];
-        snprintf(rustupInitScriptFilePath, rustupInitScriptFilePathLength, "%s/rustup-init.sh", sessionDIR);
+        size_t   rustupInitScriptFilePathCapcity = sessionDIRLength + 16U;
+        char     rustupInitScriptFilePath[rustupInitScriptFilePathCapcity];
+        snprintf(rustupInitScriptFilePath, rustupInitScriptFilePathCapcity, "%s/rustup-init.sh", sessionDIR);
 
         int ret = ppkg_http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, options.logLevel >= PPKGLogLevel_verbose, options.logLevel >= PPKGLogLevel_verbose);
 
@@ -599,71 +567,30 @@ static int setup_rust_toolchain(const PPKGInstallOptions options, const char * s
             return ret;
         }
 
-        pid_t pid = fork();
+        size_t   cmdCapcity = rustupInitScriptFilePathCapcity + 10U;
+        char     cmd[cmdCapcity];
+        snprintf(cmd, cmdCapcity, "bash %s -y", rustupInitScriptFilePath);
 
-        if (pid < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
+        ret = run_cmd(cmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
         }
+    }
 
-        if (pid == 0) {
-            execlp("bash", "bash", rustupInitScriptFilePath, "-y", NULL);
-            perror("bash");
-            exit(255);
-        } else {
-            int childProcessExitStatusCode;
+    const char * const PATH = getenv("PATH");
 
-            if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
+    if (PATH == NULL || PATH[0] == '\0') {
+        return PPKG_ERROR_ENV_PATH_NOT_SET;
+    }
 
-            if (childProcessExitStatusCode == 0) {
-                return PPKG_OK;
-            } else {
-                size_t   cmdLength = rustupInitScriptFilePathLength + 9U;
-                char     cmd[cmdLength];
-                snprintf(cmd, cmdLength, "bash %s -y", rustupInitScriptFilePath);
+    size_t   newPATHLength = cargoHomeDIRLength + strlen(PATH) + 5U;
+    char     newPATH[newPATHLength];
+    snprintf(newPATH, newPATHLength, "%s/bin:%s", cargoHomeDIR, PATH);
 
-                if (WIFEXITED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
-                } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
-                } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                    fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
-                }
-
-                return PPKG_ERROR;
-            }
-        }
-
-        if (setenv("CARGO_HOME", cargoHomeDIR, 1) != 0) {
-            perror("CARGO_HOME");
-            return PPKG_ERROR;;
-        }
-
-        const char * const PATH = getenv("PATH");
-
-        if (PATH == NULL || PATH[0] == '\0') {
-            return PPKG_ERROR_ENV_PATH_NOT_SET;
-        }
-
-        size_t   cargoBinDIRSize = strlen(cargoHomeDIR) + 5U;
-        char     cargoBinDIR[cargoBinDIRSize];
-        snprintf(cargoBinDIR, cargoBinDIRSize, "%s/bin", cargoHomeDIR);
-
-        struct stat st;
-
-        if (stat(cargoBinDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-            size_t   newPATHLength = cargoBinDIRSize + strlen(PATH) + 2U;
-            char     newPATH[newPATHLength];
-            snprintf(newPATH, newPATHLength, "%s:%s", cargoBinDIR, PATH);
-
-            if (setenv("PATH", newPATH, 1) != 0) {
-                perror("PATH");
-                return PPKG_ERROR;
-            }
-        }
+    if (setenv("PATH", newPATH, 1) != 0) {
+        perror("PATH");
+        return PPKG_ERROR;
     }
 
     return PPKG_OK;
@@ -726,7 +653,7 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
         case NATIVE_PACKAGE_ID_LIBBZ2:
             nativePackage->name = "libbz2";
             nativePackage->srcUrl = "https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz";
-            nativePackage->srcSha = "96a2e42fbde6f59fce10bcbcda62aa90b9514bd9295914f7470e98c54eac38f2";
+            nativePackage->srcSha = "fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789";
             nativePackage->buildConfigureArgs = "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
             break;
