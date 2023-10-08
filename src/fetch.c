@@ -49,7 +49,7 @@ static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const
 static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {
     char fileNameExtension[21] = {0};
 
-    int ret = ppkg_examine_file_extension_from_url(fileNameExtension, 20, url);
+    int ret = ppkg_examine_file_extension_from_url(url, fileNameExtension, 20);
 
     if (ret != PPKG_OK) {
         return ret;

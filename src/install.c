@@ -258,7 +258,7 @@ static int fetch_source_if_needed(const PPKGFormula * formula, const char * ppkg
         } else {
             char srcFileNameExtension[21] = {0};
 
-            int ret = ppkg_examine_file_extension_from_url(srcFileNameExtension, 20, formula->src_url);
+            int ret = ppkg_examine_file_extension_from_url(formula->src_url, srcFileNameExtension, 20);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -345,7 +345,7 @@ static int fetch_patch_if_needed(const PPKGFormula * formula, const char * ppkgD
     if (formula->fix_url != NULL) {
         char fixFileNameExtension[21] = {0};
 
-        int ret = ppkg_examine_file_extension_from_url(fixFileNameExtension, 20, formula->fix_url);
+        int ret = ppkg_examine_file_extension_from_url(formula->fix_url, fixFileNameExtension, 20);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -433,7 +433,7 @@ static int fetch_resource_if_needed(const PPKGFormula * formula, const char * pp
     if (formula->res_url != NULL) {
         char resFileNameExtension[21] = {0};
 
-        int ret = ppkg_examine_file_extension_from_url(resFileNameExtension, 20, formula->res_url);
+        int ret = ppkg_examine_file_extension_from_url(formula->res_url, resFileNameExtension, 20);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1067,7 +1067,7 @@ static int install_native_package(
 
     char srcFileNameExtension[21] = {0};
 
-    ret = ppkg_examine_file_extension_from_url(srcFileNameExtension, 20, srcUrl);
+    ret = ppkg_examine_file_extension_from_url(srcUrl, srcFileNameExtension, 20);
 
     if (ret != PPKG_OK) {
         return ret;

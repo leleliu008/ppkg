@@ -424,7 +424,7 @@ int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, con
 
 int ppkg_generate_url_transform_sample();
 
-int ppkg_examine_file_extension_from_url(char buf[], size_t maxSize, const char * url);
+int ppkg_examine_file_extension_from_url(const char * url, char buf[], size_t bufSize);
 
 int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress);
 

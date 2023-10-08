@@ -2,7 +2,7 @@
 
 #include "ppkg.h"
 
-int ppkg_examine_file_extension_from_url(char buf[], size_t maxSize, const char * url) {
+int ppkg_examine_file_extension_from_url(const char * url, char buf[], size_t bufSize) {
     if (url == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
@@ -11,81 +11,70 @@ int ppkg_examine_file_extension_from_url(char buf[], size_t maxSize, const char 
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    if (maxSize == 0U) {
+    if (bufSize == 0U) {
         return PPKG_ERROR_ARG_IS_INVALID;
     }
 
     size_t urlLength = 0U;
 
+    int i = -1;
+    int j = -1;
+    int k = -1;
+
     for (;;) {
-        if ((url[urlLength] == '?') || (url[urlLength] == '\0')) {
+        char c = url[urlLength];
+
+        if ((c == '?') || (c == '\0')) {
             break;
         } else {
+            if (c == '/') {
+                i = urlLength;
+            } else if (c == '.') {
+                j = k;
+                k = urlLength;
+            }
+
             urlLength++;
         }
     }
 
-    if (urlLength < 3U) {
+    if (urlLength == 0U) {
         return PPKG_ERROR_ARG_IS_INVALID;
     }
 
-    size_t lastIndex = urlLength - 1U;
-
-    if (url[lastIndex] == '.') {
-        return PPKG_ERROR_ARG_IS_INVALID;
+    if (k <= i) {
+        return 0;
     }
 
-    size_t i = lastIndex;
+    if (j > 0) {
+        const char * p = url + j;
 
-    const char * p;
-
-    for (;;) {
-        if (url[i] == '.') {
-            p = url + i;
-
-            if (urlLength - i == 3U) {
-                if (strcmp(p, ".gz") == 0) {
-                    if (urlLength > 7U) {
-                        if (strncmp(&url[i - 4U], ".tar", 4U) == 0) {
-                            strncpy(buf, ".tgz", maxSize > 4U ? 4U : maxSize);
-                            return PPKG_OK;
-                        }
-                    }
-                } else if (strcmp(p, ".xz") == 0) {
-                    if (urlLength > 7U) {
-                        if (strncmp(&url[i - 4U], ".tar", 4U) == 0) {
-                            strncpy(buf, ".txz", maxSize > 4U ? 4U : maxSize);
-                            return PPKG_OK;
-                        }
-                    }
-                } else if (strcmp(p, ".lz") == 0) {
-                    if (urlLength > 7U) {
-                        if (strncmp(&url[i - 4], ".tar", 4U) == 0) {
-                            strncpy(buf, ".tlz", maxSize > 4U ? 4U : maxSize);
-                            return PPKG_OK;
-                        }
-                    }
-                }
-            } else if (urlLength - i == 4U) {
-                if (strcmp(p, ".bz2") == 0) {
-                    if (urlLength > 8) {
-                        if (strncmp(&url[i - 4U], ".tar", 4U) == 0) {
-                            strncpy(buf, ".tbz2", maxSize > 5U ? 5U : maxSize);
-                            return PPKG_OK;
-                        }
-                    }
-                }
-            }
-
-            size_t n = urlLength - i;
-            strncpy(buf, p, maxSize > n ? n : maxSize);
+        if (strcmp(p, ".tar.gz") == 0) {
+            size_t n = bufSize > 4U ? 4U : bufSize;
+            strncpy(buf, ".tgz", n);
+            buf[n] = '\0';
             return PPKG_OK;
-        } else {
-            if (i == 0) {
-                return PPKG_ERROR_ARG_IS_INVALID;
-            } else {
-                i--;
-            }
+        } else if (strcmp(p, ".tar.xz") == 0) {
+            size_t n = bufSize > 4U ? 4U : bufSize;
+            strncpy(buf, ".txz", n);
+            buf[n] = '\0';
+            return PPKG_OK;
+        } else if (strcmp(p, ".tar.lz") == 0) {
+            size_t n = bufSize > 4U ? 4U : bufSize;
+            strncpy(buf, ".tlz", n);
+            buf[n] = '\0';
+            return PPKG_OK;
+        } else if (strcmp(p, ".tar.bz2") == 0) {
+            size_t n = bufSize > 5U ? 5U : bufSize;
+            strncpy(buf, ".tbz2", n);
+            buf[n] = '\0';
+            return PPKG_OK;
         }
     }
+
+    size_t n = urlLength - k;
+    strncpy(buf, url + k, bufSize > n ? n : bufSize);
+    buf[n] = '\0';
+
+    return PPKG_OK;
 }

@@ -303,6 +303,57 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         ppkg_formula_free(formula);
+    } else if (strcmp(key, "src-ft") == 0) {
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->src_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s\n", fileNameExtension);
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "src-fp") == 0) {
+        char   ppkgHomeDIR[PATH_MAX];
+        size_t ppkgHomeDIRLength;
+
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->src_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s/downloads/%s%s\n", ppkgHomeDIR, formula->src_sha, fileNameExtension);
+
+        ppkg_formula_free(formula);
     } else if (strcmp(key, "fix-url") == 0) {
         PPKGFormula * formula = NULL;
 
@@ -331,6 +382,57 @@ int ppkg_info(const char * packageName, const char * key) {
         }
 
         ppkg_formula_free(formula);
+    } else if (strcmp(key, "fix-ft") == 0) {
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->fix_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s\n", fileNameExtension);
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "fix-fp") == 0) {
+        char   ppkgHomeDIR[PATH_MAX];
+        size_t ppkgHomeDIRLength;
+
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->fix_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s/downloads/%s%s\n", ppkgHomeDIR, formula->fix_sha, fileNameExtension);
+
+        ppkg_formula_free(formula);
     } else if (strcmp(key, "res-url") == 0) {
         PPKGFormula * formula = NULL;
 
@@ -357,6 +459,57 @@ int ppkg_info(const char * packageName, const char * key) {
         if (formula->res_sha != NULL) {
             printf("%s\n", formula->res_sha);
         }
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "res-ft") == 0) {
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->res_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s\n", fileNameExtension);
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "res-fp") == 0) {
+        char   ppkgHomeDIR[PATH_MAX];
+        size_t ppkgHomeDIRLength;
+
+        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        char fileNameExtension[21] = {0};
+
+        ret = ppkg_examine_file_extension_from_url(formula->res_url, fileNameExtension, 20);
+
+        if (ret != PPKG_OK) {
+            ppkg_formula_free(formula);
+            return ret;
+        }
+
+        printf("%s/downloads/%s%s\n", ppkgHomeDIR, formula->res_sha, fileNameExtension);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "dep-pkg") == 0) {
