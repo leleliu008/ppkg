@@ -39,6 +39,13 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName) {
         return ret;
     }
 
+    char osType[31] = {0};
+
+    if (sysinfo_type(osType, 30) != 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
     PPKGFormulaRepoList * formulaRepoList = NULL;
 
     ret = ppkg_formula_repo_list(&formulaRepoList);
@@ -53,13 +60,17 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName) {
     for (size_t i = 0; i < formulaRepoList->size; i++) {
         char *   formulaRepoPath = formulaRepoList->repos[i]->path;
 
-        size_t   formulaFilePathLength = strlen(formulaRepoPath) + strlen(packageName) + 15U;
-        char     formulaFilePath[formulaFilePathLength];
-        snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s.yml", formulaRepoPath, packageName);
+        const char* a[2] = { osType, ""};
 
-        if (lstat(formulaFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            ppkg_formula_repo_list_free(formulaRepoList);
-            return PPKG_OK;
+        for (int j = 0; j < 2; j++) {
+            size_t   formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + strlen(packageName) + 15U;
+            char     formulaFilePath[formulaFilePathLength];
+            snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+
+            if (lstat(formulaFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
+                ppkg_formula_repo_list_free(formulaRepoList);
+                return PPKG_OK;
+            }
         }
     }
 

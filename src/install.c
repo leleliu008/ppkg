@@ -2267,7 +2267,7 @@ static int install_files_to_metainfo_dir(struct stat st, const char * fromDIR, s
     snprintf(toFilePath, toFilePathLength, "%s/%s", toDIR, item);
 
     if (stat(fromFilePath, &st) == 0) {
-        return ppkg_rename_or_copy_file(fromFilePath, toFilePath);
+        return ppkg_copy_file(fromFilePath, toFilePath);
     }
 
     return PPKG_OK;
