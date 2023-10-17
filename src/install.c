@@ -3019,6 +3019,25 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    char   m4Path[PATH_MAX];
+    size_t m4PathLength = 0U;
+
+    ret = exe_where("m4", m4Path, PATH_MAX, &m4PathLength);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (m4PathLength > 0U) {
+        if (setenv("M4", m4Path, 1) != 0) {
+            perror("M4");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     int nativePackageIDArray[20] = {0};
     int nativePackageIDArraySize = 0;
 
