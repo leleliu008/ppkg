@@ -3724,6 +3724,20 @@ static int getRecursiveDependentPackageNamesStringBuffer(char * packageName, PPK
     char * depPackageName = strtok(depPackageNamesCopy, " ");
 
     while (depPackageName != NULL) {
+        if (packageNameStackSize == packageNameStackCapcity) {
+            char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 8U) * sizeof(char*));
+
+            if (p == NULL) {
+                free(packageNameStack);
+                packageNameStack = NULL;
+
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            }
+
+            packageNameStack = p;
+            packageNameStackCapcity += 8U;
+        }
+
         packageNameStack[packageNameStackSize] = depPackageName;
         packageNameStackSize++;
         depPackageName = strtok(NULL, " ");
@@ -3896,9 +3910,10 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
 
     ////////////////////////////////////////////////////////////////
 
-    while (packageNameStackSize > 0) {
-        char * packageName = packageNameStack[packageNameStackSize - 1];
-        packageNameStack[packageNameStackSize - 1] = NULL;
+    while (packageNameStackSize > 0U) {
+        size_t topIndex = packageNameStackSize - 1U;
+        char * packageName = packageNameStack[topIndex];
+        packageNameStack[topIndex] = NULL;
         packageNameStackSize--;
 
         PPKGFormula * formula = NULL;
@@ -3910,7 +3925,7 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
                 packageName = packageSet[i]->packageName;
                 formula = packageSet[i]->formula;
 
-                size_t lastIndex = packageSetSize - 1;
+                size_t lastIndex = packageSetSize - 1U;
 
                 if (i != lastIndex) {
                     PPKGPackage * package = packageSet[i];
@@ -3984,54 +3999,52 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
 
             packageSet[packageSetSize] = package;
             packageSetSize++;
+        }
 
-            if (formula->dep_pkg == NULL) {
-                continue;
+        if (formula->dep_pkg == NULL) {
+            continue;
+        }
+
+        size_t  depPackageNamesLength = strlen(formula->dep_pkg);
+
+        size_t  depPackageNamesCopyLength = depPackageNamesLength + 1U;
+        char    depPackageNamesCopy[depPackageNamesCopyLength];
+        strncpy(depPackageNamesCopy, formula->dep_pkg, depPackageNamesCopyLength);
+
+        char * depPackageName = strtok(depPackageNamesCopy, " ");
+
+        while (depPackageName != NULL) {
+            if (strcmp(depPackageName, packageName) == 0) {
+                fprintf(stderr, "package '%s' depends itself.\n", packageName);
+                ret = PPKG_ERROR;
+                goto finalize;
             }
 
             ////////////////////////////////////////////////////////////////
 
-            size_t  depPackageNamesLength = strlen(formula->dep_pkg);
-
-            size_t  depPackageNamesCopyLength = depPackageNamesLength + 1U;
-            char    depPackageNamesCopy[depPackageNamesCopyLength];
-            strncpy(depPackageNamesCopy, formula->dep_pkg, depPackageNamesCopyLength);
-
-            char * depPackageName = strtok(depPackageNamesCopy, " ");
-
-            while (depPackageName != NULL) {
-                if (strcmp(depPackageName, packageName) == 0) {
-                    fprintf(stderr, "package '%s' depends itself.\n", packageName);
-                    ret = PPKG_ERROR;
-                    goto finalize;
-                }
-
-                ////////////////////////////////////////////////////////////////
-
-                if (packageNameStackSize == packageNameStackCapcity) {
-                    char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10U) * sizeof(char*));
-
-                    if (p == NULL) {
-                        ret = PPKG_ERROR_MEMORY_ALLOCATE;
-                        goto finalize;
-                    }
-
-                    packageNameStack = p;
-                    packageNameStackCapcity += 10U;
-                }
-
-                char * p = strdup(depPackageName);
+            if (packageNameStackSize == packageNameStackCapcity) {
+                char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10U) * sizeof(char*));
 
                 if (p == NULL) {
                     ret = PPKG_ERROR_MEMORY_ALLOCATE;
                     goto finalize;
                 }
 
-                packageNameStack[packageNameStackSize] = p;
-                packageNameStackSize++;
-
-                depPackageName = strtok (NULL, " ");
+                packageNameStack = p;
+                packageNameStackCapcity += 10U;
             }
+
+            char * p = strdup(depPackageName);
+
+            if (p == NULL) {
+                ret = PPKG_ERROR_MEMORY_ALLOCATE;
+                goto finalize;
+            }
+
+            packageNameStack[packageNameStackSize] = p;
+            packageNameStackSize++;
+
+            depPackageName = strtok (NULL, " ");
         }
     }
 
@@ -4168,8 +4181,8 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t         packageSetCapcity = 0;
-    size_t         packageSetSize    = 0;
+    size_t         packageSetCapcity = 0U;
+    size_t         packageSetSize    = 0U;
     PPKGPackage ** packageSet        = NULL;
 
     ret = check_and_read_formula_in_cache(packageName, sessionDIR, &packageSet, &packageSetSize, &packageSetCapcity);
@@ -4207,6 +4220,18 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
     if (ret != PPKG_OK) {
         goto finalize;
     }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    printf("install packages in order: ");
+
+    for (int i = packageSetSize - 1; i >= 0; i--) {
+        PPKGPackage * package = packageSet[i];
+        char * packageName = package->packageName;
+        printf("%s ", packageName);
+    }
+
+    printf("\n");
 
     //////////////////////////////////////////////////////////////////////////////
 
