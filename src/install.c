@@ -1574,6 +1574,39 @@ static int install_dependent_packages_via_uppm(
             return ret;
         }
 
+        if (strcmp(uppmPackageName, "git") == 0) {
+            // https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
+
+            size_t   gitCoreDIRCapcity = uppmPackageInstalledDIRLength + 18U;
+            char     gitCoreDIR[gitCoreDIRCapcity];
+            snprintf(gitCoreDIR, gitCoreDIRCapcity, "%s/libexec/git-core", uppmPackageInstalledDIR);
+
+            if (setenv("GIT_EXEC_PATH" , gitCoreDIR, 1) != 0) {
+                perror("GIT_EXEC_PATH");
+                return PPKG_ERROR;
+            }
+
+            size_t   gitTemplateDIRCapcity = uppmPackageInstalledDIRLength + 26U;
+            char     gitTemplateDIR[gitTemplateDIRCapcity];
+            snprintf(gitTemplateDIR, gitTemplateDIRCapcity, "%s/share/git-core/templates", uppmPackageInstalledDIR);
+
+            if (setenv("GIT_TEMPLATE_DIR" , gitTemplateDIR, 1) != 0) {
+                perror("GIT_TEMPLATE_DIR");
+                return PPKG_ERROR;
+            }
+        } else if (strcmp(uppmPackageName, "docbook-xsl") == 0) {
+            // http://xmlsoft.org/xslt/xsltproc.html
+
+            size_t   xmlCatalogFilePathCapcity = uppmPackageInstalledDIRLength + 13U;
+            char     xmlCatalogFilePath[xmlCatalogFilePathCapcity];
+            snprintf(xmlCatalogFilePath, xmlCatalogFilePathCapcity, "%s/catalog.xml", uppmPackageInstalledDIR);
+
+            if (setenv("GIT_TEMPLATE_DIR" , xmlCatalogFilePath, 1) != 0) {
+                perror("GIT_TEMPLATE_DIR");
+                return PPKG_ERROR;
+            }
+        }
+
         uppmPackageName = strtok(NULL, " ");
     }
 
