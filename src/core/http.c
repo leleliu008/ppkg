@@ -99,7 +99,7 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
     }
 
     char     userAgent[50];
-    snprintf(userAgent, 50, "User-Agent: libcurl-%s", LIBCURL_VERSION);
+    snprintf(userAgent, 50, "User-Agent: curl-%s", LIBCURL_VERSION);
 
     struct curl_slist *list = NULL;
 

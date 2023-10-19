@@ -1310,6 +1310,8 @@ __adjust_pc_files() {
 ##############################################################################
 # {{{ main
 
+run export -p
+
 if [ -z "$PACKAGE_BSCRIPT" ] ; then
     PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
 else

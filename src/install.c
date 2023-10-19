@@ -1601,8 +1601,8 @@ static int install_dependent_packages_via_uppm(
             char     xmlCatalogFilePath[xmlCatalogFilePathCapcity];
             snprintf(xmlCatalogFilePath, xmlCatalogFilePathCapcity, "%s/catalog.xml", uppmPackageInstalledDIR);
 
-            if (setenv("GIT_TEMPLATE_DIR" , xmlCatalogFilePath, 1) != 0) {
-                perror("GIT_TEMPLATE_DIR");
+            if (setenv("XML_CATALOG_FILES" , xmlCatalogFilePath, 1) != 0) {
+                perror("XML_CATALOG_FILES");
                 return PPKG_ERROR;
             }
         }
