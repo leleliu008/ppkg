@@ -856,26 +856,30 @@ static int export_environment_variables_for_build_tools(const char * packageInst
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   pkgconfigDIRLength = packageInstalledDIRLength + 15U;
-    char     pkgconfigDIR[pkgconfigDIRLength];
-    snprintf(pkgconfigDIR, pkgconfigDIRLength, "%s/lib/pkgconfig", packageInstalledDIR);
+    const char * a[2] = { "lib", "share" };
 
-    if (stat(pkgconfigDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-        const char * const PKG_CONFIG_PATH = getenv("PKG_CONFIG_PATH");
+    for (int i = 0; i < 2; i++) {
+        size_t   pkgconfigDIRLength = packageInstalledDIRLength + 20U;
+        char     pkgconfigDIR[pkgconfigDIRLength];
+        snprintf(pkgconfigDIR, pkgconfigDIRLength, "%s/%s/pkgconfig", packageInstalledDIR, a[i]);
 
-        if (PKG_CONFIG_PATH == NULL || PKG_CONFIG_PATH[0] == '\0') {
-            if (setenv("PKG_CONFIG_PATH", pkgconfigDIR, 1) != 0) {
-                perror("PKG_CONFIG_PATH");
-                return PPKG_ERROR;
-            }
-        } else {
-            size_t   newPKG_CONFIG_PATHLength = pkgconfigDIRLength + strlen(PKG_CONFIG_PATH) + 2U;
-            char     newPKG_CONFIG_PATH[newPKG_CONFIG_PATHLength];
-            snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", pkgconfigDIR, PKG_CONFIG_PATH);
+        if (stat(pkgconfigDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
+            const char * const PKG_CONFIG_PATH = getenv("PKG_CONFIG_PATH");
 
-            if (setenv("PKG_CONFIG_PATH", newPKG_CONFIG_PATH, 1) != 0) {
-                perror("PKG_CONFIG_PATH");
-                return PPKG_ERROR;
+            if (PKG_CONFIG_PATH == NULL || PKG_CONFIG_PATH[0] == '\0') {
+                if (setenv("PKG_CONFIG_PATH", pkgconfigDIR, 1) != 0) {
+                    perror("PKG_CONFIG_PATH");
+                    return PPKG_ERROR;
+                }
+            } else {
+                size_t   newPKG_CONFIG_PATHLength = pkgconfigDIRLength + strlen(PKG_CONFIG_PATH) + 2U;
+                char     newPKG_CONFIG_PATH[newPKG_CONFIG_PATHLength];
+                snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", pkgconfigDIR, PKG_CONFIG_PATH);
+
+                if (setenv("PKG_CONFIG_PATH", newPKG_CONFIG_PATH, 1) != 0) {
+                    perror("PKG_CONFIG_PATH");
+                    return PPKG_ERROR;
+                }
             }
         }
     }
@@ -934,12 +938,16 @@ static int export_environment_variables_for_other_tools(const char * packageInst
         }
     }
 
+    size_t   shareDIRLength = packageInstalledDIRLength + 7U;
+    char     shareDIR[shareDIRLength];
+    snprintf(shareDIR, shareDIRLength, "%s/share", packageInstalledDIR);
+
     ////////////////////////////////////////////////////////////////////////////////////////
     // https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
 
-    size_t   aclocalDIRLength = packageInstalledDIRLength + 15U;
+    size_t   aclocalDIRLength = shareDIRLength + 9U;
     char     aclocalDIR[aclocalDIRLength];
-    snprintf(aclocalDIR, aclocalDIRLength, "%s/share/aclocal", packageInstalledDIR);
+    snprintf(aclocalDIR, aclocalDIRLength, "%s/aclocal", shareDIR);
 
     if (stat(aclocalDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
         const char * const ACLOCAL_PATH = getenv("ACLOCAL_PATH");
@@ -956,6 +964,39 @@ static int export_environment_variables_for_other_tools(const char * packageInst
 
             if (setenv("ACLOCAL_PATH", newACLOCAL_PATH, 1) != 0) {
                 perror("ACLOCAL_PATH");
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    // https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
+    // https://help.gnome.org/admin//system-admin-guide/2.32/mimetypes-database.html.en
+
+    size_t   girSearchDIRLength = shareDIRLength + 9U;
+    char     girSearchDIR[girSearchDIRLength];
+    snprintf(girSearchDIR, girSearchDIRLength, "%s/gir-1.0", shareDIR);
+
+    size_t   mimeSearchDIRLength = shareDIRLength + 6U;
+    char     mimeSearchDIR[mimeSearchDIRLength];
+    snprintf(mimeSearchDIR, mimeSearchDIRLength, "%s/mime", shareDIR);
+
+    if ((stat(girSearchDIR, &st) == 0 && S_ISDIR(st.st_mode)) && (stat(mimeSearchDIR, &st) == 0 && S_ISDIR(st.st_mode))) {
+        const char * const XDG_DATA_DIRS = getenv("XDG_DATA_DIRS");
+
+        if (XDG_DATA_DIRS == NULL || XDG_DATA_DIRS[0] == '\0') {
+            if (setenv("XDG_DATA_DIRS", shareDIR, 1) != 0) {
+                perror("XDG_DATA_DIRS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t   newXDG_DATA_DIRSLength = shareDIRLength + strlen(XDG_DATA_DIRS) + 2U;
+            char     newXDG_DATA_DIRS[newXDG_DATA_DIRSLength];
+            snprintf(newXDG_DATA_DIRS, newXDG_DATA_DIRSLength, "%s:%s", shareDIR, XDG_DATA_DIRS);
+
+            if (setenv("XDG_DATA_DIRS", newXDG_DATA_DIRS, 1) != 0) {
+                perror("XDG_DATA_DIRS");
                 return PPKG_ERROR;
             }
         }
@@ -4180,9 +4221,9 @@ int ppkg_install(const char * packageName, PPKGInstallOptions options) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char * unsetenvs[5] = {"CFLAGS", "CPPFLAGS", "LDFLAGS", "LIBS", "TARGET_ARCH"};
+    const char * unsetenvs[16] = {"CFLAGS", "CPPFLAGS", "LDFLAGS", "LIBS", "TARGET_ARCH", "AUTOCONF", "AUTOHEADER", "AUTOM4TE", "AUTOMAKE", "AUTOPOINT", "ACLOCAL", "GTKDOCIZE", "INTLTOOLIZE", "LIBTOOLIZE", "M4", "MAKE"};
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 16; i++) {
         if (unsetenv(unsetenvs[i]) != 0) {
             perror(unsetenvs[i]);
             return PPKG_ERROR;
