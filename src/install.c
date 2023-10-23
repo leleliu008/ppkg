@@ -3513,17 +3513,31 @@ static int ppkg_install_package(
         // https://docs.rs/cc/latest/cc/
         // https://github.com/alexcrichton/cc-rs
 
+        const char * const   cflags = getenv("CFLAGS");
+        const char * const cxxflags = getenv("CXXFLAGS");
+        const char * const cppflags = getenv("CPPFLAGS");
+
+        const size_t cppflagsLength = strlen(cppflags);
+
+        size_t   hostCFLAGSCapacity = strlen(cflags) + cppflagsLength + 2U;
+        char     hostCFLAGS[hostCFLAGSCapacity];
+        snprintf(hostCFLAGS, hostCFLAGSCapacity, "%s %s", cflags, cppflags);
+
+        size_t   hostCXXFLAGSCapacity = strlen(cxxflags) + cppflagsLength + 2U;
+        char     hostCXXFLAGS[hostCXXFLAGSCapacity];
+        snprintf(hostCXXFLAGS, hostCXXFLAGSCapacity, "%s %s", cxxflags, cppflags);
+
         ENV envs[10] = {
             { "HOST_CC",         cc },
-            { "HOST_CFLAGS",     getenv("CFLAGS") },
+            { "HOST_CFLAGS",     hostCFLAGS },
             { "HOST_CXX",        cxx },
-            { "HOST_CXXFLAGS",   getenv("CXXFLAGS") },
+            { "HOST_CXXFLAGS",   hostCXXFLAGS },
             { "HOST_AR",         toolchain.ar },
 
             { "TARGET_CC",       cc },
-            { "TARGET_CFLAGS",   getenv("CFLAGS") },
+            { "TARGET_CFLAGS",   hostCFLAGS },
             { "TARGET_CXX",      cxx },
-            { "TARGET_CXXFLAGS", getenv("CXXFLAGS") },
+            { "TARGET_CXXFLAGS", hostCXXFLAGS },
             { "TARGET_AR",       toolchain.ar }
         };
 
@@ -3587,9 +3601,9 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t   installShellScriptFilePathCapacity = packageWorkingTopDIRLength + 12U;
+    size_t   installShellScriptFilePathCapacity = packageWorkingBinDIRLength + 12U;
     char     installShellScriptFilePath[installShellScriptFilePathCapacity];
-    snprintf(installShellScriptFilePath, installShellScriptFilePathCapacity, "%s/install.sh", packageWorkingTopDIR);
+    snprintf(installShellScriptFilePath, installShellScriptFilePathCapacity, "%s/install.sh", packageWorkingBinDIR);
 
     ret = generate_install_shell_script_file(packageName, installShellScriptFilePath, sysinfo, currentExecutablePath, ts, installOptions, formula, njobs, isNativeOSDarwin, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
