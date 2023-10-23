@@ -264,8 +264,8 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
                 }
             } else {
                 if (stringArrayList->size == stringArrayList->capcity) {
-                    size_t  newCapcity = stringArrayList->capcity + 10U;
-                    char ** p = (char**)realloc(stringArrayList->array, newCapcity * sizeof(char*));
+                    size_t  newCapacity = stringArrayList->capcity + 10U;
+                    char ** p = (char**)realloc(stringArrayList->array, newCapacity * sizeof(char*));
 
                     if (p == NULL) {
                         if (stringArrayList->array != NULL) {
@@ -286,7 +286,7 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
                     }
 
                     stringArrayList->array   = p;
-                    stringArrayList->capcity = newCapcity;
+                    stringArrayList->capcity = newCapacity;
                 }
 
                 char * p2 = strdup(filePath);

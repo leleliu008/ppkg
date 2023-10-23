@@ -15,21 +15,21 @@
 
 #include "ppkg.h"
 
-static int string_append(char ** outP, size_t * outSize, size_t * outCapcity, const char * buf, size_t bufLength) {
-    size_t  oldCapcity = (*outCapcity);
-    size_t needCapcity = oldCapcity + bufLength + 1U;
+static int string_append(char ** outP, size_t * outSize, size_t * outCapacity, const char * buf, size_t bufLength) {
+    size_t  oldCapacity = (*outCapacity);
+    size_t needCapacity = oldCapacity + bufLength + 1U;
 
-    if (needCapcity > oldCapcity) {
-        size_t newCapcity = needCapcity + 256U;
+    if (needCapacity > oldCapacity) {
+        size_t newCapacity = needCapacity + 256U;
 
-        char * p = (char*)realloc(*outP, newCapcity * sizeof(char));
+        char * p = (char*)realloc(*outP, newCapacity * sizeof(char));
 
         if (p == NULL) {
             free(*outP);
             return PPKG_ERROR_MEMORY_ALLOCATE;
         } else {
             (*outP) = p;
-            (*outCapcity) = newCapcity;
+            (*outCapacity) = newCapacity;
             memset(&p[*outSize], 0, 256U + bufLength + 1U);
         }
     }
@@ -49,7 +49,7 @@ typedef struct {
 typedef struct {
     char * nodeList;
     size_t nodeListSize;
-    size_t nodeListCapcity;
+    size_t nodeListCapacity;
 } DIRectedPath;
 
 static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputType, const char * outputFilePath) {
@@ -59,17 +59,17 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
 
     char * p = NULL;
     size_t pSize = 0;
-    size_t pCapcity = 0;
+    size_t pCapacity = 0;
 
     ////////////////////////////////////////////////////////////////
 
-    size_t         packageSetCapcity = 0;
+    size_t         packageSetCapacity = 0;
     size_t         packageSetSize    = 0;
     PPKGPackage ** packageSet        = NULL;
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   packageNameStackCapcity = 1;
+    size_t   packageNameStackCapacity = 1;
     size_t   packageNameStackSize    = 0;
     char * * packageNameStack = (char**)calloc(1, sizeof(char*));
 
@@ -112,8 +112,8 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
                 goto finalize;
             }
 
-            if (packageSetSize == packageSetCapcity) {
-                PPKGPackage ** p = (PPKGPackage**)realloc(packageSet, (packageSetCapcity + 10U) * sizeof(PPKGPackage*));
+            if (packageSetSize == packageSetCapacity) {
+                PPKGPackage ** p = (PPKGPackage**)realloc(packageSet, (packageSetCapacity + 10U) * sizeof(PPKGPackage*));
 
                 if (p == NULL) {
                     free(packageName);
@@ -122,10 +122,10 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
                     goto finalize;
                 }
 
-                memset(p + packageSetCapcity, 0, 10);
+                memset(p + packageSetCapacity, 0, 10);
 
                 packageSet = p;
-                packageSetCapcity += 10;
+                packageSetCapacity += 10;
             }
 
             PPKGPackage * package = (PPKGPackage*)malloc(sizeof(PPKGPackage));
@@ -163,7 +163,7 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
         char     buf[bufLength];
         snprintf(buf, bufLength, "    \"%s\" -> {", packageName);
 
-        ret = string_append(&p, &pSize, &pCapcity, buf, bufLength - 1);
+        ret = string_append(&p, &pSize, &pCapacity, buf, bufLength - 1);
 
         if (ret != PPKG_OK) {
             goto finalize;
@@ -192,7 +192,7 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
             char    buf[bufLength];
             snprintf(buf, bufLength, " \"%s\"", depPackageName);
 
-            ret = string_append(&p, &pSize, &pCapcity, buf, bufLength - 1U);
+            ret = string_append(&p, &pSize, &pCapacity, buf, bufLength - 1U);
 
             if (ret != PPKG_OK) {
                 goto finalize;
@@ -202,18 +202,18 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
 
             ////////////////////////////////////////////////////////////////
 
-            if (packageNameStackSize == packageNameStackCapcity) {
-                char ** p = (char**)realloc(packageNameStack, (packageNameStackCapcity + 10U) * sizeof(char*));
+            if (packageNameStackSize == packageNameStackCapacity) {
+                char ** p = (char**)realloc(packageNameStack, (packageNameStackCapacity + 10U) * sizeof(char*));
 
                 if (p == NULL) {
                     ret = PPKG_ERROR_MEMORY_ALLOCATE;
                     goto finalize;
                 }
 
-                memset(p + packageNameStackCapcity, 0, 10);
+                memset(p + packageNameStackCapacity, 0, 10);
 
                 packageNameStack = p;
-                packageNameStackCapcity += 10;
+                packageNameStackCapacity += 10;
             }
 
             char * p = strdup(depPackageName);
@@ -229,7 +229,7 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
             depPackageName = strtok (NULL, " ");
         }
 
-        ret = string_append(&p, &pSize, &pCapcity, " }\n", 3);
+        ret = string_append(&p, &pSize, &pCapacity, " }\n", 3);
     }
 
 finalize:

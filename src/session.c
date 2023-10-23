@@ -51,9 +51,9 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRCapcity = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRCapcity];
-    snprintf(sessionDIR, sessionDIRCapcity, "%s/%d", ppkgRunDIR, getpid());
+    size_t   sessionDIRCapacity = ppkgRunDIRLength + 20U;
+    char     sessionDIR[sessionDIRCapacity];
+    snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {

@@ -17,7 +17,7 @@
 static int read_from_fd(int inputFD, char ** outP) {
     // PATH_MAX : maximum number of bytes in a pathname, including the terminating null character.
     // https://pubs.opengroup.org/onlinepubs/009695399/basedefs/limits.h.html
-    char buf[PATH_MAX] = {0};
+    char buf[PATH_MAX];
 
     ssize_t readSize = read(inputFD, buf, PATH_MAX - 1U);
 
@@ -30,11 +30,12 @@ static int read_from_fd(int inputFD, char ** outP) {
     }
 
     if (buf[readSize - 1] == '\n') {
-        buf[readSize - 1] =  '\0';
         readSize--;
     }
 
     if (readSize > 0) {
+        buf[readSize] = '\0';
+
         char * p = strdup(buf);
 
         if (p == NULL) {
@@ -175,7 +176,7 @@ int xcrun_find(const char * what, char ** outP) {
     }
 }
 
-int try_compile(const char * compilerFilePath, const char * option, const char * sourceFilePath) {
+int try_compile(const char * compilerFilePath, const char * compilerOption, const char * sourceFilePath) {
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -184,7 +185,7 @@ int try_compile(const char * compilerFilePath, const char * option, const char *
     }
 
     if (pid == 0) {
-        execl(compilerFilePath, compilerFilePath, option, sourceFilePath, NULL);
+        execl(compilerFilePath, compilerFilePath, compilerOption, sourceFilePath, NULL);
         perror(compilerFilePath);
         exit(255);
     } else {
@@ -200,11 +201,11 @@ int try_compile(const char * compilerFilePath, const char * option, const char *
         }
 
         if (WIFEXITED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' exit with status code: %d\n", compilerFilePath, option, sourceFilePath, WEXITSTATUS(childProcessExitStatusCode));
+            fprintf(stderr, "running command '%s %s %s' exit with status code: %d\n", compilerFilePath, compilerOption, sourceFilePath, WEXITSTATUS(childProcessExitStatusCode));
         } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' killed by signal: %d\n", compilerFilePath, option, sourceFilePath, WTERMSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '%s %s %s' killed by signal: %d\n", compilerFilePath, compilerOption, sourceFilePath, WTERMSIG(childProcessExitStatusCode));
         } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' stopped by signal: %d\n", compilerFilePath, option, sourceFilePath, WSTOPSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '%s %s %s' stopped by signal: %d\n", compilerFilePath, compilerOption, sourceFilePath, WSTOPSIG(childProcessExitStatusCode));
         }
 
         return PPKG_ERROR;
@@ -840,13 +841,13 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     char     cppflags[cppflagsLength];
     snprintf(cppflags, cppflagsLength, "-isysroot %s -Qunused-arguments", sysroot);
 
-    size_t   cxxflagsLength = sysrootLength + 48U;
-    char     cxxflags[cxxflagsLength];
-    snprintf(cxxflags, cxxflagsLength, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+    size_t   cxxflagsCapacity = sysrootLength + 48U;
+    char     cxxflags[cxxflagsCapacity];
+    snprintf(cxxflags, cxxflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
 
-    size_t   ccflagsLength = sysrootLength + 48U;
-    char     ccflags[ccflagsLength];
-    snprintf(ccflags, ccflagsLength, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+    size_t   ccflagsCapacity = sysrootLength + 48U;
+    char     ccflags[ccflagsCapacity];
+    snprintf(ccflags, ccflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
 
     size_t   ldflagsLength = sysrootLength + 35U;
     char     ldflags[ldflagsLength];
@@ -884,13 +885,13 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
 }
 
 static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, size_t sessionDIRLength, const char * compiler, bool iscc) {
-    size_t testCFilePathLength = sessionDIRLength + 10U;
-    char   testCFilePath[testCFilePathLength];
+    size_t testCFilePathCapacity = sessionDIRLength + 10U;
+    char   testCFilePath[testCFilePathCapacity];
 
     if (iscc) {
-        snprintf(testCFilePath, testCFilePathLength, "%s/test.c",  sessionDIR);
+        snprintf(testCFilePath, testCFilePathCapacity, "%s/test.c",  sessionDIR);
     } else {
-        snprintf(testCFilePath, testCFilePathLength, "%s/test.cc", sessionDIR);
+        snprintf(testCFilePath, testCFilePathCapacity, "%s/test.cc", sessionDIR);
     }
 
     int fd = open(testCFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
@@ -940,15 +941,15 @@ int ppkg_toolchain_locate(PPKGToolChain * toolchain, SysInfo sysinfo, const char
     ret = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cc, true);
 
     if (ret == PPKG_OK) {
-        size_t ccflagsLength = strlen(toolchain->ccflags) + 41U;
-        char * ccflags = (char*)malloc(ccflagsLength);
+        size_t ccflagsCapacity = strlen(toolchain->ccflags) + 41U;
+        char * ccflags = (char*)malloc(ccflagsCapacity);
 
         if (ccflags == NULL) {
             ppkg_toolchain_free(*toolchain);
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        snprintf(ccflags, ccflagsLength, "%s -Wno-error=unused-command-line-argument", toolchain->ccflags);
+        snprintf(ccflags, ccflagsCapacity, "%s -Wno-error=unused-command-line-argument", toolchain->ccflags);
 
         free(toolchain->ccflags);
 
@@ -960,15 +961,15 @@ int ppkg_toolchain_locate(PPKGToolChain * toolchain, SysInfo sysinfo, const char
     ret = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cxx, true);
 
     if (ret == PPKG_OK) {
-        size_t cxxflagsLength = strlen(toolchain->cxxflags) + 41U;
-        char * cxxflags = (char*)malloc(cxxflagsLength);
+        size_t cxxflagsCapacity = strlen(toolchain->cxxflags) + 41U;
+        char * cxxflags = (char*)malloc(cxxflagsCapacity);
 
         if (cxxflags == NULL) {
             ppkg_toolchain_free(*toolchain);
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        snprintf(cxxflags, cxxflagsLength, "%s -Wno-error=unused-command-line-argument", toolchain->cxxflags);
+        snprintf(cxxflags, cxxflagsCapacity, "%s -Wno-error=unused-command-line-argument", toolchain->cxxflags);
 
         free(toolchain->cxxflags);
 

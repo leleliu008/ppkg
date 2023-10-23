@@ -49,7 +49,7 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
 
     char ** stringArrayList = NULL;
     size_t  stringArrayListSize    = 0U;
-    size_t  stringArrayListCapcity = 0U;
+    size_t  stringArrayListCapacity = 0U;
 
     char * PATHItem = strtok(PATH2, ":");
 
@@ -60,10 +60,10 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
             snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
 
             if (access(fullPath, X_OK) == 0) {
-                if (stringArrayListCapcity == stringArrayListSize) {
-                    stringArrayListCapcity += 2U;
+                if (stringArrayListCapacity == stringArrayListSize) {
+                    stringArrayListCapacity += 2U;
 
-                    char** paths = (char**)realloc(stringArrayList, stringArrayListCapcity * sizeof(char*));
+                    char** paths = (char**)realloc(stringArrayList, stringArrayListCapacity * sizeof(char*));
 
                     if (paths == NULL) {
                         if (stringArrayList != NULL) {

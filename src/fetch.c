@@ -46,7 +46,7 @@ static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const
     return ppkg_git_sync(gitRepositoryDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master");
 }
 
-static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {
+static int ppkg_fetch_file(const char * url, const char * uri, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {
     char fileNameExtension[21] = {0};
 
     int ret = ppkg_examine_file_extension_from_url(url, fileNameExtension, 20);
@@ -83,6 +83,12 @@ static int ppkg_fetch_file(const char * url, const char * expectedSHA256SUM, con
     }
 
     ret = ppkg_http_fetch_to_file(url, filePath, verbose, verbose);
+
+    if (ret != PPKG_OK) {
+        if (uri != NULL && uri[0] != '\0') {
+            ret = ppkg_http_fetch_to_file(uri, filePath, verbose, verbose);
+        }
+    }
 
     if (ret != PPKG_OK) {
         return ret;
@@ -178,7 +184,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
         if (formula->src_is_dir) {
             fprintf(stderr, "src_url is point to local dir, so no need to fetch.\n");
         } else {
-            ret = ppkg_fetch_file(formula->src_url, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+            ret = ppkg_fetch_file(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
         }
     }
 
@@ -187,7 +193,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->fix_url != NULL) {
-        ret = ppkg_fetch_file(formula->fix_url, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+        ret = ppkg_fetch_file(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;
@@ -195,7 +201,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->res_url != NULL) {
-        ret = ppkg_fetch_file(formula->res_url, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+        ret = ppkg_fetch_file(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;

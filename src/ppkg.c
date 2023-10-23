@@ -269,6 +269,22 @@ int ppkg_main(int argc, char* argv[]) {
                 options.logLevel = PPKGLogLevel_verbose;
             } else if (strcmp(argv[i], "-vv") == 0) {
                 options.logLevel = PPKGLogLevel_very_verbose;
+                options.verbose_net = true;
+                options.verbose_env = true;
+                options.verbose_cc  = true;
+                options.verbose_ld  = true;
+            } else if (strcmp(argv[i], "-v:net") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_net = true;
+            } else if (strcmp(argv[i], "-v:env") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_env = true;
+            } else if (strcmp(argv[i], "-v:cc") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_cc = true;
+            } else if (strcmp(argv[i], "-v:ld") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_ld = true;
             } else if (strcmp(argv[i], "--dry-run") == 0) {
                 options.dryrun = true;
             } else if (strcmp(argv[i], "--keep-session-dir") == 0) {
@@ -457,6 +473,22 @@ int ppkg_main(int argc, char* argv[]) {
                 options.logLevel = PPKGLogLevel_verbose;
             } else if (strcmp(argv[i], "-vv") == 0) {
                 options.logLevel = PPKGLogLevel_very_verbose;
+                options.verbose_net = true;
+                options.verbose_env = true;
+                options.verbose_cc  = true;
+                options.verbose_ld  = true;
+            } else if (strcmp(argv[i], "-v:net") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_net = true;
+            } else if (strcmp(argv[i], "-v:env") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_env = true;
+            } else if (strcmp(argv[i], "-v:cc") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_cc = true;
+            } else if (strcmp(argv[i], "-v:ld") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_ld = true;
             } else {
                 int ret = ppkg_check_if_the_given_package_is_available(argv[i]);
 
@@ -538,6 +570,22 @@ int ppkg_main(int argc, char* argv[]) {
                 options.logLevel = PPKGLogLevel_verbose;
             } else if (strcmp(argv[i], "-vv") == 0) {
                 options.logLevel = PPKGLogLevel_very_verbose;
+                options.verbose_net = true;
+                options.verbose_env = true;
+                options.verbose_cc  = true;
+                options.verbose_ld  = true;
+            } else if (strcmp(argv[i], "-v:net") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_net = true;
+            } else if (strcmp(argv[i], "-v:env") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_env = true;
+            } else if (strcmp(argv[i], "-v:cc") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_cc = true;
+            } else if (strcmp(argv[i], "-v:ld") == 0) {
+                options.logLevel = PPKGLogLevel_verbose;
+                options.verbose_ld = true;
             } else {
                 int ret = ppkg_check_if_the_given_package_is_outdated(argv[i]);
 

@@ -377,8 +377,14 @@ typedef struct {
     bool   enableCcache;
     bool   enableBear;
     bool   dryrun;
-    bool   xtrace;
     bool   force;
+
+    bool   xtrace;
+
+    bool   verbose_net;
+    bool   verbose_env;
+    bool   verbose_cc;
+    bool   verbose_ld;
 
     size_t parallelJobsCount;
 

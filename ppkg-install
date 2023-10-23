@@ -513,9 +513,6 @@ gow() {
 # {{{ cargow
 
 cargow() {
-    # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-    export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
-
     if [ "$LINK_TYPE" = 'static-only' ] ; then
         if [ "$NATIVE_OS_KIND" != darwin ] ; then
             if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
@@ -525,55 +522,10 @@ cargow() {
         fi
     fi
 
-    for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-    do
-        DEPENDENT_PACKAGE_LIBRARY_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/lib"
-
-        if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-            RUSTFLAGS="$RUSTFLAGS -Clink-arg=-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Clink-arg=-Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR"
-        fi
-    done
-
     # https://github.com/rust-lang/rust/issues/89626
     if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
         CFLAGS="$CFLAGS -mno-outline-atomics"
     fi
-
-    # https://libraries.io/cargo/cc
-    # https://crates.io/crates/cc
-    # https://docs.rs/cc/latest/cc/
-    # https://github.com/alexcrichton/cc-rs
-    export HOST_CC="$CC"
-    export HOST_CFLAGS="$CFLAGS $CPPFLAGS"
-
-    export HOST_CXX="$CXX"
-    export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
-
-    export HOST_AR="$AR"
-
-    export TARGET_CC="$CC"
-    export TARGET_CFLAGS="$CFLAGS $CPPFLAGS"
-
-    export TARGET_CXX="$CXX"
-    export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
-
-    export TARGET_AR="$AR"
-
-
-    # https://libraries.io/cargo/pkg-config
-    # https://crates.io/crates/pkg-config
-    # https://docs.rs/pkg-config/latest/pkg_config/
-    # https://github.com/rust-lang/pkg-config-rs
-    # export TARGET_PKG_CONFIG_ALLOW_CROSS=1
-
-
-    # https://libraries.io/cargo/cmake
-    # https://crates.io/crates/cmake
-    # https://docs.rs/cmake/latest/cmake/
-    # https://github.com/alexcrichton/cmake-rs
-    # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
-    # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
-
 
     for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
@@ -1319,18 +1271,6 @@ else
 fi
 
 PACKAGE_BCACHED_DIR="$PACKAGE_INSTALLING_SRC_DIR/_"
-
-for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-do
-    DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
-
-    DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
-
-    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
-    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/include'"
-    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/lib'"
-    eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_BINARY__DIR='$DEPENDENT_PACKAGE_INSTALL_DIR/bin'"
-done
 
 if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
     run cd "$PACKAGE_BSCRIPT_DIR"
