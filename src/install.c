@@ -3178,9 +3178,9 @@ static int ppkg_install_package(
     char     packageInstalledRootDIR[packageInstalledRootDIRCapacity];
     snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed", ppkgHomeDIR);
 
-    size_t   ldflags2Length = packageInstalledRootDIRCapacity + packageNameLength + strlen(toolchain.ldflags) + 18U;
+    size_t   ldflags2Length = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 18U;
     char     ldflags2[ldflags2Length];
-    snprintf(ldflags2, ldflags2Length, "%s -Wl,-rpath,%s/%s/lib", toolchain.ldflags, packageInstalledRootDIR, packageName);
+    snprintf(ldflags2, ldflags2Length, "%s -L%s -Wl,-rpath,%s/%s/lib", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
 
     if (setenv("LDFLAGS", ldflags2, 1) != 0) {
         perror("LDFLAGS");
@@ -4457,7 +4457,7 @@ int ppkg_toolchain_setup(
 
 #if defined (__APPLE__)
     // https://keith.github.io/xcode-man-pages/xcrun.1.html
-    if (setenv("SDKROOT", toolchain.sysroot, 1) != 0) {
+    if (setenv("SDKROOT", toolchain->sysroot, 1) != 0) {
         perror("SDKROOT");
         return PPKG_ERROR;
     }

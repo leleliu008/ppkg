@@ -43,14 +43,6 @@ jobs:
       - run:  cmake --install build.d
 
 
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
-
-
       - run: ./output/bin/ppkg
 
       - run: ./output/bin/ppkg --help
@@ -169,14 +161,6 @@ jobs:
 
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
-
-
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
 
 
       - run: ./output/bin/ppkg
@@ -303,14 +287,6 @@ jobs:
       - run:  cmake --install build.d
 
 
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
-
-
       - run: ./output/bin/ppkg
 
       - run: ./output/bin/ppkg --help
@@ -430,14 +406,6 @@ jobs:
 
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
-
-
-      - run: |
-          cat > ~/.gitconfig <<EOF
-          [user]
-            email = leleliu008@gmail.com
-            name = leleliu008
-          EOF
 
 
       - run: ./output/bin/ppkg

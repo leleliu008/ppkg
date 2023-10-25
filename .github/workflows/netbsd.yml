@@ -49,14 +49,6 @@ jobs:
                 export SSL_CERT_FILE=/etc/openssl/certs/ca-certificates.crt
             fi
 
-
-            cat > ~/.gitconfig <<EOF2
-            [user]
-              email = leleliu008@gmail.com
-              name = leleliu008
-            EOF2
-
-
             run ./output/bin/ppkg
 
             run ./output/bin/ppkg --help
