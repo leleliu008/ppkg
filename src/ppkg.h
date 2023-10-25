@@ -307,9 +307,9 @@ typedef struct {
     char * ldflags;
 } PPKGToolChain;
 
-int  ppkg_toolchain_locate(PPKGToolChain * toolchain, SysInfo sysinfo, const char * sessionDIR, size_t sessionDIRLength);
-void ppkg_toolchain_free(PPKGToolChain   toolchain);
-void ppkg_toolchain_dump(PPKGToolChain   toolchain);
+int  ppkg_toolchain_locate(PPKGToolChain * toolchain);
+void ppkg_toolchain_free(PPKGToolChain toolchain);
+void ppkg_toolchain_dump(PPKGToolChain toolchain);
 
 //////////////////////////////////////////////////////////////////////
 

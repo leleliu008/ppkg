@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "core/sysinfo.h"
-
 #include "ppkg.h"
 
 int ppkg_formula_repo_list_update() {

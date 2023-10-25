@@ -9,7 +9,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "core/sysinfo.h"
 #include "core/exe.h"
 
 #include "ppkg.h"
@@ -49,7 +48,7 @@ static int read_from_fd(int inputFD, char ** outP) {
 }
 
 // https://keith.github.io/xcode-man-pages/xcrun.1.html
-int xcrun_show_sdk_path(char ** outP) {
+static int xcrun_show_sdk_path(char ** outP) {
     int pipeFDs[2];
 
     if (pipe(pipeFDs) != 0) {
@@ -113,7 +112,7 @@ int xcrun_show_sdk_path(char ** outP) {
 }
 
 // https://keith.github.io/xcode-man-pages/xcrun.1.html
-int xcrun_find(const char * what, char ** outP) {
+static int xcrun_find(const char * what, char ** outP) {
     int pipeFDs[2];
 
     if (pipe(pipeFDs) != 0) {
@@ -173,174 +172,6 @@ int xcrun_find(const char * what, char ** outP) {
         }
 
         return PPKG_ERROR;
-    }
-}
-
-int try_compile(const char * compilerFilePath, const char * compilerOption, const char * sourceFilePath) {
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (pid == 0) {
-        execl(compilerFilePath, compilerFilePath, compilerOption, sourceFilePath, NULL);
-        perror(compilerFilePath);
-        exit(255);
-    } else {
-        int childProcessExitStatusCode;
-
-        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (childProcessExitStatusCode == 0) {
-            return PPKG_OK;
-        }
-
-        if (WIFEXITED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' exit with status code: %d\n", compilerFilePath, compilerOption, sourceFilePath, WEXITSTATUS(childProcessExitStatusCode));
-        } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' killed by signal: %d\n", compilerFilePath, compilerOption, sourceFilePath, WTERMSIG(childProcessExitStatusCode));
-        } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command '%s %s %s' stopped by signal: %d\n", compilerFilePath, compilerOption, sourceFilePath, WSTOPSIG(childProcessExitStatusCode));
-        }
-
-        return PPKG_ERROR;
-    }
-}
-
-
-void ppkg_toolchain_dump(PPKGToolChain toolchain) {
-    printf("cc:        %s\n", toolchain.cc);
-    printf("cxx:       %s\n", toolchain.cxx);
-    printf("cpp:       %s\n", toolchain.cpp);
-    printf("as:        %s\n", toolchain.as);
-    printf("ar:        %s\n", toolchain.ar);
-    printf("ranlib:    %s\n", toolchain.ranlib);
-    printf("ld:        %s\n", toolchain.ld);
-    printf("nm:        %s\n", toolchain.nm);
-    printf("size:      %s\n", toolchain.size);
-    printf("strip:     %s\n", toolchain.strip);
-    printf("strings:   %s\n", toolchain.strings);
-    printf("objcopy:   %s\n", toolchain.objcopy);
-    printf("objdump:   %s\n", toolchain.objdump);
-    printf("readelf:   %s\n", toolchain.readelf);
-    printf("dlltool:   %s\n", toolchain.dlltool);
-    printf("addr2line: %s\n", toolchain.addr2line);
-    printf("sysroot:   %s\n", toolchain.addr2line);
-    printf("ccflags:   %s\n", toolchain.ccflags);
-    printf("cxxflags:  %s\n", toolchain.cxxflags);
-    printf("cppflags:  %s\n", toolchain.cppflags);
-    printf("ldflags:   %s\n", toolchain.ldflags);
-}
-
-void ppkg_toolchain_free(PPKGToolChain toolchain) {
-    if (toolchain.cc != NULL) {
-        free(toolchain.cc);
-        toolchain.cc = NULL;
-    }
-
-    if (toolchain.cxx != NULL) {
-        free(toolchain.cxx);
-        toolchain.cxx = NULL;
-    }
-
-    if (toolchain.cpp != NULL) {
-        free(toolchain.cpp);
-        toolchain.cpp = NULL;
-    }
-
-    if (toolchain.as != NULL) {
-        free(toolchain.as);
-        toolchain.as = NULL;
-    }
-
-    if (toolchain.ar != NULL) {
-        free(toolchain.ar);
-        toolchain.ar = NULL;
-    }
-
-    if (toolchain.ranlib != NULL) {
-        free(toolchain.ranlib);
-        toolchain.ranlib = NULL;
-    }
-
-    if (toolchain.ld != NULL) {
-        free(toolchain.ld);
-        toolchain.ld = NULL;
-    }
-
-    if (toolchain.nm != NULL) {
-        free(toolchain.nm);
-        toolchain.nm = NULL;
-    }
-
-    if (toolchain.size != NULL) {
-        free(toolchain.size);
-        toolchain.size = NULL;
-    }
-
-    if (toolchain.strip != NULL) {
-        free(toolchain.strip);
-        toolchain.strip = NULL;
-    }
-
-    if (toolchain.strings != NULL) {
-        free(toolchain.strings);
-        toolchain.strings = NULL;
-    }
-
-    if (toolchain.objcopy != NULL) {
-        free(toolchain.objcopy);
-        toolchain.objcopy = NULL;
-    }
-
-    if (toolchain.objdump != NULL) {
-        free(toolchain.objdump);
-        toolchain.objdump = NULL;
-    }
-
-    if (toolchain.readelf != NULL) {
-        free(toolchain.readelf);
-        toolchain.readelf = NULL;
-    }
-
-    if (toolchain.dlltool != NULL) {
-        free(toolchain.dlltool);
-        toolchain.dlltool = NULL;
-    }
-
-    if (toolchain.addr2line != NULL) {
-        free(toolchain.addr2line);
-        toolchain.addr2line = NULL;
-    }
-
-    if (toolchain.sysroot != NULL) {
-        free(toolchain.sysroot);
-        toolchain.sysroot = NULL;
-    }
-
-    if (toolchain.ccflags != NULL) {
-        free(toolchain.ccflags);
-        toolchain.ccflags = NULL;
-    }
-
-    if (toolchain.cxxflags != NULL) {
-        free(toolchain.cxxflags);
-        toolchain.cxxflags = NULL;
-    }
-
-    if (toolchain.cppflags != NULL) {
-        free(toolchain.cppflags);
-        toolchain.cppflags = NULL;
-    }
-
-    if (toolchain.ldflags != NULL) {
-        free(toolchain.ldflags);
-        toolchain.ldflags = NULL;
     }
 }
 
@@ -884,97 +715,147 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     return PPKG_OK;
 }
 
-static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, size_t sessionDIRLength, const char * compiler, bool iscc) {
-    size_t testCFilePathCapacity = sessionDIRLength + 10U;
-    char   testCFilePath[testCFilePathCapacity];
-
-    if (iscc) {
-        snprintf(testCFilePath, testCFilePathCapacity, "%s/test.c",  sessionDIR);
-    } else {
-        snprintf(testCFilePath, testCFilePathCapacity, "%s/test.cc", sessionDIR);
-    }
-
-    int fd = open(testCFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
-
-    if (fd == -1) {
-        perror(testCFilePath);
-        return PPKG_ERROR;
-    }
-
-    const char * testCCode = "int main() {\nreturn 0;\n}\n";
-
-    size_t testCCodeLength = strlen(testCCode);
-
-    ssize_t written = write(fd, testCCode, testCCodeLength);
-
-    if (written == -1) {
-        perror(testCFilePath);
-        close(fd);
-        return PPKG_ERROR;
-    }
-
-    close(fd);
-
-    if ((size_t)written != testCCodeLength) {
-        fprintf(stderr, "file not fully written: %s\n", testCFilePath);
-        return PPKG_ERROR;
-    }
-
-    return try_compile(compiler, "-Wno-error=unused-command-line-argument", testCFilePath);
+int ppkg_toolchain_locate(PPKGToolChain * toolchain) {
+#if defined (__APPLE__)
+    return ppkg_toolchain_macos(toolchain);
+#else
+    return ppkg_toolchain_find(toolchain);
+#endif
 }
 
-int ppkg_toolchain_locate(PPKGToolChain * toolchain, SysInfo sysinfo, const char * sessionDIR, size_t sessionDIRLength) {
-    int ret;
+void ppkg_toolchain_dump(PPKGToolChain toolchain) {
+    printf("cc:        %s\n", toolchain.cc);
+    printf("objc:      %s\n", toolchain.objc);
+    printf("cxx:       %s\n", toolchain.cxx);
+    printf("cpp:       %s\n", toolchain.cpp);
+    printf("as:        %s\n", toolchain.as);
+    printf("ar:        %s\n", toolchain.ar);
+    printf("ranlib:    %s\n", toolchain.ranlib);
+    printf("ld:        %s\n", toolchain.ld);
+    printf("nm:        %s\n", toolchain.nm);
+    printf("size:      %s\n", toolchain.size);
+    printf("strip:     %s\n", toolchain.strip);
+    printf("strings:   %s\n", toolchain.strings);
+    printf("objcopy:   %s\n", toolchain.objcopy);
+    printf("objdump:   %s\n", toolchain.objdump);
+    printf("readelf:   %s\n", toolchain.readelf);
+    printf("dlltool:   %s\n", toolchain.dlltool);
+    printf("addr2line: %s\n", toolchain.addr2line);
+    printf("sysroot:   %s\n", toolchain.sysroot);
+    printf("ccflags:   %s\n", toolchain.ccflags);
+    printf("cxxflags:  %s\n", toolchain.cxxflags);
+    printf("cppflags:  %s\n", toolchain.cppflags);
+    printf("ldflags:   %s\n", toolchain.ldflags);
+}
 
-    if (strcmp(sysinfo.kind, "darwin") == 0) {
-        ret = ppkg_toolchain_macos(toolchain);
-    } else {
-        ret = ppkg_toolchain_find(toolchain);
+void ppkg_toolchain_free(PPKGToolChain toolchain) {
+    if (toolchain.cc != NULL) {
+        free(toolchain.cc);
+        toolchain.cc = NULL;
     }
 
-    if (ret != PPKG_OK) {
-        return ret;
+    if (toolchain.cxx != NULL) {
+        free(toolchain.cxx);
+        toolchain.cxx = NULL;
     }
 
-    //////////////////////////////////////////////////////////////////////
-
-    ret = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cc, true);
-
-    if (ret == PPKG_OK) {
-        size_t ccflagsCapacity = strlen(toolchain->ccflags) + 41U;
-        char * ccflags = (char*)malloc(ccflagsCapacity);
-
-        if (ccflags == NULL) {
-            ppkg_toolchain_free(*toolchain);
-            return PPKG_ERROR_MEMORY_ALLOCATE;
-        }
-
-        snprintf(ccflags, ccflagsCapacity, "%s -Wno-error=unused-command-line-argument", toolchain->ccflags);
-
-        free(toolchain->ccflags);
-
-        toolchain->ccflags = ccflags;
+    if (toolchain.objc != NULL) {
+        free(toolchain.objc);
+        toolchain.objc = NULL;
     }
 
-    //////////////////////////////////////////////////////////////////////
-
-    ret = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cxx, true);
-
-    if (ret == PPKG_OK) {
-        size_t cxxflagsCapacity = strlen(toolchain->cxxflags) + 41U;
-        char * cxxflags = (char*)malloc(cxxflagsCapacity);
-
-        if (cxxflags == NULL) {
-            ppkg_toolchain_free(*toolchain);
-            return PPKG_ERROR_MEMORY_ALLOCATE;
-        }
-
-        snprintf(cxxflags, cxxflagsCapacity, "%s -Wno-error=unused-command-line-argument", toolchain->cxxflags);
-
-        free(toolchain->cxxflags);
-
-        toolchain->cxxflags = cxxflags;
+    if (toolchain.cpp != NULL) {
+        free(toolchain.cpp);
+        toolchain.cpp = NULL;
     }
 
-    return PPKG_OK;
+    if (toolchain.as != NULL) {
+        free(toolchain.as);
+        toolchain.as = NULL;
+    }
+
+    if (toolchain.ar != NULL) {
+        free(toolchain.ar);
+        toolchain.ar = NULL;
+    }
+
+    if (toolchain.ranlib != NULL) {
+        free(toolchain.ranlib);
+        toolchain.ranlib = NULL;
+    }
+
+    if (toolchain.ld != NULL) {
+        free(toolchain.ld);
+        toolchain.ld = NULL;
+    }
+
+    if (toolchain.nm != NULL) {
+        free(toolchain.nm);
+        toolchain.nm = NULL;
+    }
+
+    if (toolchain.size != NULL) {
+        free(toolchain.size);
+        toolchain.size = NULL;
+    }
+
+    if (toolchain.strip != NULL) {
+        free(toolchain.strip);
+        toolchain.strip = NULL;
+    }
+
+    if (toolchain.strings != NULL) {
+        free(toolchain.strings);
+        toolchain.strings = NULL;
+    }
+
+    if (toolchain.objcopy != NULL) {
+        free(toolchain.objcopy);
+        toolchain.objcopy = NULL;
+    }
+
+    if (toolchain.objdump != NULL) {
+        free(toolchain.objdump);
+        toolchain.objdump = NULL;
+    }
+
+    if (toolchain.readelf != NULL) {
+        free(toolchain.readelf);
+        toolchain.readelf = NULL;
+    }
+
+    if (toolchain.dlltool != NULL) {
+        free(toolchain.dlltool);
+        toolchain.dlltool = NULL;
+    }
+
+    if (toolchain.addr2line != NULL) {
+        free(toolchain.addr2line);
+        toolchain.addr2line = NULL;
+    }
+
+    if (toolchain.sysroot != NULL) {
+        free(toolchain.sysroot);
+        toolchain.sysroot = NULL;
+    }
+
+    if (toolchain.ccflags != NULL) {
+        free(toolchain.ccflags);
+        toolchain.ccflags = NULL;
+    }
+
+    if (toolchain.cxxflags != NULL) {
+        free(toolchain.cxxflags);
+        toolchain.cxxflags = NULL;
+    }
+
+    if (toolchain.cppflags != NULL) {
+        free(toolchain.cppflags);
+        toolchain.cppflags = NULL;
+    }
+
+    if (toolchain.ldflags != NULL) {
+        free(toolchain.ldflags);
+        toolchain.ldflags = NULL;
+    }
 }

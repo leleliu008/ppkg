@@ -1264,23 +1264,11 @@ __adjust_pc_files() {
 
 run export -p
 
-if [ -z "$PACKAGE_BSCRIPT" ] ; then
-    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR"
-else
-    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-fi
-
-PACKAGE_BCACHED_DIR="$PACKAGE_INSTALLING_SRC_DIR/_"
-
-if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-    run cd "$PACKAGE_BSCRIPT_DIR"
-fi
+run cd "$PACKAGE_BSCRIPT_DIR"
 
 dopatch
 
-if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-    run cd "$PACKAGE_BSCRIPT_DIR"
-fi
+run cd "$PACKAGE_BSCRIPT_DIR"
 
 if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = 1 ] ; then
     if [ -f configure ] ; then
@@ -1309,9 +1297,7 @@ elif [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = 1 ] ; then
 fi
 
 if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
-    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run cd "$PACKAGE_BSCRIPT_DIR"
-    fi
+    run cd "$PACKAGE_BSCRIPT_DIR"
 else
     run install -d "$PACKAGE_BCACHED_DIR"
     run cd "$PACKAGE_BCACHED_DIR"

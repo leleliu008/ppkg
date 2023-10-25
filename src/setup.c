@@ -129,7 +129,7 @@ int ppkg_setup(bool verbose) {
 
         size_t   wrapperCompilerSourceFilePathLength = sessionDIRLength + 16U;
         char     wrapperCompilerSourceFilePath[wrapperCompilerSourceFilePathLength];
-        snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathLength, "%s/wrapper-%s.c", sessionDIR, compiler);
+        snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathLength, "%s/wrapper-%s.c", libexecDIR, compiler);
 
         ret = ppkg_http_fetch_to_file(wrapperCompilerSourceUrl, wrapperCompilerSourceFilePath, verbose, verbose);
 

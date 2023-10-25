@@ -274,16 +274,16 @@ int ppkg_main(int argc, char* argv[]) {
                 options.verbose_cc  = true;
                 options.verbose_ld  = true;
             } else if (strcmp(argv[i], "-v:net") == 0) {
-                options.logLevel = PPKGLogLevel_verbose;
+                options.logLevel = PPKGLogLevel_normal;
                 options.verbose_net = true;
             } else if (strcmp(argv[i], "-v:env") == 0) {
-                options.logLevel = PPKGLogLevel_verbose;
+                options.logLevel = PPKGLogLevel_normal;
                 options.verbose_env = true;
             } else if (strcmp(argv[i], "-v:cc") == 0) {
-                options.logLevel = PPKGLogLevel_verbose;
+                options.logLevel = PPKGLogLevel_normal;
                 options.verbose_cc = true;
             } else if (strcmp(argv[i], "-v:ld") == 0) {
-                options.logLevel = PPKGLogLevel_verbose;
+                options.logLevel = PPKGLogLevel_normal;
                 options.verbose_ld = true;
             } else if (strcmp(argv[i], "--dry-run") == 0) {
                 options.dryrun = true;
