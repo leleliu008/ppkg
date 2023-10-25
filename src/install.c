@@ -3310,8 +3310,15 @@ static int ppkg_install_package(
         };
 
         for (int i = 0; i < 6; i++) {
-            if (setenv(goenvs[i].name, goenvs[i].value, 1) != 0) {
-                perror(goenvs[i].name);
+            const char * name  = goenvs[i].name;
+            const char * value = goenvs[i].value;
+
+            if (value == NULL) {
+                value = "";
+            }
+
+            if (setenv(name, value, 1) != 0) {
+                perror(name);
                 return PPKG_ERROR;
             }
         }

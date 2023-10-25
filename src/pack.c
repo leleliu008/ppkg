@@ -167,11 +167,11 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
     off_t nBytes = st.st_size;
 
     if (nBytes < 1024) {
-        printf("%s %zu Byte\n", outputFilePath, nBytes);
+        printf("%s %ld Byte\n", outputFilePath, nBytes);
     } else if (nBytes < 1024 * 1024) {
-        printf("%s %zu KB\n", outputFilePath, nBytes / 1024);
+        printf("%s %ld KB\n", outputFilePath, nBytes / 1024);
     } else if (nBytes < 1024 * 1024 * 1024) {
-        printf("%s %zu MB\n", outputFilePath, nBytes / 1024 / 1024);
+        printf("%s %ld MB\n", outputFilePath, nBytes / 1024 / 1024);
     } else {
         LOG_ERROR2("file is too large: ", tmpFilePath);
         return PPKG_ERROR;
