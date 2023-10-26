@@ -516,6 +516,7 @@ cargow() {
     if [ "$LINK_TYPE" = 'static-only' ] ; then
         if [ "$NATIVE_OS_KIND" != darwin ] ; then
             if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+                # There is no libgcc_s.a on glibc-based GNU/Linux
                 printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
                 export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
             fi
@@ -1071,17 +1072,6 @@ __adjust_elf_files() {
                 ;;
             *)  continue
         esac
-
-        # https://github.com/NixOS/patchelf/issues/371
-
-        if [ "$BUILD_TYPE" = release ] ; then
-            if [ "$ELF_TYPE_EXECUTABLE" = yes ] ; then
-                # freebsd's strip has problem
-                if [ "$NATIVE_OS_KIND" != freebsd ] ; then
-                    run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                fi
-            fi
-        fi
 
         if [ "$ELF_TYPE_EXECUTABLE" = yes ] || [ "$ELF_TYPE_SHAREDABLE" = yes ] ; then
             DT_NEEDED=

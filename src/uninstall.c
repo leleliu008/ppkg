@@ -80,6 +80,8 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
                 // package is broken. is not installed completely?
                 return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
             }
+        } else {
+            return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
     } else {
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;

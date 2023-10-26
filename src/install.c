@@ -4389,7 +4389,7 @@ int ppkg_toolchain_setup(
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchain->ldflags, (installOptions.buildType == PPKGBuildType_release) ? " -Wl,-S" : "", installOptions.verbose_ld ? " -Wl,-v" : "");
+        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchain->ldflags, (installOptions.buildType == PPKGBuildType_release) ? " -Wl,-s" : "", installOptions.verbose_ld ? " -Wl,-v" : "");
 
         free(toolchain->ldflags);
 
