@@ -1175,7 +1175,7 @@ static int install_native_package(
     }
 
     if (needFetch) {
-        int ret = ppkg_http_fetch_to_file(srcUrl, srcFilePath, installOptions.verbose_net, installOptions.verbose_net);
+        ret = ppkg_http_fetch_to_file(srcUrl, srcFilePath, installOptions.verbose_net, installOptions.verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1283,7 +1283,7 @@ static int install_native_package(
         char   cmakePath[PATH_MAX];
         size_t cmakePathLength = 0U;
 
-        int ret = exe_where("cmake", cmakePath, PATH_MAX, &cmakePathLength);
+        ret = exe_where("cmake", cmakePath, PATH_MAX, &cmakePathLength);
 
         if (ret < 0) {
             perror(NULL);
@@ -1404,7 +1404,7 @@ static int install_native_package(
             char   perlPath[PATH_MAX];
             size_t perlPathLength = 0U;
 
-            int ret = exe_where("perl", perlPath, PATH_MAX, &perlPathLength);
+            ret = exe_where("perl", perlPath, PATH_MAX, &perlPathLength);
 
             if (ret < 0) {
                 perror(NULL);
@@ -1430,7 +1430,7 @@ static int install_native_package(
             char     configurePhaseCmd[configurePhaseCmdLength];
             snprintf(configurePhaseCmd, configurePhaseCmdLength, "./Configure -Dprefix=%s -Dman1dir=%s/share/man/man1 -Dman3dir=%s/share/man/man3 -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true", packageInstalledDIR, packageInstalledDIR, packageInstalledDIR);
 
-            int ret = run_cmd(configurePhaseCmd, STDOUT_FILENO);
+            ret = run_cmd(configurePhaseCmd, STDOUT_FILENO);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -1447,7 +1447,7 @@ static int install_native_package(
 
             patchPhaseCmdCopy[patchPhaseCmdCopyLength] = '\0';
 
-            int ret = run_cmd(patchPhaseCmdCopy, STDOUT_FILENO);
+            ret = run_cmd(patchPhaseCmdCopy, STDOUT_FILENO);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -1460,7 +1460,7 @@ static int install_native_package(
             char     configurePhaseCmd[configurePhaseCmdLength];
             snprintf(configurePhaseCmd, configurePhaseCmdLength, "./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=%s --libdir=%s/lib --openssldir=%s/etc/ssl", packageInstalledDIR, packageInstalledDIR, packageInstalledDIR);
 
-            int ret = run_cmd(configurePhaseCmd, STDOUT_FILENO);
+            ret = run_cmd(configurePhaseCmd, STDOUT_FILENO);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -1482,7 +1482,7 @@ static int install_native_package(
         char   gmakePath[PATH_MAX];
         size_t gmakePathLength = 0U;
 
-        int ret = exe_where("gmake", gmakePath, PATH_MAX, &gmakePathLength);
+        ret = exe_where("gmake", gmakePath, PATH_MAX, &gmakePathLength);
 
         if (ret < 0) {
             perror(NULL);
