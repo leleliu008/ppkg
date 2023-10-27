@@ -2544,6 +2544,99 @@ static int generate_linker_script(const char * packageWorkingLibDIR, size_t pack
     }
 }
 
+static int copy_dependent_libraries(
+        const char * depPackageInstalledDIR,
+        const size_t depPackageInstalledDIRLength,
+        const char * toDIR,
+        const size_t toDIRLength,
+        const char * libSuffix,
+        const size_t libSuffixLength) {
+
+    size_t fromDIRCapacity = depPackageInstalledDIRLength + 5U;
+    char   fromDIR[fromDIRCapacity];
+
+    int ret = snprintf(fromDIR, fromDIRCapacity, "%s/lib", depPackageInstalledDIR);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    struct stat st;
+
+    if (stat(fromDIR, &st) != 0) {
+        return PPKG_OK;
+    }
+
+    DIR * dir = opendir(fromDIR);
+
+    if (dir == NULL) {
+        perror(fromDIR);
+        return PPKG_ERROR;
+    }
+
+    char * fileName;
+    char * fileNameSuffix;
+    size_t fileNameLength;
+
+    struct dirent * dir_entry;
+
+    for (;;) {
+        errno = 0;
+
+        dir_entry = readdir(dir);
+
+        if (dir_entry == NULL) {
+            if (errno == 0) {
+                closedir(dir);
+                return PPKG_OK;
+            } else {
+                perror(fromDIR);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
+        }
+
+        //puts(dir_entry->d_name);
+
+        fileName = dir_entry->d_name;
+
+        if (strncmp(fileName, "lib", 3) == 0) {
+            fileNameLength = strlen(fileName);
+
+            fileNameSuffix = fileName + fileNameLength - libSuffixLength;
+
+            if (strcmp(fileNameSuffix, libSuffix) == 0) {
+                size_t   fromFilePathCapacity = fromDIRCapacity + fileNameLength + 2U;
+                char     fromFilePath[fromFilePathCapacity];
+
+                ret = snprintf(fromFilePath, fromFilePathCapacity, "%s/%s", fromDIR, fileName);
+
+                if (ret < 0) {
+                    closedir(dir);
+                    return PPKG_ERROR;
+                }
+
+                size_t   toFilePathCapacity = toDIRLength + fileNameLength + 2U;
+                char     toFilePath[toFilePathCapacity];
+
+                ret = snprintf(toFilePath, toFilePathCapacity, "%s/%s", toDIR, fileName);
+
+                if (ret < 0) {
+                    closedir(dir);
+                    return PPKG_ERROR;
+                }
+
+                ret = ppkg_copy_file(fromFilePath, toFilePath);
+
+                if (ret != PPKG_OK) {
+                    closedir(dir);
+                    return ret;
+                }
+            }
+        }
+    }
+}
+
 static int reset_environment_variable_for_compiler_driver_flags(const PPKGToolChain toolchain) {
     const KV flags[8] = {
         { "CFLAGS",   toolchain.ccflags  },
@@ -3178,14 +3271,30 @@ static int ppkg_install_package(
     char     packageInstalledRootDIR[packageInstalledRootDIRCapacity];
     snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed", ppkgHomeDIR);
 
-    size_t   ldflags2Length = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 18U;
+    size_t   ldflags2Length = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 40U;
     char     ldflags2[ldflags2Length];
-    snprintf(ldflags2, ldflags2Length, "%s -L%s -Wl,-rpath,%s/%s/lib", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
+    snprintf(ldflags2, ldflags2Length, "%s %s -L%s -Wl,-rpath,%s/%s/lib", toolchain.ldflags, (installOptions.linkType == PPKGLinkType_static_only) ? "-static --static" : "", packageWorkingLibDIR, packageInstalledRootDIR, packageName);
 
     if (setenv("LDFLAGS", ldflags2, 1) != 0) {
         perror("LDFLAGS");
         return PPKG_ERROR;
     }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    const char * libSuffix;
+
+    if (installOptions.linkType == PPKGLinkType_static_only || installOptions.linkType == PPKGLinkType_static_prefered) {
+        libSuffix = ".a";
+    } else {
+#if defined (__APPLE__)
+        libSuffix = ".dylib";
+#else
+        libSuffix = ".so";
+#endif
+    }
+
+    const size_t libSuffixLength = strlen(libSuffix);
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -3213,6 +3322,12 @@ static int ppkg_install_package(
             }
 
             ret = export_environment_variables_for_other_tools(installedDIR, installedDIRCapacity);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            ret = copy_dependent_libraries(installedDIR, installedDIRCapacity, packageWorkingLibDIR, packageWorkingLibDIRLength, libSuffix, libSuffixLength);
 
             if (ret != PPKG_OK) {
                 return ret;
