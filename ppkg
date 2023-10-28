@@ -617,7 +617,7 @@ EOF
     SESSION_DIR="$PPKG_HOME/run/$$/$PPKG_FORMULA_REPO_NAME"
 
     run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
+    run install -d "$SESSION_DIR/formula"
     run cd         "$SESSION_DIR"
 
     run git -c init.defaultBranch=master init
