@@ -184,366 +184,140 @@ static int write_to_file(const char * fp, const char * str) {
     //}
 //}
 
-static int fetch_source_if_needed(const PPKGFormula * formula, const char * ppkgDownloadsDIR, const size_t ppkgDownloadsDIRLength, const char * packageWorkingSrcDIR, const size_t packageWorkingSrcDIRLength, const PPKGInstallOptions installOptions) {
+static int download_via_http(const char * url, const char * uri, const char * expectedSHA256SUM, const char * downloadDIR, size_t downloadDIRLength, const char * unpackDIR, size_t unpackDIRLength, bool verbose) {
+    char fileNameExtension[21] = {0};
+
+    int ret = ppkg_examine_file_extension_from_url(url, fileNameExtension, 20);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    size_t fileNameCapacity = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1U;
+    char   fileName[fileNameCapacity];
+
+    ret = snprintf(fileName, fileNameCapacity, "%s%s", expectedSHA256SUM, fileNameExtension);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    size_t filePathCapacity = downloadDIRLength + fileNameCapacity + 1U;
+    char   filePath[filePathCapacity];
+
+    ret = snprintf(filePath, filePathCapacity, "%s/%s", downloadDIR, fileName);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    bool needFetch = true;
+
     struct stat st;
 
-    if (stat(ppkgDownloadsDIR, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            if (unlink(ppkgDownloadsDIR) != 0) {
-                perror(ppkgDownloadsDIR);
-                return PPKG_ERROR;
-            }
+    if (stat(filePath, &st) == 0 && S_ISREG(st.st_mode)) {
+        char actualSHA256SUM[65] = {0};
 
-            if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-                perror(ppkgDownloadsDIR);
-                return PPKG_ERROR;
+        ret = sha256sum_of_file(actualSHA256SUM, filePath);
+
+        if (ret != 0) {
+            return ret;
+        }
+
+        if (strcmp(actualSHA256SUM, expectedSHA256SUM) == 0) {
+            needFetch = false;
+
+            if (verbose) {
+                fprintf(stderr, "%s already have been fetched.\n", filePath);
             }
         }
-    } else {
-        if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-            perror(ppkgDownloadsDIR);
+    }
+
+    if (needFetch) {
+        size_t tmpStrLength = strlen(url) + 30U;
+        char   tmpStr[tmpStrLength];
+
+        ret = snprintf(tmpStr, tmpStrLength, "%s|%ld|%d", url, time(NULL), getpid());
+
+        if (ret < 0) {
             return PPKG_ERROR;
         }
-    }
 
-    //////////////////////////////////////////////////////////////////////////////
+        char tmpFileName[65] = {0};
 
-    if (formula->src_url == NULL) {
-        const char * remoteRef;
+        ret = sha256sum_of_string(tmpFileName, tmpStr);
 
-        if (formula->git_sha == NULL) {
-            remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
-        } else {
-            remoteRef = formula->git_sha;
+        if (ret != 0) {
+            return PPKG_ERROR;
         }
-        
-        int ret = ppkg_git_sync(packageWorkingSrcDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master");
+
+        size_t tmpFilePathLength = downloadDIRLength + 65U;
+        char   tmpFilePath[tmpFilePathLength];
+
+        ret = snprintf(tmpFilePath, tmpFilePathLength, "%s/%s", downloadDIR, tmpFileName);
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
+
+        ret = ppkg_http_fetch_to_file(url, tmpFilePath, verbose, verbose);
+
+        if (ret != PPKG_OK) {
+            if (uri != NULL) {
+                ret = ppkg_http_fetch_to_file(uri, tmpFilePath, verbose, verbose);
+            }
+        }
 
         if (ret != PPKG_OK) {
             return ret;
         }
-    } else {
-        if (formula->src_is_dir) {
-            char *   srcDIR = &formula->src_url[6];
-            size_t   srcDIRLength = strlen(srcDIR);
 
-            size_t   xLength = srcDIRLength + 3U;
-            char     x[xLength];
-            snprintf(x, xLength, "%s/.", srcDIR);
+        char actualSHA256SUM[65] = {0};
 
-            size_t   cmdLength = srcDIRLength + packageWorkingSrcDIRLength + 10U;
-            char     cmd[cmdLength];
-            snprintf(cmd, cmdLength, "cp -r %s/. %s", srcDIR, packageWorkingSrcDIR);
+        ret = sha256sum_of_file(actualSHA256SUM, tmpFilePath);
 
-            if (installOptions.logLevel >= PPKGLogLevel_verbose) {
-                printf("%s\n", cmd);
-            }
+        if (ret != PPKG_OK) {
+            return ret;
+        }
 
-            pid_t pid = fork();
-
-            if (pid < 0) {
-                perror(NULL);
+        if (strcmp(actualSHA256SUM, expectedSHA256SUM) == 0) {
+            if (rename(tmpFilePath, filePath) == 0) {
+                printf("%s\n", filePath);
+            } else {
+                perror(filePath);
                 return PPKG_ERROR;
             }
-
-            if (pid == 0) {
-                execlp("cp", "cp", "-r", x, packageWorkingSrcDIR, NULL);
-                perror("cp");
-                exit(255);
-            } else {
-                int childProcessExitStatusCode;
-
-                if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-                    perror(NULL);
-                    return PPKG_ERROR;
-                }
-
-                if (childProcessExitStatusCode != 0) {
-                    if (WIFEXITED(childProcessExitStatusCode)) {
-                        fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
-                    } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                        fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
-                    } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                        fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
-                    }
-
-                    return PPKG_ERROR;
-                }
-            }
         } else {
-            char srcFileNameExtension[21] = {0};
-
-            int ret = ppkg_examine_file_extension_from_url(formula->src_url, srcFileNameExtension, 20);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            size_t   srcFileNameLength = strlen(formula->src_sha) + strlen(srcFileNameExtension) + 1U;
-            char     srcFileName[srcFileNameLength];
-            snprintf(srcFileName, srcFileNameLength, "%s%s", formula->src_sha, srcFileNameExtension);
-
-            size_t   srcFilePathLength = ppkgDownloadsDIRLength + srcFileNameLength + 1U;
-            char     srcFilePath[srcFilePathLength];
-            snprintf(srcFilePath, srcFilePathLength, "%s/%s", ppkgDownloadsDIR, srcFileName);
-
-            bool needFetch = true;
-
-            if (stat(srcFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-                char actualSHA256SUM[65] = {0};
-
-                ret = sha256sum_of_file(actualSHA256SUM, srcFilePath);
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-
-                if (strcmp(actualSHA256SUM, formula->src_sha) == 0) {
-                    needFetch = false;
-
-                    if (installOptions.logLevel >= PPKGLogLevel_verbose) {
-                        fprintf(stderr, "%s already have been fetched.\n", srcFilePath);
-                    }
-                }
-            }
-
-            if (needFetch) {
-                int ret = ppkg_http_fetch_to_file(formula->src_url, srcFilePath, installOptions.verbose_net, installOptions.verbose_net);
-
-                if (ret != PPKG_OK) {
-                    if (formula->src_uri != NULL) {
-                        ret = ppkg_http_fetch_to_file(formula->src_uri, srcFilePath, installOptions.verbose_net, installOptions.verbose_net);
-                    }
-                }
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-
-                char actualSHA256SUM[65] = {0};
-
-                ret = sha256sum_of_file(actualSHA256SUM, srcFilePath);
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-
-                if (strcmp(actualSHA256SUM, formula->src_sha) != 0) {
-                    fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->src_sha, actualSHA256SUM);
-                    return PPKG_ERROR_SHA256_MISMATCH;
-                }
-            }
-
-            if (strcmp(srcFileNameExtension, ".zip") == 0 ||
-                strcmp(srcFileNameExtension, ".tgz") == 0 ||
-                strcmp(srcFileNameExtension, ".txz") == 0 ||
-                strcmp(srcFileNameExtension, ".tlz") == 0 ||
-                strcmp(srcFileNameExtension, ".tbz2") == 0) {
-
-                ret = tar_extract(packageWorkingSrcDIR, srcFilePath, ARCHIVE_EXTRACT_TIME, installOptions.logLevel >= PPKGLogLevel_verbose, 1);
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-            } else {
-                size_t   srcFilePath2Length = packageWorkingSrcDIRLength + srcFileNameLength + 1U;
-                char     srcFilePath2[srcFilePath2Length];
-                snprintf(srcFilePath2, srcFilePath2Length, "%s/%s", packageWorkingSrcDIR, srcFileName);
-
-                ret = ppkg_copy_file(srcFilePath, srcFilePath2);
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-            }
+            fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", expectedSHA256SUM, actualSHA256SUM);
+            return PPKG_ERROR_SHA256_MISMATCH;
         }
     }
 
-    return PPKG_OK;
-}
+    if (strcmp(fileNameExtension, ".zip") == 0 ||
+        strcmp(fileNameExtension, ".tgz") == 0 ||
+        strcmp(fileNameExtension, ".txz") == 0 ||
+        strcmp(fileNameExtension, ".tlz") == 0 ||
+        strcmp(fileNameExtension, ".tbz2") == 0) {
 
-static int fetch_patch_if_needed(const PPKGFormula * formula, const char * ppkgDownloadsDIR, const size_t ppkgDownloadsDIRLength, const char * packageWorkingFixDIR, const size_t packageWorkingFixDIRLength, const PPKGInstallOptions installOptions) {
-    if (formula->fix_url != NULL) {
-        char fixFileNameExtension[21] = {0};
+        ret = tar_extract(unpackDIR, filePath, ARCHIVE_EXTRACT_TIME, verbose, 1);
 
-        int ret = ppkg_examine_file_extension_from_url(formula->fix_url, fixFileNameExtension, 20);
+        if (ret != 0) {
+            return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
+        }
+    } else {
+        size_t toFilePathLength = unpackDIRLength + fileNameCapacity + 1U;
+        char   toFilePath[toFilePathLength];
+
+        ret = snprintf(toFilePath, toFilePathLength, "%s/%s", unpackDIR, fileName);
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
+
+        ret = ppkg_copy_file(filePath, toFilePath);
 
         if (ret != PPKG_OK) {
             return ret;
-        }
-
-        size_t   fixFileNameLength = strlen(formula->fix_sha) + strlen(fixFileNameExtension) + 1U;
-        char     fixFileName[fixFileNameLength];
-        snprintf(fixFileName, fixFileNameLength, "%s%s", formula->fix_sha, fixFileNameExtension);
-
-        size_t   fixFilePathLength = ppkgDownloadsDIRLength + fixFileNameLength + 1U;
-        char     fixFilePath[fixFilePathLength];
-        snprintf(fixFilePath, fixFilePathLength, "%s/%s", ppkgDownloadsDIR, fixFileName);
-
-        bool needFetch = true;
-
-        struct stat st;
-
-        if (stat(fixFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            char actualSHA256SUM[65] = {0};
-
-            ret = sha256sum_of_file(actualSHA256SUM, fixFilePath);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            if (strcmp(actualSHA256SUM, formula->fix_sha) == 0) {
-                needFetch = false;
-
-                if (installOptions.logLevel != PPKGLogLevel_silent) {
-                    fprintf(stderr, "%s already have been fetched.\n", fixFilePath);
-                }
-            }
-        }
-
-        if (needFetch) {
-            int ret = ppkg_http_fetch_to_file(formula->fix_url, fixFilePath, installOptions.verbose_net, installOptions.verbose_net);
-
-            if (ret != PPKG_OK) {
-                if (formula->fix_uri != NULL) {
-                    ret = ppkg_http_fetch_to_file(formula->fix_uri, fixFilePath, installOptions.verbose_net, installOptions.verbose_net);
-                }
-            }
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            char actualSHA256SUM[65] = {0};
-
-            ret = sha256sum_of_file(actualSHA256SUM, fixFilePath);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            if (strcmp(actualSHA256SUM, formula->fix_sha) != 0) {
-                fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->fix_sha, actualSHA256SUM);
-                return PPKG_ERROR_SHA256_MISMATCH;
-            }
-        }
-
-        if (strcmp(fixFileNameExtension, ".zip") == 0 ||
-            strcmp(fixFileNameExtension, ".tgz") == 0 ||
-            strcmp(fixFileNameExtension, ".txz") == 0 ||
-            strcmp(fixFileNameExtension, ".tlz") == 0 ||
-            strcmp(fixFileNameExtension, ".tbz2") == 0) {
-
-            ret = tar_extract(packageWorkingFixDIR, fixFilePath, ARCHIVE_EXTRACT_TIME, installOptions.logLevel >= PPKGLogLevel_verbose, 1);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-        } else {
-            size_t   fixFilePath2Length = packageWorkingFixDIRLength + fixFileNameLength + 1U;
-            char     fixFilePath2[fixFilePath2Length];
-            snprintf(fixFilePath2, fixFilePath2Length, "%s/%s", packageWorkingFixDIR, fixFileName);
-
-            ret = ppkg_copy_file(fixFilePath, fixFilePath2);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-        }
-    }
-
-    return PPKG_OK;
-}
-
-static int fetch_resource_if_needed(const PPKGFormula * formula, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, const char * packageWorkingResDIR, size_t packageWorkingResDIRLength, PPKGInstallOptions installOptions) {
-    if (formula->res_url != NULL) {
-        char resFileNameExtension[21] = {0};
-
-        int ret = ppkg_examine_file_extension_from_url(formula->res_url, resFileNameExtension, 20);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        size_t   resFileNameLength = strlen(formula->res_sha) + strlen(resFileNameExtension) + 1U;
-        char     resFileName[resFileNameLength];
-        snprintf(resFileName, resFileNameLength, "%s%s", formula->fix_sha, resFileNameExtension);
-
-        size_t   resFilePathLength = ppkgDownloadsDIRLength + resFileNameLength + 1U;
-        char     resFilePath[resFilePathLength];
-        snprintf(resFilePath, resFilePathLength, "%s/%s", ppkgDownloadsDIR, resFileName);
-
-        bool needFetch = true;
-
-        struct stat st;
-
-        if (stat(resFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            char actualSHA256SUM[65] = {0};
-
-            ret = sha256sum_of_file(actualSHA256SUM, resFilePath);
-
-            if (ret != 0) {
-                return ret;
-            }
-
-            if (strcmp(actualSHA256SUM, formula->res_sha) == 0) {
-                needFetch = false;
-
-                if (installOptions.logLevel >= PPKGLogLevel_verbose) {
-                    fprintf(stderr, "%s already have been fetched.\n", resFilePath);
-                }
-            }
-        }
-
-        if (needFetch) {
-            ret = ppkg_http_fetch_to_file(formula->res_url, resFilePath, installOptions.verbose_net, installOptions.verbose_net);
-
-            if (ret != PPKG_OK) {
-                if (formula->res_uri != NULL) {
-                    ret = ppkg_http_fetch_to_file(formula->res_uri, resFilePath, installOptions.verbose_net, installOptions.verbose_net);
-                }
-            }
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            char actualSHA256SUM[65] = {0};
-
-            ret = sha256sum_of_file(actualSHA256SUM, resFilePath);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-
-            if (strcmp(actualSHA256SUM, formula->res_sha) != 0) {
-                fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", formula->res_sha, actualSHA256SUM);
-                return PPKG_ERROR_SHA256_MISMATCH;
-            }
-        }
-
-        if (strcmp(resFileNameExtension, ".zip") == 0 ||
-            strcmp(resFileNameExtension, ".tgz") == 0 ||
-            strcmp(resFileNameExtension, ".txz") == 0 ||
-            strcmp(resFileNameExtension, ".tlz") == 0 ||
-            strcmp(resFileNameExtension, ".tbz2") == 0) {
-
-            ret = tar_extract(packageWorkingResDIR, resFilePath, ARCHIVE_EXTRACT_TIME, installOptions.logLevel >= PPKGLogLevel_verbose, 1);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-        } else {
-            size_t   resFilePath2Length = packageWorkingResDIRLength + resFileNameLength + 1U;
-            char     resFilePath2[resFilePath2Length];
-            snprintf(resFilePath2, resFilePath2Length, "%s/%s", packageWorkingResDIR, resFileName);
-
-            ret = ppkg_copy_file(resFilePath, resFilePath2);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
         }
     }
 
@@ -590,19 +364,29 @@ static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const c
     if (!(cargoExist && rustupExist)) {
         LOG_INFO("rustup and cargo commands are required, but they are not found on this machine, ppkg will install them via running shell script.");
 
-        size_t   rustupInitScriptFilePathCapacity = sessionDIRLength + 16U;
-        char     rustupInitScriptFilePath[rustupInitScriptFilePathCapacity];
-        snprintf(rustupInitScriptFilePath, rustupInitScriptFilePathCapacity, "%s/rustup-init.sh", sessionDIR);
+        size_t rustupInitScriptFilePathCapacity = sessionDIRLength + 16U;
+        char   rustupInitScriptFilePath[rustupInitScriptFilePathCapacity];
 
-        int ret = ppkg_http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, installOptions.verbose_net, installOptions.verbose_net);
+        int ret = snprintf(rustupInitScriptFilePath, rustupInitScriptFilePathCapacity, "%s/rustup-init.sh", sessionDIR);
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
+
+        ret = ppkg_http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, installOptions.verbose_net, installOptions.verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
         }
 
-        size_t   cmdCapacity = rustupInitScriptFilePathCapacity + 10U;
-        char     cmd[cmdCapacity];
-        snprintf(cmd, cmdCapacity, "bash %s -y", rustupInitScriptFilePath);
+        size_t cmdCapacity = rustupInitScriptFilePathCapacity + 10U;
+        char   cmd[cmdCapacity];
+
+        ret = snprintf(cmd, cmdCapacity, "bash %s -y", rustupInitScriptFilePath);
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
 
         ret = run_cmd(cmd, STDOUT_FILENO);
 
@@ -2676,12 +2460,16 @@ static int ppkg_install_package(
         const PPKGInstallOptions installOptions,
         const PPKGToolChain toolchain,
         const SysInfo sysinfo,
+        const char * uppmPackageInstalledRootDIR,
+        const size_t uppmPackageInstalledRootDIRLength,
         const char * ppkgExeFilePath,
         const char * ppkgHomeDIR,
         const size_t ppkgHomeDIRLength,
         const char * ppkgCoreDIR,
         const size_t ppkgCoreDIRLength,
         const char * ppkgCoreLibexecDIR,
+        const char * ppkgDownloadsDIR,
+        const size_t ppkgDownloadsDIRLength,
         const char * sessionDIR,
         const size_t sessionDIRLength,
         const char * recursiveDependentPackageNamesString,
@@ -2729,136 +2517,6 @@ static int ppkg_install_package(
 
     if (ret != PPKG_OK) {
         return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->useBuildSystemCargo) {
-        ret = setup_rust_toolchain(installOptions, sessionDIR, sessionDIRLength);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        // https://docs.rs/backtrace/latest/backtrace/
-        if (setenv("RUST_BACKTRACE", "1", 1) != 0) {
-            perror("RUST_BACKTRACE");
-            return PPKG_ERROR;
-        }
-
-        char     ns[4];
-        snprintf(ns, 4, "%zu", njobs);
-
-        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        if (setenv("CARGO_BUILD_JOBS", ns, 1) != 0) {
-            perror("CARGO_BUILD_JOBS");
-            return PPKG_ERROR;
-        }
-
-        char rustTarget[64] = {0};
-
-#if defined (__linux__)
-        const char * libcName;
-
-        switch(sysinfo.libc) {
-            case 1:  libcName = "gnu" ; break;
-            case 2:  libcName = "musl"; break;
-            default: libcName = "";
-        }
-
-        ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo.arch, libcName);
-#else
-        const char * arch;
-
-        if (strcmp(sysinfo.arch, "amd64") == 0) {
-            arch = "x86_64";
-        } else {
-            arch = sysinfo.arch;
-        }
-
-        ret = snprintf(rustTarget, 64, "%s-unknown-%s", arch, sysinfo.kind);
-#endif
-
-        if (ret < 0) {
-            return PPKG_ERROR;
-        }
-
-        if (setenv("RUST_TARGET", rustTarget, 1) != 0) {
-            perror("RUST_TARGET");
-            return PPKG_ERROR;
-        }
-
-        size_t i = 0U;
-
-        for (;;) {
-            if (rustTarget[i] == '\0') {
-                break;
-            }
-
-            if (rustTarget[i] == '-') {
-                rustTarget[i] = '_';
-            }
-
-            if (rustTarget[i] >= 'a' && rustTarget[i] <= 'z') {
-                rustTarget[i] -= 32;
-            }
-
-            i++;
-        }
-
-        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        // https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker
-        size_t   linkerLength = i + 21U;
-        char     linker[linkerLength];
-        snprintf(linker, linkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
-
-        if (setenv(linker, toolchain.cc, 1) != 0) {
-            perror(linker);
-            return PPKG_ERROR;
-        }
-
-        // https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags
-        // we want to use RUSTFLAGS
-        if (unsetenv("CARGO_ENCODED_RUSTFLAGS") != 0) {
-            perror("CARGO_ENCODED_RUSTFLAGS");
-            return PPKG_ERROR;
-        }
-
-        size_t   rustFlagsCapacity = strlen(toolchain.cc) + 10U;
-        char     rustFlags[rustFlagsCapacity];
-        snprintf(rustFlags, rustFlagsCapacity, "-Clinker=%s", toolchain.cc);
-
-        if (setenv("RUSTFLAGS", rustFlags, 1) != 0) {
-            perror("RUSTFLAGS");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    char   uppmPackageInstalledRootDIR[PATH_MAX];
-    size_t uppmPackageInstalledRootDIRLength;
-
-    const char * const uppmHomeDIR = getenv("UPPM_HOME");
-
-    if (uppmHomeDIR == NULL || uppmHomeDIR[0] == '\0') {
-        const char * const userHomeDIR = getenv("HOME");
-
-        if (userHomeDIR == NULL) {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        if (userHomeDIR[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/.uppm/installed", userHomeDIR);
-    } else {
-        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/installed", uppmHomeDIR);
-    }
-
-    if (uppmPackageInstalledRootDIRLength < 0) {
-        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -2971,35 +2629,6 @@ static int ppkg_install_package(
     if (chdir(packageWorkingTopDIR) != 0) {
         perror(packageWorkingTopDIR);
         return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t   ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
-    char     ppkgDownloadsDIR[ppkgDownloadsDIRLength];
-    snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
-
-    if (stat(ppkgDownloadsDIR, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            if (unlink(ppkgDownloadsDIR) != 0) {
-                perror(ppkgDownloadsDIR);
-                return PPKG_ERROR;
-            }
-
-            if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-                if (errno != EEXIST) {
-                    perror(ppkgDownloadsDIR);
-                    return PPKG_ERROR;
-                }
-            }
-        }
-    } else {
-        if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
-            if (errno != EEXIST) {
-                perror(ppkgDownloadsDIR);
-                return PPKG_ERROR;
-            }
-        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -3252,6 +2881,109 @@ static int ppkg_install_package(
 
         if (ret != PPKG_OK) {
             return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->useBuildSystemCargo) {
+        ret = setup_rust_toolchain(installOptions, sessionDIR, sessionDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        // https://docs.rs/backtrace/latest/backtrace/
+        if (setenv("RUST_BACKTRACE", "1", 1) != 0) {
+            perror("RUST_BACKTRACE");
+            return PPKG_ERROR;
+        }
+
+        char     ns[4];
+        snprintf(ns, 4, "%zu", njobs);
+
+        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        if (setenv("CARGO_BUILD_JOBS", ns, 1) != 0) {
+            perror("CARGO_BUILD_JOBS");
+            return PPKG_ERROR;
+        }
+
+        char rustTarget[64] = {0};
+
+#if defined (__linux__)
+        const char * libcName;
+
+        switch(sysinfo.libc) {
+            case 1:  libcName = "gnu" ; break;
+            case 2:  libcName = "musl"; break;
+            default: libcName = "";
+        }
+
+        ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo.arch, libcName);
+#else
+        const char * arch;
+
+        if (strcmp(sysinfo.arch, "amd64") == 0) {
+            arch = "x86_64";
+        } else {
+            arch = sysinfo.arch;
+        }
+
+        ret = snprintf(rustTarget, 64, "%s-unknown-%s", arch, sysinfo.kind);
+#endif
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
+
+        if (setenv("RUST_TARGET", rustTarget, 1) != 0) {
+            perror("RUST_TARGET");
+            return PPKG_ERROR;
+        }
+
+        size_t i = 0U;
+
+        for (;;) {
+            if (rustTarget[i] == '\0') {
+                break;
+            }
+
+            if (rustTarget[i] == '-') {
+                rustTarget[i] = '_';
+            }
+
+            if (rustTarget[i] >= 'a' && rustTarget[i] <= 'z') {
+                rustTarget[i] -= 32;
+            }
+
+            i++;
+        }
+
+        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        // https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker
+        size_t   linkerLength = i + 21U;
+        char     linker[linkerLength];
+        snprintf(linker, linkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
+
+        if (setenv(linker, toolchain.cc, 1) != 0) {
+            perror(linker);
+            return PPKG_ERROR;
+        }
+
+        // https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags
+        // we want to use RUSTFLAGS
+        if (unsetenv("CARGO_ENCODED_RUSTFLAGS") != 0) {
+            perror("CARGO_ENCODED_RUSTFLAGS");
+            return PPKG_ERROR;
+        }
+
+        size_t   rustFlagsCapacity = strlen(toolchain.cc) + 10U;
+        char     rustFlags[rustFlagsCapacity];
+        snprintf(rustFlags, rustFlagsCapacity, "-Clinker=%s", toolchain.cc);
+
+        if (setenv("RUSTFLAGS", rustFlags, 1) != 0) {
+            perror("RUSTFLAGS");
+            return PPKG_ERROR;
         }
     }
 
@@ -3563,22 +3295,66 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = fetch_source_if_needed(formula, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingSrcDIR, packageWorkingSrcDIRLength, installOptions);
+    if (formula->src_url == NULL) {
+        const char * remoteRef;
 
-    if (ret != PPKG_OK) {
-        return ret;
+        if (formula->git_sha == NULL) {
+            remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
+        } else {
+            remoteRef = formula->git_sha;
+        }
+
+        ret = ppkg_git_sync(packageWorkingSrcDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    } else {
+        if (formula->src_is_dir) {
+            char * srcDIR = &formula->src_url[6];
+            size_t srcDIRLength = strlen(srcDIR);
+
+            size_t cmdCapacity = srcDIRLength + packageWorkingSrcDIRLength + 10U;
+            char   cmd[cmdCapacity];
+
+            ret = snprintf(cmd, cmdCapacity, "cp -r %s/. %s", srcDIR, packageWorkingSrcDIR);
+
+            if (ret < 0) {
+                return PPKG_ERROR;
+            }
+
+            if (installOptions.logLevel >= PPKGLogLevel_verbose) {
+                printf("%s\n", cmd);
+            }
+
+            ret = run_cmd(cmd, STDOUT_FILENO);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        } else {
+            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingSrcDIR, packageWorkingSrcDIRLength, installOptions.verbose_net);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        }
     }
 
-    ret = fetch_patch_if_needed(formula, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingFixDIR, packageWorkingFixDIRLength, installOptions);
+    if (formula->fix_url != NULL) {
+        ret = download_via_http(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingFixDIR, packageWorkingFixDIRLength, installOptions.verbose_net);
 
-    if (ret != PPKG_OK) {
-        return ret;
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
 
-    ret = fetch_resource_if_needed(formula, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingResDIR, packageWorkingResDIRLength, installOptions);
+    if (formula->res_url != NULL) {
+        ret = download_via_http(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingResDIR, packageWorkingResDIRLength, installOptions.verbose_net);
 
-    if (ret != PPKG_OK) {
-        return ret;
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -4590,6 +4366,13 @@ int ppkg_toolchain_setup(
 }
 
 int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
+#if defined (__APPLE__)
+    if (installOptions.linkType == PPKGLinkType_static_only) {
+        fprintf(stderr, "--link-type=static-only option is not supported on macOS, because there is no static standard C library on macOS. We will use --link-type=static-prefer instead.\n");
+        installOptions.linkType = PPKGLinkType_static_prefered;
+    }
+#endif
+
     // redirect all stdout and stderr to /dev/null
     if (installOptions.logLevel == PPKGLogLevel_silent) {
         int fd = open("/dev/null", O_CREAT | O_TRUNC | O_WRONLY, 0666);
@@ -4713,6 +4496,62 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     //////////////////////////////////////////////////////////////////////////////
 
+    size_t   ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
+    char     ppkgDownloadsDIR[ppkgDownloadsDIRLength];
+    snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
+
+    if (stat(ppkgDownloadsDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            if (unlink(ppkgDownloadsDIR) != 0) {
+                perror(ppkgDownloadsDIR);
+                return PPKG_ERROR;
+            }
+
+            if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+                if (errno != EEXIST) {
+                    perror(ppkgDownloadsDIR);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+    } else {
+        if (mkdir(ppkgDownloadsDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(ppkgDownloadsDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    char   uppmPackageInstalledRootDIR[PATH_MAX];
+    size_t uppmPackageInstalledRootDIRLength;
+
+    const char * const uppmHomeDIR = getenv("UPPM_HOME");
+
+    if (uppmHomeDIR == NULL || uppmHomeDIR[0] == '\0') {
+        const char * const userHomeDIR = getenv("HOME");
+
+        if (userHomeDIR == NULL) {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        }
+
+        if (userHomeDIR[0] == '\0') {
+            return PPKG_ERROR_ENV_HOME_NOT_SET;
+        }
+
+        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/.uppm/installed", userHomeDIR);
+    } else {
+        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/installed", uppmHomeDIR);
+    }
+
+    if (uppmPackageInstalledRootDIRLength < 0) {
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     PPKGToolChain toolchain = {0};
 
     ret = ppkg_toolchain_locate(&toolchain);
@@ -4806,7 +4645,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
         //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
 
-        ret = ppkg_install_package(packageName, package->formula, installOptions, toolchain, sysinfo, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgCoreLibexecDIR, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+        ret = ppkg_install_package(packageName, package->formula, installOptions, toolchain, sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgCoreLibexecDIR, ppkgDownloadsDIR, ppkgDownloadsDIRLength, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
 
         free(recursiveDependentPackageNamesStringBuffer);
         recursiveDependentPackageNamesStringBuffer = NULL;
