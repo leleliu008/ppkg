@@ -1810,8 +1810,8 @@ static int execute_install_shell_script(const char * installShellScriptFilePath)
     }
 
     if (pid == 0) {
-        execlp("sh", "sh", installShellScriptFilePath, NULL);
-        perror("sh");
+        execlp("bash", "bash", installShellScriptFilePath, NULL);
+        perror("bash");
         exit(255);
     } else {
         int childProcessExitStatusCode;
@@ -1825,11 +1825,11 @@ static int execute_install_shell_script(const char * installShellScriptFilePath)
             return PPKG_OK;
         } else {
             if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'sh %s' exit with status code: %d\n", installShellScriptFilePath, WEXITSTATUS(childProcessExitStatusCode));
+                fprintf(stderr, "running command 'bash %s' exit with status code: %d\n", installShellScriptFilePath, WEXITSTATUS(childProcessExitStatusCode));
             } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'sh %s' killed by signal: %d\n", installShellScriptFilePath, WTERMSIG(childProcessExitStatusCode));
+                fprintf(stderr, "running command 'bash %s' killed by signal: %d\n", installShellScriptFilePath, WTERMSIG(childProcessExitStatusCode));
             } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'sh %s' stopped by signal: %d\n", installShellScriptFilePath, WSTOPSIG(childProcessExitStatusCode));
+                fprintf(stderr, "running command 'bash %s' stopped by signal: %d\n", installShellScriptFilePath, WSTOPSIG(childProcessExitStatusCode));
             }
 
             return PPKG_ERROR;
