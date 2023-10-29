@@ -40,6 +40,8 @@ typedef struct {
 
 
 static int run_cmd(char * cmd, int output2FD) {
+    fprintf(stderr, "%s==>%s %s%s%s\n", COLOR_PURPLE, COLOR_OFF, COLOR_GREEN, cmd, COLOR_OFF);
+
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -358,7 +360,7 @@ static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const c
 
     struct stat st;
 
-    bool  cargoExist = (stat(cargoCommandPath, &st) == 0) && S_ISREG(st.st_mode);
+    bool  cargoExist = (stat( cargoCommandPath, &st) == 0) && S_ISREG(st.st_mode);
     bool rustupExist = (stat(rustupCommandPath, &st) == 0) && S_ISREG(st.st_mode);
 
     if (!(cargoExist && rustupExist)) {
@@ -922,71 +924,14 @@ static int install_native_package(
     char     nativePackageWorkingTopDIR[nativePackageWorkingTopDIRLength];
     snprintf(nativePackageWorkingTopDIR, nativePackageWorkingTopDIRLength, "%s/%s", nativePackageInstallingRootDIR, packageName);
 
-    char srcFileNameExtension[21] = {0};
-
-    ret = ppkg_examine_file_extension_from_url(srcUrl, srcFileNameExtension, 20);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    size_t   srcFileNameLength = strlen(srcSha) + strlen(srcFileNameExtension) + 1U;
-    char     srcFileName[srcFileNameLength];
-    snprintf(srcFileName, srcFileNameLength, "%s%s", srcSha, srcFileNameExtension);
-
-    size_t   srcFilePathLength = downloadsDIRLength + srcFileNameLength + 1U;
-    char     srcFilePath[srcFilePathLength];
-    snprintf(srcFilePath, srcFilePathLength, "%s/%s", downloadsDIR, srcFileName);
-
-    bool needFetch = true;
-
-    if (stat(srcFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-        char actualSHA256SUM[65] = {0};
-
-        ret = sha256sum_of_file(actualSHA256SUM, srcFilePath);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        if (strcmp(actualSHA256SUM, srcSha) == 0) {
-            needFetch = false;
-
-            if (installOptions.logLevel >= PPKGLogLevel_verbose) {
-                fprintf(stderr, "%s already have been fetched.\n", srcFilePath);
-            }
-        }
-    }
-
-    if (needFetch) {
-        ret = ppkg_http_fetch_to_file(srcUrl, srcFilePath, installOptions.verbose_net, installOptions.verbose_net);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        char actualSHA256SUM[65] = {0};
-
-        ret = sha256sum_of_file(actualSHA256SUM, srcFilePath);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        if (strcmp(actualSHA256SUM, srcSha) != 0) {
-            fprintf(stderr, "sha256sum mismatch.\n    expect : %s\n    actual : %s\n", srcSha, actualSHA256SUM);
-            return PPKG_ERROR_SHA256_MISMATCH;
-        }
-    }
-
     size_t   nativePackageWorkingSrcDIRLength = nativePackageWorkingTopDIRLength + 5U;
     char     nativePackageWorkingSrcDIR[nativePackageWorkingSrcDIRLength];
     snprintf(nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, "%s/src", nativePackageWorkingTopDIR);
 
-    ret = tar_extract(nativePackageWorkingSrcDIR, srcFilePath, ARCHIVE_EXTRACT_TIME, installOptions.logLevel >= PPKGLogLevel_verbose, 1);
+    ret = download_via_http(srcUrl, NULL, srcSha, downloadsDIR, downloadsDIRLength, nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, installOptions.verbose_net);
 
-    if (ret != 0) {
-        return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -1370,7 +1315,7 @@ static int install_dependent_packages_via_uppm(
         const size_t ppkgCoreBinDIRLength,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
-        bool  requestToInstallCmake) {
+        const bool   requestToInstallCmake) {
 
 #if defined (__NetBSD__)
     if (requestToInstallCmake) {
@@ -1392,19 +1337,29 @@ static int install_dependent_packages_via_uppm(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t   uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
-    char     uppmUpdateCmd[uppmUpdateCmdLength];
-    snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
+    size_t uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
+    char   uppmUpdateCmd[uppmUpdateCmdLength];
 
-    int ret = run_cmd(uppmUpdateCmd, STDOUT_FILENO);
+    int ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    ret = run_cmd(uppmUpdateCmd, STDOUT_FILENO);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    size_t   uppmInstallCmdLength = ppkgCoreBinDIRLength + uppmPackageNamesLength + 15U;
-    char     uppmInstallCmd[uppmInstallCmdLength];
-    snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, uppmPackageNames);
+    size_t uppmInstallCmdLength = ppkgCoreBinDIRLength + uppmPackageNamesLength + 15U;
+    char   uppmInstallCmd[uppmInstallCmdLength];
+
+    ret = snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, uppmPackageNames);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
 
     ret = run_cmd(uppmInstallCmd, STDOUT_FILENO);
 
@@ -1422,11 +1377,16 @@ static int install_dependent_packages_via_uppm(
     char * uppmPackageName = strtok(uppmPackageNamesCopy, " ");
 
     while (uppmPackageName != NULL) {
-        size_t   uppmPackageInstalledDIRLength = uppmPackageInstalledRootDIRLength + strlen(uppmPackageName) + 2U;
-        char     uppmPackageInstalledDIR[uppmPackageInstalledDIRLength];
-        snprintf(uppmPackageInstalledDIR, uppmPackageInstalledDIRLength, "%s/%s", uppmPackageInstalledRootDIR, uppmPackageName);
+        size_t uppmPackageInstalledDIRCapacity = uppmPackageInstalledRootDIRLength + strlen(uppmPackageName) + 2U;
+        char   uppmPackageInstalledDIR[uppmPackageInstalledDIRCapacity];
 
-        ret = export_environment_variables_for_other_tools(uppmPackageInstalledDIR, uppmPackageInstalledDIRLength);
+        ret = snprintf(uppmPackageInstalledDIR, uppmPackageInstalledDIRCapacity, "%s/%s", uppmPackageInstalledRootDIR, uppmPackageName);
+
+        if (ret < 0) {
+            return PPKG_ERROR;
+        }
+
+        ret = export_environment_variables_for_other_tools(uppmPackageInstalledDIR, uppmPackageInstalledDIRCapacity);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1435,7 +1395,7 @@ static int install_dependent_packages_via_uppm(
         if (strcmp(uppmPackageName, "git") == 0) {
             // https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
 
-            size_t   gitCoreDIRCapacity = uppmPackageInstalledDIRLength + 18U;
+            size_t   gitCoreDIRCapacity = uppmPackageInstalledDIRCapacity + 18U;
             char     gitCoreDIR[gitCoreDIRCapacity];
             snprintf(gitCoreDIR, gitCoreDIRCapacity, "%s/libexec/git-core", uppmPackageInstalledDIR);
 
@@ -1444,7 +1404,7 @@ static int install_dependent_packages_via_uppm(
                 return PPKG_ERROR;
             }
 
-            size_t   gitTemplateDIRCapacity = uppmPackageInstalledDIRLength + 26U;
+            size_t   gitTemplateDIRCapacity = uppmPackageInstalledDIRCapacity + 26U;
             char     gitTemplateDIR[gitTemplateDIRCapacity];
             snprintf(gitTemplateDIR, gitTemplateDIRCapacity, "%s/share/git-core/templates", uppmPackageInstalledDIR);
 
@@ -1455,7 +1415,7 @@ static int install_dependent_packages_via_uppm(
         } else if (strcmp(uppmPackageName, "docbook-xsl") == 0) {
             // http://xmlsoft.org/xslt/xsltproc.html
 
-            size_t   xmlCatalogFilePathCapacity = uppmPackageInstalledDIRLength + 13U;
+            size_t   xmlCatalogFilePathCapacity = uppmPackageInstalledDIRCapacity + 13U;
             char     xmlCatalogFilePath[xmlCatalogFilePathCapacity];
             snprintf(xmlCatalogFilePath, xmlCatalogFilePathCapacity, "%s/catalog.xml", uppmPackageInstalledDIR);
 
@@ -1799,42 +1759,6 @@ static int generate_install_shell_script_file(
     close(fd);
 
     return PPKG_OK;
-}
-
-static int execute_install_shell_script(const char * installShellScriptFilePath) {
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (pid == 0) {
-        execlp("bash", "bash", installShellScriptFilePath, NULL);
-        perror("bash");
-        exit(255);
-    } else {
-        int childProcessExitStatusCode;
-
-        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (childProcessExitStatusCode == 0) {
-            return PPKG_OK;
-        } else {
-            if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'bash %s' exit with status code: %d\n", installShellScriptFilePath, WEXITSTATUS(childProcessExitStatusCode));
-            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'bash %s' killed by signal: %d\n", installShellScriptFilePath, WTERMSIG(childProcessExitStatusCode));
-            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command 'bash %s' stopped by signal: %d\n", installShellScriptFilePath, WSTOPSIG(childProcessExitStatusCode));
-            }
-
-            return PPKG_ERROR;
-        }
-    }
 }
 
 static int adjust_la_file(const char * filePath, const char * ppkgHomeDIR, size_t ppkgHomeDIRLength) {
@@ -2243,50 +2167,6 @@ static int install_files_to_metainfo_dir(struct stat st, const char * fromDIR, s
     }
 
     return PPKG_OK;
-}
-
-static int tree_installed_files(const char * packageInstalledDIR, size_t packageInstalledDIRCapacity, const char * uppmPackageInstalledRootDIR, const size_t uppmPackageInstalledRootDIRLength) {
-    size_t   treeCmdPathLength = uppmPackageInstalledRootDIRLength + 15U;
-    char     treeCmdPath[treeCmdPathLength];
-    snprintf(treeCmdPath, treeCmdPathLength, "%s/tree/bin/tree", uppmPackageInstalledRootDIR);
-
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (pid == 0) {
-        execl(treeCmdPath, treeCmdPath, "-a", "--dirsfirst", packageInstalledDIR, NULL);
-        perror(treeCmdPath);
-        exit(255);
-    } else {
-        int childProcessExitStatusCode;
-
-        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (childProcessExitStatusCode == 0) {
-            return PPKG_OK;
-        } else {
-            size_t   cmdLength = packageInstalledDIRCapacity + 21U;
-            char     cmd[cmdLength];
-            snprintf(cmd, cmdLength, "%s -a --dirsfirst %s", treeCmdPath, packageInstalledDIR);
-
-            if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
-            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
-            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
-            }
-
-            return PPKG_ERROR;
-        }
-    }
 }
 
 static int generate_linker_script(const char * packageWorkingLibDIR, size_t packageWorkingLibDIRLength, const char * filename) {
@@ -3323,10 +3203,6 @@ static int ppkg_install_package(
                 return PPKG_ERROR;
             }
 
-            if (installOptions.logLevel >= PPKGLogLevel_verbose) {
-                printf("%s\n", cmd);
-            }
-
             ret = run_cmd(cmd, STDOUT_FILENO);
 
             if (ret != PPKG_OK) {
@@ -3420,7 +3296,16 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = execute_install_shell_script(installShellScriptFilePath);
+    size_t bashCmdCapacity = uppmPackageInstalledRootDIRLength + installShellScriptFilePathCapacity + 16U;
+    char   bashCmd[bashCmdCapacity];
+
+    ret = snprintf(bashCmd, bashCmdCapacity, "%s/bash/bin/bash %s", uppmPackageInstalledRootDIR, installShellScriptFilePath);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    ret = run_cmd(bashCmd, STDOUT_FILENO);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3580,7 +3465,16 @@ static int ppkg_install_package(
         return ret;
     }
 
-    ret = tree_installed_files(packageInstalledDIR, packageInstalledDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength);
+    size_t treeCmdCapacity = uppmPackageInstalledRootDIRLength + packageInstalledDIRCapacity + 30U;
+    char   treeCmd[treeCmdCapacity];
+
+    ret = snprintf(treeCmd, treeCmdCapacity, "%s/tree/bin/tree -a --dirsfirst %s", uppmPackageInstalledRootDIR, packageInstalledDIR);
+
+    if (ret < 0) {
+        return PPKG_ERROR;
+    }
+
+    ret = run_cmd(treeCmd, STDOUT_FILENO);
 
     if (ret != PPKG_OK) {
         return ret;
