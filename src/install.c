@@ -498,8 +498,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_TEXINFO:
             nativePackage->name = "texinfo";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz";
-            nativePackage->srcSha = "20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz";
+            nativePackage->srcSha = "deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953";
             nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
             nativePackage->buildConfigureArgs = "--with-included-regex --enable-threads=posix --disable-nls";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
@@ -1010,6 +1010,26 @@ static int install_native_package(
         if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
             perror("LDFLAGS");
             return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (nativePackageID == NATIVE_PACKAGE_ID_TEXINFO) {
+        const char * cmd = "gsed -i /libintl/d tp/Texinfo/XS/parsetexi/api.c";
+
+        const size_t cmdLength = strlen(cmd);
+
+        char cmdCopy[cmdLength + 1U];
+
+        strncpy(cmdCopy, cmd, cmdLength);
+
+        cmdCopy[cmdLength] = '\0';
+
+        ret = run_cmd(cmdCopy, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
         }
     }
 
