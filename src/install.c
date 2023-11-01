@@ -622,26 +622,44 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
 static int export_environment_variables_for_build_tools(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
     struct stat st;
 
-    size_t   includeDIRLength = packageInstalledDIRCapacity + 9U;
-    char     includeDIR[includeDIRLength];
-    snprintf(includeDIR, includeDIRLength, "%s/include", packageInstalledDIR);
+    size_t includeDIRLength = packageInstalledDIRCapacity + 9U;
+    char   includeDIR[includeDIRLength];
+
+    int ret = snprintf(includeDIR, includeDIRLength, "%s/include", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(includeDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
         const char * const CPPFLAGS = getenv("CPPFLAGS");
 
         if (CPPFLAGS == NULL || CPPFLAGS[0] == '\0') {
-            size_t   newCPPFLAGSLength = includeDIRLength + 3U;
-            char     newCPPFLAGS[newCPPFLAGSLength];
-            snprintf(newCPPFLAGS, newCPPFLAGSLength, "-I%s", includeDIR);
+            size_t newCPPFLAGSLength = includeDIRLength + 3U;
+            char   newCPPFLAGS[newCPPFLAGSLength];
+
+            ret = snprintf(newCPPFLAGS, newCPPFLAGSLength, "-I%s", includeDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("CPPFLAGS", newCPPFLAGS, 1) != 0) {
                 perror("CPPFLAGS");
                 return PPKG_ERROR;
             }
         } else {
-            size_t   newCPPFLAGSLength = includeDIRLength + strlen(CPPFLAGS) + 4U;
-            char     newCPPFLAGS[newCPPFLAGSLength];
-            snprintf(newCPPFLAGS, newCPPFLAGSLength, "-I%s %s", includeDIR, CPPFLAGS);
+            size_t newCPPFLAGSLength = includeDIRLength + strlen(CPPFLAGS) + 4U;
+            char   newCPPFLAGS[newCPPFLAGSLength];
+
+            ret = snprintf(newCPPFLAGS, newCPPFLAGSLength, "-I%s %s", includeDIR, CPPFLAGS);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("CPPFLAGS", newCPPFLAGS, 1) != 0) {
                 perror("CPPFLAGS");
@@ -652,26 +670,44 @@ static int export_environment_variables_for_build_tools(const char * packageInst
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   libDIRLength = packageInstalledDIRCapacity + 5U;
-    char     libDIR[libDIRLength];
-    snprintf(libDIR, libDIRLength, "%s/lib", packageInstalledDIR);
+    size_t libDIRLength = packageInstalledDIRCapacity + 5U;
+    char   libDIR[libDIRLength];
+
+    ret = snprintf(libDIR, libDIRLength, "%s/lib", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(libDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
         const char * const LDFLAGS = getenv("LDFLAGS");
 
         if (LDFLAGS == NULL || LDFLAGS[0] == '\0') {
-            size_t   newLDFLAGSLength = libDIRLength + 3U;
-            char     newLDFLAGS[newLDFLAGSLength];
-            snprintf(newLDFLAGS, newLDFLAGSLength, "-L%s", libDIR);
+            size_t newLDFLAGSLength = libDIRLength + 3U;
+            char   newLDFLAGS[newLDFLAGSLength];
+
+            ret = snprintf(newLDFLAGS, newLDFLAGSLength, "-L%s", libDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
                 perror("LDFLAGS");
                 return PPKG_ERROR;
             }
         } else {
-            size_t   newLDFLAGSLength = (libDIRLength << 1U) + strlen(LDFLAGS) + 15U;
-            char     newLDFLAGS[newLDFLAGSLength];
-            snprintf(newLDFLAGS, newLDFLAGSLength, "-L%s -Wl,-rpath,%s %s", libDIR, libDIR, LDFLAGS);
+            size_t newLDFLAGSLength = (libDIRLength << 1U) + strlen(LDFLAGS) + 15U;
+            char   newLDFLAGS[newLDFLAGSLength];
+
+            ret = snprintf(newLDFLAGS, newLDFLAGSLength, "%s -L%s -Wl,-rpath,%s", LDFLAGS, libDIR, libDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("LDFLAGS", newLDFLAGS, 1) != 0) {
                 perror("LDFLAGS");
@@ -685,9 +721,15 @@ static int export_environment_variables_for_build_tools(const char * packageInst
     const char * a[2] = { "lib", "share" };
 
     for (int i = 0; i < 2; i++) {
-        size_t   pkgconfigDIRLength = packageInstalledDIRCapacity + 20U;
-        char     pkgconfigDIR[pkgconfigDIRLength];
-        snprintf(pkgconfigDIR, pkgconfigDIRLength, "%s/%s/pkgconfig", packageInstalledDIR, a[i]);
+        size_t pkgconfigDIRLength = packageInstalledDIRCapacity + 20U;
+        char   pkgconfigDIR[pkgconfigDIRLength];
+
+        ret = snprintf(pkgconfigDIR, pkgconfigDIRLength, "%s/%s/pkgconfig", packageInstalledDIR, a[i]);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(pkgconfigDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
             const char * const PKG_CONFIG_PATH = getenv("PKG_CONFIG_PATH");
@@ -698,9 +740,15 @@ static int export_environment_variables_for_build_tools(const char * packageInst
                     return PPKG_ERROR;
                 }
             } else {
-                size_t   newPKG_CONFIG_PATHLength = pkgconfigDIRLength + strlen(PKG_CONFIG_PATH) + 2U;
-                char     newPKG_CONFIG_PATH[newPKG_CONFIG_PATHLength];
-                snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", pkgconfigDIR, PKG_CONFIG_PATH);
+                size_t newPKG_CONFIG_PATHLength = pkgconfigDIRLength + strlen(PKG_CONFIG_PATH) + 2U;
+                char   newPKG_CONFIG_PATH[newPKG_CONFIG_PATHLength];
+
+                ret = snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", pkgconfigDIR, PKG_CONFIG_PATH);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
 
                 if (setenv("PKG_CONFIG_PATH", newPKG_CONFIG_PATH, 1) != 0) {
                     perror("PKG_CONFIG_PATH");
@@ -716,13 +764,25 @@ static int export_environment_variables_for_build_tools(const char * packageInst
 static int export_environment_variables_for_other_tools(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
     struct stat st;
 
-    size_t   binDIRLength = packageInstalledDIRCapacity + 5U;
-    char     binDIR[binDIRLength];
-    snprintf(binDIR, binDIRLength, "%s/bin", packageInstalledDIR);
+    size_t binDIRLength = packageInstalledDIRCapacity + 5U;
+    char   binDIR[binDIRLength];
 
-    size_t   sbinDIRLength = packageInstalledDIRCapacity + 6U;
-    char     sbinDIR[sbinDIRLength];
-    snprintf(sbinDIR, sbinDIRLength, "%s/sbin", packageInstalledDIR);
+    int ret = snprintf(binDIR, binDIRLength, "%s/bin", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t sbinDIRLength = packageInstalledDIRCapacity + 6U;
+    char   sbinDIR[sbinDIRLength];
+
+    ret = snprintf(sbinDIR, sbinDIRLength, "%s/sbin", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     bool  binDIRExists = stat( binDIR, &st) == 0 && S_ISDIR(st.st_mode);
     bool sbinDIRExists = stat(sbinDIR, &st) == 0 && S_ISDIR(st.st_mode);
@@ -735,27 +795,45 @@ static int export_environment_variables_for_other_tools(const char * packageInst
         }
 
         if (binDIRExists && sbinDIRExists) {
-            size_t   newPATHLength = binDIRLength + sbinDIRLength + strlen(PATH) + 3U;
-            char     newPATH[newPATHLength];
-            snprintf(newPATH, newPATHLength, "%s:%s:%s", binDIR, sbinDIR, PATH);
+            size_t newPATHLength = binDIRLength + sbinDIRLength + strlen(PATH) + 3U;
+            char   newPATH[newPATHLength];
+
+            ret = snprintf(newPATH, newPATHLength, "%s:%s:%s", binDIR, sbinDIR, PATH);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("PATH", newPATH, 1) != 0) {
                 perror("PATH");
                 return PPKG_ERROR;
             }
         } else if (binDIRExists) {
-            size_t   newPATHLength = binDIRLength + strlen(PATH) + 2U;
-            char     newPATH[newPATHLength];
-            snprintf(newPATH, newPATHLength, "%s:%s", binDIR, PATH);
+            size_t newPATHLength = binDIRLength + strlen(PATH) + 2U;
+            char   newPATH[newPATHLength];
+
+            ret = snprintf(newPATH, newPATHLength, "%s:%s", binDIR, PATH);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("PATH", newPATH, 1) != 0) {
                 perror("PATH");
                 return PPKG_ERROR;
             }
         } else if (sbinDIRExists) {
-            size_t   newPATHLength = sbinDIRLength + strlen(PATH) + 2U;
-            char     newPATH[newPATHLength];
-            snprintf(newPATH, newPATHLength, "%s:%s", sbinDIR, PATH);
+            size_t newPATHLength = sbinDIRLength + strlen(PATH) + 2U;
+            char   newPATH[newPATHLength];
+
+            ret = snprintf(newPATH, newPATHLength, "%s:%s", sbinDIR, PATH);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("PATH", newPATH, 1) != 0) {
                 perror("PATH");
@@ -764,16 +842,28 @@ static int export_environment_variables_for_other_tools(const char * packageInst
         }
     }
 
-    size_t   shareDIRLength = packageInstalledDIRCapacity + 7U;
-    char     shareDIR[shareDIRLength];
-    snprintf(shareDIR, shareDIRLength, "%s/share", packageInstalledDIR);
+    size_t shareDIRLength = packageInstalledDIRCapacity + 7U;
+    char   shareDIR[shareDIRLength];
+
+    ret = snprintf(shareDIR, shareDIRLength, "%s/share", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////
     // https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
 
-    size_t   aclocalDIRLength = shareDIRLength + 9U;
-    char     aclocalDIR[aclocalDIRLength];
-    snprintf(aclocalDIR, aclocalDIRLength, "%s/aclocal", shareDIR);
+    size_t aclocalDIRLength = shareDIRLength + 9U;
+    char   aclocalDIR[aclocalDIRLength];
+
+    ret = snprintf(aclocalDIR, aclocalDIRLength, "%s/aclocal", shareDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(aclocalDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
         const char * const ACLOCAL_PATH = getenv("ACLOCAL_PATH");
@@ -784,9 +874,15 @@ static int export_environment_variables_for_other_tools(const char * packageInst
                 return PPKG_ERROR;
             }
         } else {
-            size_t   newACLOCAL_PATHLength = aclocalDIRLength + strlen(ACLOCAL_PATH) + 2U;
-            char     newACLOCAL_PATH[newACLOCAL_PATHLength];
-            snprintf(newACLOCAL_PATH, newACLOCAL_PATHLength, "%s:%s", aclocalDIR, ACLOCAL_PATH);
+            size_t newACLOCAL_PATHLength = aclocalDIRLength + strlen(ACLOCAL_PATH) + 2U;
+            char   newACLOCAL_PATH[newACLOCAL_PATHLength];
+
+            ret = snprintf(newACLOCAL_PATH, newACLOCAL_PATHLength, "%s:%s", aclocalDIR, ACLOCAL_PATH);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("ACLOCAL_PATH", newACLOCAL_PATH, 1) != 0) {
                 perror("ACLOCAL_PATH");
@@ -800,13 +896,25 @@ static int export_environment_variables_for_other_tools(const char * packageInst
     // https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
     // https://help.gnome.org/admin//system-admin-guide/2.32/mimetypes-database.html.en
 
-    size_t   girSearchDIRLength = shareDIRLength + 9U;
-    char     girSearchDIR[girSearchDIRLength];
-    snprintf(girSearchDIR, girSearchDIRLength, "%s/gir-1.0", shareDIR);
+    size_t girSearchDIRLength = shareDIRLength + 9U;
+    char   girSearchDIR[girSearchDIRLength];
 
-    size_t   mimeSearchDIRLength = shareDIRLength + 6U;
-    char     mimeSearchDIR[mimeSearchDIRLength];
-    snprintf(mimeSearchDIR, mimeSearchDIRLength, "%s/mime", shareDIR);
+    ret = snprintf(girSearchDIR, girSearchDIRLength, "%s/gir-1.0", shareDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t mimeSearchDIRLength = shareDIRLength + 6U;
+    char   mimeSearchDIR[mimeSearchDIRLength];
+
+    ret = snprintf(mimeSearchDIR, mimeSearchDIRLength, "%s/mime", shareDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if ((stat(girSearchDIR, &st) == 0 && S_ISDIR(st.st_mode)) || (stat(mimeSearchDIR, &st) == 0 && S_ISDIR(st.st_mode))) {
         const char * const XDG_DATA_DIRS = getenv("XDG_DATA_DIRS");
@@ -817,9 +925,15 @@ static int export_environment_variables_for_other_tools(const char * packageInst
                 return PPKG_ERROR;
             }
         } else {
-            size_t   newXDG_DATA_DIRSLength = shareDIRLength + strlen(XDG_DATA_DIRS) + 2U;
-            char     newXDG_DATA_DIRS[newXDG_DATA_DIRSLength];
-            snprintf(newXDG_DATA_DIRS, newXDG_DATA_DIRSLength, "%s:%s", shareDIR, XDG_DATA_DIRS);
+            size_t newXDG_DATA_DIRSLength = shareDIRLength + strlen(XDG_DATA_DIRS) + 2U;
+            char   newXDG_DATA_DIRS[newXDG_DATA_DIRSLength];
+
+            ret = snprintf(newXDG_DATA_DIRS, newXDG_DATA_DIRSLength, "%s:%s", shareDIR, XDG_DATA_DIRS);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (setenv("XDG_DATA_DIRS", newXDG_DATA_DIRS, 1) != 0) {
                 perror("XDG_DATA_DIRS");
@@ -1442,20 +1556,24 @@ static int install_dependent_packages_via_uppm(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
-    char   uppmUpdateCmd[uppmUpdateCmdLength];
+    int ret;
 
-    int ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
+    if (false) {
+        size_t uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
+        char   uppmUpdateCmd[uppmUpdateCmdLength];
 
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
+        ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
 
-    ret = run_cmd(uppmUpdateCmd, STDOUT_FILENO);
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
-    if (ret != PPKG_OK) {
-        return ret;
+        ret = run_cmd(uppmUpdateCmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
 
     size_t uppmInstallCmdLength = ppkgCoreBinDIRLength + uppmPackageNamesLength + 15U;
