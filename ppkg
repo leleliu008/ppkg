@@ -3482,11 +3482,11 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         texinfo)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
             NATIVE_PACKAGE_DEPENDENCIES='perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix --disable-nls'
             ;;
         help2man)
             NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
@@ -3707,6 +3707,8 @@ EOF
 
     if   [ "$1" = 'zlib' ] ; then
         sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+    elif [ "$1" = 'texinfo' ] ; then
+        sed_in_place '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
     elif [ "$1" = 'python3' ] ; then
         unset PYTHONHOME
         unset PYTHONPATH
@@ -7374,7 +7376,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.2.5
+    PPKG_VERSION=0.2.6
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
