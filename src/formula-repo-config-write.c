@@ -23,7 +23,7 @@ int ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char *
         timestamp_updated = "";
     }
 
-    size_t strCapacity = strlen(formulaRepoUrl) + strlen(branchName) + strlen(timestamp_created) + strlen(timestamp_updated) + 76U;
+    size_t strCapacity = strlen(formulaRepoUrl) + strlen(branchName) + strlen(timestamp_created) + strlen(timestamp_updated) + 78U;
     char   str[strCapacity];
 
     int ret = snprintf(str, strCapacity, "url: %s\nbranch: %s\npinned: %1d\nenabled: %1d\ntimestamp-created: %s\ntimestamp-updated: %s\n", formulaRepoUrl, branchName, pinned, enabled, timestamp_created, timestamp_updated);
