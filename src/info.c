@@ -1047,7 +1047,7 @@ int ppkg_info(const char * packageName, const char * key) {
     } else if (strcmp(key, "receipt-json") == 0) {
         PPKGReceipt * receipt = NULL;
 
-        int ret = ppkg_receipt_parse(packageName, &receipt);
+        ret = ppkg_receipt_parse(packageName, &receipt);
 
         if (ret != PPKG_OK) {
             return ret;

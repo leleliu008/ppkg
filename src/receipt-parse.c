@@ -554,9 +554,7 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, packageName);
-
-    if (ret < 0) {
+    if (snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, packageName) < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
@@ -641,7 +639,7 @@ finalize:
 
     fclose(file);
 
-    //ppkg_receipt_dump(receipt);
+    // ppkg_receipt_dump(receipt);
 
     if (ret == PPKG_OK) {
         ret = ppkg_receipt_check(receipt, receiptFilePath);
