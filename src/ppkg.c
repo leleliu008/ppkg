@@ -299,14 +299,14 @@ int ppkg_main(int argc, char* argv[]) {
                 options.buildType = PPKGBuildType_debug;
             } else if (strcmp(argv[i], "--build-type=release") == 0) {
                 options.buildType = PPKGBuildType_release;
-            } else if (strcmp(argv[i], "--link-type=static-only") == 0) {
-                options.linkType = PPKGLinkType_static_only;
-            } else if (strcmp(argv[i], "--link-type=shared-only") == 0) {
-                options.linkType = PPKGLinkType_shared_only;
-            } else if (strcmp(argv[i], "--link-type=static-prefered") == 0) {
-                options.linkType = PPKGLinkType_static_prefered;
-            } else if (strcmp(argv[i], "--link-type=shared-prefered") == 0) {
-                options.linkType = PPKGLinkType_shared_prefered;
+            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
+                options.linkType = PPKGLinkType_static_full;
+            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
+                options.linkType = PPKGLinkType_shared_full;
+            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
+                options.linkType = PPKGLinkType_static_most;
+            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
+                options.linkType = PPKGLinkType_shared_most;
             } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
                 char * jobsStr = &argv[i][7];
 

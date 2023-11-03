@@ -1719,10 +1719,10 @@ static int generate_install_shell_script_file(
     const char * linkType;
 
     switch (installOptions.linkType) {
-        case PPKGLinkType_static_only:     linkType = "static-only";     break;
-        case PPKGLinkType_shared_only:     linkType = "shared-only";     break;
-        case PPKGLinkType_static_prefered: linkType = "static-prefered"; break;
-        case PPKGLinkType_shared_prefered: linkType = "shared-prefered"; break;
+        case PPKGLinkType_static_full: linkType = (formula->sfslink) ? "static-full" : "static-most"; break;
+        case PPKGLinkType_static_most: linkType = "static-most"; break;
+        case PPKGLinkType_shared_full: linkType = "shared-full"; break;
+        case PPKGLinkType_shared_most: linkType = "shared-most"; break;
     }
 
     const char * sharedLibrarySuffix;
@@ -3141,10 +3141,22 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    bool flag = false;
+
+    if (installOptions.linkType == PPKGLinkType_static_full) {
+        if (formula->sfslink) {
+            flag = true;
+        } else {
+            fprintf(stderr, "user request to create fully statically linked executable, but package '%s' DO NOT support it, so we will downgrade to mostly statically linked executable.\n", packageName);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     size_t ldflagsCapacity = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 40U;
     char   ldflags[ldflagsCapacity];
 
-    ret = snprintf(ldflags, ldflagsCapacity, "%s %s -L%s -Wl,-rpath,%s/%s/lib", toolchain.ldflags, (installOptions.linkType == PPKGLinkType_static_only) ? "-static --static" : "", packageWorkingLibDIR, packageInstalledRootDIR, packageName);
+    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib", flag ? "--static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
 
     if (ret < 0) {
         perror(NULL);
@@ -3160,7 +3172,7 @@ static int ppkg_install_package(
 
     const char * libSuffix;
 
-    if (installOptions.linkType == PPKGLinkType_static_only || installOptions.linkType == PPKGLinkType_static_prefered) {
+    if (installOptions.linkType == PPKGLinkType_static_full || installOptions.linkType == PPKGLinkType_static_most) {
         libSuffix = ".a";
     } else {
 #if defined (__APPLE__)
@@ -4546,9 +4558,9 @@ int ppkg_toolchain_setup(
 
 int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 #if defined (__APPLE__)
-    if (installOptions.linkType == PPKGLinkType_static_only) {
-        fprintf(stderr, "--link-type=static-only option is not supported on macOS, because there is no static standard C library on macOS. We will use --link-type=static-prefer instead.\n");
-        installOptions.linkType = PPKGLinkType_static_prefered;
+    if (installOptions.linkType == PPKGLinkType_static_full) {
+        fprintf(stderr, "--link-type=static-full option is not supported on macOS, because there is no static standard C library on macOS. We will use --link-type=static-most instead.\n");
+        installOptions.linkType = PPKGLinkType_static_most;
     }
 #endif
 

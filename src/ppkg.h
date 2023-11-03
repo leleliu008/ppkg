@@ -139,6 +139,8 @@ typedef struct {
 
     bool   symlink;
 
+    bool   sfslink;
+
     char * ppflags;
     char * ccflags;
     char * xxflags;
@@ -365,10 +367,10 @@ typedef enum {
 } PPKGBuildType;
 
 typedef enum {
-    PPKGLinkType_shared_prefered,
-    PPKGLinkType_shared_only,
-    PPKGLinkType_static_only,
-    PPKGLinkType_static_prefered
+    PPKGLinkType_shared_most,
+    PPKGLinkType_shared_full,
+    PPKGLinkType_static_most,
+    PPKGLinkType_static_full
 } PPKGLinkType;
 
 typedef struct {

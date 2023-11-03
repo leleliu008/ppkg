@@ -479,10 +479,8 @@ gow() {
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
-    if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        if [ "$LINK_TYPE" = static-only ] && [ "$CGO_ENABLED" -eq 1 ] ; then
-            GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
-        fi
+    if [ "$LINK_TYPE" = static-full ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
@@ -513,13 +511,11 @@ gow() {
 # {{{ cargow
 
 cargow() {
-    if [ "$LINK_TYPE" = 'static-only' ] ; then
-        if [ "$NATIVE_OS_KIND" != darwin ] ; then
-            if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-                # There is no libgcc_s.a on glibc-based GNU/Linux
-                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
-                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
-            fi
+    if [ "$LINK_TYPE" = 'static-full' ] ; then
+        if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+            # There is no libgcc_s.a on glibc-based GNU/Linux
+            printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
         fi
     fi
 
@@ -820,17 +816,17 @@ cmakew() {
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
         esac
     else
         case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
         esac
     fi
 
@@ -996,7 +992,7 @@ EOF
     esac
 
     case $LINK_TYPE in
-        static-only|static-prefered) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+        static-full|static-most) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     esac
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"

@@ -16,6 +16,7 @@
     size_t len = strlen(str) + 1U; \
     int ret = snprintf(&strbuf[strbufLength], len + 1U, " %s", str); \
     if (ret < 0) { \
+        perror(NULL); \
         return PPKG_ERROR; \
     } \
     if ((size_t)ret == len) { \
@@ -63,6 +64,8 @@ typedef enum {
     FORMULA_KEY_CODE_dopatch,
     FORMULA_KEY_CODE_install,
     FORMULA_KEY_CODE_symlink,
+
+    FORMULA_KEY_CODE_sfslink,
 
     FORMULA_KEY_CODE_ppflags,
     FORMULA_KEY_CODE_ccflags,
@@ -113,6 +116,8 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("dopatch: %s\n", formula->dopatch);
     printf("install: %s\n", formula->install);
     printf("symlink: %d\n", formula->symlink);
+
+    printf("sfslink: %d\n", formula->sfslink);
 
     printf("path:    %s\n", formula->path);
 
@@ -347,6 +352,8 @@ static PPKGFormulaKeyCode ppkg_formula_key_code_from_key_name(char * key) {
         return FORMULA_KEY_CODE_install;
     } else if (strcmp(key, "symlink") == 0) {
         return FORMULA_KEY_CODE_symlink;
+    } else if (strcmp(key, "sfslink") == 0) {
+        return FORMULA_KEY_CODE_sfslink;
     } else if (strcmp(key, "bsystem") == 0) {
         return FORMULA_KEY_CODE_bsystem;
     } else if (strcmp(key, "bscript") == 0) {
@@ -436,6 +443,15 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
                 formula->symlink = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->symlink = false;
+            } else {
+                //TODO
+            }
+            break;
+        case FORMULA_KEY_CODE_sfslink:
+            if (strcmp(value, "yes") == 0) {
+                formula->sfslink = true;
+            } else if (strcmp(value, "no") == 0) {
+                formula->sfslink = false;
             } else {
                 //TODO
             }
@@ -1182,6 +1198,7 @@ int ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out) {
 
                         formula->git_nth = 1U;
                         formula->symlink = true;
+                        formula->sfslink = true;
                         formula->binbstd = false;
                         formula->parallel = true;
                     }
