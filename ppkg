@@ -4627,7 +4627,8 @@ $DOT_CONTENT
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
 
     if [ "$LINK_TYPE" = 'static-full' ] ; then
-        LDFLAGS="-static --static $LDFLAGS"
+        # using --static rather than -static, because it will be filtered out by libtool.
+        LDFLAGS="--static $LDFLAGS"
     fi
 
     export   CFLAGS="$CCFLAGS"
