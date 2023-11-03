@@ -4627,8 +4627,10 @@ $DOT_CONTENT
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
 
     if [ "$LINK_TYPE" = 'static-full' ] ; then
-        # using --static rather than -static, because it will be filtered out by libtool.
-        LDFLAGS="--static $LDFLAGS"
+        # both --static and -static flag should be given.
+        #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
+        # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
+        LDFLAGS="--static -static $LDFLAGS"
     fi
 
     export   CFLAGS="$CCFLAGS"
@@ -7381,7 +7383,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.1
+    PPKG_VERSION=0.3.2
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
