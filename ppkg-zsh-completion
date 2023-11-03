@@ -184,7 +184,7 @@ function _ppkg() {
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
@@ -201,7 +201,7 @@ function _ppkg() {
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
@@ -217,7 +217,7 @@ function _ppkg() {
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \

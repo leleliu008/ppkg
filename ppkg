@@ -987,6 +987,9 @@ filetype_from_url() {
 
     unset PACKAGE_SYMLINK
 
+    # whether to support to create fully statically linked executables
+    unset PACKAGE_SFSLINK
+
     #########################################################################################
 
     if [ -z "$2" ] ; then
@@ -3114,7 +3117,7 @@ __inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=shared-prefered
+    LINK_TYPE=shared-most
 
     INSTALL_LIB=yes
 
@@ -3181,13 +3184,13 @@ __inspect_install_arguments() {
                 LINK_TYPE="${1#*=}"
 
                 case $LINK_TYPE in
-                    static-only|shared-only|static-prefered|shared-prefered) ;;
+                    static-full|shared-full|static-most|shared-most) ;;
                     '') abort 1 "--link-type=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-prefered|shared-prefered"
+                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-full|shared-full|static-most|shared-most"
                 esac
 
-                if [ "$LINK_TYPE" = 'static-only' ] && [ "$NATIVE_OS_KIND" = darwin ] ; then
-                    die "macOS does not support static link, please use static-prefered instead."
+                if [ "$LINK_TYPE" = 'static-full' ] && [ "$NATIVE_OS_KIND" = darwin ] ; then
+                    die "macOS does not support fully static linking, please use static-most instead."
                 fi
                 ;;
             --jobs=*)
@@ -3814,7 +3817,6 @@ PPKG                = $PPKG
 PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
 
           LOG_LEVEL = $LOG_LEVEL
-          LINK_TYPE = $LINK_TYPE
          BUILD_TYPE = $BUILD_TYPE
 
              DRYRUN = $DRYRUN
@@ -4030,12 +4032,18 @@ EOF
 
     #########################################################################################
 
+    if [ "$LINK_TYPE" = 'static-full' ] && [ "$PACKAGE_SFSLINK" = no ] ; then
+        LINK_TYPE='static-most'
+        note "user request to create fully statically linked executable, but package '$PACKAGE_NAME' DO NOT support it, so we will downgrade to mostly statically linked executable."
+    fi
+
     if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
         BUILD_NJOBS=1
     fi
 
     printf '%s\n' "
         BUILD_NJOBS = $BUILD_NJOBS
+          LINK_TYPE = $LINK_TYPE
     "
 
     #########################################################################################
@@ -4519,10 +4527,10 @@ $DOT_CONTENT
         unset libFileNameSuffix
 
         case $LINK_TYPE in
-            static-only|static-prefered)
+            static-full|static-most)
                 libFileNameSuffix='.a'
                 ;;
-            shared-only|shared-prefered)
+            shared-full|shared-most)
                 if [ "$NATIVE_OS_KIND" = darwin ] ; then
                     libFileNameSuffix='.dylib'
                 else
@@ -4591,28 +4599,16 @@ $DOT_CONTENT
     PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
     LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
 
-    CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-
-    if [ "$NATIVE_OS_KIND" != 'darwin' ] ; then
-        if [ "$LINK_TYPE" = static-only ] ; then
-            LDFLAGS="-static --static $LDFLAGS"
-        fi
-    fi
-
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
 
         DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
-        DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
         DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
 
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
-        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_BINARY__DIR='$DEPENDENT_PACKAGE_BINARY__DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INCLUDE_DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_LIBRARY_DIR'"
 
@@ -4627,6 +4623,10 @@ $DOT_CONTENT
 
     PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+
+    if [ "$LINK_TYPE" = 'static-full' ] ; then
+        LDFLAGS="-static --static $LDFLAGS"
+    fi
 
     export   CFLAGS="$CCFLAGS"
     export CXXFLAGS="$XXFLAGS"
@@ -4868,17 +4868,17 @@ $DOT_CONTENT
 
         if [ "$NATIVE_OS_KIND" = darwin ] ; then
             case $LINK_TYPE in
-                static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-                static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-                shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
-                shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
             esac
         else
             case $LINK_TYPE in
-                static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-                static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-                shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-                shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+                static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+                shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
             esac
         fi
 
@@ -4944,12 +4944,10 @@ $DOT_CONTENT
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
 
-        if [ "$LINK_TYPE" = 'static-only' ] ; then
-            if [ "$NATIVE_OS_KIND" != darwin ] ; then
-                if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-                    printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
-                fi
+        if [ "$LINK_TYPE" = 'static-full' ] ; then
+            if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
+                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
             fi
         fi
 
@@ -6188,10 +6186,8 @@ gow() {
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
-    if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        if [ "$LINK_TYPE" = static-only ] && [ "$CGO_ENABLED" -eq 1 ] ; then
-            GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
-        fi
+    if [ "$LINK_TYPE" = 'static-full' ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
@@ -6584,7 +6580,7 @@ EOF
     esac
 
     case $LINK_TYPE in
-        static-only|static-prefered) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+        static-full|static-most) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     esac
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
@@ -7307,10 +7303,16 @@ ${COLOR_GREEN}ppkg install <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
             very verbose mode. many many messages will be output to terminal.
 
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
-            set build type.
+            specify build type.
 
-        ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
-            link static or shared library.
+        ${COLOR_BLUE}--link-type=<static-full|static-most|shared-full|shared-most>${COLOR_OFF}
+            specify the link strategy.
+
+            a fully  statically linked executable is a executable that without any additional library dependencies even the standard C library.
+            a mostly statically linked executable is a executable that without any additional library dependencies except the standard C library.
+
+            a fully  statically linked executable is easy to distribute and deploy especially on different GNU/Linux systems.
+            a mostly statically linked executable is easy to distribute and deploy especially on macOS.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.
@@ -7376,7 +7378,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.2.6
+    PPKG_VERSION=0.2.7
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
