@@ -29,9 +29,17 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t   defaultUppmHomeDIRLength = strlen(userHomeDIR) + 6U;
-        char     defaultUppmHomeDIR[defaultUppmHomeDIRLength + 1U];
-        snprintf(defaultUppmHomeDIR, defaultUppmHomeDIRLength + 1U, "%s/.ppkg", userHomeDIR);
+        size_t defaultUppmHomeDIRCapacity = strlen(userHomeDIR) + 7U;
+        char   defaultUppmHomeDIR[defaultUppmHomeDIRCapacity];
+
+        int ret = snprintf(defaultUppmHomeDIR, defaultUppmHomeDIRCapacity, "%s/.ppkg", userHomeDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        size_t defaultUppmHomeDIRLength = ret;
 
         struct stat st;
 

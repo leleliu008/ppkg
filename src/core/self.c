@@ -114,17 +114,21 @@ char* self_realpath() {
         char    PATH2[PATH2Length];
         strncpy(PATH2, PATH, PATH2Length);
 
+        struct stat st;
+
+        char buf[PATH_MAX];
+
         size_t commandNameLength = strlen(argv[0]);
 
         char * PATHItem = strtok(PATH2, ":");
 
-        struct stat st;
-
         while (PATHItem != NULL) {
             if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-                size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
-                char     fullPath[fullPathLength];
-                snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, argv[0]);
+                ret = snprintf(fullPath, PATH_MAX, "%s/%s", PATHItem, argv[0]);
+
+                if (ret < 0) {
+                    return -1;
+                }
 
                 if (access(fullPath, X_OK) == 0) {
                     char * p = strdup(fullPath);

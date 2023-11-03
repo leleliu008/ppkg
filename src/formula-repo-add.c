@@ -49,9 +49,15 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     struct stat st;
 
-    size_t   formulaRepoDIRLength = ppkgHomeDIRLength + strlen(formulaRepoName) + 10U;
-    char     formulaRepoDIR[formulaRepoDIRLength];
-    snprintf(formulaRepoDIR, formulaRepoDIRLength, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
+    size_t formulaRepoDIRCapacity = ppkgHomeDIRLength + strlen(formulaRepoName) + 10U;
+    char   formulaRepoDIR[formulaRepoDIRCapacity];
+
+    ret = snprintf(formulaRepoDIR, formulaRepoDIRCapacity, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(formulaRepoDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -65,9 +71,15 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -94,9 +106,15 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRLength];
-    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -134,13 +152,25 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     size_t branchNameLength = strlen(branchName);
 
-    size_t   remoteRefPathLength = branchNameLength + 12U;
-    char     remoteRefPath[remoteRefPathLength];
-    snprintf(remoteRefPath, remoteRefPathLength, "refs/heads/%s", branchName);
+    size_t remoteRefPathLength = branchNameLength + 12U;
+    char   remoteRefPath[remoteRefPathLength];
 
-    size_t   remoteTrackingRefPathLength = branchNameLength + 21U;
-    char     remoteTrackingRefPath[remoteTrackingRefPathLength];
-    snprintf(remoteTrackingRefPath, remoteTrackingRefPathLength, "refs/remotes/origin/%s", branchName);
+    ret = snprintf(remoteRefPath, remoteRefPathLength, "refs/heads/%s", branchName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t remoteTrackingRefPathLength = branchNameLength + 21U;
+    char   remoteTrackingRefPath[remoteTrackingRefPathLength];
+
+    ret = snprintf(remoteTrackingRefPath, remoteTrackingRefPathLength, "refs/remotes/origin/%s", branchName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ret = ppkg_git_sync(sessionDIR, formulaRepoUrl, remoteRefPath, remoteTrackingRefPath, branchName);
 
@@ -151,7 +181,13 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
     ////////////////////////////////////////////////////////////////////////////////////////
 
     char ts[11];
-    snprintf(ts, 11, "%ld", time(NULL));
+
+    ret = snprintf(ts, 11, "%ld", time(NULL));
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ret = ppkg_formula_repo_config_write(sessionDIR, formulaRepoUrl, branchName, pinned, enabled, ts, NULL);
 
@@ -161,9 +197,15 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   formulaRepoRootDIRLength = ppkgHomeDIRLength + 9U;
-    char     formulaRepoRootDIR[formulaRepoRootDIRLength];
-    snprintf(formulaRepoRootDIR, formulaRepoRootDIRLength, "%s/repos.d", ppkgHomeDIR);
+    size_t formulaRepoRootDIRLength = ppkgHomeDIRLength + 9U;
+    char   formulaRepoRootDIR[formulaRepoRootDIRLength];
+
+    ret = snprintf(formulaRepoRootDIR, formulaRepoRootDIRLength, "%s/repos.d", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(formulaRepoRootDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {

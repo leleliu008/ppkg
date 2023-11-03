@@ -554,7 +554,12 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, packageName);
+    ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     FILE * file = fopen(receiptFilePath, "r");
 

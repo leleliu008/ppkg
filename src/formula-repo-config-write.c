@@ -23,15 +23,29 @@ int ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char *
         timestamp_updated = "";
     }
 
-    size_t   strLength = strlen(formulaRepoUrl) + strlen(branchName) + strlen(timestamp_created) + strlen(timestamp_updated) + 75U;
-    char     str[strLength + 1U];
-    snprintf(str, strLength + 1U, "url: %s\nbranch: %s\npinned: %1d\nenabled: %1d\ntimestamp-created: %s\ntimestamp-updated: %s\n", formulaRepoUrl, branchName, pinned, enabled, timestamp_created, timestamp_updated);
+    size_t strCapacity = strlen(formulaRepoUrl) + strlen(branchName) + strlen(timestamp_created) + strlen(timestamp_updated) + 76U;
+    char   str[strCapacity];
+
+    int ret = snprintf(str, strCapacity, "url: %s\nbranch: %s\npinned: %1d\nenabled: %1d\ntimestamp-created: %s\ntimestamp-updated: %s\n", formulaRepoUrl, branchName, pinned, enabled, timestamp_created, timestamp_updated);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    int strLength = ret;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   formulaRepoConfigFilePathLength = strlen(formulaRepoDIRPath) + 24U;
-    char     formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
-    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoDIRPath);
+    size_t formulaRepoConfigFilePathCapacity = strlen(formulaRepoDIRPath) + 24U;
+    char   formulaRepoConfigFilePath[formulaRepoConfigFilePathCapacity];
+
+    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s/.ppkg-formula-repo.yml", formulaRepoDIRPath);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     int fd = open(formulaRepoConfigFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
 
@@ -50,7 +64,7 @@ int ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char *
 
     close(fd);
 
-    if ((size_t)writeSize == strLength) {
+    if (writeSize == strLength) {
         return PPKG_OK;
     } else {
         fprintf(stderr, "not fully written to %s\n", formulaRepoConfigFilePath);

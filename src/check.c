@@ -58,14 +58,21 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName) {
     struct stat st;
 
     for (size_t i = 0; i < formulaRepoList->size; i++) {
-        char *   formulaRepoPath = formulaRepoList->repos[i]->path;
+        char * formulaRepoPath = formulaRepoList->repos[i]->path;
 
         const char* a[2] = { osType, ""};
 
         for (int j = 0; j < 2; j++) {
-            size_t   formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + strlen(packageName) + 15U;
-            char     formulaFilePath[formulaFilePathLength];
-            snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+            size_t formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + strlen(packageName) + 15U;
+            char   formulaFilePath[formulaFilePathLength];
+
+            ret = snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+
+            if (ret < 0) {
+                perror(NULL);
+                ppkg_formula_repo_list_free(formulaRepoList);
+                return PPKG_ERROR;
+            }
 
             if (lstat(formulaFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
                 ppkg_formula_repo_list_free(formulaRepoList);
@@ -96,9 +103,15 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName) {
 
     struct stat st;
 
-    size_t   packageInstalledDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-    char     packageInstalledDIR[packageInstalledDIRLength];
-    snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    char   packageInstalledDIR[packageInstalledDIRCapacity];
+
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(packageInstalledDIR, &st) == 0) {
         if (!S_ISLNK(st.st_mode)) {
@@ -108,9 +121,15 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName) {
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    size_t   receiptFilePathLength = packageInstalledDIRLength + 19U;
-    char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+    size_t receiptFilePathCapacity = packageInstalledDIRCapacity + 19U;
+    char   receiptFilePath[receiptFilePathCapacity];
+
+    ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(receiptFilePath, &st) == 0) {
         if (S_ISREG(st.st_mode)) {

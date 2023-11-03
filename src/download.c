@@ -47,9 +47,15 @@ int ppkg_download(const char * url, const char * expectedSHA256SUM, const char *
 
     //////////////////////////////////////////////////////////////////////////
 
-    size_t   defaultDownloadDIRLength = ppkgHomeDIRLength + 11U;
-    char     defaultDownloadDIR[defaultDownloadDIRLength];
-    snprintf(defaultDownloadDIR, defaultDownloadDIRLength, "%s/downloads", ppkgHomeDIR);
+    size_t defaultDownloadDIRLength = ppkgHomeDIRLength + 11U;
+    char   defaultDownloadDIR[defaultDownloadDIRLength];
+
+    ret = snprintf(defaultDownloadDIR, defaultDownloadDIRLength, "%s/downloads", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (downloadDIR == NULL) {
         downloadDIR = defaultDownloadDIR;
@@ -94,13 +100,25 @@ int ppkg_download(const char * url, const char * expectedSHA256SUM, const char *
 
     //////////////////////////////////////////////////////////////////////////
 
-    size_t   fileNameLength = strlen(fileNameExtension) + 65U;
-    char     fileName[fileNameLength];
-    snprintf(fileName, fileNameLength, "%s%s", expectedSHA256SUM, fileNameExtension);
+    size_t fileNameLength = strlen(fileNameExtension) + 65U;
+    char   fileName[fileNameLength];
 
-    size_t   filePathLength = downloadDIRLength + fileNameLength + 1U;
-    char     filePath[filePathLength];
-    snprintf(filePath, filePathLength, "%s/%s", downloadDIR, fileName);
+    ret = snprintf(fileName, fileNameLength, "%s%s", expectedSHA256SUM, fileNameExtension);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t filePathLength = downloadDIRLength + fileNameLength + 1U;
+    char   filePath[filePathLength];
+
+    ret = snprintf(filePath, filePathLength, "%s/%s", downloadDIR, fileName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -121,9 +139,15 @@ int ppkg_download(const char * url, const char * expectedSHA256SUM, const char *
     }
 
     if (needFetch) {
-        size_t   tmpStrLength = strlen(url) + 30U;
-        char     tmpStr[tmpStrLength];
-        snprintf(tmpStr, tmpStrLength, "%s|%ld|%d", url, time(NULL), getpid());
+        size_t tmpStrLength = strlen(url) + 30U;
+        char   tmpStr[tmpStrLength];
+
+        ret = snprintf(tmpStr, tmpStrLength, "%s|%ld|%d", url, time(NULL), getpid());
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         char tmpFileName[65] = {0};
 
@@ -133,9 +157,15 @@ int ppkg_download(const char * url, const char * expectedSHA256SUM, const char *
             return PPKG_ERROR;
         }
 
-        size_t   tmpFilePathLength = downloadDIRLength + 65U;
-        char     tmpFilePath[tmpFilePathLength];
-        snprintf(tmpFilePath, tmpFilePathLength, "%s/%s", downloadDIR, tmpFileName);
+        size_t tmpFilePathLength = downloadDIRLength + 65U;
+        char   tmpFilePath[tmpFilePathLength];
+
+        ret = snprintf(tmpFilePath, tmpFilePathLength, "%s/%s", downloadDIR, tmpFileName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         ret = ppkg_http_fetch_to_file(url, tmpFilePath, verbose, verbose);
 

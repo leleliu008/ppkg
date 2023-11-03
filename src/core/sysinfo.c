@@ -483,17 +483,27 @@ int sysinfo_libc() {
             }
         }
 
-        size_t   muslDynamicLoaderPathLength = osArchLength + 19U;
-        char     muslDynamicLoaderPath[muslDynamicLoaderPathLength];
-        snprintf(muslDynamicLoaderPath, muslDynamicLoaderPathLength, "/lib/ld-musl-%s.so.1", uts.machine);
+        size_t muslDynamicLoaderPathCapacity = osArchLength + 19U;
+        char   muslDynamicLoaderPath[muslDynamicLoaderPathCapacity];
+
+        int ret = snprintf(muslDynamicLoaderPath, muslDynamicLoaderPathCapacity, "/lib/ld-musl-%s.so.1", uts.machine);
+
+        if (ret < 0) {
+            return -1;
+        }
 
         if ((stat(muslDynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
             return 2;
         }
 
-        size_t   dynamicLoaderPathLength = osArchLength + 22U;
-        char     dynamicLoaderPath[dynamicLoaderPathLength];
-        snprintf(dynamicLoaderPath, dynamicLoaderPathLength, "/lib64/ld-linux-%s.so.2", uts.machine);
+        size_t dynamicLoaderPathCapacity = osArchLength + 22U;
+        char   dynamicLoaderPath[dynamicLoaderPathCapacity];
+
+        ret = snprintf(dynamicLoaderPath, dynamicLoaderPathCapacity, "/lib64/ld-linux-%s.so.2", uts.machine);
+
+        if (ret < 0) {
+            return -1;
+        }
 
         if ((stat(dynamicLoaderPath, &sb) == 0) && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) {
             return 1;

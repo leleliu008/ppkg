@@ -91,9 +91,15 @@ int ppkg_rm_r(const char * dirPath, bool verbose) {
             continue;
         }
 
-        size_t   filePathLength = dirPathLength + strlen(dir_entry->d_name) + 2U;
-        char     filePath[filePathLength];
-        snprintf(filePath, filePathLength, "%s/%s", dirPath, dir_entry->d_name);
+        size_t filePathCapacity = dirPathLength + strlen(dir_entry->d_name) + 2U;
+        char   filePath[filePathCapacity];
+
+        int ret = snprintf(filePath, filePathCapacity, "%s/%s", dirPath, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (lstat(filePath, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {

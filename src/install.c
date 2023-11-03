@@ -3156,7 +3156,11 @@ static int ppkg_install_package(
     size_t ldflagsCapacity = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 40U;
     char   ldflags[ldflagsCapacity];
 
-    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib", flag ? "--static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
+    // both --static and -static flag should be given.
+    //  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
+    // --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
+
+    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib", flag ? "--static -static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
 
     if (ret < 0) {
         perror(NULL);

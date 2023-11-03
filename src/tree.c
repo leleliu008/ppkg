@@ -22,9 +22,15 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         return ret;
     }
 
-    size_t   packageInstalledDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-    char     packageInstalledDIR[packageInstalledDIRLength];
-    snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    char   packageInstalledDIR[packageInstalledDIRCapacity];
+
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -32,9 +38,15 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    size_t   receiptFilePathLength = packageInstalledDIRLength + 20U;
-    char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+    size_t receiptFilePathLength = packageInstalledDIRCapacity + 20U;
+    char   receiptFilePath[receiptFilePathLength];
+
+    ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
         return PPKG_ERROR_PACKAGE_IS_BROKEN;
@@ -42,8 +54,7 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   treeCommandPath[PATH_MAX];
-    size_t treeCommandPathLength;
+    char treeCommandPath[PATH_MAX];
 
     const char * const uppmHomeDIR = getenv("UPPM_HOME");
 
@@ -58,12 +69,13 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        treeCommandPathLength = snprintf(treeCommandPath, PATH_MAX, "%s/.uppm/installed/tree/bin/tree", userHomeDIR);
+        ret = snprintf(treeCommandPath, PATH_MAX, "%s/.uppm/installed/tree/bin/tree", userHomeDIR);
     } else {
-        treeCommandPathLength = snprintf(treeCommandPath, PATH_MAX, "%s/installed/tree/bin/tree", uppmHomeDIR);
+        ret = snprintf(treeCommandPath, PATH_MAX, "%s/installed/tree/bin/tree", uppmHomeDIR);
     }
 
-    if (treeCommandPathLength < 0) {
+    if (ret < 0) {
+        perror(NULL);
         return PPKG_ERROR;
     }
 

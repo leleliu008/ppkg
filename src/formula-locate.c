@@ -38,9 +38,15 @@ int ppkg_formula_locate(const char * packageName, char ** out) {
         const char* a[2] = { osType, ""};
 
         for (int j = 0; j < 2; j++) {
-            size_t   formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + packageNameLength + 15U;
-            char     formulaFilePath[formulaFilePathLength];
-            snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+            size_t formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + packageNameLength + 15U;
+            char   formulaFilePath[formulaFilePathLength];
+
+            ret = snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (stat(formulaFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
                 ppkg_formula_repo_list_free(formulaRepoList);

@@ -26,13 +26,25 @@ int ppkg_logs(const char * packageName) {
         return ret;
     }
 
-    size_t   metaInfoDIRLength = ppkgHomeDIRLength + strlen(packageName) + 18U;
-    char     metaInfoDIR[metaInfoDIRLength];
-    snprintf(metaInfoDIR, metaInfoDIRLength, "%s/installed/%s/.ppkg", ppkgHomeDIR, packageName);
+    size_t metaInfoDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 18U;
+    char   metaInfoDIR[metaInfoDIRCapacity];
 
-    size_t   receiptFilePathLength = metaInfoDIRLength + 13U;
-    char     receiptFilePath[receiptFilePathLength];
-    snprintf(receiptFilePath, receiptFilePathLength, "%s/RECEIPT.yml", metaInfoDIR);
+    ret = snprintf(metaInfoDIR, metaInfoDIRCapacity, "%s/installed/%s/.ppkg", ppkgHomeDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t receiptFilePathCapacity = metaInfoDIRCapacity + 13U;
+    char   receiptFilePath[receiptFilePathCapacity];
+
+    ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/RECEIPT.yml", metaInfoDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -69,9 +81,16 @@ int ppkg_logs(const char * packageName) {
             continue;
         }
 
-        size_t   filepathLength = metaInfoDIRLength + strlen(dir_entry->d_name) + 2U;
-        char     filepath[filepathLength];
-        snprintf(filepath, filepathLength, "%s/%s", metaInfoDIR, dir_entry->d_name);
+        size_t filepathCapacity = metaInfoDIRCapacity + strlen(dir_entry->d_name) + 2U;
+        char   filepath[filepathCapacity];
+
+        ret = snprintf(filepath, filepathCapacity, "%s/%s", metaInfoDIR, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
 
         if (stat(filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
             continue;

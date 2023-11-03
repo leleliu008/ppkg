@@ -98,8 +98,13 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
         curl_easy_setopt(curl, CURLOPT_CAPATH, SSL_CERT_DIR);
     }
 
-    char     userAgent[50];
-    snprintf(userAgent, 50, "User-Agent: curl-%s", LIBCURL_VERSION);
+    char userAgent[50];
+
+    int ret = snprintf(userAgent, 50, "User-Agent: curl-%s", LIBCURL_VERSION);
+
+    if (ret < 0) {
+        return -1;
+    }
 
     struct curl_slist *list = NULL;
 

@@ -22,9 +22,15 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
 
     struct stat st;
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -51,9 +57,17 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRCapacity = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRCapacity];
-    snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t sessionDIRLength = ret;
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -84,8 +98,6 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
             return PPKG_ERROR;
         }
     }
-
-    size_t sessionDIRLength = strlen(sessionDIR);
 
     size_t m = bufSize - 1U;
 

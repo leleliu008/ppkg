@@ -25,9 +25,15 @@ int ppkg_generate_url_transform_sample() {
 
     struct stat st;
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -54,9 +60,15 @@ int ppkg_generate_url_transform_sample() {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRLength];
-    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -90,9 +102,15 @@ int ppkg_generate_url_transform_sample() {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   tmpFilePathLength = sessionDIRLength + 22U;
-    char     tmpFilePath[tmpFilePathLength];
-    snprintf(tmpFilePath, tmpFilePathLength, "%s/url-transform.sample", sessionDIR);
+    size_t tmpFilePathCapacity = sessionDIRCapacity + 22U;
+    char   tmpFilePath[tmpFilePathCapacity];
+
+    ret = snprintf(tmpFilePath, tmpFilePathCapacity, "%s/url-transform.sample", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     int fd = open(tmpFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
 
@@ -140,9 +158,15 @@ int ppkg_generate_url_transform_sample() {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   outFilePathLength = ppkgHomeDIRLength + 22U;
-    char     outFilePath[outFilePathLength];
-    snprintf(outFilePath, outFilePathLength, "%s/url-transform.sample", ppkgHomeDIR);
+    size_t outFilePathCapacity = ppkgHomeDIRLength + 22U;
+    char   outFilePath[outFilePathCapacity];
+
+    ret = snprintf(outFilePath, outFilePathCapacity, "%s/url-transform.sample", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (rename(tmpFilePath, outFilePath) != 0) {
         if (errno == EXDEV) {
@@ -161,7 +185,7 @@ int ppkg_generate_url_transform_sample() {
 
     fprintf(stderr, "%surl-transform sample has been written into %s%s\n\n", COLOR_GREEN, outFilePath, COLOR_OFF);
 
-    outFilePath[outFilePathLength - 9] = '\0';
+    outFilePath[outFilePathCapacity - 9U] = '\0';
 
     fprintf(stderr, "%sYou can rename url-transform.sample to url-transform then edit it to meet your needs.\n\nTo apply this, you should run 'export PPKG_URL_TRANSFORM=%s' in your terminal.\n%s", COLOR_GREEN, outFilePath, COLOR_OFF);
 

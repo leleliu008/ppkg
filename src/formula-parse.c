@@ -1051,7 +1051,12 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        snprintf(p, newLength, "%s %s", formula->dep_upp, dep_upp_extra_buf);
+        ret = snprintf(p, newLength, "%s %s", formula->dep_upp, dep_upp_extra_buf);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         free(formula->dep_upp);
 
@@ -1079,7 +1084,12 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                 return PPKG_ERROR_MEMORY_ALLOCATE;
             }
 
-            snprintf(p, newLength, "%s meson", formula->dep_pym);
+            ret = snprintf(p, newLength, "%s meson", formula->dep_pym);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             free(formula->dep_pym);
 
