@@ -23,7 +23,13 @@ int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, 
 
         size_t formulaDIRLength = strlen(formulaRepoPath) + 10U;
         char   formulaDIR[formulaDIRLength];
-        snprintf(formulaDIR, formulaDIRLength, "%s/formula", formulaRepoPath);
+
+        ret = snprintf(formulaDIR, formulaDIRLength, "%s/formula", formulaRepoPath);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         struct stat status;
 

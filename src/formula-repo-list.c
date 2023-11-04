@@ -18,9 +18,15 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
         return ret;
     }
 
-    size_t   ppkgFormulaRepoDIRLength = ppkgHomeDIRLength + 9U;
-    char     ppkgFormulaRepoDIR[ppkgFormulaRepoDIRLength];
-    snprintf(ppkgFormulaRepoDIR, ppkgFormulaRepoDIRLength, "%s/repos.d", ppkgHomeDIR);
+    size_t ppkgFormulaRepoDIRCapacity = ppkgHomeDIRLength + 9U;
+    char   ppkgFormulaRepoDIR[ppkgFormulaRepoDIRCapacity];
+
+    ret = snprintf(ppkgFormulaRepoDIR, ppkgFormulaRepoDIRCapacity, "%s/repos.d", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -72,13 +78,29 @@ int ppkg_formula_repo_list(PPKGFormulaRepoList * * out) {
             continue;
         }
 
-        size_t formulaRepoPathLength = ppkgFormulaRepoDIRLength + strlen(dir_entry->d_name) + 2U;
-        char   formulaRepoPath[formulaRepoPathLength];
-        snprintf(formulaRepoPath, formulaRepoPathLength, "%s/%s", ppkgFormulaRepoDIR, dir_entry->d_name);
+        size_t formulaRepoPathCapacity = ppkgFormulaRepoDIRCapacity + strlen(dir_entry->d_name) + 2U;
+        char   formulaRepoPath[formulaRepoPathCapacity];
 
-        size_t formulaRepoConfigFilePathLength = formulaRepoPathLength + 24U;
-        char   formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
-        snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+        ret = snprintf(formulaRepoPath, formulaRepoPathCapacity, "%s/%s", ppkgFormulaRepoDIR, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            ppkg_formula_repo_list_free(formulaRepoList);
+            return PPKG_ERROR;
+        }
+
+        size_t formulaRepoConfigFilePathCapacity = formulaRepoPathCapacity + 24U;
+        char   formulaRepoConfigFilePath[formulaRepoConfigFilePathCapacity];
+
+        ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            ppkg_formula_repo_list_free(formulaRepoList);
+            return PPKG_ERROR;
+        }
 
         if (stat(formulaRepoConfigFilePath, &st) != 0) {
             continue;

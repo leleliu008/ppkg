@@ -45,15 +45,27 @@ int ppkg_formula_repo_sync(PPKGFormulaRepo * formulaRepo) {
     const char * branchName = formulaRepo->branch;
     size_t       branchNameLength = strlen(branchName);
 
-    size_t   remoteRefPathLength = branchNameLength + 12U;
-    char     remoteRefPath[remoteRefPathLength];
-    snprintf(remoteRefPath, remoteRefPathLength, "refs/heads/%s", branchName);
+    size_t remoteRefPathCapacity = branchNameLength + 12U;
+    char   remoteRefPath[remoteRefPathCapacity];
 
-    size_t   remoteTrackingRefPathLength = branchNameLength + 21U;
-    char     remoteTrackingRefPath[remoteTrackingRefPathLength];
-    snprintf(remoteTrackingRefPath, remoteTrackingRefPathLength, "refs/remotes/origin/%s", branchName);
+    int ret = snprintf(remoteRefPath, remoteRefPathCapacity, "refs/heads/%s", branchName);
 
-    int ret = ppkg_git_sync(formulaRepo->path, formulaRepo->url, remoteRefPath, remoteTrackingRefPath, branchName);
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t remoteTrackingRefPathCapacity = branchNameLength + 21U;
+    char   remoteTrackingRefPath[remoteTrackingRefPathCapacity];
+
+    ret = snprintf(remoteTrackingRefPath, remoteTrackingRefPathCapacity, "refs/remotes/origin/%s", branchName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ret = ppkg_git_sync(formulaRepo->path, formulaRepo->url, remoteRefPath, remoteTrackingRefPath, branchName);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -62,7 +74,13 @@ int ppkg_formula_repo_sync(PPKGFormulaRepo * formulaRepo) {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     char ts[11];
-    snprintf(ts, 11, "%ld", time(NULL));
+
+    ret = snprintf(ts, 11, "%ld", time(NULL));
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     return ppkg_formula_repo_config_write(formulaRepo->path, formulaRepo->url, formulaRepo->branch, formulaRepo->pinned, formulaRepo->enabled, formulaRepo->timestamp_created, ts);
 }

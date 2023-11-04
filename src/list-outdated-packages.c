@@ -20,10 +20,15 @@ int ppkg_list_the_outdated__packages() {
 
     struct stat st;
 
-    size_t   ppkgInstalledDIRLength = ppkgHomeDIRLength + 11U; 
-    char     ppkgInstalledDIR[ppkgInstalledDIRLength];
-    snprintf(ppkgInstalledDIR, ppkgInstalledDIRLength, "%s/installed", ppkgHomeDIR);
+    size_t ppkgInstalledDIRCapacity = ppkgHomeDIRLength + 11U;
+    char   ppkgInstalledDIR[ppkgInstalledDIRCapacity];
 
+    ret = snprintf(ppkgInstalledDIR, ppkgInstalledDIRCapacity, "%s/installed", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(ppkgInstalledDIR, &st) != 0 || (!S_ISDIR(st.st_mode))) {
         return PPKG_OK;
@@ -56,9 +61,16 @@ int ppkg_list_the_outdated__packages() {
             continue;
         }
 
-        size_t   packageInstalledDIRLength = ppkgInstalledDIRLength + strlen(dir_entry->d_name) + 2U;
-        char     packageInstalledDIR[packageInstalledDIRLength];
-        snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", ppkgInstalledDIR, dir_entry->d_name);
+        size_t packageInstalledDIRCapacity = ppkgInstalledDIRCapacity + strlen(dir_entry->d_name) + 2U;
+        char   packageInstalledDIR[packageInstalledDIRCapacity];
+
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", ppkgInstalledDIR, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
 
         if (lstat(packageInstalledDIR, &st) == 0) {
             if (!S_ISLNK(st.st_mode)) {
@@ -68,16 +80,23 @@ int ppkg_list_the_outdated__packages() {
             continue;
         }
 
-        size_t   receiptFilePathLength = packageInstalledDIRLength + 20U;
-        char     receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        size_t receiptFilePathCapacity = packageInstalledDIRCapacity + 20U;
+        char   receiptFilePath[receiptFilePathCapacity];
+
+        ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
 
         if (lstat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             //printf("%s\n", dir_entry->d_name);
 
             PPKGReceipt * receipt = NULL;
 
-            int ret = ppkg_receipt_parse(dir_entry->d_name, &receipt);
+            ret = ppkg_receipt_parse(dir_entry->d_name, &receipt);
 
             if (ret != PPKG_OK) {
                 closedir(dir);

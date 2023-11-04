@@ -30,9 +30,15 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return ret;
     }
 
-    size_t   formulaRepoPathLength = ppkgHomeDIRLength + strlen(formulaRepoName) + 10U;
-    char     formulaRepoPath[formulaRepoPathLength];
-    snprintf(formulaRepoPath, formulaRepoPathLength, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
+    size_t formulaRepoPathCapacity = ppkgHomeDIRLength + strlen(formulaRepoName) + 10U;
+    char   formulaRepoPath[formulaRepoPathCapacity];
+
+    ret = snprintf(formulaRepoPath, formulaRepoPathCapacity, "%s/repos.d/%s", ppkgHomeDIR, formulaRepoName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -41,9 +47,15 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR;
     }
 
-    size_t   formulaRepoConfigFilePathLength = formulaRepoPathLength + 24U;
-    char     formulaRepoConfigFilePath[formulaRepoConfigFilePathLength];
-    snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathLength, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+    size_t formulaRepoConfigFilePathCapacity = formulaRepoPathCapacity + 24U;
+    char   formulaRepoConfigFilePath[formulaRepoConfigFilePathCapacity];
+
+    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(formulaRepoConfigFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
         return ppkg_rm_r(formulaRepoPath, false);
