@@ -5674,21 +5674,18 @@ __adjust_pc_files_for_the_given_target() {
     done
 }
 
+# install_incs [:sub-dir] <FILE>...
 install_incs() {
+    unset X
+
+    case $1 in
+        :*) X="${1#:}"; shift
+    esac
+
     while [ -n "$1" ]
     do
-        unset X1
-        unset X2
-        X1=$(printf '%s\n' "$1" | cut -d: -f1)
-        X2=$(printf '%s\n' "$1" | cut -d: -f2)
-
-        if [ "$X1" = "$X2" ] ; then
-            unset X2
-        fi
-
-        install -v -d           "$PACKAGE_INSTALL_DIR/include/$X2"
-        install -v -m 644 "$X1" "$PACKAGE_INSTALL_DIR/include/$X2"
-
+        install -v -d          "$PACKAGE_INSTALL_DIR/include/$X/"
+        install -v -m 644 "$1" "$PACKAGE_INSTALL_DIR/include/$X/"
         shift
     done
 }
@@ -7383,7 +7380,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.2
+    PPKG_VERSION=0.3.3
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
