@@ -668,21 +668,45 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
 
     size_t sysrootLength = strlen(sysroot);
 
-    size_t   cppflagsLength = sysrootLength + 30U;
-    char     cppflags[cppflagsLength];
-    snprintf(cppflags, cppflagsLength, "-isysroot %s -Qunused-arguments", sysroot);
+    size_t cppflagsCapacity = sysrootLength + 30U;
+    char   cppflags[cppflagsCapacity];
 
-    size_t   cxxflagsCapacity = sysrootLength + 48U;
-    char     cxxflags[cxxflagsCapacity];
-    snprintf(cxxflags, cxxflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+    ret = snprintf(cppflags, cppflagsCapacity, "-isysroot %s -Qunused-arguments", sysroot);
 
-    size_t   ccflagsCapacity = sysrootLength + 48U;
-    char     ccflags[ccflagsCapacity];
-    snprintf(ccflags, ccflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+    if (ret < 0) {
+        ppkg_toolchain_free(*toolchain);
+        return PPKG_ERROR;
+    }
 
-    size_t   ldflagsLength = sysrootLength + 35U;
-    char     ldflags[ldflagsLength];
-    snprintf(ldflags, ldflagsLength, "-isysroot %s -Wl,-search_paths_first", sysroot);
+    size_t cxxflagsCapacity = sysrootLength + 48U;
+    char   cxxflags[cxxflagsCapacity];
+
+    ret = snprintf(cxxflags, cxxflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+
+    if (ret < 0) {
+        ppkg_toolchain_free(*toolchain);
+        return PPKG_ERROR;
+    }
+
+    size_t ccflagsCapacity = sysrootLength + 48U;
+    char   ccflags[ccflagsCapacity];
+
+    ret = snprintf(ccflags, ccflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
+
+    if (ret < 0) {
+        ppkg_toolchain_free(*toolchain);
+        return PPKG_ERROR;
+    }
+
+    size_t ldflagsCapacity = sysrootLength + 35U;
+    char   ldflags[ldflagsCapacity];
+
+    ret = snprintf(ldflags, ldflagsCapacity, "-isysroot %s -Wl,-search_paths_first", sysroot);
+
+    if (ret < 0) {
+        ppkg_toolchain_free(*toolchain);
+        return PPKG_ERROR;
+    }
 
     toolchain->cppflags = strdup(cppflags);
 

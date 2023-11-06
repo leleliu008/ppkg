@@ -23,21 +23,39 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
         return ret;
     }
 
-    size_t   packageInstalledRootDIRLength = ppkgHomeDIRLength + strlen(packageName) + 11U;
-    char     packageInstalledRootDIR[packageInstalledRootDIRLength];
-    snprintf(packageInstalledRootDIR, packageInstalledRootDIRLength, "%s/installed", ppkgHomeDIR);
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 11U;
+    char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    size_t   packageInstalledLinkDIRLength = packageInstalledRootDIRLength + strlen(packageName) + 2U;
-    char     packageInstalledLinkDIR[packageInstalledLinkDIRLength];
-    snprintf(packageInstalledLinkDIR, packageInstalledLinkDIRLength, "%s/%s", packageInstalledRootDIR, packageName);
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t packageInstalledLinkDIRCapacity = packageInstalledRootDIRCapacity + strlen(packageName) + 2U;
+    char   packageInstalledLinkDIR[packageInstalledLinkDIRCapacity];
+
+    ret = snprintf(packageInstalledLinkDIR, packageInstalledLinkDIRCapacity, "%s/%s", packageInstalledRootDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
     if (lstat(packageInstalledLinkDIR, &st) == 0) {
         if (S_ISLNK(st.st_mode)) {
-            size_t   receiptFilePathLength = packageInstalledLinkDIRLength + 20U;
-            char     receiptFilePath[receiptFilePathLength];
-            snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledLinkDIR);
+            size_t receiptFilePathCapacity = packageInstalledLinkDIRCapacity + 20U;
+            char   receiptFilePath[receiptFilePathCapacity];
+
+            ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledLinkDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             if (lstat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
                 char buf[256] = {0};
@@ -52,9 +70,15 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
                     return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
                 }
 
-                size_t   packageInstalledRealDIRLength = packageInstalledRootDIRLength + 66U;
-                char     packageInstalledRealDIR[packageInstalledRealDIRLength];
-                snprintf(packageInstalledRealDIR, packageInstalledRealDIRLength, "%s/%s", packageInstalledRootDIR, buf);
+                size_t packageInstalledRealDIRCapacity = packageInstalledRootDIRCapacity + 66U;
+                char   packageInstalledRealDIR[packageInstalledRealDIRCapacity];
+
+                ret = snprintf(packageInstalledRealDIR, packageInstalledRealDIRCapacity, "%s/%s", packageInstalledRootDIR, buf);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
 
                 if (lstat(packageInstalledRealDIR, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {

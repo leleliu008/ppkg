@@ -22,9 +22,15 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
 
     struct stat st;
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -51,9 +57,15 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRLength];
-    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -87,9 +99,15 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   tmpFilePathLength = sessionDIRLength + 7U;
-    char     tmpFilePath[tmpFilePathLength];
-    snprintf(tmpFilePath, tmpFilePathLength, "%s/_ppkg", sessionDIR);
+    size_t tmpFilePathCapacity = sessionDIRCapacity + 7U;
+    char   tmpFilePath[tmpFilePathCapacity];
+
+    ret = snprintf(tmpFilePath, tmpFilePathCapacity, "%s/_ppkg", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     const char * const url = "https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg-zsh-completion";
 
@@ -101,15 +119,21 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   defaultOutputDIRLength = ppkgHomeDIRLength + 26U;
-    char     defaultOutputDIR[defaultOutputDIRLength];
-    snprintf(defaultOutputDIR, defaultOutputDIRLength, "%s/share/zsh/site-functions", ppkgHomeDIR);
+    size_t defaultOutputDIRCapacity = ppkgHomeDIRLength + 26U;
+    char   defaultOutputDIR[defaultOutputDIRCapacity];
+
+    ret = snprintf(defaultOutputDIR, defaultOutputDIRCapacity, "%s/share/zsh/site-functions", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     size_t outputDIRLength;
 
     if (outputDIR == NULL) {
         outputDIR       = defaultOutputDIR;
-        outputDIRLength = defaultOutputDIRLength;
+        outputDIRLength = ret;
     } else {
         outputDIRLength = strlen(outputDIR);
     }
@@ -124,9 +148,15 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   outputFilePathLength = outputDIRLength + 7U;
-    char     outputFilePath[outputFilePathLength];
-    snprintf(outputFilePath, outputFilePathLength, "%s/_ppkg", outputDIR);
+    size_t outputFilePathCapacity = outputDIRLength + 7U;
+    char   outputFilePath[outputFilePathCapacity];
+
+    ret = snprintf(outputFilePath, outputFilePathCapacity, "%s/_ppkg", outputDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (rename(tmpFilePath, outputFilePath) != 0) {
         if (errno == EXDEV) {

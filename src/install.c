@@ -3104,10 +3104,110 @@ static int ppkg_install_package(
     ///                        below is for target                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = reset_environment_variable_for_compiler_driver_flags(toolchain);
+    const KV flags[4] = {
+        { "CFLAGS_FOR_BUILD",   toolchain.ccflags  },
+        { "CXXFLAGS_FOR_BUILD", toolchain.cxxflags },
+        { "CPPFLAGS_FOR_BUILD", toolchain.cppflags },
+        { "LDFLAGS_FOR_BUILD",  toolchain.ldflags  }
+    };
 
-    if (ret != PPKG_OK) {
-        return ret;
+    for (int i = 0; i < 4; i++) {
+        const char * name  = flags[i].name;
+        const char * value = flags[i].value;
+
+        if (value == NULL) {
+            if (unsetenv(name) != 0) {
+                perror(name);
+                return PPKG_ERROR;
+            }
+        } else {
+            if (setenv(name, value, 1) != 0) {
+                perror(name);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->ppflags == NULL) {
+        size_t cppflagsCapacity = packageWorkingIncDIRLength + 3U;
+        char   cppflags[cppflagsCapacity];
+
+        ret = snprintf(cppflags, cppflagsCapacity, "-I%s", packageWorkingIncDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+            perror("CPPFLAGS");
+            return PPKG_ERROR;
+        }
+    } else {
+        size_t cppflagsCapacity = packageWorkingIncDIRLength + strlen(formula->ppflags) + 4U;
+        char   cppflags[cppflagsCapacity];
+
+        ret = snprintf(cppflags, cppflagsCapacity, "-I%s %s", packageWorkingIncDIR, formula->ppflags);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+            perror("CPPFLAGS");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->ccflags == NULL) {
+        if (setenv("CFLAGS", toolchain.ccflags, 1) != 0) {
+            perror("CFLAGS");
+            return PPKG_ERROR;
+        }
+    } else {
+        size_t ccflagsCapacity = strlen(toolchain.ccflags) + strlen(formula->ccflags) + 2U;
+        char   ccflags[ccflagsCapacity];
+
+        ret = snprintf(ccflags, ccflagsCapacity, "%s %s", toolchain.ccflags, formula->ccflags);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("CFLAGS", ccflags, 1) != 0) {
+            perror("CFLAGS");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->xxflags == NULL) {
+        if (setenv("CXXFLAGS", toolchain.cxxflags, 1) != 0) {
+            perror("CXXFLAGS");
+            return PPKG_ERROR;
+        }
+    } else {
+        size_t cxxflagsCapacity = strlen(toolchain.cxxflags) + strlen(formula->xxflags) + 2U;
+        char   cxxflags[cxxflagsCapacity];
+
+        ret = snprintf(cxxflags, cxxflagsCapacity, "%s %s", toolchain.cxxflags, formula->xxflags);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("CXXFLAGS", cxxflags, 1) != 0) {
+            perror("CXXFLAGS");
+            return PPKG_ERROR;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -3119,23 +3219,6 @@ static int ppkg_install_package(
 
     if (ret < 0) {
         perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t cppflagsCapacity = packageWorkingIncDIRLength + 3U;
-    char   cppflags[cppflagsCapacity];
-
-    ret = snprintf(cppflags, cppflagsCapacity, "-I%s", packageWorkingIncDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (setenv("CPPFLAGS", cppflags, 1) != 0) {
-        perror("CPPFLAGS");
         return PPKG_ERROR;
     }
 
@@ -3153,14 +3236,14 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ldflagsCapacity = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + 40U;
+    size_t ldflagsCapacity = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + (formula->ldflags == NULL ? 0U : strlen(formula->ldflags)) + 40U;
     char   ldflags[ldflagsCapacity];
 
     // both --static and -static flag should be given.
     //  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
     // --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
 
-    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib", flag ? "--static -static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
+    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib %s", flag ? "--static -static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags == NULL ? "" : formula->ldflags);
 
     if (ret < 0) {
         perror(NULL);

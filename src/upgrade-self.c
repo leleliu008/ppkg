@@ -26,9 +26,15 @@ int ppkg_upgrade_self(bool verbose) {
 
     struct stat st;
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t   ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char     ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -55,9 +61,15 @@ int ppkg_upgrade_self(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRLength];
-    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -93,9 +105,15 @@ int ppkg_upgrade_self(bool verbose) {
 
     const char * githubApiUrl = "https://api.github.com/repos/leleliu008/ppkg/releases/latest";
 
-    size_t   githubApiResultJsonFilePathLength = sessionDIRLength + 13U;
-    char     githubApiResultJsonFilePath[githubApiResultJsonFilePathLength];
-    snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathLength, "%s/latest.json", sessionDIR);
+    size_t githubApiResultJsonFilePathCapacity = sessionDIRCapacity + 13U;
+    char   githubApiResultJsonFilePath[githubApiResultJsonFilePathCapacity];
+
+    ret = snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathCapacity, "%s/latest.json", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ret = ppkg_http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose);
 
@@ -257,17 +275,35 @@ finalize:
         return PPKG_ERROR;
     }
 
-    size_t   tarballFileNameLength = latestVersionLength + strlen(osType) + strlen(osArch) + 26U;
-    char     tarballFileName[tarballFileNameLength];
-    snprintf(tarballFileName, tarballFileNameLength, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    size_t tarballFileNameCapacity = latestVersionLength + strlen(osType) + strlen(osArch) + 26U;
+    char   tarballFileName[tarballFileNameCapacity];
 
-    size_t   tarballUrlLength = tarballFileNameLength + strlen(latestReleaseTagName) + 66U;
-    char     tarballUrl[tarballUrlLength];
-    snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/ppkg/releases/download/%s/%s", latestReleaseTagName, tarballFileName);
+    ret = snprintf(tarballFileName, tarballFileNameCapacity, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
 
-    size_t   tarballFilePathLength = sessionDIRLength + tarballFileNameLength + 2U;
-    char     tarballFilePath[tarballFilePathLength];
-    snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", sessionDIR, tarballFileName);
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(latestReleaseTagName) + 66U;
+    char   tarballUrl[tarballUrlCapacity];
+
+    ret = snprintf(tarballUrl, tarballUrlCapacity, "https://github.com/leleliu008/ppkg/releases/download/%s/%s", latestReleaseTagName, tarballFileName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t tarballFilePathLength = sessionDIRCapacity + tarballFileNameCapacity + 2U;
+    char   tarballFilePath[tarballFilePathLength];
+
+    ret = snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", sessionDIR, tarballFileName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ret = ppkg_http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose);
 
@@ -283,9 +319,15 @@ finalize:
         return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
     }
 
-    size_t   upgradableExecutableFilePathLength = sessionDIRLength + 10U;
-    char     upgradableExecutableFilePath[upgradableExecutableFilePathLength];
-    snprintf(upgradableExecutableFilePath, upgradableExecutableFilePathLength, "%s/bin/ppkg", sessionDIR);
+    size_t upgradableExecutableFilePathCapacity = sessionDIRCapacity + 10U;
+    char   upgradableExecutableFilePath[upgradableExecutableFilePathCapacity];
+
+    ret = snprintf(upgradableExecutableFilePath, upgradableExecutableFilePathCapacity, "%s/bin/ppkg", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     char * selfRealPath = self_realpath();
 

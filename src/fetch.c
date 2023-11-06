@@ -17,9 +17,15 @@ static int package_name_callback(const char * packageName, size_t i, const void 
 }
 
 static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength) {
-    size_t   gitRepositoryDIRLength = ppkgDownloadsDIRLength + strlen(packageName) + 6U;
-    char     gitRepositoryDIR[gitRepositoryDIRLength];
-    snprintf(gitRepositoryDIR, gitRepositoryDIRLength, "%s/%s.git", ppkgDownloadsDIR, packageName);
+    size_t gitRepositoryDIRCapacity = ppkgDownloadsDIRLength + strlen(packageName) + 6U;
+    char   gitRepositoryDIR[gitRepositoryDIRCapacity];
+
+    int ret = snprintf(gitRepositoryDIR, gitRepositoryDIRCapacity, "%s/%s.git", ppkgDownloadsDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -57,13 +63,25 @@ static int ppkg_fetch_file(const char * url, const char * uri, const char * expe
 
     printf("==========>> fileNameExtension = %s\n", fileNameExtension);
 
-    size_t   fileNameLength = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1U;
-    char     fileName[fileNameLength];
-    snprintf(fileName, fileNameLength, "%s%s", expectedSHA256SUM, fileNameExtension);
+    size_t fileNameCapacity = strlen(expectedSHA256SUM) + strlen(fileNameExtension) + 1U;
+    char   fileName[fileNameCapacity];
 
-    size_t   filePathLength = ppkgDownloadsDIRLength + fileNameLength + 1U;
-    char     filePath[filePathLength];
-    snprintf(filePath, filePathLength, "%s/%s", ppkgDownloadsDIR, fileName);
+    ret = snprintf(fileName, fileNameCapacity, "%s%s", expectedSHA256SUM, fileNameExtension);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    size_t filePathCapacity = ppkgDownloadsDIRLength + fileNameCapacity + 1U;
+    char   filePath[filePathCapacity];
+
+    ret = snprintf(filePath, filePathCapacity, "%s/%s", ppkgDownloadsDIR, fileName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -144,9 +162,15 @@ int ppkg_fetch(const char * packageName, bool verbose) {
         return ret;
     }
 
-    size_t   ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
-    char     ppkgDownloadsDIR[ppkgDownloadsDIRLength];
-    snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
+    size_t ppkgDownloadsDIRCapacity = ppkgHomeDIRLength + 11U;
+    char   ppkgDownloadsDIR[ppkgDownloadsDIRCapacity];
+
+    ret = snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, "%s/downloads", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     struct stat st;
 
@@ -179,12 +203,12 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     ///////////////////////////////////////////////////////////////
 
     if (formula->src_url == NULL) {
-        ret = ppkg_fetch_git(packageName, formula, ppkgDownloadsDIR, ppkgDownloadsDIRLength);
+        ret = ppkg_fetch_git(packageName, formula, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity);
     } else {
         if (formula->src_is_dir) {
             fprintf(stderr, "src_url is point to local dir, so no need to fetch.\n");
         } else {
-            ret = ppkg_fetch_file(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+            ret = ppkg_fetch_file(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, verbose);
         }
     }
 
@@ -193,7 +217,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->fix_url != NULL) {
-        ret = ppkg_fetch_file(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+        ret = ppkg_fetch_file(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;
@@ -201,7 +225,7 @@ int ppkg_fetch(const char * packageName, bool verbose) {
     }
 
     if (formula->res_url != NULL) {
-        ret = ppkg_fetch_file(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, verbose);
+        ret = ppkg_fetch_file(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, verbose);
 
         if (ret != PPKG_OK) {
             goto finalize;

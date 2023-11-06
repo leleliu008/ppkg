@@ -42,21 +42,42 @@ static int ppkg_list_dirs(const char * installedDIR, size_t installedDIRLength, 
             continue;
         }
 
-        size_t packageInstalledDIRLength = installedDIRLength + strlen(dir_entry->d_name) + 2U;
-        char   packageInstalledDIR[packageInstalledDIRLength];
-        snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/%s", installedDIR, dir_entry->d_name);
+        size_t packageInstalledDIRCapacity = installedDIRLength + strlen(dir_entry->d_name) + 2U;
+        char   packageInstalledDIR[packageInstalledDIRCapacity];
 
-        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
-        char   receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        int ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", installedDIR, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
+
+        size_t receiptFilePathCapacity = packageInstalledDIRCapacity + 20U;
+        char   receiptFilePath[receiptFilePathCapacity];
+
+        ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return PPKG_ERROR;
+        }
 
         if (stat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
             if ((sub == NULL) || (sub[0] == '\0')) {
                 printf("%s\n", packageInstalledDIR);
             } else {
-                size_t subDIRLength = packageInstalledDIRLength + strlen(sub) + 2U;
-                char   subDIR[subDIRLength];
-                snprintf(subDIR, subDIRLength, "%s/%s", packageInstalledDIR, sub);
+                size_t subDIRCapacity = packageInstalledDIRCapacity + strlen(sub) + 2U;
+                char   subDIR[subDIRCapacity];
+
+                ret = snprintf(subDIR, subDIRCapacity, "%s/%s", packageInstalledDIR, sub);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    closedir(dir);
+                    return PPKG_ERROR;
+                }
 
                 if (stat(subDIR, &st) == 0 && S_ISDIR(st.st_mode)) {
                     printf("%s\n", subDIR);
@@ -100,9 +121,15 @@ int ppkg_env(bool verbose) {
 
     struct stat st;
 
-    size_t   installedDIRLength = ppkgHomeDIRLength + 11U;
-    char     installedDIR[installedDIRLength];
-    snprintf(installedDIR, installedDIRLength, "%s/installed", ppkgHomeDIR);
+    size_t installedDIRLength = ppkgHomeDIRLength + 11U;
+    char   installedDIR[installedDIRLength];
+
+    ret = snprintf(installedDIR, installedDIRLength, "%s/installed", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (stat(installedDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
