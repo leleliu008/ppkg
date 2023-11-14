@@ -728,9 +728,15 @@ int ppkg_info(const char * packageName, const char * key) {
 
         struct stat st;
 
-        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-        char     installedDIR[installedDIRLength];
-        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+        size_t installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char   installedDIR[installedDIRLength];
+
+        ret = snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(installedDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
@@ -740,9 +746,15 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t   receiptFilePathLength = installedDIRLength + 20U;
-        char     receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+        size_t receiptFilePathLength = installedDIRLength + 20U;
+        char   receiptFilePath[receiptFilePathLength];
+
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(receiptFilePath, &st) == 0) {
             if (S_ISREG(st.st_mode)) {
@@ -765,9 +777,15 @@ int ppkg_info(const char * packageName, const char * key) {
 
         struct stat st;
 
-        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-        char     installedDIR[installedDIRLength];
-        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+        size_t installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char   installedDIR[installedDIRLength];
+
+        ret = snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(installedDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
@@ -777,17 +795,29 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t   receiptFilePathLength = installedDIRLength + 20U;
-        char     receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+        size_t receiptFilePathLength = installedDIRLength + 20U;
+        char   receiptFilePath[receiptFilePathLength];
+
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
 
-        size_t   manifestFilePathLength = installedDIRLength + 20U;
-        char     manifestFilePath[manifestFilePathLength];
-        snprintf(manifestFilePath, manifestFilePathLength, "%s/.ppkg/MANIFEST.txt", installedDIR);
+        size_t manifestFilePathLength = installedDIRLength + 20U;
+        char   manifestFilePath[manifestFilePathLength];
+
+        ret = snprintf(manifestFilePath, manifestFilePathLength, "%s/.ppkg/MANIFEST.txt", installedDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(manifestFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
@@ -950,9 +980,15 @@ int ppkg_info(const char * packageName, const char * key) {
 
         struct stat st;
 
-        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-        char     installedDIR[installedDIRLength];
-        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+        size_t installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char   installedDIR[installedDIRLength];
+
+        ret = snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(installedDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
@@ -964,7 +1000,13 @@ int ppkg_info(const char * packageName, const char * key) {
 
         size_t receiptFilePathLength = installedDIRLength + 20U;
         char   receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(receiptFilePath, &st) == 0) {
             if (S_ISREG(st.st_mode)) {
@@ -987,9 +1029,15 @@ int ppkg_info(const char * packageName, const char * key) {
 
         struct stat st;
 
-        size_t   installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
-        char     installedDIR[installedDIRLength];
-        snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+        size_t installedDIRLength = ppkgHomeDIRLength + strlen(packageName) + 12U;
+        char   installedDIR[installedDIRLength];
+
+        ret = snprintf(installedDIR, installedDIRLength, "%s/installed/%s", ppkgHomeDIR, packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(installedDIR, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
@@ -999,9 +1047,15 @@ int ppkg_info(const char * packageName, const char * key) {
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t   receiptFilePathLength = installedDIRLength + 20U;
-        char     receiptFilePath[receiptFilePathLength];
-        snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+        size_t receiptFilePathLength = installedDIRLength + 20U;
+        char   receiptFilePath[receiptFilePathLength];
+
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", installedDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         if (stat(receiptFilePath, &st) != 0 || (!S_ISREG(st.st_mode))) {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;

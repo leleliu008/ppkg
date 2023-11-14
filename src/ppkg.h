@@ -428,7 +428,7 @@ int ppkg_list_the_outdated__packages();
 
 int ppkg_show_the_available_packages();
 
-int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, const char * remoteRef, const char * remoteTrackingRef, const char * checkoutToBranchName);
+int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, const char * remoteRef, const char * remoteTrackingRef, const char * checkoutToBranchName, const size_t fetchDepth);
 
 int ppkg_generate_url_transform_sample();
 

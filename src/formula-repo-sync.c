@@ -65,7 +65,7 @@ int ppkg_formula_repo_sync(PPKGFormulaRepo * formulaRepo) {
         return PPKG_ERROR;
     }
 
-    ret = ppkg_git_sync(formulaRepo->path, formulaRepo->url, remoteRefPath, remoteTrackingRefPath, branchName);
+    ret = ppkg_git_sync(formulaRepo->path, formulaRepo->url, remoteRefPath, remoteTrackingRefPath, branchName, 0);
 
     if (ret != PPKG_OK) {
         return ret;

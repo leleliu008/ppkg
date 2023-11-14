@@ -119,7 +119,13 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
         if ((outputDir != NULL) && (outputDir[0] != '\0')) {
             size_t outputFilePathLength = strlen(outputDir) + strlen(entry_pathname) + 2U;
             char   outputFilePath[outputFilePathLength];
-            snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, entry_pathname);
+
+            ret = snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, entry_pathname);
+
+            if (ret < 0) {
+                perror(NULL);
+                return -1;
+            }
 
             archive_entry_set_pathname(entry, outputFilePath);
         } else {
@@ -143,7 +149,13 @@ int tar_extract(const char * outputDir, const char * inputFilePath, int flags, b
                 if ((outputDir != NULL) && (outputDir[0] != '\0')) {
                     size_t outputFilePathLength = strlen(outputDir) + strlen(hardlinkname) + 2U;
                     char   outputFilePath[outputFilePathLength];
-                    snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, hardlinkname);
+
+                    ret = snprintf(outputFilePath, outputFilePathLength, "%s/%s", outputDir, hardlinkname);
+
+                    if (ret < 0) {
+                        perror(NULL);
+                        return -1;
+                    }
 
                     archive_entry_set_hardlink_utf8(entry, outputFilePath);
                 } else {
@@ -251,7 +263,14 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
 
         size_t filePathLength = strlen(dirPath) + strlen(dir_entry->d_name) + 2U;
         char   filePath[filePathLength];
-        snprintf(filePath, filePathLength, "%s/%s", dirPath, dir_entry->d_name);
+
+        ret = snprintf(filePath, filePathLength, "%s/%s", dirPath, dir_entry->d_name);
+
+        if (ret < 0) {
+            perror(NULL);
+            closedir(dir);
+            return -1;
+        }
 
         //if (verbose) printf("%s\n", filePath);
 

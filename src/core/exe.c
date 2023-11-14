@@ -55,9 +55,14 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, bool
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
-            char     fullPath[fullPathLength];
-            snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
+            size_t fullPathCapacity = strlen(PATHItem) + commandNameLength + 2U;
+            char   fullPath[fullPathCapacity];
+
+            int ret = snprintf(fullPath, fullPathCapacity, "%s/%s", PATHItem, commandName);
+
+            if (ret < 0) {
+                return -1;
+            }
 
             if (access(fullPath, X_OK) == 0) {
                 if (stringArrayListCapacity == stringArrayListSize) {
@@ -150,9 +155,14 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t   fullPathLength = strlen(PATHItem) + commandNameLength + 2U;
-            char     fullPath[fullPathLength];
-            snprintf(fullPath, fullPathLength, "%s/%s", PATHItem, commandName);
+            size_t fullPathCapacity = strlen(PATHItem) + commandNameLength + 2U;
+            char   fullPath[fullPathCapacity];
+
+            int ret = snprintf(fullPath, fullPathCapacity, "%s/%s", PATHItem, commandName);
+
+            if (ret < 0) {
+                return -1;
+            }
 
             if (access(fullPath, X_OK) == 0) {
                 char * fullPathDup = strdup(fullPath);
@@ -165,7 +175,7 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
                 (*pathP) = fullPathDup;
 
                 if (pathLength != NULL) {
-                    (*pathLength) = fullPathLength;
+                    (*pathLength) = ret;
                 }
 
                 return 0;
@@ -228,8 +238,15 @@ int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * wri
 
     while (PATHItem != NULL) {
         if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t   pathLength = strlen(PATHItem) + commandNameLength + 1U;
-            snprintf(pathBuf, pathLength + 1U, "%s/%s", PATHItem, commandName);
+            size_t max = strlen(PATHItem) + commandNameLength + 2U;
+
+            int ret = snprintf(pathBuf, max, "%s/%s", PATHItem, commandName);
+
+            if (ret < 0) {
+                return -1;
+            }
+
+            size_t pathLength = ret;
 
             if (access(pathBuf, X_OK) == 0) {
                 size_t m = bufSize - 1U;

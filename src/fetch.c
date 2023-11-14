@@ -49,7 +49,7 @@ static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const
         remoteRef = formula->git_sha;
     }
     
-    return ppkg_git_sync(gitRepositoryDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master");
+    return ppkg_git_sync(gitRepositoryDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master", formula->git_nth);
 }
 
 static int ppkg_fetch_file(const char * url, const char * uri, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {

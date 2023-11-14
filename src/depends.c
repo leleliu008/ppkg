@@ -159,9 +159,15 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
 
         ////////////////////////////////////////////////////////////////
 
-        size_t   bufLength = strlen(packageName) + 12U;
-        char     buf[bufLength];
-        snprintf(buf, bufLength, "    \"%s\" -> {", packageName);
+        size_t bufLength = strlen(packageName) + 12U;
+        char   buf[bufLength];
+
+        ret = snprintf(buf, bufLength, "    \"%s\" -> {", packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         ret = string_append(&p, &pSize, &pCapacity, buf, bufLength - 1);
 
@@ -188,9 +194,15 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
 
             ////////////////////////////////////////////////////////////////
 
-            size_t  bufLength = strlen(depPackageName) + 4U;
-            char    buf[bufLength];
-            snprintf(buf, bufLength, " \"%s\"", depPackageName);
+            size_t bufLength = strlen(depPackageName) + 4U;
+            char   buf[bufLength];
+
+            ret = snprintf(buf, bufLength, " \"%s\"", depPackageName);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
 
             ret = string_append(&p, &pSize, &pCapacity, buf, bufLength - 1U);
 
@@ -272,9 +284,16 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   dotScriptStrLength = pSize + 14U;
-    char     dotScriptStr[dotScriptStrLength];
-    snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
+    size_t dotScriptStrLength = pSize + 14U;
+    char   dotScriptStr[dotScriptStrLength];
+
+    ret = snprintf(dotScriptStr, dotScriptStrLength, "digraph G {\n%s}", p);
+
+    if (ret < 0) {
+        perror(NULL);
+        free(p);
+        return PPKG_ERROR;
+    }
 
     free(p);
 
@@ -304,9 +323,15 @@ finalize:
 
     struct stat st;
 
-    size_t   ppkgRunDIRLength = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRLength];
-    snprintf(ppkgRunDIR, ppkgRunDIRLength, "%s/run", ppkgHomeDIR);
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
+
+    ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(ppkgRunDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {
@@ -333,9 +358,15 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   sessionDIRLength = ppkgRunDIRLength + 20U;
-    char     sessionDIR[sessionDIRLength];
-    snprintf(sessionDIR, sessionDIRLength, "%s/%d", ppkgRunDIR, getpid());
+    size_t sessionDIRCapacity = ppkgRunDIRCapacity + 20U;
+    char   sessionDIR[sessionDIRCapacity];
+
+    ret = snprintf(sessionDIR, sessionDIRCapacity, "%s/%d", ppkgRunDIR, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -381,9 +412,15 @@ finalize:
             return PPKG_ERROR;
         }
 
-        size_t   urlLength = urlEncodedRealLength + 66U;
-        char     url[urlLength];
-        snprintf(url, urlLength, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", urlEncodedBuf);
+        size_t urlCapacity = urlEncodedRealLength + 66U;
+        char   url[urlCapacity];
+
+        ret = snprintf(url, urlCapacity, "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php?boxart=1&src=%s", urlEncodedBuf);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
 
         //printf("url=%s\n", url);
 
@@ -400,11 +437,17 @@ finalize:
 
             return PPKG_OK;
         } else {
-            size_t   boxFilePathLength = sessionDIRLength + 18U;
-            char     boxFilePath[boxFilePathLength];
-            snprintf(boxFilePath, boxFilePathLength, "%s/dependencies.box", sessionDIR);
+            size_t boxFilePathLength = sessionDIRCapacity + 18U;
+            char   boxFilePath[boxFilePathLength];
 
-            int ret = http_fetch_to_file(url, boxFilePath, false, false);
+            ret = snprintf(boxFilePath, boxFilePathLength, "%s/dependencies.box", sessionDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            ret = http_fetch_to_file(url, boxFilePath, false, false);
 
             if (ret == -1) {
                 perror(outputFilePath);
@@ -421,9 +464,15 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   dotFilePathLength = sessionDIRLength + 18U;
-    char     dotFilePath[dotFilePathLength];
-    snprintf(dotFilePath, dotFilePathLength, "%s/dependencies.dot", sessionDIR);
+    size_t dotFilePathCapacity = sessionDIRCapacity + 18U;
+    char   dotFilePath[dotFilePathCapacity];
+
+    ret = snprintf(dotFilePath, dotFilePathCapacity, "%s/dependencies.dot", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     int dotFD = open(dotFilePath, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 
@@ -455,9 +504,15 @@ finalize:
 
     ////////////////////////////////////////////////////////////////
 
-    size_t   tmpFilePathLength = sessionDIRLength + 18U;
-    char     tmpFilePath[tmpFilePathLength];
-    snprintf(tmpFilePath, tmpFilePathLength, "%s/dependencies.tmp", sessionDIR);
+    size_t tmpFilePathCapacity = sessionDIRCapacity + 18U;
+    char   tmpFilePath[tmpFilePathCapacity];
+
+    ret = snprintf(tmpFilePath, tmpFilePathCapacity, "%s/dependencies.tmp", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     ////////////////////////////////////////////////////////////////
 
@@ -533,7 +588,12 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
                 case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
             }
 
-            snprintf(outputFilePath, outputFilePathLength, "%s/%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+            int ret = snprintf(outputFilePath, outputFilePathLength, "%s/%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
         } else {
             size_t outputPathLength = strlen(outputPath);
 
@@ -555,7 +615,12 @@ int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, con
                     case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
                 }
 
-                snprintf(outputFilePath, outputFilePathLength, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+                int ret = snprintf(outputFilePath, outputFilePathLength, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
             } else {
                 outputFilePath = strdup(outputPath);
 

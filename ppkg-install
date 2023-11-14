@@ -1218,6 +1218,7 @@ __adjust_pc_files() {
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
         sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
+        sed_in_place "s|${PPKG_HOME}/.*/lib.*\.a||g" "$pcfile"
         sed_in_place "s|-R[^' ]*||g"               "$pcfile"
         sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"

@@ -172,7 +172,7 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
         return PPKG_ERROR;
     }
 
-    ret = ppkg_git_sync(sessionDIR, formulaRepoUrl, remoteRefPath, remoteTrackingRefPath, branchName);
+    ret = ppkg_git_sync(sessionDIR, formulaRepoUrl, remoteRefPath, remoteTrackingRefPath, branchName, 0);
 
     if (ret != PPKG_OK) {
         return ret;
