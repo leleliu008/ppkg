@@ -2408,9 +2408,7 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    size_t dirPathLength = strlen(dirPath);
-
-    if (dirPathLength == 0U) {
+    if (dirPath[0] == '\0') {
         return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
@@ -2420,6 +2418,8 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
         perror(dirPath);
         return PPKG_ERROR;
     }
+
+    size_t dirPathLength = strlen(dirPath);
 
     int ret = PPKG_OK;
 
@@ -2433,7 +2433,7 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
         if (dir_entry == NULL) {
             if (errno == 0) {
                 closedir(dir);
-                break;
+                return PPKG_OK;
             } else {
                 perror(dirPath);
                 closedir(dir);
@@ -2452,6 +2452,7 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
 
         if (ret < 0) {
             perror(NULL);
+            closedir(dir);
             return PPKG_ERROR;
         }
 
@@ -2462,7 +2463,13 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
         }
 
         if (S_ISDIR(st.st_mode)) {
-            fprintf(installedManifestFile, "d|%s/\n", &filePath[offset]);
+            ret = fprintf(installedManifestFile, "d|%s/\n", &filePath[offset]);
+
+            if (ret < 0) {
+                perror(NULL);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
 
             ret = generate_manifest_r(filePath, offset, installedManifestFile);
 
@@ -2471,11 +2478,15 @@ static int generate_manifest_r(const char * dirPath, size_t offset, FILE * insta
                 return ret;
             }
         } else {
-            fprintf(installedManifestFile, "f|%s\n", &filePath[offset]);
+            ret = fprintf(installedManifestFile, "f|%s\n", &filePath[offset]);
+
+            if (ret < 0) {
+                perror(NULL);
+                closedir(dir);
+                return PPKG_ERROR;
+            }
         }
     }
-
-    return ret;
 }
 
 int generate_manifest(const char * installedDIRPath) {
