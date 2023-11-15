@@ -2388,13 +2388,13 @@ __gen_url_transform_sample() {
     cat > url-transform.sample <<EOF
 #!/bin/sh
 
-# https://ghproxy.com/
+# https://gitmirror.com/
 case \$1 in
     *githubusercontent.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
+        printf '%s\n' "\$1" | sed 's|githubusercontent|gitmirror|'
         ;;
     https://github.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
+        printf 'https://hub.gitmirror.com/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
@@ -3473,8 +3473,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
             ;;
         perl)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
@@ -3543,8 +3543,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
             ;;
         sqlite3)
-            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
+            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550'
             NATIVE_PACKAGE_DEPENDENCIES='zlib'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
@@ -3571,8 +3571,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
-            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz'
-            NATIVE_PACKAGE_SRC_SHA='a12a0a013a30b846c786c010f2c19dd36b7298d888f7c4bd1581d90ce18b5e58'
+            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
+            NATIVE_PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
             NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
@@ -6489,6 +6489,10 @@ set(CMAKE_ADDR2LINE "$ADDR2LINE")
 set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
+
+if ("\${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
+    set(CMAKE_SKIP_INSTALL_RPATH ON)
+endif()
 EOF
 
     if [ "$LOG_LEVEL" -gt 0 ] ; then
@@ -7380,7 +7384,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.3
+    PPKG_VERSION=0.3.4
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
