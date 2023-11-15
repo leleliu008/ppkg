@@ -318,25 +318,25 @@ install_libs() {
     for item in "$@"
     do
         case $item in
-            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
-            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
+            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib/" ;;
+            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib/" ;;
         esac
     done
 }
 
 install_pcfs() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
+    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig/" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig/"
 }
 
 install_bins() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/bin" &&
-    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin"
+    install -v -d          "$PACKAGE_INSTALL_DIR/bin/" &&
+    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin/"
 }
 
 install_etcs() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/etc" &&
-    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc"
+    install -v -d          "$PACKAGE_INSTALL_DIR/etc/" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc/"
 }
 
 install_mans() {
@@ -370,11 +370,6 @@ install_mans() {
             ;;
         *)  abort 1 "install_completion unsupported shell: $1"
     esac
-}
-
-install_pc_file() {
-    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
 
 # }}}

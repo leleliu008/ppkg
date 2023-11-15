@@ -428,7 +428,7 @@ static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const c
         return PPKG_ERROR_ENV_PATH_NOT_SET;
     }
 
-    size_t newPATHLength = cargoHomeDIRLength + strlen(PATH) + 5U;
+    size_t newPATHLength = cargoHomeDIRLength + strlen(PATH) + 6U;
     char   newPATH[newPATHLength];
 
     ret = snprintf(newPATH, newPATHLength, "%s/bin:%s", cargoHomeDIR, PATH);
@@ -476,6 +476,7 @@ typedef struct {
     const char * name;
 
     const char * srcUrl;
+    const char * srcUri;
     const char * srcSha;
 
     const char * buildConfigureArgs;
@@ -509,8 +510,9 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_PERL:
             nativePackage->name = "perl";
-            nativePackage->srcUrl = "https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz";
-            nativePackage->srcSha = "0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0";
+            nativePackage->srcUrl = "https://www.cpan.org/src/5.0/perl-5.38.0.tar.xz";
+            nativePackage->srcUri = "https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz";
+            nativePackage->srcSha = "eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;
         case NATIVE_PACKAGE_ID_OPENSSL:
@@ -613,8 +615,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_PYTHON3:
             nativePackage->name = "python3";
-            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz";
-            nativePackage->srcSha = "a12a0a013a30b846c786c010f2c19dd36b7298d888f7c4bd1581d90ce18b5e58";
+            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz";
+            nativePackage->srcSha = "c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736";
             nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
             nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBBZ2;
             nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBLZMA;
@@ -1012,6 +1014,7 @@ static int install_native_package(
 
     const char * packageName = nativePackage.name;
     const char * srcUrl = nativePackage.srcUrl;
+    const char * srcUri = nativePackage.srcUri;
     const char * srcSha = nativePackage.srcSha;
     const char * buildConfigureArgs = nativePackage.buildConfigureArgs;
     int          buildSystemType = nativePackage.buildSystemType;
@@ -1097,7 +1100,7 @@ static int install_native_package(
         return PPKG_ERROR;
     }
 
-    ret = download_via_http(srcUrl, NULL, srcSha, downloadsDIR, downloadsDIRLength, nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, installOptions.verbose_net);
+    ret = download_via_http(srcUrl, srcUri, srcSha, downloadsDIR, downloadsDIRLength, nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, installOptions.verbose_net);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -1667,7 +1670,7 @@ static int install_dependent_packages_via_uppm(
 
     int ret;
 
-    if (false) {
+    if (true) {
         size_t uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
         char   uppmUpdateCmd[uppmUpdateCmdLength];
 
