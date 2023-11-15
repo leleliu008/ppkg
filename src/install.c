@@ -769,7 +769,7 @@ static int export_environment_variables_for_build_tools(const char * packageInst
                 size_t newPKG_CONFIG_PATHLength = pkgconfigDIRLength + strlen(PKG_CONFIG_PATH) + 2U;
                 char   newPKG_CONFIG_PATH[newPKG_CONFIG_PATHLength];
 
-                ret = snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", pkgconfigDIR, PKG_CONFIG_PATH);
+                ret = snprintf(newPKG_CONFIG_PATH, newPKG_CONFIG_PATHLength, "%s:%s", PKG_CONFIG_PATH, pkgconfigDIR);
 
                 if (ret < 0) {
                     perror(NULL);
