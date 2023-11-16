@@ -5647,6 +5647,7 @@ __adjust_pc_files_for_the_given_target() {
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
         sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
+        sed_in_place "s|${PPKG_HOME}/.*/lib.*\.a||g" "$pcfile"
         sed_in_place "s|-R[^' ]*||g"               "$pcfile"
         sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
         #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
@@ -7384,7 +7385,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.4
+    PPKG_VERSION=0.3.5
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
