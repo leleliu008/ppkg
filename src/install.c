@@ -583,8 +583,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_SQLITE3:
             nativePackage->name = "sqlite3";
-            nativePackage->srcUrl = "https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz";
-            nativePackage->srcSha = "4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33";
+            nativePackage->srcUrl = "https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz";
+            nativePackage->srcSha = "b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550";
             nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
             nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
@@ -3041,6 +3041,7 @@ static int ppkg_install_package(
 
     size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
 
+    bool isNativeOSLinux;
     bool isNativeOSDarwin;
 
 #if defined (__APPLE__)
@@ -3049,14 +3050,23 @@ static int ppkg_install_package(
     isNativeOSDarwin = false;
 #endif
 
+#if defined (__linux__)
+    isNativeOSLinux = true;
+#else
+    isNativeOSLinux = false;
+#endif
+
     size_t uppmPackageNamesCapacity = depPackageNamesLength + 100U;
     char   uppmPackageNames[uppmPackageNamesCapacity];
-    int    uppmPackageNamesLength = snprintf(uppmPackageNames, 70U, "bash coreutils findutils gsed gawk grep tree pkgconf%s%s", isNativeOSDarwin ? "" : " patchelf", installOptions.enableCcache ? " ccache" : "");
 
-    if (uppmPackageNamesLength < 0) {
+    ret = snprintf(uppmPackageNames, 75U, "bash coreutils findutils gsed gawk grep tree %s%s%s", (isNativeOSLinux || isNativeOSDarwin) ? "pkg-config" : "pkgconf", isNativeOSDarwin ? "" : " patchelf", installOptions.enableCcache ? " ccache" : "");
+
+    if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
+
+    size_t uppmPackageNamesLength = ret;
 
     bool requestToInstallCmake = false;
     bool requestToInstallGmake = false;
