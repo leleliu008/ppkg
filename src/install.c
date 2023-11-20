@@ -472,6 +472,9 @@ static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const c
 #define NATIVE_PACKAGE_ID_RUBY     18
 #define NATIVE_PACKAGE_ID_PERL_XML_PARSER 19
 
+#define NATIVE_PACKAGE_ID_LIBPCRE2 20
+#define NATIVE_PACKAGE_ID_SWIG     21
+
 typedef struct {
     const char * name;
 
@@ -633,9 +636,24 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             nativePackage->name = "perl-XML-Parser";
             nativePackage->srcUrl = "https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz";
             nativePackage->srcSha = "d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d";
-            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_EXPAT;
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_EXPAT;
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBPCRE2:
+            nativePackage->name = "libpcre2";
+            nativePackage->srcUrl = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2";
+            nativePackage->srcSha = "8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
+            nativePackage->buildConfigureArgs = "-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON";
+            break;
+        case NATIVE_PACKAGE_ID_SWIG:
+            nativePackage->name = "swig";
+            nativePackage->srcUrl = "https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz";
+            nativePackage->srcSha = "2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_LIBPCRE2;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            nativePackage->buildConfigureArgs = "--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go";
             break;
         default:
             fprintf(stderr, "unknown native package id: %d\n", packageID);
@@ -3038,6 +3056,7 @@ static int ppkg_install_package(
     bool requestToBuildTexinfo  = false;
     bool requestToBuildHelp2man = false;
     bool requestToBuildIntltool = false;
+    bool requestToBuildSwig     = false;
 
     size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
 
@@ -3116,6 +3135,10 @@ static int ppkg_install_package(
                 requestToInstallCmake = true;
             } else if (strcmp(depPackageName, "gmake") == 0) {
                 requestToInstallGmake = true;
+            } else if (strcmp(depPackageName, "swig") == 0) {
+                requestToBuildSwig    = true;
+                requestToInstallGmake = true;
+                requestToInstallCmake = true;
             } else {
                 int len = snprintf(uppmPackageNames + uppmPackageNamesLength, strlen(depPackageName) + 2U, " %s", depPackageName);
 
@@ -3189,7 +3212,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int nativePackageIDArray[20] = {0};
+    int nativePackageIDArray[22] = {0};
     int nativePackageIDArraySize = 0;
 
     if (requestToBuildPerl) {
@@ -3234,6 +3257,11 @@ static int ppkg_install_package(
 
     if (requestToBuildIntltool) {
         nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_INTLTOOL;
+        nativePackageIDArraySize++;
+    }
+
+    if (requestToBuildSwig) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_SWIG;
         nativePackageIDArraySize++;
     }
 
@@ -5209,32 +5237,6 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    struct stat st;
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (getenv("SSL_CERT_FILE") == NULL) {
-        size_t cacertFilePathCapacity = ppkgCoreDIRCapacity + 16U;
-        char   cacertFilePath[cacertFilePathCapacity];
-
-        ret = snprintf(cacertFilePath, cacertFilePathCapacity, "%s/etc/cacert.pem", ppkgCoreDIR);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (stat(cacertFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            // https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-            if (setenv("SSL_CERT_FILE", cacertFilePath, 1) != 0) {
-                perror("SSL_CERT_FILE");
-                return PPKG_ERROR;
-            }
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
     char   sessionDIR[PATH_MAX];
     size_t sessionDIRLength;
 
@@ -5255,6 +5257,8 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
         perror(NULL);
         return PPKG_ERROR;
     }
+
+    struct stat st;
 
     if (stat(ppkgDownloadsDIR, &st) == 0) {
         if (!S_ISDIR(st.st_mode)) {

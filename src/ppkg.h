@@ -446,4 +446,6 @@ int ppkg_mkdir_p(const char * dirPath, bool verbose);
 
 int ppkg_rm_r(const char * dirPath, bool verbose);
 
+int ppkg_setenv_SSL_CERT_FILE();
+
 #endif

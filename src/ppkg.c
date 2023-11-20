@@ -34,10 +34,6 @@ int ppkg_main(int argc, char* argv[]) {
         }
     }
 
-    if (strcmp(argv[1], "setup") == 0) {
-        return ppkg_setup(verbose);
-    }
-
     if (strcmp(argv[1], "sysinfo") == 0) {
         return ppkg_sysinfo();
     }
@@ -58,6 +54,22 @@ int ppkg_main(int argc, char* argv[]) {
         }
 
         return ret;
+    }
+
+    int ret = ppkg_setenv_SSL_CERT_FILE();
+
+    if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
+        fprintf(stderr, "%s\n", "HOME environment variable is not set.\n");
+    } else if (ret == PPKG_ERROR) {
+        fprintf(stderr, "occurs error.\n");
+    }
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    if (strcmp(argv[1], "setup") == 0) {
+        return ppkg_setup(verbose);
     }
 
     if (strcmp(argv[1], "update") == 0) {

@@ -949,11 +949,11 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
         return PPKG_OK;
     }
 
-    size_t  bsystemStrLenth = strlen(formula->bsystem) + 1U;
-    char    bsystemStr[bsystemStrLenth];
-    strncpy(bsystemStr, formula->bsystem, bsystemStrLenth);
+    size_t  bsystemBufCapcity = strlen(formula->bsystem) + 1U;
+    char    bsystemBuf[bsystemBufCapcity];
+    strncpy(bsystemBuf, formula->bsystem, bsystemBufCapcity);
 
-    char * bsystem = strtok(bsystemStr, " ");
+    char * bsystem = strtok(bsystemBuf, " ");
 
     while (bsystem != NULL) {
                if (strcmp(bsystem, "autogen") == 0) {
