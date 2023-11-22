@@ -127,8 +127,17 @@ bppend_to_ACLOCAL_PATH() {
 }
 
 sed_in_place() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}sed -i $@${COLOR_OFF}"
-    sed -i "$@"
+    if [ "$RUN_SILENT" = 1 ] ; then
+        sed -i "$@"
+    else
+        if [ -z "$SED" ] ; then
+            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
+        fi
+
+        export SED
+
+        "$PPKG_CORE_DIR/libexec/sed-in-place" "$@"
+    fi
 }
 
 git() {
@@ -7065,6 +7074,47 @@ EOF
 
     #########################################################################################
 
+    cat > sed-in-place.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char* argv[]) {
+    char * const sed = getenv("SED");
+
+    if (sed == NULL || sed[0] == '\0') {
+        fprintf(stderr, "SED environment variable was not set.\n");
+        return 1;
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    char* argv2[argc + 2];
+
+    argv2[0] = sed;
+    argv2[1] = (char*)"-i";
+
+    for (int i = 1; i < argc; i++) {
+        argv2[i + 1] = argv[i];
+    }
+
+    argv2[argc + 1] = NULL;
+
+    for (int i = 0; argv2[i] != NULL; i++) {
+        fprintf(stderr, "%s ", argv2[i]);
+    }
+    fprintf(stderr, "\n");
+
+    execv (sed, argv2);
+    perror(sed);
+    return 255;
+}
+EOF
+
+    run cc -std=c99 -o libexec/sed-in-place sed-in-place.c
+
+    #########################################################################################
+
     if [ -d        "$PPKG_CORE_DIR" ] ; then
         run rm -rf "$PPKG_CORE_DIR"
     fi
@@ -7385,7 +7435,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.5
+    PPKG_VERSION=0.3.6
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
