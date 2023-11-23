@@ -51,7 +51,7 @@ jobs:
             run ./ppkg depends libzip
 
 
-            run ./ppkg install libzip
+            run ./ppkg install libzip --jobs=1
 
 
             run ./ppkg tree libzip

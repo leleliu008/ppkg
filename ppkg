@@ -3593,6 +3593,20 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
+        libpcre2)
+            NATIVE_PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+            ;;
+        swig)
+            NATIVE_PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
+            NATIVE_PACKAGE_DEPENDENCIES='libpcre2'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
+            ;;
         *)  abort 1 "unknown native package name: $1"
     esac
 
@@ -4245,6 +4259,7 @@ $DOT_CONTENT
             intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
@@ -4906,8 +4921,15 @@ $DOT_CONTENT
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         step "config environment variables for cargo and rustc"
 
+        # https://github.com/rust-lang/rust/issues/89626
+        if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
+            CFLAGS="$CFLAGS -mno-outline-atomics"
+        fi
+
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
+
+        #########################################################
 
         unset RUST_TARGET
 
@@ -4934,6 +4956,11 @@ $DOT_CONTENT
             netbsd-amd64)   RUST_TARGET=x86_64-unknown-netbsd  ;;
         esac
 
+        # this environment variable is not defined by Rust, but it is widely used by third-party project.
+        export RUST_TARGET
+
+        #########################################################
+
         RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
 
         # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
@@ -4943,32 +4970,24 @@ $DOT_CONTENT
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
-        # this environment variable is not defined by Rust, but it is widely used by third-party project.
-        export RUST_TARGET
-
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-
-            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                RUSTFLAGS="-Clink-arg=-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Clink-arg=-Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $RUSTFLAGS"
-            fi
-        done
+        #########################################################
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
+        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib"
 
         if [ "$LINK_TYPE" = 'static-full' ] ; then
             if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
                 printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
-                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+                RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
             fi
         fi
 
-        # https://github.com/rust-lang/rust/issues/89626
-        if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
-            CFLAGS="$CFLAGS -mno-outline-atomics"
-        fi
+        for LDFLAG in $LDFLAGS
+        do
+            RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
+        done
+
+        #########################################################
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -7435,7 +7454,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.6
+    PPKG_VERSION=0.3.7
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
