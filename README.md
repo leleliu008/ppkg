@@ -438,6 +438,24 @@ all relevant directories and files are located under `~/.ppkg` directory.
     export PPKG_XTRACE=1
     ```
 
+- **PPKG_DEFAULT_TARGET**
+
+    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrive your current running system's information.
+
+    `<TARGET>` has the form `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+
+    examples:
+
+    ```bash
+    export PPKG_DEFAULT_TARGET=linux-glibc-x86_64
+    export PPKG_DEFAULT_TARGET=linux-musl-x86_64
+    export PPKG_DEFAULT_TARGET=macos-13.0-arm64
+    export PPKG_DEFAULT_TARGET=macos-13.0-x86_64
+    export PPKG_DEFAULT_TARGET=freebsd-13.2-amd64
+    export PPKG_DEFAULT_TARGET=openbsd-7.4-amd64
+    export PPKG_DEFAULT_TARGET=netbsd-9.3-amd64
+    ```
+
 **Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
 ## ppkg formula
@@ -471,13 +489,13 @@ After a ppkg formula repository is successfully fetched from server to local, a 
 
 a typical ppkg formula repository's config as following:
 
-```yml
+```yaml
 url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 branch: master
 pinned: 0
 enabled: 1
-timestamp-created: 1673684639
-timestamp-updated: 1673684767
+created: 1673684639
+updated: 1673684767
 ```
 
 If a ppkg formula repository is `pinned`, which means it would not be updated.
