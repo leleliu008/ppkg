@@ -1429,7 +1429,7 @@ filetype_from_url() {
 
 # is_package__outdated <PACKAGE-SPEC>
   is_package__outdated() {
-    __load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "${1##*/}"
     __load_receipt_of_the_given_package "$1"
     version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
 }
@@ -1501,10 +1501,10 @@ __list_symlinked_packages() {
 __list__outdated_packages() {
     [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] || return 0
 
-    for packageName in $(find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 2 -mindepth 2 -type l -printf '%P\n')
+    for pkg in $(find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 2 -mindepth 2 -type l -printf '%P\n')
     do
-        if is_package__outdated "$packageName" ; then
-            printf '%s\n' "$packageName"
+        if is_package__outdated "$pkg" ; then
+            printf '%s\n' "$pkg"
         fi
     done
 }
@@ -4906,6 +4906,7 @@ $DOT_CONTENT
     LDFLAGS=
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        SYSROOT="$SYSROOT_FOR_BUILD"
         PPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
         CCFLAGS="-isysroot $SYSROOT -Qunused-arguments $CCFLAGS"
         OCFLAGS="-isysroot $SYSROOT -Qunused-arguments $OCFLAGS"
