@@ -8292,10 +8292,28 @@ EOF
         ls-symlinked) shift; __list_symlinked_packages ;;
         ls-outdated)  shift; __list__outdated_packages ;;
 
-        is-available) shift; is_package_available "$@" ;;
-        is-installed) shift; is_package_installed "$@" ;;
-        is-symlinked) shift; is_package_symlinked "$@" ;;
-        is-outdated)  shift; is_package__outdated "$@" ;;
+        is-available)
+            shift
+            is_package_available "$1"
+            ;;
+        is-installed)
+            shift
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            is_package_installed "$PACKAGE_SPEC"
+            ;;
+        is-symlinked)
+            shift
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            is_package_symlinked "$PACKAGE_SPEC"
+            ;;
+        is-outdated)
+            shift
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            is_package__outdated "$PACKAGE_SPEC"
+            ;;
 
         formula-edit) shift; __edit_formula_of_the_given_package "$@" ;;
 
