@@ -56,12 +56,12 @@ jobs:
 
       - run: ./ppkg ls-available
       - run: ./ppkg ls-installed
-      - run: ./ppkg ls-symlinked  || echo "not symlinked"
+      - run: ./ppkg ls-symlinked
       - run: ./ppkg ls-outdated
 
       - run: ./ppkg is-available libzip
       - run: ./ppkg is-installed libzip
-      - run: ./ppkg is-symlinked libzip
+      - run: ./ppkg is-symlinked libzip || echo "not symlinked"
       - run: ./ppkg is-outdated  libzip || echo "not outdated"
 
       - run: ./ppkg info libzip installed-dir
