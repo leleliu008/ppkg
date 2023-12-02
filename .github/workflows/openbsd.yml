@@ -24,6 +24,7 @@ jobs:
         with:
           mem: 2048
           box: generic/openbsd7
+          box-version: 4.2.16
           run: |
             run sudo pkg_add curl gtar-- gcc%11
 
