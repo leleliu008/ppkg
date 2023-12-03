@@ -2409,9 +2409,9 @@ __fetch_resources_of_the_given_package() {
 
     if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
         if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-            PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS"
-        else
             PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+        else
+            PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
         fi
     else
             PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
@@ -3662,78 +3662,6 @@ __inspect_install_arguments() {
     run env
 }
 
-__setup_sysroot_freebsd() {
-    export SYSROOT="$PPKG_HOME/sysroot/$TARGET_PLATFORM_SPEC"
-
-    if [ ! -d "$SYSROOT" ] ; then
-        SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-sysroot.txz"
-        SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
-
-        # https://archive.freebsd.org/old-releases/
-        SYSROOT_URL="https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz"
-        wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
-
-        run install -d "$TARGET_PLATFORM_SPEC"
-        run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
-
-        run install -d "$PPKG_HOME/sysroot"
-        run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot"
-    fi
-}
-
-__setup_sysroot_openbsd() {
-    export SYSROOT="$PPKG_HOME/sysroot/$TARGET_PLATFORM_SPEC"
-
-    if [ ! -d "$SYSROOT" ] ; then
-        TARGET_PLATFORM_VERS_MAJOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f1)"
-        TARGET_PLATFORM_VERS_MINOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f2)"
-
-        run install -d "$TARGET_PLATFORM_SPEC"
-
-        for item in base comp
-        do
-            SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-$item.tgz"
-            SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
-            SYSROOT_URL="https://cdn.openbsd.org/pub/OpenBSD/$TARGET_PLATFORM_VERS/$TARGET_PLATFORM_ARCH/$item$TARGET_PLATFORM_VERS_MAJOR$TARGET_PLATFORM_VERS_MINOR.tgz"
-            wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
-            run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
-        done
-
-        # https://github.com/mesonbuild/meson/issues/5390
-        printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
-        printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/librt.a"
-        printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libcrypt.a"
-
-        run install -d "$PPKG_HOME/sysroot"
-        run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot"
-    fi
-}
-
-__setup_sysroot_netbsd() {
-    export SYSROOT="$PPKG_HOME/sysroot/$TARGET_PLATFORM_SPEC"
-
-    if [ ! -d "$SYSROOT" ] ; then
-        TARGET_PLATFORM_VERS_MAJOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f1)"
-        TARGET_PLATFORM_VERS_MINOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f2)"
-
-        run install -d "$TARGET_PLATFORM_SPEC"
-
-        for item in base comp
-        do
-            FILENAME="$TARGET_PLATFORM_SPEC-$item.txz"
-            FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
-            URL="https://ftp.netbsd.org/pub/NetBSD/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
-            wfetch "$URL" --buffer-dir="$SESSION_DIR" --output-filepath="$FILEPATH"
-            run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
-        done
-
-        printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
-
-        run install -d "$PPKG_HOME/sysroot"
-        run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot"
-    fi
-}
-
 __inspect_toolchain_config_file() {
     return 0
     [ -z "$1" ] && abort 1 "__inspect_toolchain_config_file <TOOLCHAIN_CONFIG_FILEPATH>, <TOOLCHAIN_CONFIG_FILEPATH> is unspecified."
@@ -4794,29 +4722,13 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    step "locate C/C++ toolchain for target build"
+
     if [ "$CROSS_COMPILING" = 1 ] ; then
-        step "prepare C/C++ sysroot for target build"
-
-        case $TARGET_PLATFORM_NAME in
-            freebsd)
-                __setup_sysroot_freebsd
-                ;;
-            openbsd)
-                __setup_sysroot_openbsd
-                ;;
-            netbsd)
-                __setup_sysroot_netbsd
-                ;;
-        esac
-
-        step "locate C/C++ toolchain for target build"
-
         PROXIED_CC="$(command -v clang)"    || abort 1 "command not found: clang"
         PROXIED_OBJC="$(command -v clang)"  || abort 1 "command not found: clang"
         PROXIED_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
     else
-        step "locate C/C++ toolchain for target build"
-
         PROXIED_CC="$PROXIED_CC_FOR_BUILD"
         PROXIED_OBJC="$PROXIED_OBJC_FOR_BUILD"
         PROXIED_CXX="$PROXIED_CXX_FOR_BUILD"
@@ -4826,11 +4738,101 @@ $DOT_CONTENT
     CXX="$PPKG_CORE_LIBEXEC_DIR/wrapper-target-c++"
     CPP="$CC -E"
 
-    for TOOL in SYSROOT PROXIED_CC PROXIED_CXX CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
+    for TOOL in PROXIED_CC PROXIED_CXX CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
     do
         export "$TOOL"
         printf "%11s = %s\n" "$TOOL" "$(eval echo \$"$TOOL")"
     done
+
+    #########################################################################################
+
+    if [ "$CROSS_COMPILING" = 1 ] ; then
+        step "prepare C/C++ sysroot for target build"
+
+        export SYSROOT="$PPKG_HOME/sysroot/$TARGET_PLATFORM_SPEC"
+        printf "%11s = %s\n" SYSROOT "$SYSROOT"
+
+        [ -f "$SYSROOT/ok" ] || {
+            case $TARGET_PLATFORM_NAME in
+                dragonflybsd)
+                    SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-sysroot.txz"
+                    SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+
+                    # https://archive.freebsd.org/old-releases/
+                    SYSROOT_URL="https://github.com/leleliu008/test/releases/download/2023.10.08/dragonflybsd-6.4-x86_64-sysroot.tar.xz"
+                    wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+
+                    run install -d "$TARGET_PLATFORM_SPEC"
+                    run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+                    run touch "$TARGET_PLATFORM_SPEC/ok"
+                    run install -d "$PPKG_HOME/sysroot"
+                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
+                    ;;
+                freebsd)
+                    SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-sysroot.txz"
+                    SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+
+                    # https://archive.freebsd.org/old-releases/
+                    SYSROOT_URL="https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz"
+                    wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+
+                    run install -d "$TARGET_PLATFORM_SPEC"
+                    run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+                    run touch "$TARGET_PLATFORM_SPEC/ok"
+                    run install -d "$PPKG_HOME/sysroot"
+                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
+                    ;;
+                openbsd)
+                    TARGET_PLATFORM_VERS_MAJOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f1)"
+                    TARGET_PLATFORM_VERS_MINOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f2)"
+
+                    run install -d "$TARGET_PLATFORM_SPEC"
+
+                    for item in base comp
+                    do
+                        SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-$item.tgz"
+                        SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+                        SYSROOT_URL="https://cdn.openbsd.org/pub/OpenBSD/$TARGET_PLATFORM_VERS/$TARGET_PLATFORM_ARCH/$item$TARGET_PLATFORM_VERS_MAJOR$TARGET_PLATFORM_VERS_MINOR.tgz"
+                        wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+                        run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+                    done
+
+                    # https://github.com/mesonbuild/meson/issues/5390
+                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/librt.a"
+                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libcrypt.a"
+
+                    run touch "$TARGET_PLATFORM_SPEC/ok"
+                    run install -d "$PPKG_HOME/sysroot"
+                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
+                    ;;
+                netbsd)
+                    run install -d "$TARGET_PLATFORM_SPEC"
+
+                    for item in base comp
+                    do
+                        FILENAME="$TARGET_PLATFORM_SPEC-$item.txz"
+                        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
+                        URL="https://ftp.netbsd.org/pub/NetBSD/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
+                        wfetch "$URL" --buffer-dir="$SESSION_DIR" --output-filepath="$FILEPATH"
+                        run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+                    done
+
+                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+
+                    run touch "$TARGET_PLATFORM_SPEC/ok"
+                    run install -d "$PPKG_HOME/sysroot"
+                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
+                    ;;
+                linux333)
+                    if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
+                        :
+                    fi
+                    run touch "$TARGET_PLATFORM_SPEC/ok"
+                    ;;
+            esac
+        }
+    fi
 
     #########################################################################################
 
@@ -7285,6 +7287,7 @@ EOF
                 run ln -sf /usr/local/bin/ggrep      bin/grep
                 run ln -sf /usr/local/bin/gfind      bin/find
                 run ln -sf /usr/local/bin/gmake      bin/make
+                run ln -sf /usr/local/bin/gdate      bin/date
                 run ln -sf /usr/local/bin/gbase64    bin/base64
                 run ln -sf /usr/local/bin/gunlink    bin/unlink
                 run ln -sf /usr/local/bin/ginstall   bin/install
@@ -8050,7 +8053,16 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
 
     <PLATFORM-ARCH> : e.g. x86_64, amd64, arm64, aarch64, riscv64, ppc64le, s390x, etc
 
-    <TARGET> examples: e.g. linux-glibc-x86_64, linux-musl-x86_64, macos-13.0-x86_64, macos-12.0-arm64, freebsd-13.2-amd64, openbsd-7.4-amd64, netbsd-9.1-amd64
+    <TARGET> examples:
+        linux-glibc-x86_64
+        linux-musl-x86_64
+
+        macos-13.0-x86_64
+        macos-12.0-arm64
+
+        freebsd-13.2-amd64
+        openbsd-7.4-amd64
+        netbsd-9.1-amd64
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--target=<TARGET>${COLOR_OFF}
