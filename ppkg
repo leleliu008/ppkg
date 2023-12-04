@@ -3146,6 +3146,11 @@ gow() {
                         x86_64) TARGET_PLATFORM_ARCH='amd64'
                     esac
                     ;;
+                dragonflybsd)
+                    case $TARGET_PLATFORM_ARCH in
+                        amd64) TARGET_PLATFORM_ARCH='x86_64'
+                    esac
+                    ;;
                 *)  abort 1 "invalid package-spec: $1, unsupported platform: $TARGET_PLATFORM_NAME"
             esac
 
@@ -3205,6 +3210,11 @@ gow() {
                             netbsd)
                                 case $TARGET_PLATFORM_ARCH in
                                     x86_64) TARGET_PLATFORM_ARCH='amd64'
+                                esac
+                                ;;
+                            dragonflybsd)
+                                case $TARGET_PLATFORM_ARCH in
+                                    amd64) TARGET_PLATFORM_ARCH='x86_64'
                                 esac
                                 ;;
                             *)  abort 1 "you have specified --target=$2 , but it is an invalid target, unsupported platform: $TARGET_PLATFORM_NAME"
@@ -3285,6 +3295,11 @@ gow() {
                             netbsd)
                                 case $TARGET_PLATFORM_ARCH in
                                     x86_64) TARGET_PLATFORM_ARCH='amd64'
+                                esac
+                                ;;
+                            dragonflybsd)
+                                case $TARGET_PLATFORM_ARCH in
+                                    amd64) TARGET_PLATFORM_ARCH='x86_64'
                                 esac
                                 ;;
                             *)  abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target, unsupported platform: $TARGET_PLATFORM_NAME"
@@ -4122,7 +4137,13 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$TARGET_PLATFORM_ARCH-$TARGET_PLATFORM_NAME" = "$NATIVE_OS_ARCH-$NATIVE_OS_TYPE" ] ; then
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
+        NATIVE_OS_SPEC="$NATIVE_OS_KIND-$NATIVE_OS_LIBC-$NATIVE_OS_ARCH"
+    else
+        NATIVE_OS_SPEC="$NATIVE_OS_KIND-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+    fi
+
+    if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_OS_SPEC" ] ; then
         CROSS_COMPILING=0
     else
         CROSS_COMPILING=1
@@ -4824,11 +4845,21 @@ $DOT_CONTENT
                     run install -d "$PPKG_HOME/sysroot"
                     run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     ;;
-                linux333)
+                linux)
                     if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
-                        :
+                        SYSROOT_URL='https://github.com/leleliu008/test/releases/download/2023.10.08/musl-libc-1.2.3-linux-x86_64-musl.tar.xz'
+
+                        SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-libc.txz"
+                        SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+
+                        wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+
+                        run install -d "$TARGET_PLATFORM_SPEC"
+                        run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+                        run touch "$TARGET_PLATFORM_SPEC/ok"
+                        run install -d "$PPKG_HOME/sysroot"
+                        run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     fi
-                    run touch "$TARGET_PLATFORM_SPEC/ok"
                     ;;
             esac
         }
@@ -4928,7 +4959,11 @@ $DOT_CONTENT
     fi
 
     if [ "$CROSS_COMPILING" = 1 ] ; then
-        CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+            CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
+        else
+            CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+        fi
 
         PPFLAGS="--target=$CLANG_TARGET $PPFLAGS"
         CCFLAGS="--target=$CLANG_TARGET $CCFLAGS"
@@ -5034,15 +5069,15 @@ EOF
 
     ##################################################################################
 
-    export   CFLAGS="$CCFLAGS"
-    export CXXFLAGS="$XXFLAGS"
-    export CPPFLAGS="$PPFLAGS"
-    export  LDFLAGS="$LDFLAGS"
-
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
     PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
     LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+
+    export   CFLAGS="$CCFLAGS"
+    export CXXFLAGS="$XXFLAGS"
+    export CPPFLAGS="$PPFLAGS"
+    export  LDFLAGS="$LDFLAGS"
 
     printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} CFLAGS"
     printf '%s\n' "$CFLAGS" | xargs printf '        %s\n'
@@ -8161,7 +8196,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.8
+    PPKG_VERSION=0.3.9
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
