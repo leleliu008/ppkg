@@ -1052,8 +1052,8 @@ filetype_from_url() {
     fi
 
     if [ -z "$PACKAGE_BINBSTD" ] ; then
-        PACKAGE_BINBSTD=1
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
+        PACKAGE_BINBSTD=0
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=0
     else
         PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
     fi
@@ -8082,7 +8082,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
 
     <TARGET> is a formatted string that has form ${COLOR_RED}<PLATFORM-NAME>-<PLATFORM-VERSION>-<PLATFORM-ARCH>${COLOR_OFF}
 
-    <PLATFORM-NAME> : e.g. linux, macos, freebsd, openbsd, netbsd, etc
+    <PLATFORM-NAME> : e.g. linux, macos, freebsd, openbsd, netbsd, dragonflybsd, etc
 
     <PLATFORM-VERSION> : specify the platform version to be built with. It usually matches the regular expression pattern '[0-9][0-9]?.[0-9][0-9]?', e.g. 10.15, 11.0, 12.0, 12.6, etc.
 
@@ -8196,7 +8196,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.9
+    PPKG_VERSION=0.3.10
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
