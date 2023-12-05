@@ -1861,6 +1861,46 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS"
             ;;
+        developer)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DEVELOPER"
+            ;;
+        src-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_SRC_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_SRC_FILETYPE"
+            fi
+            ;;
+        src-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_SRC_FILEPATH"
+            fi
+            ;;
+        fix-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_FIX_FILETYPE"
+            fi
+            ;;
+        fix-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_FIX_FILEPATH"
+            fi
+            ;;
+        res-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_RES_FILETYPE"
+            fi
+            ;;
+        res-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_RES_FILEPATH"
+            fi
+            ;;
         *)  __load_formula_of_the_given_package "$1"
             __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_GET__KEY__
@@ -2709,7 +2749,7 @@ EOF
 
     run "$CMAKE" \
         -Wno-dev \
-        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_INSTALL_LIBDIR="$PACKAGE_INSTALL_DIR/lib" \
         -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
         -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
         -DCMAKE_PROJECT_INCLUDE="$CMAKE_PROJECT_INCLUDE" \
@@ -8090,10 +8130,21 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
 
     <TARGET> examples:
         linux-glibc-x86_64
+        linux-glibc-aarch64
+        linux-glibc-riscv64
+        linux-glibc-ppc64le
+        linux-glibc-s390x
+
         linux-musl-x86_64
+        linux-musl-aarch64
+        linux-musl-riscv64
+        linux-musl-ppc64le
+        linux-musl-s390x
 
         macos-13.0-x86_64
         macos-12.0-arm64
+
+        dragonflybsd-6.4-x86_64
 
         freebsd-13.2-amd64
         openbsd-7.4-amd64
@@ -8196,7 +8247,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.10
+    PPKG_VERSION=0.3.11
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
