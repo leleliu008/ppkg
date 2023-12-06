@@ -4839,6 +4839,13 @@ $DOT_CONTENT
 
                     run install -d "$TARGET_PLATFORM_SPEC"
                     run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+
+                    rm "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
+
+                    printf '%s\n' 'INPUT(-lc++)'                  > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
+
                     run touch "$TARGET_PLATFORM_SPEC/ok"
                     run install -d "$PPKG_HOME/sysroot"
                     run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
@@ -4859,9 +4866,12 @@ $DOT_CONTENT
                     done
 
                     # https://github.com/mesonbuild/meson/issues/5390
-                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
-                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/librt.a"
-                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libcrypt.a"
+                    printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+                    printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/librt.a"
+                    printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/libcrypt.a"
+                    printf '%s\n' 'INPUT(-lc++)'                  > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt -lc++abi)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt -lc++abi)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
                     run install -d "$PPKG_HOME/sysroot"
@@ -4879,7 +4889,10 @@ $DOT_CONTENT
                         run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
                     done
 
-                    printf '%s\n' 'INPUT(-lc)' > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+                    printf '%s\n' 'INPUT(-lc)'           > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+                    printf '%s\n' 'INPUT(-lc++)'         > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
+                    printf '%s\n' 'INPUT(-lcompiler_rt)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
                     run install -d "$PPKG_HOME/sysroot"
@@ -8247,7 +8260,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.11
+    PPKG_VERSION=0.3.12
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
