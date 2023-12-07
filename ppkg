@@ -4983,6 +4983,16 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    if [ "$LINK_TYPE" = static-full ] ; then
+        if [ "$TARGET_PLATFORM_NAME" = netbsd ] ; then
+            if [ "$CROSS_COMPILING" = 1 ] ; then
+                printf 'INPUT(%s/usr/lib/libstdc++.a -lgcc_s)\n' "$SYSROOT" >  "$PACKAGE_WORKING_DIR/lib/libstdc++.a"
+            fi
+        fi
+    fi
+
+    #########################################################################################
+
     step "initialize CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
     PPFLAGS=
