@@ -2677,6 +2677,8 @@ EOF
                 freebsd)  CMAKE_SYSTEM_NAME=FreeBSD ;;
                 openbsd)  CMAKE_SYSTEM_NAME=OpenBSD ;;
                 netbsd)   CMAKE_SYSTEM_NAME=NetBSD  ;;
+                dragonflybsd)
+                          CMAKE_SYSTEM_NAME=FreeBSD ;;
                 *)        CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
             esac
 
@@ -4204,9 +4206,9 @@ __install_the_given_package() {
      NATIVE_OS_EUID = $NATIVE_OS_EUID
      NATIVE_OS_EGID = $NATIVE_OS_EGID
 
-TARGET_PLATFORM_NAME = $TARGET_PLATFORM_NAME
-TARGET_PLATFORM_VERS = $TARGET_PLATFORM_VERS
-TARGET_PLATFORM_ARCH = $TARGET_PLATFORM_ARCH
+TARGET_PLATFORM_NAME= $TARGET_PLATFORM_NAME
+TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
+TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
 
     CROSS_COMPILING = $CROSS_COMPILING
 
@@ -4889,10 +4891,8 @@ $DOT_CONTENT
                         run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
                     done
 
-                    printf '%s\n' 'INPUT(-lc)'           > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
-                    printf '%s\n' 'INPUT(-lc++)'         > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
-                    printf '%s\n' 'INPUT(-lcompiler_rt)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
-                    printf '%s\n' 'INPUT(-lcompiler_rt)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
+                    printf '%s\n' 'INPUT(-lc)'      > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
+                    printf '%s\n' 'INPUT(-lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
                     run install -d "$PPKG_HOME/sysroot"
