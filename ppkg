@@ -3592,8 +3592,8 @@ __inspect_install_arguments() {
     fi
 
     case $NATIVE_OS_KIND in
-        netbsd)  LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -pthread" ;;
-        openbsd) LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -pthread" ;;
+        netbsd)  LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
+        openbsd) LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
     esac
 
     #########################################################################################
@@ -4842,6 +4842,11 @@ $DOT_CONTENT
                     run install -d "$TARGET_PLATFORM_SPEC"
                     run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
 
+                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+
                     rm "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
 
                     printf '%s\n' 'INPUT(-lc++)'                  > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
@@ -4867,6 +4872,11 @@ $DOT_CONTENT
                         run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
                     done
 
+                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+
                     # https://github.com/mesonbuild/meson/issues/5390
                     printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
                     printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/librt.a"
@@ -4890,6 +4900,11 @@ $DOT_CONTENT
                         wfetch "$URL" --buffer-dir="$SESSION_DIR" --output-filepath="$FILEPATH"
                         run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
                     done
+
+                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
 
                     printf '%s\n' 'INPUT(-lc)'      > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
                     printf '%s\n' 'INPUT(-lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
@@ -8270,7 +8285,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.12
+    PPKG_VERSION=0.3.13
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
