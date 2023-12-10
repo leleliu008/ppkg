@@ -5056,6 +5056,12 @@ $DOT_CONTENT
 
         PPFLAGS="$PPFLAGS -I$SYSROOT/usr/include/c++/v1"
         XXFLAGS="$XXFLAGS -I$SYSROOT/usr/include/c++/v1"
+
+        if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
+            # https://github.com/llvm/llvm-project/issues/74917
+            # https://github.com/madler/zlib/issues/856
+            LDFLAGS="$LDFLAGS -fuse-ld=lld -Wl,--undefined-version"
+        fi
     fi
 
     if [ "$LOG_LEVEL" -ge 3 ] ; then
@@ -8290,7 +8296,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.13
+    PPKG_VERSION=0.3.14
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
