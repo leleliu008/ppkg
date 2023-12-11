@@ -8388,7 +8388,7 @@ EOF
         is-installed)
             shift
             PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"__info_the_given_installed_package
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
             is_package_installed "$PACKAGE_SPEC"
             ;;
         is-symlinked)

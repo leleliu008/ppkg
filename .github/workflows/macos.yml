@@ -38,7 +38,7 @@ jobs:
 
       - run: ./ppkg info libzip
       - run: ./ppkg info libzip summary
-      - run: ./ppkg info libzip webpage
+      - run: ./ppkg info libzip web-url
       - run: ./ppkg info libzip version
 
       - run: ./ppkg depends libzip
