@@ -63,18 +63,6 @@ jobs:
       - run: ./ppkg info libzip src-sha
 
 
-      - run: ./ppkg formula libzip
-      - run: ./ppkg formula libzip --yaml
-      - run: ./ppkg formula libzip --json
-      - run: ./ppkg formula libzip version
-      - run: ./ppkg formula libzip license
-      - run: ./ppkg formula libzip summary
-      - run: ./ppkg formula libzip web-url
-      - run: ./ppkg formula libzip git-url
-      - run: ./ppkg formula libzip git-sha
-      - run: ./ppkg formula libzip git-ref
-      - run: ./ppkg formula libzip src-url
-      - run: ./ppkg formula libzip src-sha
 
 
       - run: ./ppkg depends libzip
@@ -95,18 +83,6 @@ jobs:
       - run: ./ppkg tree libzip
 
 
-      - run: ./ppkg receipt libzip
-      - run: ./ppkg receipt libzip --yaml
-      - run: ./ppkg receipt libzip --json
-      - run: ./ppkg receipt libzip version
-      - run: ./ppkg receipt libzip license
-      - run: ./ppkg receipt libzip summary
-      - run: ./ppkg receipt libzip web-url
-      - run: ./ppkg receipt libzip git-url
-      - run: ./ppkg receipt libzip git-sha
-      - run: ./ppkg receipt libzip git-ref
-      - run: ./ppkg receipt libzip src-url
-      - run: ./ppkg receipt libzip src-sha
 
 
       - run: ./ppkg info libzip installed-dir

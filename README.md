@@ -132,68 +132,52 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg search lib
     ```
 
-- **show information of the given package**
+- **show information of all available packages**
 
     ```bash
-    ppkg info curl
-    ppkg info curl --yaml
-    ppkg info curl --json
-    ppkg info curl version
-    ppkg info curl license
-    ppkg info curl summary
-    ppkg info curl web-url
-    ppkg info curl git-url
-    ppkg info curl git-sha
-    ppkg info curl git-ref
-    ppkg info curl src-url
-    ppkg info curl src-sha
-
-    ppkg info curl installed-dir
-    ppkg info curl installed-files
-    ppkg info curl installed-version
-    ppkg info curl installed-timestamp-unix
-    ppkg info curl installed-timestamp-iso-8601
-    ppkg info curl installed-timestamp-rfc-3339
-    ppkg info curl installed-timestamp-iso-8601-utc
-    ppkg info curl installed-timestamp-rfc-3339-utc
-
-    ppkg info @all
+    xcpkg info @all
     ```
 
-- **show formula of the given package**
+- **show information of the given available package**
 
     ```bash
-    ppkg formula curl
-    ppkg formula curl --yaml
-    ppkg formula curl --json
-    ppkg formula curl --path
-    ppkg formula curl version
-    ppkg formula curl license
-    ppkg formula curl summary
-    ppkg formula curl web-url
-    ppkg formula curl git-url
-    ppkg formula curl git-sha
-    ppkg formula curl git-ref
-    ppkg formula curl src-url
-    ppkg formula curl src-sha
+    xcpkg info curl
+    xcpkg info curl --yaml
+    xcpkg info curl --json
+    xcpkg info curl version
+    xcpkg info curl license
+    xcpkg info curl summary
+    xcpkg info curl web-url
+    xcpkg info curl git-url
+    xcpkg info curl git-sha
+    xcpkg info curl git-ref
+    xcpkg info curl src-url
+    xcpkg info curl src-sha
     ```
 
-- **show receipt of the given installed package**
+- **show information of the given installed package**
 
     ```bash
-    ppkg receipt curl
-    ppkg receipt curl --yaml
-    ppkg receipt curl --json
-    ppkg receipt curl --path
-    ppkg receipt curl version
-    ppkg receipt curl license
-    ppkg receipt curl summary
-    ppkg receipt curl web-url
-    ppkg receipt curl git-url
-    ppkg receipt curl git-sha
-    ppkg receipt curl git-ref
-    ppkg receipt curl src-url
-    ppkg receipt curl src-sha
+    xcpkg info freebsd-13.2-amd64/curl
+    xcpkg info freebsd-13.2-amd64/curl --yaml
+    xcpkg info freebsd-13.2-amd64/curl --json
+    xcpkg info freebsd-13.2-amd64/curl --path
+    xcpkg info freebsd-13.2-amd64/curl version
+    xcpkg info freebsd-13.2-amd64/curl license
+    xcpkg info freebsd-13.2-amd64/curl summary
+    xcpkg info freebsd-13.2-amd64/curl web-url
+    xcpkg info freebsd-13.2-amd64/curl git-url
+    xcpkg info freebsd-13.2-amd64/curl git-sha
+    xcpkg info freebsd-13.2-amd64/curl git-ref
+    xcpkg info freebsd-13.2-amd64/curl src-url
+    xcpkg info freebsd-13.2-amd64/curl src-sha
+    xcpkg info freebsd-13.2-amd64/curl builtat
+    xcpkg info freebsd-13.2-amd64/curl builtat-iso-8601
+    xcpkg info freebsd-13.2-amd64/curl builtat-rfc-3339
+    xcpkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    xcpkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
+    xcpkg info freebsd-13.2-amd64/curl installed-dir
+    xcpkg info freebsd-13.2-amd64/curl installed-files
     ```
 
 - **show packages that are depended by the given package**
@@ -320,24 +304,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
     uppm formula-repo-conf my_repo --disable
     ```
 
-- **list all available packages**
-
-    ```bash
-    ppkg ls-available
-    ```
-
-- **list all installed packages**
-
-    ```bash
-    ppkg ls-installed
-    ```
-
-- **list all outdated packages**
-
-    ```bash
-    ppkg ls-outdated
-    ```
-
 - **check if the given package is available**
 
     ```bash
@@ -354,6 +320,24 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg is-outdated  curl
+    ```
+
+- **list all available packages**
+
+    ```bash
+    ppkg ls-available
+    ```
+
+- **list all installed packages**
+
+    ```bash
+    ppkg ls-installed
+    ```
+
+- **list all outdated packages**
+
+    ```bash
+    ppkg ls-outdated
     ```
 
 - **list installed files of the given installed package in a tree-like format**
@@ -458,7 +442,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 **Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
-## ppkg formula
+## ppkg formula scheme
 
 a ppkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ppkg package's meta-information including one sentence description, package version, installation instructions, etc.
 
@@ -466,9 +450,121 @@ a ppkg formula's filename suffix must be `.yml`
 
 a ppkg formula'a filename prefix would be treated as the package name.
 
-a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
+a ppkg formula'a filename prefix must match the regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
 
-a ppkg formula's file content must follow [the ppkg formula scheme](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
+a uppm formula's file content only has one level mapping and shall has following KEY:
+
+|KEY|required?|overview|
+|-|-|-|
+|`summary`|required|describe this package in one sentence.|
+|`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
+|`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
+||||
+|`web-url`|optional|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+||||
+|`git-url`|optional|the source code git repository.<br>If `src-url` is not present, this mapping must be present.|
+|`git-ref`|optional|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
+|`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
+|`git-nth`|optional|tell `ppkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
+||||
+|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-uri`|optional|the mirror of `src-url`.|
+|`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
+||||
+|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+||||
+|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+||||
+|`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
+|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
+|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+||||
+|`ccflags`|optional|append to `CFLAGS`|
+|`xxflags`|optional|append to `CXXFLAGS`|
+|`ppflags`|optional|append to `CPPFLAGS`|
+|`ldflags`|optional|append to `LDFLAGS`|
+||||
+|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
+|`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
+|`dopatch`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
+|`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
+|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
+
+**commands that can be invoked in `dopatch` and `install` block:**
+
+|command|usage-example|
+|-|-|
+|`echo`|`echo 'your message.'`|
+|`info`|`info 'your infomation.'`|
+|`warn`|`warn "no package manager found."`|
+|`error`|`error 'error message.'`|
+|`abort`|`abort 1 "please specify a package name."`|
+|`success`|`success "build success."`|
+|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
+|`wfetch`|`wfetch URL [--sha256=SHA256] --output-path=PATH`<br>`wfetch URL [--sha256=SHA256] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--sha256=SHA256] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--sha256=SHA256] [--output-dir=DIR] --output-name=NAME`|
+
+**commands that can be invoked in `install` block only:**
+
+|command|usage-example|
+|-|-|
+|`configure`|`configure --enable-pic`|
+|`mesonw`|`mesonw -Dneon=disabled -Darm-simd=disabled`|
+|`cmakew`|`cmakew -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON`|
+|`gmakew`|`gmakew`|
+|`xmakew`|`xmakew`|
+|`cargow`|`cargow`|
+|`gow`|`gow`|
+
+**shell variables can be used in `dopatch` and `install` block:**
+
+|variable|overview|
+|-|-|
+|`TIMESTAMP_UNIX`|the unix timestamp of this action.|
+|||
+|`NATIVE_OS_KIND`|current running machine os kind.|
+|`NATIVE_OS_TYPE`|current running machine os type.|
+|`NATIVE_OS_NAME`|current running machine os name.|
+|`NATIVE_OS_VERS`|current running machine os version.|
+|`NATIVE_OS_ARCH`|current running machine os arch.|
+|`NATIVE_OS_NCPU`|current running machine os's cpu core count.|
+|||
+|`TARGET_PLATFORM_NAME`|target platform name that is built for.|
+|`TARGET_PLATFORM_VERS`|target platform version that is built with.|
+|`TARGET_PLATFORM_ARCH`|target platform arch that is built for.|
+|||
+|`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
+|||
+|`PPKG_VERSION`|the version of `ppkg`.|
+|`PPKG_HOME`|the home directory of `ppkg`.|
+|`PPKG`|the executable filepath of `ppkg`.|
+|||
+|`CC`|the C Compiler.|
+|`CFLAGS`|the flags of `CC`.|
+|`CXX`|the C++ Compiler.|
+|`CXXFLAGS`|the flags of `CXX`.|
+|`CPP`|the C/C++ PreProcessor.|
+|`CPPFLAGS`|the flags of `CPP`.|
+|`AS`|the assembler.|
+|`AR`|the archiver.|
+|`RANLIB`|the archiver extra tool.|
+|`LD`|the linker.|
+|`LDFLAGS`|the flags of `LD`.|
+|`NM`|a command line tool to list symbols from object files.|
+|`STRIP`|a command line tool to discard symbols and other data from object files.|
+|||
+|`PACKAGE_WORKING_DIR`|the working directory when installing.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located in.|
+|`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored in when building.|
+|`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed to.|
+|||
+|`x_INSTALL_DIR`|the installation directory of x package.|
+|`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
+|`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
 
 ## ppkg formula repository
 

@@ -1274,99 +1274,6 @@ filetype_from_url() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg formula
-
-# __show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>]
-  __show_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    PACKAGE_FORMULA_FILEPATH=
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
-
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
-
-    case $2 in
-        --yaml|'')
-            if [ -t 1 ] ; then
-                yq  "$PACKAGE_FORMULA_FILEPATH"
-            else
-                cat "$PACKAGE_FORMULA_FILEPATH"
-            fi
-            ;;
-        --json)
-            yq -o=json "$PACKAGE_FORMULA_FILEPATH"
-            ;;
-        --path)
-            printf '%s\n' "$PACKAGE_FORMULA_FILEPATH"
-            ;;
-        *)  yq ".$2 | select(. != null)" "$PACKAGE_FORMULA_FILEPATH"
-    esac
-}
-
-# }}}
-##############################################################################
-# {{{ ppkg receipt
-
-# __show_receipt_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>]
-  __show_receipt_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_receipt_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    __load_receipt_of_the_given_package "$1"
-
-    case $2 in
-        --yaml|'')
-            if [ -t 1 ] ; then
-                yq  "$PACKAGE_RECEIPT_FILEPATH"
-            else
-                cat "$PACKAGE_RECEIPT_FILEPATH"
-            fi
-            ;;
-        --json)
-            yq -o=json "$PACKAGE_RECEIPT_FILEPATH"
-            ;;
-        --path)
-            printf '%s\n' "$PACKAGE_RECEIPT_FILEPATH"
-            ;;
-        *)  yq ".$2 | select(. != null)" "$PACKAGE_RECEIPT_FILEPATH"
-    esac
-}
-
-# }}}
-##############################################################################
-# {{{ ppkg formula-edit
-
-# __edit_formula_of_the_given_package <PACKAGE-NAME> [--editor=<EDITOR>]
-  __edit_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-
-    unset  PACKAGE_FORMULA_FILEPATH; PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
-
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
-
-    shift
-
-    EDITOR=
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --editor=*)
-                EDITOR="${1#*=}"
-                ;;
-            *)  abort 1 "unrecognized option: $1"
-        esac
-        shift
-    done
-
-    [ -z "$EDITOR" ] && {
-        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || abort 1 "please sepecify editor via [--editor=<EDITOR> option."
-    }
-
-    "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
-}
-
-# }}}
-##############################################################################
 # {{{ ppkg is-available
 
 # check if the given package is available
@@ -1523,18 +1430,18 @@ __search_packages() {
 ##############################################################################
 # {{{ ppkg info
 
-# __show_information_of_available_packages [--json|--yaml|--shell]
-  __show_information_of_available_packages() {
+# __info_all_available_packages [--json|--yaml|--shell]
+  __info_all_available_packages() {
     case $1 in
-        --json) __show_information_as_json__of_available_packages ;;
-        --yaml) __show_information_as_yaml__of_available_packages ;;
-        --shell)__show_information_as_shell_of_available_packages ;;
-        '')     __show_information_as_mixed_of_available_packages ;;
-        *)    abort 1 "__show_information_of_available_packages [--json|--yaml|--shell], unrecognized option: $1"
+        --json) __info_all_available_packages_as_json ;;
+        --yaml) __info_all_available_packages_as_yaml ;;
+        --shell)__info_all_available_packages_as_shell ;;
+        '')     __info_all_available_packages_as_mixed ;;
+        *)    abort 1 "__info_all_available_packages [--json|--yaml|--shell], unrecognized option: $1"
     esac
 }
 
-__show_information_as_mixed_of_available_packages() {
+__info_all_available_packages_as_mixed() {
     FIRST=1
 
     for PACKAGE in $(__list_available_packages)
@@ -1542,13 +1449,13 @@ __show_information_as_mixed_of_available_packages() {
         if [ "$FIRST" = 1 ] ; then
             FIRST=0
         else
-            printf '%s\n' '========'
+            printf '%s\n' '---'
         fi
-        __show_information_of_the_given_package "$PACKAGE"
+        __info_the_given_available_package "$PACKAGE"
     done
 }
 
-__show_information_as_json__of_available_packages() {
+__info_all_available_packages_as_json() {
     printf '%s\n' '['
 
     FIRST=1
@@ -1560,13 +1467,13 @@ __show_information_as_json__of_available_packages() {
         else
             printf '%s\n' ','
         fi
-        __show_information_as_json__of_the_given_package "$PACKAGE"
+        __info_the_given_available_package_as_json "$PACKAGE"
     done
 
     printf '%s\n' ']'
 }
 
-__show_information_as_yaml__of_available_packages() {
+__info_all_available_packages_as_yaml() {
     FIRST=1
 
     for PACKAGE in $(__list_available_packages)
@@ -1576,11 +1483,11 @@ __show_information_as_yaml__of_available_packages() {
         else
             printf '%s\n' '---'
         fi
-        __show_information_as_yaml__of_the_given_package "$PACKAGE"
+        __info_the_given_available_package_as_yaml "$PACKAGE"
     done
 }
 
-__show_information_as_shell_of_available_packages() {
+__info_all_available_packages_as_shell() {
     FIRST=1
 
     for PACKAGE in $(__list_available_packages)
@@ -1590,12 +1497,12 @@ __show_information_as_shell_of_available_packages() {
         else
             printf '%s\n' '#---'
         fi
-        __show_information_as_shell_of_the_given_package "$PACKAGE"
+        __info_the_given_available_package_as_shell "$PACKAGE"
     done
 }
 
-# __show_information_as_json__of_the_given_package <PACKAGE-NAME>
-  __show_information_as_json__of_the_given_package() {
+# __info_the_given_available_package_as_json <PACKAGE-NAME>
+  __info_the_given_available_package_as_json() {
     __load_formula_of_the_given_package "$1"
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
@@ -1629,9 +1536,9 @@ __show_information_as_shell_of_available_packages() {
         --arg install "$PACKAGE_DOBUILD_ACTIONS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
-        --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
         --arg xxflags "$PACKAGE_XXFLAGS" \
+        --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
 '{
@@ -1659,9 +1566,9 @@ __show_information_as_shell_of_available_packages() {
     "dep-plm":$dep_plm,
     "bsystem":$bsystem,
     "binbstd":$binbstd,
-    "ppflags":$ppflags,
     "ccflags":$ccflags,
     "xxflags":$xxflags,
+    "ppflags":$ppflags,
     "ldflags":$ldflags,
     "parallel":$parallel,
     "dopatch":$dopatch,
@@ -1669,8 +1576,8 @@ __show_information_as_shell_of_available_packages() {
 }' | jq 'with_entries(select(.value != ""))'
 }
 
-# __show_information_as_yaml__of_the_given_package <PACKAGE-NAME>
-  __show_information_as_yaml__of_the_given_package() {
+# __info_the_given_available_package_as_yaml <PACKAGE-NAME>
+  __info_the_given_available_package_as_yaml() {
     __load_formula_of_the_given_package "$1"
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
@@ -1718,16 +1625,22 @@ EOF
     fi
 }
 
-# __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
-  __show_information_as_shell_of_the_given_package() {
+# __info_the_given_available_package_as_shell <PACKAGE-NAME>
+  __info_the_given_available_package_as_shell() {
     __load_formula_of_the_given_package "$1"
 
-    while read -r KEY
+    while read KEY
     do
-        printf "%s='%s'\n" "${PACKAGE_NAME_UPPERCASE_UNDERSCORE}_${KEY}" "$(eval echo \$"$KEY")"
+        printf "%s='%s'\n" "${PACKAGE_NAME_UPPERCASE_UNDERSCORE}_${KEY}" "$(eval echo \$$KEY)"
     done <<EOF
 PACKAGE_NAME
 PACKAGE_SUMMARY
+PACKAGE_LICENSE
+PACKAGE_VERSION
+PACKAGE_VERSION_MAJOR
+PACKAGE_VERSION_MINOR
+PACKAGE_VERSION_PATCH
+PACKAGE_VERSION_TWEAK
 PACKAGE_WEB_URL
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
@@ -1751,13 +1664,6 @@ PACKAGE_RES_SHA
 PACKAGE_RES_FILETYPE
 PACKAGE_RES_FILENAME
 PACKAGE_RES_FILEPATH
-PACKAGE_VERSION
-PACKAGE_VERSION_MAJOR
-PACKAGE_VERSION_MINOR
-PACKAGE_VERSION_PATCH
-PACKAGE_VERSION_TWEAK
-PACKAGE_DEVELOPER
-PACKAGE_LICENSE
 PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
 PACKAGE_BINBSTD
@@ -1775,38 +1681,37 @@ PACKAGE_USE_BSYSTEM_CONFIGURE
 PACKAGE_BUILD_IN_BSCRIPT_DIR
 PACKAGE_BUILD_IN_PARALLEL
 PACKAGE_DEP_PKG
-PACKAGE_PPFLAGS
+PACKAGE_DEP_UPP
+PACKAGE_DEP_PYM
+PACKAGE_DEP_PLM
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
+PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
 PACKAGE_FORMULA_FILEPATH
+PACKAGE_DEVELOPER
 EOF
 }
 
-# __show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>]
-#
-# __show_information_of_the_given_package curl
-#
-# __show_information_of_the_given_package curl version
-# __show_information_of_the_given_package curl web-url
-  __show_information_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    case $1 in
-        @all) shift ; __show_information_of_available_packages "$@" ; return 0
-    esac
+# __info_the_given_available_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>]
+# __info_the_given_available_package curl
+# __info_the_given_available_package curl version
+# __info_the_given_available_package curl web-url
+  __info_the_given_available_package() {
+    if [ "$1" = @all ] ; then
+        shift
+        __info_all_available_packages "$@"
+        return 0
+    fi
 
     case $2 in
-        --yaml|'')
-            __show_information_as_yaml__of_the_given_package "$1"
+        '') __info_the_given_available_package_as_yaml "$1"
+            ;;
+        --yaml)
+            __info_the_given_available_package_as_yaml "$1"
             ;;
         --json)
-            __show_information_as_json__of_the_given_package "$1"
-            ;;
-        symlinked-files)
-            if [ -f "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1" ] ; then
-                cat "$PPKG_PACKAGE_SYMLINKED_ROOT/.registry/$1"
-            fi
+            __info_the_given_available_package_as_json "$1"
             ;;
         installed-dir)
             PACKAGE_SPEC=
@@ -1829,29 +1734,25 @@ EOF
                 abort 1 "package '$PACKAGE_SPEC' is not installed."
             fi
             ;;
-        installed-timestamp-unix)
+        builtat)
             __load_receipt_of_the_given_package "$1"
             printf '%s\n' "$RECEIPT_PACKAGE_BUILTAT"
             ;;
-        installed-timestamp-rfc-3339)
+        builtat-rfc-3339)
             __load_receipt_of_the_given_package "$1"
             date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
             ;;
-        installed-timestamp-iso-8601)
+        builtat-iso-8601)
             __load_receipt_of_the_given_package "$1"
             date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%S%:z'
             ;;
-        installed-timestamp-rfc-3339-utc)
+        builtat-rfc-3339-utc)
             __load_receipt_of_the_given_package "$1"
             date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
             ;;
-        installed-timestamp-iso-8601-utc)
+        builtat-iso-8601-utc)
             __load_receipt_of_the_given_package "$1"
             date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%SZ'
-            ;;
-        installed-version)
-            __load_receipt_of_the_given_package "$1"
-            printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
@@ -1907,12 +1808,57 @@ EOF
     esac
 }
 
-mark_is_package_installed_or_not() {
-    if is_package_installed "$1" ; then
-        printf '%b\n' "${COLOR_GREEN}$1${COLOR_OFF}"
-    else
-        printf '%b\n' "${COLOR_RED}$1${COLOR_OFF}"
-    fi
+# __info_the_given_installed_package <PACKAGE-SPEC> [<KEY>]
+# __info_the_given_installed_package curl
+# __info_the_given_installed_package curl version
+# __info_the_given_installed_package curl web-url
+  __info_the_given_installed_package() {
+    case $2 in
+        installed-dir)
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                printf '%s\n' "$PACKAGE_INSTALLED_DIR"
+            else
+                abort 1 "package '$PACKAGE_SPEC' is not installed."
+            fi
+            ;;
+        installed-files)
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ppkg/MANIFEST.txt"
+            else
+                abort 1 "package '$PACKAGE_SPEC' is not installed."
+            fi
+            ;;
+        builtat)
+            __load_receipt_of_the_given_package "$1"
+            printf '%s\n' "$RECEIPT_PACKAGE_BUILTAT"
+            ;;
+        builtat-rfc-3339)
+            __load_receipt_of_the_given_package "$1"
+            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
+            ;;
+        builtat-iso-8601)
+            __load_receipt_of_the_given_package "$1"
+            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%S%:z'
+            ;;
+        builtat-rfc-3339-utc)
+            __load_receipt_of_the_given_package "$1"
+            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
+            ;;
+        builtat-iso-8601-utc)
+            __load_receipt_of_the_given_package "$1"
+            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%SZ'
+            ;;
+        *)  __load_receipt_of_the_given_package "$1"
+            __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
+            eval echo \$RECEIPT_PACKAGE_$__PACKAGE_GET__KEY__
+    esac
 }
 
 # }}}
@@ -8054,6 +8000,9 @@ ${COLOR_GREEN}ppkg --version${COLOR_OFF}
 ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
+${COLOR_GREEN}ppkg setup${COLOR_OFF}
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, grep, git, curl, bsdtar, tree, jq, yq, etc) used by this shell script.
+
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
     show basic information about this software.
 
@@ -8118,18 +8067,19 @@ ${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
-${COLOR_GREEN}ppkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show formula of the given available package.
-
-${COLOR_GREEN}ppkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
-    edit formula of the given package.
+${COLOR_GREEN}ppkg search <REGULAR-EXPRESSION-PARTTEN>${COLOR_OFF}
+    search all available packages whose name matches the given regular expression partten.
 
 
-${COLOR_GREEN}ppkg info <PACKAGE-NAME> [--yaml] [--json] [<KEY>]${COLOR_OFF}
+${COLOR_GREEN}ppkg info @all [--yaml | --json | <KEY>]${COLOR_OFF}
+    show information of all the available packages.
+
+${COLOR_GREEN}ppkg info <PACKAGE-NAME> [--yaml | --json | <KEY>]${COLOR_OFF}
     show information of the given available package.
 
-${COLOR_GREEN}ppkg info @all [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show information of all the available packages.
+${COLOR_GREEN}ppkg info <PACKAGE-SPEC> [--yaml | --json | <KEY>]${COLOR_OFF}
+    show information of the given installed package.
+
 
 ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
@@ -8145,10 +8095,6 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
     If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
-
-
-${COLOR_GREEN}ppkg search <REGULAR-EXPRESSION-PARTTEN>${COLOR_OFF}
-    search all available packages whose name matches the given regular expression partten.
 
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
@@ -8276,10 +8222,6 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [
     If -o <OUTPUT-PATH> option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
 
     If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
-
-
-${COLOR_GREEN}ppkg receipt <PACKAGE-SPEC> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show receipt of the given installed package.
 "
 }
 
@@ -8296,7 +8238,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.14
+    PPKG_VERSION=0.3.15
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8446,7 +8388,7 @@ EOF
         is-installed)
             shift
             PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"__info_the_given_installed_package
             is_package_installed "$PACKAGE_SPEC"
             ;;
         is-symlinked)
@@ -8461,8 +8403,6 @@ EOF
             PACKAGE_SPEC="$(inspect_package_spec "$1")"
             is_package__outdated "$PACKAGE_SPEC"
             ;;
-
-        formula-edit) shift; __edit_formula_of_the_given_package "$@" ;;
 
         update)            shift; __sync_available_formula_repositories "$@" ;;
         formula-repo-list) shift; __list_available_formula_repositories "$@" ;;
@@ -8524,18 +8464,16 @@ EOF
 
         info)
             shift
-            __show_information_of_the_given_package "$@"
+            case $1 in
+                '') abort 1 "_0 info <PACKAGE-NAME|PACKAGE-SPEC> [--yaml | --json | <KEY>], <PACKAGE-NAME|PACKAGE-SPEC> is unspecified."
+                    ;;
+                */*)
+                    __info_the_given_installed_package "$@"
+                    ;;
+                *)  __info_the_given_available_package "$@"
+            esac
             ;;
 
-        formula)
-            shift
-            __show_formula_of_the_given_package "$@"
-            ;;
-
-        receipt)
-            shift
-            __show_receipt_of_the_given_package "$@"
-            ;;
         *)  abort 1 "unrecognized argument: $1"
     esac
 }

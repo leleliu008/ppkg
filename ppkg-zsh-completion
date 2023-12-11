@@ -7,7 +7,7 @@ _ppkg_actions=(
     '--version:show version of this command.'
     'env:show basic information about this software.'
     'sysinfo:show basic information about your current running operation system.'
-    'setup:install essential tools that are used by this shell script.'
+    'setup:install essential tools.'
     'integrate:integrate zsh completions.'
     'update:update all the formula repositories.'
     'upgrade-self:upgrade this software.'
@@ -20,7 +20,6 @@ _ppkg_actions=(
     'search:search all available packages whose name matches the given regular expression partten.'
     'tree:list the installed files of the given installed package in a tree-like format.'
     'info:show infomation of the given package or all available packages.'
-    'formula-edit:edit formula of the given package.'
     'formula-repo-init:create a new empty formula repository.'
     'formula-repo-add:create a new empty formula repository then sync with server.'
     'formula-repo-del:delete the given formula repository from your local cache.'
@@ -28,8 +27,6 @@ _ppkg_actions=(
     'formula-repo-conf:change the config of the given formula repository.'
     'formula-repo-info:show infomation of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
-    'formula:show formula of the given package.'
-    'receipt:show receipt of the given package.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -71,11 +68,6 @@ function _ppkg() {
     case $state in
         option)
             case $words[1] in
-                formula-edit)
-                    _arguments \
-                        '1:package-name:_ppkg_available_packages' \
-                        '--editor=-[specify editor]'
-                    ;;
                 formula-repo-add)
                     _arguments \
                         '1:formula-repo-name:(name)' \
@@ -121,33 +113,10 @@ function _ppkg() {
                 formula-repo-info)
                     _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
-                formula)
-                    _arguments '1:package-name:_ppkg_available_packages' \
-                        + '(op)' \
-                        '--path[show formula file path only]' \
-                        '--yaml[show formula file content in yaml format]' \
-                        '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
-                    ;;
-                receipt)
-                    _arguments '1:package-name:_ppkg_installed_packages' \
-                        + '(op)' \
-                        '--path[show receipt file path only]' \
-                        '--yaml[show receipt file content in yaml format]' \
-                        '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
-                    ;;
                 info)
-                    case $words[3] in
-                        installed-*|receipt-*)
-                            _arguments \
-                                '1:package-name:()' \
-                                '2:key:(installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
-                            ;;
-                        *)  _arguments \
-                                '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
-                    esac
+                    _arguments \
+                        '1:package-name:(@all $(ppkg ls-available 2>/dev/null) $(ppkg ls-installed 2>/dev/null))' \
+                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc symlinked-files)'
                     ;;
                 fetch)
                     _arguments ':package-name:(@all $(ppkg ls-available 2>/dev/null))'
