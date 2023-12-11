@@ -135,49 +135,49 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **show information of all available packages**
 
     ```bash
-    xcpkg info @all
+    ppkg info @all
     ```
 
 - **show information of the given available package**
 
     ```bash
-    xcpkg info curl
-    xcpkg info curl --yaml
-    xcpkg info curl --json
-    xcpkg info curl version
-    xcpkg info curl license
-    xcpkg info curl summary
-    xcpkg info curl web-url
-    xcpkg info curl git-url
-    xcpkg info curl git-sha
-    xcpkg info curl git-ref
-    xcpkg info curl src-url
-    xcpkg info curl src-sha
+    ppkg info curl
+    ppkg info curl --yaml
+    ppkg info curl --json
+    ppkg info curl version
+    ppkg info curl license
+    ppkg info curl summary
+    ppkg info curl web-url
+    ppkg info curl git-url
+    ppkg info curl git-sha
+    ppkg info curl git-ref
+    ppkg info curl src-url
+    ppkg info curl src-sha
     ```
 
 - **show information of the given installed package**
 
     ```bash
-    xcpkg info freebsd-13.2-amd64/curl
-    xcpkg info freebsd-13.2-amd64/curl --yaml
-    xcpkg info freebsd-13.2-amd64/curl --json
-    xcpkg info freebsd-13.2-amd64/curl --path
-    xcpkg info freebsd-13.2-amd64/curl version
-    xcpkg info freebsd-13.2-amd64/curl license
-    xcpkg info freebsd-13.2-amd64/curl summary
-    xcpkg info freebsd-13.2-amd64/curl web-url
-    xcpkg info freebsd-13.2-amd64/curl git-url
-    xcpkg info freebsd-13.2-amd64/curl git-sha
-    xcpkg info freebsd-13.2-amd64/curl git-ref
-    xcpkg info freebsd-13.2-amd64/curl src-url
-    xcpkg info freebsd-13.2-amd64/curl src-sha
-    xcpkg info freebsd-13.2-amd64/curl builtat
-    xcpkg info freebsd-13.2-amd64/curl builtat-iso-8601
-    xcpkg info freebsd-13.2-amd64/curl builtat-rfc-3339
-    xcpkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
-    xcpkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
-    xcpkg info freebsd-13.2-amd64/curl installed-dir
-    xcpkg info freebsd-13.2-amd64/curl installed-files
+    ppkg info freebsd-13.2-amd64/curl
+    ppkg info freebsd-13.2-amd64/curl --yaml
+    ppkg info freebsd-13.2-amd64/curl --json
+    ppkg info freebsd-13.2-amd64/curl --path
+    ppkg info freebsd-13.2-amd64/curl version
+    ppkg info freebsd-13.2-amd64/curl license
+    ppkg info freebsd-13.2-amd64/curl summary
+    ppkg info freebsd-13.2-amd64/curl web-url
+    ppkg info freebsd-13.2-amd64/curl git-url
+    ppkg info freebsd-13.2-amd64/curl git-sha
+    ppkg info freebsd-13.2-amd64/curl git-ref
+    ppkg info freebsd-13.2-amd64/curl src-url
+    ppkg info freebsd-13.2-amd64/curl src-sha
+    ppkg info freebsd-13.2-amd64/curl builtat
+    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601
+    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339
+    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
+    ppkg info freebsd-13.2-amd64/curl installed-dir
+    ppkg info freebsd-13.2-amd64/curl installed-files
     ```
 
 - **show packages that are depended by the given package**
