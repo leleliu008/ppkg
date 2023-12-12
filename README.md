@@ -526,16 +526,19 @@ a uppm formula's file content only has one level mapping and shall has following
 |-|-|
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
-|`NATIVE_OS_KIND`|current running machine os kind.|
-|`NATIVE_OS_TYPE`|current running machine os type.|
-|`NATIVE_OS_NAME`|current running machine os name.|
+|`NATIVE_OS_KIND`|current running machine os kind. value can be `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_OS_TYPE`|current running machine os type. value can be `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_OS_NAME`|current running machine os name. e.g. `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD`, `DragonFlyBSD`, etc|
 |`NATIVE_OS_VERS`|current running machine os version.|
-|`NATIVE_OS_ARCH`|current running machine os arch.|
+|`NATIVE_OS_ARCH`|current running machine os arch. e.g. `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
 |`NATIVE_OS_NCPU`|current running machine os's cpu core count.|
+|`NATIVE_OS_LIBC`|current running machine os's libc name. value can be `glibc` and `musl`.|
+|`NATIVE_OS_EUID`|current running machine os's effective user ID.|
+|`NATIVE_OS_EGID`|current running machine os's effective group ID.|
 |||
-|`TARGET_PLATFORM_NAME`|target platform name that is built for.|
+|`TARGET_PLATFORM_NAME`|target platform name that is built for. value can be `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
 |`TARGET_PLATFORM_VERS`|target platform version that is built with.|
-|`TARGET_PLATFORM_ARCH`|target platform arch that is built for.|
+|`TARGET_PLATFORM_ARCH`|target platform arch that is built for. e.g. `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
 |||
 |`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
 |||
