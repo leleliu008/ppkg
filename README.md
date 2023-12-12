@@ -495,7 +495,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
 |`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
 
-**commands that can be invoked in `dopatch` and `install` block:**
+**commands that can be used out of the box in `dopatch` and `install` block:**
 
 |command|usage-example|
 |-|-|
@@ -506,9 +506,9 @@ a uppm formula's file content only has one level mapping and shall has following
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
 |`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
-|`wfetch`|`wfetch URL [--sha256=SHA256] --output-path=PATH`<br>`wfetch URL [--sha256=SHA256] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--sha256=SHA256] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--sha256=SHA256] [--output-dir=DIR] --output-name=NAME`|
+|`wfetch`|`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-path=PATH`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] --output-name=NAME`|
 
-**commands that can be invoked in `install` block only:**
+**commands that can be used out of the box in `install` block only:**
 
 |command|usage-example|
 |-|-|
