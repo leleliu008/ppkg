@@ -45,7 +45,8 @@ chmod a+x ppkg
 ./ppkg setup
 ```
 
-## Build from C source
+## Build from C source dependencies
+
 |dependency|required?|purpose|
 |----|---------|-------|
 |[cmake](https://cmake.org/)|required |for generating `build.ninja`|
@@ -61,8 +62,20 @@ chmod a+x ppkg
 |[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
+### Build from C source via [ppkg](https://github.com/leleliu008/ppkg)
 
-**[vcpkg](https://github.com/microsoft/vcpkg)**
+```bash
+ppkg install ppkg
+```
+
+### Build from C source via [xcpkg](https://github.com/leleliu008/xcpkg)
+
+```bash
+xcpkg install ppkg
+```
+
+### Build from C source using [vcpkg](https://github.com/microsoft/vcpkg)
+
 ```bash
 # install g++ curl zip unzip tar git
 
@@ -81,6 +94,8 @@ cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLC
 cmake --build   build.d
 cmake --install build.d
 ```
+
+## Build from C source using your system's default package manager
 
 **[Ubuntu](https://ubuntu.com/)**
 
@@ -204,7 +219,7 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-**[FreeBSD](https://www.freebsd.org/)**
+**[FreeBSD](https://www.freebsd.org/)** and **[DragonFlyBSD](https://www.dragonflybsd.org/)**
 
 ```bash
 pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson zlib
@@ -288,18 +303,12 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [GNU awk](https://www.gnu.org/software/gawk/manual/gawk.html)
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
+    - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
+    - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
-    - [GNU tar](https://www.gnu.org/software/tar/manual/tar.html)
-    - [gzip](https://www.gnu.org/software/gzip/manual/gzip.html)
-    - [lzip](https://www.nongnu.org/lzip/)
-    - [bzip2](https://linux.die.net/man/1/bzip2)
-    - [xz](https://linux.die.net/man/1/xz)
-    - [zip](https://linux.die.net/man/1/zip)
-    - [unzip](https://linux.die.net/man/1/unzip)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
-    - [tree](https://linux.die.net/man/1/tree)
 
 - **show basic information about your current running operation system**
 
@@ -338,7 +347,13 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg search lib
     ```
 
-- **show information of the given package**
+- **show information of all available packages**
+
+    ```bash
+    ppkg info @all
+    ```
+
+- **show information of the given available package**
 
     ```bash
     ppkg info curl
@@ -353,53 +368,31 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg info curl git-ref
     ppkg info curl src-url
     ppkg info curl src-sha
-
-    ppkg info curl installed-dir
-    ppkg info curl installed-files
-    ppkg info curl installed-version
-    ppkg info curl installed-timestamp-unix
-    ppkg info curl installed-timestamp-iso-8601
-    ppkg info curl installed-timestamp-rfc-3339
-    ppkg info curl installed-timestamp-iso-8601-utc
-    ppkg info curl installed-timestamp-rfc-3339-utc
-
-    ppkg info @all
     ```
 
-- **show formula of the given package**
+- **show information of the given installed package**
 
     ```bash
-    ppkg formula curl
-    ppkg formula curl --yaml
-    ppkg formula curl --json
-    ppkg formula curl --path
-    ppkg formula curl version
-    ppkg formula curl license
-    ppkg formula curl summary
-    ppkg formula curl web-url
-    ppkg formula curl git-url
-    ppkg formula curl git-sha
-    ppkg formula curl git-ref
-    ppkg formula curl src-url
-    ppkg formula curl src-sha
-    ```
-
-- **show receipt of the given installed package**
-
-    ```bash
-    ppkg receipt curl
-    ppkg receipt curl --yaml
-    ppkg receipt curl --json
-    ppkg receipt curl --path
-    ppkg receipt curl version
-    ppkg receipt curl license
-    ppkg receipt curl summary
-    ppkg receipt curl web-url
-    ppkg receipt curl git-url
-    ppkg receipt curl git-sha
-    ppkg receipt curl git-ref
-    ppkg receipt curl src-url
-    ppkg receipt curl src-sha
+    ppkg info freebsd-13.2-amd64/curl
+    ppkg info freebsd-13.2-amd64/curl --yaml
+    ppkg info freebsd-13.2-amd64/curl --json
+    ppkg info freebsd-13.2-amd64/curl --path
+    ppkg info freebsd-13.2-amd64/curl version
+    ppkg info freebsd-13.2-amd64/curl license
+    ppkg info freebsd-13.2-amd64/curl summary
+    ppkg info freebsd-13.2-amd64/curl web-url
+    ppkg info freebsd-13.2-amd64/curl git-url
+    ppkg info freebsd-13.2-amd64/curl git-sha
+    ppkg info freebsd-13.2-amd64/curl git-ref
+    ppkg info freebsd-13.2-amd64/curl src-url
+    ppkg info freebsd-13.2-amd64/curl src-sha
+    ppkg info freebsd-13.2-amd64/curl builtat
+    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601
+    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339
+    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
+    ppkg info freebsd-13.2-amd64/curl installed-dir
+    ppkg info freebsd-13.2-amd64/curl installed-files
     ```
 
 - **show packages that are depended by the given package**
@@ -526,24 +519,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
     uppm formula-repo-conf my_repo --disable
     ```
 
-- **list all available packages**
-
-    ```bash
-    ppkg ls-available
-    ```
-
-- **list all installed packages**
-
-    ```bash
-    ppkg ls-installed
-    ```
-
-- **list all outdated packages**
-
-    ```bash
-    ppkg ls-outdated
-    ```
-
 - **check if the given package is available**
 
     ```bash
@@ -560,6 +535,24 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg is-outdated  curl
+    ```
+
+- **list all available packages**
+
+    ```bash
+    ppkg ls-available
+    ```
+
+- **list all installed packages**
+
+    ```bash
+    ppkg ls-installed
+    ```
+
+- **list all outdated packages**
+
+    ```bash
+    ppkg ls-outdated
     ```
 
 - **list installed files of the given installed package in a tree-like format**
@@ -644,7 +637,27 @@ all relevant directories and files are located under `~/.ppkg` directory.
     export PPKG_XTRACE=1
     ```
 
-## ppkg formula
+- **PPKG_DEFAULT_TARGET**
+
+    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrive your current running os's information.
+
+    `<TARGET>` has the form `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+
+    examples:
+
+    ```bash
+    export PPKG_DEFAULT_TARGET=linux-glibc-x86_64
+    export PPKG_DEFAULT_TARGET=linux-musl-x86_64
+    export PPKG_DEFAULT_TARGET=macos-13.0-arm64
+    export PPKG_DEFAULT_TARGET=macos-13.0-x86_64
+    export PPKG_DEFAULT_TARGET=freebsd-13.2-amd64
+    export PPKG_DEFAULT_TARGET=openbsd-7.4-amd64
+    export PPKG_DEFAULT_TARGET=netbsd-9.3-amd64
+    ```
+
+**Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
+
+## ppkg formula scheme
 
 a ppkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ppkg package's meta-information including one sentence description, package version, installation instructions, etc.
 
@@ -652,9 +665,124 @@ a ppkg formula's filename suffix must be `.yml`
 
 a ppkg formula'a filename prefix would be treated as the package name.
 
-a ppkg formula'a filename prefix must match regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
+a ppkg formula'a filename prefix must match the regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
 
-a ppkg formula's file content must follow [the ppkg formula scheme](https://github.com/leleliu008/ppkg-formula-repository-offical-core)
+a uppm formula's file content only has one level mapping and shall has following KEY:
+
+|KEY|required?|overview|
+|-|-|-|
+|`summary`|required|describe this package in one sentence.|
+|`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
+|`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
+||||
+|`web-url`|optional|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+||||
+|`git-url`|optional|the source code git repository.<br>If `src-url` is not present, this mapping must be present.|
+|`git-ref`|optional|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
+|`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
+|`git-nth`|optional|tell `ppkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
+||||
+|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-uri`|optional|the mirror of `src-url`.|
+|`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
+||||
+|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+||||
+|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+||||
+|`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
+|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
+|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+||||
+|`ccflags`|optional|append to `CFLAGS`|
+|`xxflags`|optional|append to `CXXFLAGS`|
+|`ppflags`|optional|append to `CPPFLAGS`|
+|`ldflags`|optional|append to `LDFLAGS`|
+||||
+|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
+|`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
+|`dopatch`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
+|`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
+|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
+
+**commands that can be used out of the box in `dopatch` and `install` block:**
+
+|command|usage-example|
+|-|-|
+|`echo`|`echo 'your message.'`|
+|`info`|`info 'your infomation.'`|
+|`warn`|`warn "no package manager found."`|
+|`error`|`error 'error message.'`|
+|`abort`|`abort 1 "please specify a package name."`|
+|`success`|`success "build success."`|
+|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
+|`wfetch`|`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-path=PATH`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] --output-name=NAME`|
+
+**commands that can be used out of the box in `install` block only:**
+
+|command|usage-example|
+|-|-|
+|`configure`|`configure --enable-pic`|
+|`mesonw`|`mesonw -Dneon=disabled -Darm-simd=disabled`|
+|`cmakew`|`cmakew -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON`|
+|`gmakew`|`gmakew`|
+|`xmakew`|`xmakew`|
+|`cargow`|`cargow`|
+|`gow`|`gow`|
+
+**shell variables can be used in `dopatch` and `install` block:**
+
+|variable|overview|
+|-|-|
+|`TIMESTAMP_UNIX`|the unix timestamp of this action.|
+|||
+|`NATIVE_OS_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_OS_TYPE`|current running os type. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_OS_NAME`|current running os name. value might be any one of `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD`, `DragonFlyBSD`, etc|
+|`NATIVE_OS_VERS`|current running os version.|
+|`NATIVE_OS_ARCH`|current running os arch. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
+|`NATIVE_OS_NCPU`|current running os's cpu core count.|
+|`NATIVE_OS_LIBC`|current running os's libc name. value shall be any one of `glibc` and `musl`.|
+|`NATIVE_OS_EUID`|current running os's effective user ID.|
+|`NATIVE_OS_EGID`|current running os's effective group ID.|
+|||
+|`TARGET_PLATFORM_NAME`|target platform name that is built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`TARGET_PLATFORM_VERS`|target platform version that is built with.|
+|`TARGET_PLATFORM_ARCH`|target platform arch that is built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
+|||
+|`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
+|||
+|`PPKG_VERSION`|the version of `ppkg`.|
+|`PPKG_HOME`|the home directory of `ppkg`.|
+|`PPKG`|the executable filepath of `ppkg`.|
+|||
+|`CC`|the C Compiler.|
+|`CFLAGS`|the flags of `CC`.|
+|`CXX`|the C++ Compiler.|
+|`CXXFLAGS`|the flags of `CXX`.|
+|`CPP`|the C/C++ PreProcessor.|
+|`CPPFLAGS`|the flags of `CPP`.|
+|`AS`|the assembler.|
+|`AR`|the archiver.|
+|`RANLIB`|the archiver extra tool.|
+|`LD`|the linker.|
+|`LDFLAGS`|the flags of `LD`.|
+|`NM`|a command line tool to list symbols from object files.|
+|`STRIP`|a command line tool to discard symbols and other data from object files.|
+|||
+|`PACKAGE_WORKING_DIR`|the working directory when installing.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located in.|
+|`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored in when building.|
+|`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed to.|
+|||
+|`x_INSTALL_DIR`|the installation directory of x package.|
+|`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
+|`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
 
 ## ppkg formula repository
 
@@ -675,13 +803,13 @@ After a ppkg formula repository is successfully fetched from server to local, a 
 
 a typical ppkg formula repository's config as following:
 
-```yml
+```yaml
 url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
 branch: master
 pinned: 0
 enabled: 1
-timestamp-created: 1673684639
-timestamp-updated: 1673684767
+created: 1673684639
+updated: 1673684767
 ```
 
 If a ppkg formula repository is `pinned`, which means it would not be updated.
