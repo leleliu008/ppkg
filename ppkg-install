@@ -66,17 +66,26 @@ run() {
     eval "$@"
 }
 
+sed_in_place() {
+    if [ "$RUN_SILENT" = 1 ] ; then
+        sed -i "$@"
+    else
+        if [ -z "$SED" ] ; then
+            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
+        fi
+
+        export SED
+
+        "$PPKG" util sed-in-place "$@"
+    fi
+}
+
 is_integer() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
         (*)               return 0 ;;
     esac
-}
-
-sed_in_place() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}sed -i $@${COLOR_OFF}"
-    sed -i "$@"
 }
 
 # }}}

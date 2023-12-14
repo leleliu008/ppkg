@@ -17,15 +17,15 @@ int ppkg_help() {
         COLOR_OFF
         "    show version of this command.\n\n"
         COLOR_GREEN
-        "uppm env\n"
+        "ppkg env\n"
         COLOR_OFF
         "    show basic information about this software.\n\n"
         COLOR_GREEN
-        "uppm buildinfo\n"
+        "ppkg buildinfo\n"
         COLOR_OFF
         "    show build information about this software.\n\n"
         COLOR_GREEN
-        "uppm sysinfo\n"
+        "ppkg sysinfo\n"
         COLOR_OFF
         "    show basic information about your current running operation system.\n\n"
         COLOR_GREEN
@@ -222,11 +222,11 @@ int ppkg_help() {
         "ppkg --version\n"
         "ppkg -V\n"
         "    show version of this command.\n\n"
-        "uppm env\n"
+        "ppkg env\n"
         "    show basic information about this software.\n\n"
-        "uppm buildinfo\n"
+        "ppkg buildinfo\n"
         "    show build information about this software.\n\n"
-        "uppm sysinfo\n"
+        "ppkg sysinfo\n"
         "    show basic information about your current running operation system.\n\n"
         "ppkg update\n"
         "    update all available formula repositories.\n\n"

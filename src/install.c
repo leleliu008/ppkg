@@ -238,10 +238,10 @@ static int download_via_http(const char * url, const char * uri, const char * ex
     }
 
     if (needFetch) {
-        size_t tmpStrLength = strlen(url) + 30U;
-        char   tmpStr[tmpStrLength];
+        size_t tmpStrCapacity = strlen(url) + 30U;
+        char   tmpStr[tmpStrCapacity];
 
-        ret = snprintf(tmpStr, tmpStrLength, "%s|%ld|%d", url, time(NULL), getpid());
+        ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
 
         if (ret < 0) {
             perror(NULL);
@@ -256,10 +256,10 @@ static int download_via_http(const char * url, const char * uri, const char * ex
             return PPKG_ERROR;
         }
 
-        size_t tmpFilePathLength = downloadDIRLength + 65U;
-        char   tmpFilePath[tmpFilePathLength];
+        size_t tmpFilePathCapacity = downloadDIRLength + 65U;
+        char   tmpFilePath[tmpFilePathCapacity];
 
-        ret = snprintf(tmpFilePath, tmpFilePathLength, "%s/%s", downloadDIR, tmpFileName);
+        ret = snprintf(tmpFilePath, tmpFilePathCapacity, "%s/%s", downloadDIR, tmpFileName);
 
         if (ret < 0) {
             perror(NULL);
@@ -311,10 +311,10 @@ static int download_via_http(const char * url, const char * uri, const char * ex
             return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
         }
     } else {
-        size_t toFilePathLength = unpackDIRLength + fileNameCapacity + 1U;
-        char   toFilePath[toFilePathLength];
+        size_t toFilePathCapacity = unpackDIRLength + fileNameCapacity + 1U;
+        char   toFilePath[toFilePathCapacity];
 
-        ret = snprintf(toFilePath, toFilePathLength, "%s/%s", unpackDIR, fileName);
+        ret = snprintf(toFilePath, toFilePathCapacity, "%s/%s", unpackDIR, fileName);
 
         if (ret < 0) {
             perror(NULL);

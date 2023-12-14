@@ -118,20 +118,22 @@ char* self_realpath() {
 
         char buf[PATH_MAX];
 
+        int ret;
+
         size_t commandNameLength = strlen(argv[0]);
 
         char * PATHItem = strtok(PATH2, ":");
 
         while (PATHItem != NULL) {
             if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-                ret = snprintf(fullPath, PATH_MAX, "%s/%s", PATHItem, argv[0]);
+                ret = snprintf(buf, PATH_MAX, "%s/%s", PATHItem, argv[0]);
 
                 if (ret < 0) {
                     return -1;
                 }
 
-                if (access(fullPath, X_OK) == 0) {
-                    char * p = strdup(fullPath);
+                if (access(buf, X_OK) == 0) {
+                    char * p = strdup(buf);
 
                     if (p == NULL) {
                         errno = ENOMEM;
