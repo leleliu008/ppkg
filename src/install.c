@@ -4076,7 +4076,7 @@ static int ppkg_install_package(
     ///                        below is for target                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    const bool isCrossBuild = (strcmp(sysinfo->type, targetPlatform->name) == 0) && (strcmp(sysinfo->arch, targetPlatform->arch) == 0);
+    const bool isCrossBuild = !((strcmp(sysinfo->type, targetPlatform->name) == 0) && (strcmp(sysinfo->arch, targetPlatform->arch) == 0));
 
     bool isTargetOSFreeBSD = false;
     bool isTargetOSOpenBSD = false;
@@ -4093,12 +4093,13 @@ static int ppkg_install_package(
             isTargetOSNetBSD = true;
             ret = setup_sysroot_for__netbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
         }
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
 
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
+    printf("isCrossBuild=%d\n",isCrossBuild);
     //////////////////////////////////////////////////////////////////////////////
 
     for (int i = 4; i < 8; i++) {
@@ -4374,8 +4375,8 @@ static int ppkg_install_package(
                 break;
             }
 
-            if (unsetenv(cmakeenvs[i]) != 0) {
-                perror(cmakeenvs[i]);
+            if (unsetenv(name) != 0) {
+                perror(name);
                 return PPKG_ERROR;
             }
         }
@@ -5609,9 +5610,9 @@ int ppkg_setup_toolchain_for_native_build(
     //////////////////////////////////////////////////////////////////////
 
     const KV kvs[3] = {
-        { "PROXIED_NATIVE_CC",   toolchainForNativeBuild->cc   },
-        { "PROXIED_NATIVE_CXX",  toolchainForNativeBuild->cxx  },
-        { "PROXIED_NATIVE_OBJC", toolchainForNativeBuild->objc == NULL ? toolchainForNativeBuild->cc : toolchainForNativeBuild->objc }
+        { "PROXIED_CC_FOR_BUILD",   toolchainForNativeBuild->cc   },
+        { "PROXIED_CXX_FOR_BUILD",  toolchainForNativeBuild->cxx  },
+        { "PROXIED_OBJC_FOR_BUILD", toolchainForNativeBuild->objc == NULL ? toolchainForNativeBuild->cc : toolchainForNativeBuild->objc }
     };
 
     for (int i = 0; i < 3; i++) {

@@ -54,15 +54,15 @@ int main(int argc, char* argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * const compiler = getenv("OBJC_FOR_BUILD");
+    char * const compiler = getenv("PROXIED_OBJC_FOR_BUILD");
 
     if (compiler == NULL) {
-        fprintf(stderr, "OBJC_FOR_BUILD environment variable is not set.\n");
+        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable is not set.\n");
         return 1;
     }
 
     if (compiler[0] == '\0') {
-        fprintf(stderr, "OBJC_FOR_BUILD environment variable value should be a non-empty string.\n");
+        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable value should be a non-empty string.\n");
         return 2;
     }
 

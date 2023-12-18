@@ -222,6 +222,9 @@ int ppkg_main(int argc, char* argv[]) {
         int slashIndex = -1;
 
         for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
             if (argv[2][i] == '/') {
                 slashIndex = i;
                 break;
@@ -598,17 +601,17 @@ int ppkg_main(int argc, char* argv[]) {
                     LOG_ERROR1("--jobs=<N> , <N> should be a non-empty string");
                     return PPKG_ERROR;
                 } else {
-                    int i = 0;
+                    int j = 0;
 
                     for (;;) {
-                        char c = jobsStr[i];
+                        char c = jobsStr[j];
 
                         if (c == '\0') {
                             break;
                         }
 
                         if ((c >= '0') && (c <= '9')) {
-                            i++;
+                            j++;
                         } else {
                             LOG_ERROR1("--jobs=<N> , <N> should be a integer.");
                             return PPKG_ERROR;
@@ -672,9 +675,12 @@ int ppkg_main(int argc, char* argv[]) {
 
             int slashIndex = -1;
 
-            for (int i = 0; ;i++) {
-                if (package[i] == '/') {
-                    slashIndex = i;
+            for (int j = 0; ;j++) {
+                if (package[j] == '\0') {
+                    break;
+                }
+                if (package[j] == '/') {
+                    slashIndex = j;
                     break;
                 }
             }
@@ -906,9 +912,12 @@ int ppkg_main(int argc, char* argv[]) {
 
             int slashIndex = -1;
 
-            for (int i = 0; ;i++) {
-                if (package[i] == '/') {
-                    slashIndex = i;
+            for (int j = 0; ;j++) {
+                if (package[j] == '\0') {
+                    break;
+                }
+                if (package[j] == '/') {
+                    slashIndex = j;
                     break;
                 }
             }
@@ -1135,9 +1144,12 @@ int ppkg_main(int argc, char* argv[]) {
 
             int slashIndex = -1;
 
-            for (int i = 0; ;i++) {
-                if (package[i] == '/') {
-                    slashIndex = i;
+            for (int j = 0; ;j++) {
+                if (package[j] == '\0') {
+                    break;
+                }
+                if (package[j] == '/') {
+                    slashIndex = j;
                     break;
                 }
             }
@@ -1349,9 +1361,12 @@ int ppkg_main(int argc, char* argv[]) {
 
             int slashIndex = -1;
 
-            for (int i = 0; ;i++) {
-                if (package[i] == '/') {
-                    slashIndex = i;
+            for (int j = 0; ;j++) {
+                if (package[j] == '\0') {
+                    break;
+                }
+                if (package[j] == '/') {
+                    slashIndex = j;
                     break;
                 }
             }
@@ -1809,6 +1824,9 @@ int ppkg_main(int argc, char* argv[]) {
         int slashIndex = -1;
 
         for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
             if (argv[2][i] == '/') {
                 slashIndex = i;
                 break;
@@ -1953,6 +1971,9 @@ int ppkg_main(int argc, char* argv[]) {
         int slashIndex = -1;
 
         for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
             if (argv[2][i] == '/') {
                 slashIndex = i;
                 break;
@@ -2316,6 +2337,9 @@ int ppkg_main(int argc, char* argv[]) {
         int slashIndex = -1;
 
         for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
             if (argv[2][i] == '/') {
                 slashIndex = i;
                 break;
@@ -2521,6 +2545,9 @@ int ppkg_main(int argc, char* argv[]) {
         int slashIndex = -1;
 
         for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
             if (argv[2][i] == '/') {
                 slashIndex = i;
                 break;

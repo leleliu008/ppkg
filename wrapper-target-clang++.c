@@ -37,15 +37,15 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * const clang = getenv("CXX");
+    char * const clang = getenv("PROXIED_CXX");
 
     if (clang == NULL) {
-        fprintf(stderr, "CXX environment variable is not set.\n");
+        fprintf(stderr, "PROXIED_CXX environment variable is not set.\n");
         return 1;
     }
 
     if (clang[0] == '\0') {
-        fprintf(stderr, "CXX environment variable value should be a non-empty string.\n");
+        fprintf(stderr, "PROXIED_CXX environment variable value should be a non-empty string.\n");
         return 2;
     }
 
