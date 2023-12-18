@@ -273,8 +273,8 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t tarballFileNameLength = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
-    char   tarballFileName[tarballFileNameLength];
+    size_t tarballFileNameCapacity = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
+    char   tarballFileName[tarballFileNameCapacity];
 
     if (strcmp(osType, "macos") == 0) {
         char osVersion[31] = {0};
@@ -310,9 +310,9 @@ int ppkg_setup(bool verbose) {
             x = "13.0";
         }
 
-        ret = snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s%s-%s.tar.xz", latestReleaseVersion, osType, x, osArch);
+        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s%s-%s.tar.xz", latestReleaseVersion, osType, x, osArch);
     } else {
-        ret = snprintf(tarballFileName, tarballFileNameLength, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
+        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
     }
 
     if (ret < 0) {
@@ -320,20 +320,20 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t tarballUrlLength = tarballFileNameLength + strlen(latestReleaseName) + 55U;
-    char   tarballUrl[tarballUrlLength];
+    size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(latestReleaseName) + 55U;
+    char   tarballUrl[tarballUrlCapacity];
 
-    ret = snprintf(tarballUrl, tarballUrlLength, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestReleaseName, tarballFileName);
+    ret = snprintf(tarballUrl, tarballUrlCapacity, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestReleaseName, tarballFileName);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    size_t tarballFilePathLength = sessionDIRCapacity + tarballFileNameLength + 2U;
-    char   tarballFilePath[tarballFilePathLength];
+    size_t tarballFilePathCapacity = sessionDIRCapacity + tarballFileNameCapacity + 2U;
+    char   tarballFilePath[tarballFilePathCapacity];
 
-    ret = snprintf(tarballFilePath, tarballFilePathLength, "%s/%s", sessionDIR, tarballFileName);
+    ret = snprintf(tarballFilePath, tarballFilePathCapacity, "%s/%s", sessionDIR, tarballFileName);
 
     if (ret < 0) {
         perror(NULL);
@@ -354,10 +354,10 @@ int ppkg_setup(bool verbose) {
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t etcDIRLength = sessionDIRCapacity + 5U;
-    char   etcDIR[etcDIRLength];
+    size_t etcDIRCapacity = sessionDIRCapacity + 5U;
+    char   etcDIR[etcDIRCapacity];
 
-    ret = snprintf(etcDIR, etcDIRLength, "%s/etc", sessionDIR);
+    ret = snprintf(etcDIR, etcDIRCapacity, "%s/etc", sessionDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -369,10 +369,10 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t cacertPemFilePathLength = etcDIRLength + 12U;
-    char   cacertPemFilePath[cacertPemFilePathLength];
+    size_t cacertPemFilePathCapacity = etcDIRCapacity + 12U;
+    char   cacertPemFilePath[cacertPemFilePathCapacity];
 
-    ret = snprintf(cacertPemFilePath, cacertPemFilePathLength, "%s/cacert.pem", etcDIR);
+    ret = snprintf(cacertPemFilePath, cacertPemFilePathCapacity, "%s/cacert.pem", etcDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -405,10 +405,10 @@ int ppkg_setup(bool verbose) {
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t uppmCmdPathLength = sessionDIRCapacity + 10U;
-    char   uppmCmdPath[uppmCmdPathLength];
+    size_t uppmCmdPathCapacity = sessionDIRCapacity + 10U;
+    char   uppmCmdPath[uppmCmdPathCapacity];
 
-    ret = snprintf(uppmCmdPath, uppmCmdPathLength, "%s/bin/uppm", sessionDIR);
+    ret = snprintf(uppmCmdPath, uppmCmdPathCapacity, "%s/bin/uppm", sessionDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -435,10 +435,10 @@ int ppkg_setup(bool verbose) {
         }
 
         if (childProcessExitStatusCode != 0) {
-            size_t cmdLength = uppmCmdPathLength + 6U;
-            char   cmd[cmdLength];
+            size_t cmdCapacity = uppmCmdPathCapacity + 6U;
+            char   cmd[cmdCapacity];
 
-            ret = snprintf(cmd, cmdLength, "%s update", uppmCmdPath);
+            ret = snprintf(cmd, cmdCapacity, "%s update", uppmCmdPath);
 
             if (ret < 0) {
                 perror(NULL);
@@ -459,10 +459,10 @@ int ppkg_setup(bool verbose) {
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t ppkgCoreDIRLength = ppkgHomeDIRLength + 6U;
-    char   ppkgCoreDIR[ppkgCoreDIRLength];
+    size_t ppkgCoreDIRCapacity = ppkgHomeDIRLength + 6U;
+    char   ppkgCoreDIR[ppkgCoreDIRCapacity];
 
-    ret = snprintf(ppkgCoreDIR, ppkgCoreDIRLength, "%s/core", ppkgHomeDIR);
+    ret = snprintf(ppkgCoreDIR, ppkgCoreDIRCapacity, "%s/core", ppkgHomeDIR);
 
     if (ret < 0) {
         perror(NULL);

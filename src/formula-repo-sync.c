@@ -82,5 +82,5 @@ int ppkg_formula_repo_sync(PPKGFormulaRepo * formulaRepo) {
         return PPKG_ERROR;
     }
 
-    return ppkg_formula_repo_config_write(formulaRepo->path, formulaRepo->url, formulaRepo->branch, formulaRepo->pinned, formulaRepo->enabled, formulaRepo->timestamp_created, ts);
+    return ppkg_formula_repo_config_write(formulaRepo->path, formulaRepo->url, formulaRepo->branch, formulaRepo->pinned, formulaRepo->enabled, formulaRepo->createdAt, ts);
 }

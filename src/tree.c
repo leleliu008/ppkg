@@ -6,11 +6,15 @@
 
 #include "ppkg.h"
 
-int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
+int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatform, size_t argc, char* argv[]) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
         return ret;
+    }
+
+    if (targetPlatform == NULL) {
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
     char   ppkgHomeDIR[PATH_MAX];
@@ -22,10 +26,10 @@ int ppkg_tree(const char * packageName, size_t argc, char* argv[]) {
         return ret;
     }
 
-    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 16U;
     char   packageInstalledDIR[packageInstalledDIRCapacity];
 
-    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s", ppkgHomeDIR, packageName);
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
 
     if (ret < 0) {
         perror(NULL);

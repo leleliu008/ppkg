@@ -6,14 +6,17 @@
 
 #include "core/log.h"
 #include "core/tar.h"
-#include "core/sysinfo.h"
 
 #include "ppkg.h"
 
-int ppkg_pack(const char * packageName, ArchiveType outputType, const char * outputPath, bool verbose) {
+int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, bool verbose) {
+    if (targetPlatform == NULL) {
+        return PPKG_ERROR_ARG_IS_NULL;
+    }
+
     PPKGReceipt * receipt = NULL;
 
-    int ret = ppkg_receipt_parse(packageName, &receipt);
+    int ret = ppkg_receipt_parse(packageName, targetPlatform, &receipt);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -21,24 +24,10 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    char osType[31] = {0};
-
-    if (sysinfo_type(osType, 30) != 0) {
-        ppkg_receipt_free(receipt);
-        return PPKG_ERROR;
-    }
-
-    char osArch[31] = {0};
-
-    if (sysinfo_arch(osArch, 30) != 0) {
-        ppkg_receipt_free(receipt);
-        return PPKG_ERROR;
-    }
-
-    size_t packingDIRNameCapacity = strlen(packageName) + strlen(receipt->version) + strlen(osType) + strlen(osArch) + 4U;
+    size_t packingDIRNameCapacity = strlen(packageName) + strlen(receipt->version) + strlen(receipt->builtFor) + 3U;
     char   packingDIRName[packingDIRNameCapacity];
 
-    ret = snprintf(packingDIRName, packingDIRNameCapacity, "%s-%s-%s-%s", packageName, receipt->version, osType, osArch);
+    ret = snprintf(packingDIRName, packingDIRNameCapacity, "%s-%s-%s", packageName, receipt->version, receipt->builtFor);
 
     if (ret < 0) {
         perror(NULL);
@@ -52,20 +41,20 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
     const char * outputFileExt;
 
     switch (outputType) {
-        case ArchiveType_tar_gz:  outputFileExt = (char*)".tar.gz";  break;
-        case ArchiveType_tar_xz:  outputFileExt = (char*)".tar.xz";  break;
-        case ArchiveType_tar_lz:  outputFileExt = (char*)".tar.lz";  break;
-        case ArchiveType_tar_bz2: outputFileExt = (char*)".tar.bz2"; break;
-        case ArchiveType_zip:     outputFileExt = (char*)".zip";     break;
+        case ArchiveType_tar_gz:  outputFileExt = ".tar.gz";  break;
+        case ArchiveType_tar_xz:  outputFileExt = ".tar.xz";  break;
+        case ArchiveType_tar_lz:  outputFileExt = ".tar.lz";  break;
+        case ArchiveType_tar_bz2: outputFileExt = ".tar.bz2"; break;
+        case ArchiveType_zip:     outputFileExt = ".zip";     break;
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    char cwd[PATH_MAX];
+    char buf[PATH_MAX];
 
-    char * p = getcwd(cwd, PATH_MAX);
+    char * cwd = getcwd(buf, PATH_MAX);
 
-    if (p == NULL) {
+    if (cwd == NULL) {
         perror(NULL);
         return PPKG_ERROR;
     }
@@ -77,30 +66,20 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
     if (outputPath == NULL) {
         ret = snprintf(outputFilePath, PATH_MAX, "%s/%s%s", cwd, packingDIRName, outputFileExt);
     } else {
-        struct stat st;
+        size_t outputPathLength = strlen(outputPath);
 
-        if (stat(outputPath, &st) == 0 && S_ISDIR(st.st_mode)) {
+        if (outputPath[outputPathLength - 1U] == '/') {
             if (outputPath[0] == '/') {
-                ret = snprintf(outputFilePath, PATH_MAX, "%s/%s%s", outputPath, packingDIRName, outputFileExt);
+                ret = snprintf(outputFilePath, PATH_MAX, "%s%s%s", outputPath, packingDIRName, outputFileExt);
             } else {
-                ret = snprintf(outputFilePath, PATH_MAX, "%s/%s/%s%s", cwd, outputPath, packingDIRName, outputFileExt);
+                ret = snprintf(outputFilePath, PATH_MAX, "%s/%s%s%s", cwd, outputPath, packingDIRName, outputFileExt);
             }
         } else {
-            size_t outputPathLength = strlen(outputPath);
-
-            if (outputPath[outputPathLength - 1U] == '/') {
-                if (outputPath[0] == '/') {
-                    ret = snprintf(outputFilePath, PATH_MAX, "%s%s%s", outputPath, packingDIRName, outputFileExt);
-                } else {
-                    ret = snprintf(outputFilePath, PATH_MAX, "%s/%s%s%s", cwd, outputPath, packingDIRName, outputFileExt);
-                }
+            if (outputPath[0] == '/') {
+                strncpy(outputFilePath, outputPath, outputPathLength);
+                outputFilePath[outputPathLength] = '\0';
             } else {
-                if (outputPath[0] == '/') {
-                    strncpy(outputFilePath, outputPath, outputPathLength);
-                    outputFilePath[outputPathLength] = '\0';
-                } else {
-                    ret = snprintf(outputFilePath, PATH_MAX, "%s/%s", cwd, outputPath);
-                }
+                ret = snprintf(outputFilePath, PATH_MAX, "%s/%s", cwd, outputPath);
             }
         }
     }
@@ -139,10 +118,10 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 12U;
+    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
     char   packageInstalledDIR[packageInstalledDIRCapacity];
 
-    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s", ppkgHomeDIR, packageName);
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
 
     if (ret < 0) {
         perror(NULL);
@@ -192,9 +171,9 @@ int ppkg_pack(const char * packageName, ArchiveType outputType, const char * out
     if (nBytes < 1024) {
         printf("%s %ld Byte\n", outputFilePath, nBytes);
     } else if (nBytes < 1024 * 1024) {
-        printf("%s %ld KB\n", outputFilePath, nBytes / 1024);
+        printf("%s %.2f KB\n", outputFilePath, nBytes / 1024.0);
     } else if (nBytes < 1024 * 1024 * 1024) {
-        printf("%s %ld MB\n", outputFilePath, nBytes / 1024 / 1024);
+        printf("%s %.2f MB\n", outputFilePath, nBytes / 1024.0 / 1024.0);
     } else {
         LOG_ERROR2("file is too large: ", tmpFilePath);
         return PPKG_ERROR;

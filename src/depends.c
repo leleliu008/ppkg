@@ -41,6 +41,40 @@ static int string_append(char ** outP, size_t * outSize, size_t * outCapacity, c
     return PPKG_OK;
 }
 
+static int get_output_file_path(char outputFilePath[PATH_MAX], const char * packageName, PPKGDependsOutputType outputType, const char * outputPath) {
+    const char * outputFileNameSuffix;
+
+    switch (outputType) {
+        case PPKGDependsOutputType_DOT: outputFileNameSuffix = "dot"; break;
+        case PPKGDependsOutputType_BOX: outputFileNameSuffix = "box"; break;
+        case PPKGDependsOutputType_SVG: outputFileNameSuffix = "svg"; break;
+        case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
+    }
+
+    int ret;
+
+    if (outputPath == NULL || outputPath[0] == '\0') {
+        ret = snprintf(outputFilePath, strlen(packageName) + 20U, "%s-dependencies.%s", packageName, outputFileNameSuffix);
+    } else {
+        size_t outputPathLength = strlen(outputPath);
+
+        if (outputPath[outputPathLength - 1] == '/') {
+           ret = snprintf(outputFilePath, strlen(outputPath) + strlen(packageName) + 20U, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
+        } else {
+            size_t n = strlen(outputPath);
+            strncpy(outputFilePath, outputPath, n);
+            outputFilePath[n] = '\0';
+        }
+    }
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    return PPKG_OK;
+}
+
 typedef struct {
     char * packageName;
     PPKGFormula * formula;
@@ -52,7 +86,7 @@ typedef struct {
     size_t nodeListCapacity;
 } DIRectedPath;
 
-static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputType, const char * outputFilePath) {
+int ppkg_depends(const char * packageName, const char * targetPlatformName, PPKGDependsOutputType outputType, const char * outputPath) {
     int ret = PPKG_OK;
 
     ////////////////////////////////////////////////////////////////
@@ -105,7 +139,7 @@ static int ppkg_depends2(const char * packageName, PPKGDependsOutputType outputT
         }
 
         if (formula == NULL) {
-            ret = ppkg_formula_lookup(packageName, &formula);
+            ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
 
             if (ret != PPKG_OK) {
                 free(packageName);
@@ -302,7 +336,7 @@ finalize:
     ////////////////////////////////////////////////////////////////
 
     if (outputType == PPKGDependsOutputType_DOT) {
-        if (outputFilePath == NULL) {
+        if (outputPath == NULL) {
             printf("%s\n", dotScriptStr);
             return PPKG_OK;
         }
@@ -424,7 +458,7 @@ finalize:
 
         //printf("url=%s\n", url);
 
-        if (outputFilePath == NULL) {
+        if (outputPath == NULL) {
             int ret = http_fetch_to_stream(url, stdout, false, false);
 
             if (ret == -1) {
@@ -450,13 +484,21 @@ finalize:
             ret = http_fetch_to_file(url, boxFilePath, false, false);
 
             if (ret == -1) {
-                perror(outputFilePath);
+                perror(boxFilePath);
                 return PPKG_ERROR;
             }
 
             if (ret > 0) {
                 return PPKG_ERROR_NETWORK_BASE + ret;
             } else {
+                char outputFilePath[PATH_MAX];
+
+                ret = get_output_file_path(outputFilePath, packageName, outputType, outputPath);
+
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
+
                 return ppkg_rename_or_copy_file(boxFilePath, outputFilePath);
             }
         }
@@ -499,6 +541,14 @@ finalize:
     ////////////////////////////////////////////////////////////////
 
     if (outputType == PPKGDependsOutputType_DOT) {
+        char outputFilePath[PATH_MAX];
+
+        ret = get_output_file_path(outputFilePath, packageName, outputType, outputPath);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
         return ppkg_rename_or_copy_file(dotFilePath, outputFilePath);
     }
 
@@ -541,6 +591,14 @@ finalize:
         }
 
         if (childProcessExitStatusCode == 0) {
+            char outputFilePath[PATH_MAX];
+
+            ret = get_output_file_path(outputFilePath, packageName, outputType, outputPath);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
             return ppkg_rename_or_copy_file(tmpFilePath, outputFilePath);
         }
 
@@ -562,78 +620,4 @@ finalize:
 
         return PPKG_ERROR;
     }
-}
-
-int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputPath) {
-    char * outputFilePath = NULL;
-
-    if (outputPath != NULL) {
-        struct stat st;
-
-        if (stat(outputPath, &st) == 0 && S_ISDIR(st.st_mode)) {
-            size_t outputFilePathLength = strlen(outputPath) + strlen(packageName) + 20U;
-
-            outputFilePath = (char*) malloc(outputFilePathLength);
-
-            if (outputFilePath == NULL) {
-                return PPKG_ERROR_MEMORY_ALLOCATE;
-            }
-
-            const char * outputFileNameSuffix;
-
-            switch (outputType) {
-                case PPKGDependsOutputType_DOT: outputFileNameSuffix = "dot"; break;
-                case PPKGDependsOutputType_BOX: outputFileNameSuffix = "box"; break;
-                case PPKGDependsOutputType_SVG: outputFileNameSuffix = "svg"; break;
-                case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
-            }
-
-            int ret = snprintf(outputFilePath, outputFilePathLength, "%s/%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-        } else {
-            size_t outputPathLength = strlen(outputPath);
-
-            if (outputPath[outputPathLength - 1] == '/') {
-                size_t outputFilePathLength = strlen(outputPath) + strlen(packageName) + 20U;
-
-                outputFilePath = (char*) malloc(outputFilePathLength);
-
-                if (outputFilePath == NULL) {
-                    return PPKG_ERROR_MEMORY_ALLOCATE;
-                }
-
-                const char * outputFileNameSuffix;
-
-                switch (outputType) {
-                    case PPKGDependsOutputType_DOT: outputFileNameSuffix = "dot"; break;
-                    case PPKGDependsOutputType_BOX: outputFileNameSuffix = "box"; break;
-                    case PPKGDependsOutputType_SVG: outputFileNameSuffix = "svg"; break;
-                    case PPKGDependsOutputType_PNG: outputFileNameSuffix = "png"; break;
-                }
-
-                int ret = snprintf(outputFilePath, outputFilePathLength, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
-
-                if (ret < 0) {
-                    perror(NULL);
-                    return PPKG_ERROR;
-                }
-            } else {
-                outputFilePath = strdup(outputPath);
-
-                if (outputFilePath == NULL) {
-                    return PPKG_ERROR_MEMORY_ALLOCATE;
-                }
-            }
-        }
-    }
-
-    int ret = ppkg_depends2(packageName, outputType, outputFilePath);
-
-    free(outputFilePath);
-
-    return ret;
 }

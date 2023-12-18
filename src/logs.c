@@ -10,11 +10,15 @@
 
 #include "ppkg.h"
 
-int ppkg_logs(const char * packageName) {
+int ppkg_logs(const char * packageName, const PPKGTargetPlatform * targetPlatform) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
         return ret;
+    }
+
+    if (targetPlatform == NULL) {
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
     char   ppkgHomeDIR[PATH_MAX];
@@ -26,10 +30,10 @@ int ppkg_logs(const char * packageName) {
         return ret;
     }
 
-    size_t metaInfoDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 18U;
+    size_t metaInfoDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 21U;
     char   metaInfoDIR[metaInfoDIRCapacity];
 
-    ret = snprintf(metaInfoDIR, metaInfoDIRCapacity, "%s/installed/%s/.ppkg", ppkgHomeDIR, packageName);
+    ret = snprintf(metaInfoDIR, metaInfoDIRCapacity, "%s/installed/%s-%s-%s/%s/.ppkg", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
 
     if (ret < 0) {
         perror(NULL);

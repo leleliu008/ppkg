@@ -7,7 +7,7 @@
 
 #include "ppkg.h"
 
-int ppkg_uninstall(const char * packageName, bool verbose) {
+int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, bool verbose) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
@@ -23,10 +23,10 @@ int ppkg_uninstall(const char * packageName, bool verbose) {
         return ret;
     }
 
-    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(packageName) + 11U;
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 14U;
     char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed", ppkgHomeDIR);
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);

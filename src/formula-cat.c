@@ -6,10 +6,10 @@
 
 #include "ppkg.h"
 
-int ppkg_formula_cat(const char * packageName) {
+int ppkg_formula_cat(const char * packageName, const char * targetPlatformName) {
     char * formulaFilePath = NULL;
 
-    int ret = ppkg_formula_locate(packageName, &formulaFilePath);
+    int ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
 
     if (ret != PPKG_OK) {
         return ret;

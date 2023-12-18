@@ -8,8 +8,8 @@
 
 #include "ppkg.h"
 
-int ppkg_list_the_outdated__packages() {
-    char   ppkgHomeDIR[PATH_MAX] = {0};
+int ppkg_list_the_outdated__packages(const PPKGTargetPlatform * targetPlatform) {
+    char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
     int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
@@ -20,24 +20,24 @@ int ppkg_list_the_outdated__packages() {
 
     struct stat st;
 
-    size_t ppkgInstalledDIRCapacity = ppkgHomeDIRLength + 11U;
-    char   ppkgInstalledDIR[ppkgInstalledDIRCapacity];
+    size_t ppkgInstalledRootDIRCapacity = ppkgHomeDIRLength + 15U + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch);
+    char   ppkgInstalledRootDIR[ppkgInstalledRootDIRCapacity];
 
-    ret = snprintf(ppkgInstalledDIR, ppkgInstalledDIRCapacity, "%s/installed", ppkgHomeDIR);
+    ret = snprintf(ppkgInstalledRootDIR, ppkgInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    if (stat(ppkgInstalledDIR, &st) != 0 || (!S_ISDIR(st.st_mode))) {
+    if (stat(ppkgInstalledRootDIR, &st) != 0 || (!S_ISDIR(st.st_mode))) {
         return PPKG_OK;
     }
 
-    DIR * dir = opendir(ppkgInstalledDIR);
+    DIR * dir = opendir(ppkgInstalledRootDIR);
 
     if (dir == NULL) {
-        perror(ppkgInstalledDIR);
+        perror(ppkgInstalledRootDIR);
         return PPKG_ERROR;
     }
 
@@ -51,7 +51,7 @@ int ppkg_list_the_outdated__packages() {
                 closedir(dir);
                 break;
             } else {
-                perror(ppkgInstalledDIR);
+                perror(ppkgInstalledRootDIR);
                 closedir(dir);
                 return PPKG_ERROR;
             }
@@ -61,10 +61,10 @@ int ppkg_list_the_outdated__packages() {
             continue;
         }
 
-        size_t packageInstalledDIRCapacity = ppkgInstalledDIRCapacity + strlen(dir_entry->d_name) + 2U;
+        size_t packageInstalledDIRCapacity = ppkgInstalledRootDIRCapacity + strlen(dir_entry->d_name) + 2U;
         char   packageInstalledDIR[packageInstalledDIRCapacity];
 
-        ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", ppkgInstalledDIR, dir_entry->d_name);
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", ppkgInstalledRootDIR, dir_entry->d_name);
 
         if (ret < 0) {
             perror(NULL);
@@ -96,7 +96,7 @@ int ppkg_list_the_outdated__packages() {
 
             PPKGReceipt * receipt = NULL;
 
-            ret = ppkg_receipt_parse(dir_entry->d_name, &receipt);
+            ret = ppkg_receipt_parse(dir_entry->d_name, targetPlatform, &receipt);
 
             if (ret != PPKG_OK) {
                 closedir(dir);
@@ -107,7 +107,7 @@ int ppkg_list_the_outdated__packages() {
 
             PPKGFormula * formula = NULL;
 
-            ret = ppkg_formula_lookup(dir_entry->d_name, &formula);
+            ret = ppkg_formula_lookup(dir_entry->d_name, targetPlatform->name, &formula);
 
             if (ret == PPKG_OK) {
                 if (strcmp(receipt->version, formula->version) != 0) {

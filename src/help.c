@@ -38,11 +38,11 @@ int ppkg_help() {
         COLOR_OFF
         "    update all available formula repositories.\n\n"
         COLOR_GREEN
-        "ppkg search <REGULAR-EXPRESSION>\n"
+        "ppkg search <REGULAR-EXPRESSION> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
         COLOR_GREEN
-        "ppkg info <PACKAGE-NAME|@all>\n"
+        "ppkg info <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    show information of the given package.\n\n"
         COLOR_GREEN
@@ -58,7 +58,7 @@ int ppkg_help() {
         COLOR_OFF
         "    show logs of the given installed package.\n\n"
         COLOR_GREEN
-        "ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]\n"
+        "ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    show packages that are depended by the given package.\n\n"
         "    <OUTPUT-TYPE> must be one of <dot|box|svg|png>\n\n"
@@ -68,7 +68,7 @@ int ppkg_help() {
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
         COLOR_GREEN
-        "ppkg fetch   <PACKAGE-NAME|@all>\n"
+        "ppkg fetch   <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    download resources of the given package to the local cache.\n\n"
         COLOR_GREEN
@@ -88,7 +88,7 @@ int ppkg_help() {
         COLOR_OFF
         "    uninstall the given packages.\n\n"
         COLOR_GREEN
-        "ppkg ls-available\n"
+        "ppkg ls-available [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    list the available packages.\n\n"
         COLOR_GREEN
@@ -100,7 +100,7 @@ int ppkg_help() {
         COLOR_OFF
         "    list the outdated  packages.\n\n"
         COLOR_GREEN
-        "ppkg is-available <PACKAGE-NAME>\n"
+        "ppkg is-available <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    check if the given package is available.\n\n"
         COLOR_GREEN
@@ -112,11 +112,11 @@ int ppkg_help() {
         COLOR_OFF
         "    check if the given package is outdated.\n\n"
         COLOR_GREEN
-        "ppkg formula-view <PACKAGE-NAME> [--no-color]\n"
+        "ppkg formula-view <PACKAGE-NAME> [--no-color] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    view the formula of the given package.\n\n"
         COLOR_GREEN
-        "ppkg formula-edit <PACKAGE-NAME> [--editor=EDITOR]\n"
+        "ppkg formula-edit <PACKAGE-NAME> [--editor=EDITOR] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    edit the formula of the given package.\n\n"
         COLOR_GREEN
@@ -230,9 +230,9 @@ int ppkg_help() {
         "    show basic information about your current running operation system.\n\n"
         "ppkg update\n"
         "    update all available formula repositories.\n\n"
-        "ppkg search <REGULAR-EXPRESSION>\n"
+        "ppkg search <REGULAR-EXPRESSION> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
-        "ppkg info <PACKAGE-NAME|@all>\n"
+        "ppkg info <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    show information of the given package.\n\n"
         "ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]\n"
         "    list files of the given installed package in a tree-like format.\n\n"
@@ -240,7 +240,7 @@ int ppkg_help() {
         "    pack the given installed package.\n\n"
         "ppkg logs <PACKAGE-NAME>\n"
         "    show logs of the given installed package.\n\n"
-        "ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]\n"
+        "ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    show packages that are depended by the given package.\n\n"
         "    <OUTPUT-TYPE> must be one of <dot|box|svg|png>\n\n"
         "    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.\n\n"
@@ -248,7 +248,7 @@ int ppkg_help() {
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
-        "ppkg fetch   <PACKAGE-NAME|@all>\n"
+        "ppkg fetch   <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    download resources of the given package to the local cache.\n\n"
         "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         "    install the given packages.\n\n"
@@ -258,21 +258,21 @@ int ppkg_help() {
         "    reinstall the given packages.\n\n"
         "ppkg uninstall <PACKAGE-NAME>\n"
         "    uninstall the given packages.\n\n"
-        "ppkg ls-available\n"
+        "ppkg ls-available [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    list the available packages.\n\n"
         "ppkg ls-installed\n"
         "    list the installed packages.\n\n"
         "ppkg ls-outdated\n"
         "    list the outdated  packages.\n\n"
-        "ppkg is-available <PACKAGE-NAME>\n"
+        "ppkg is-available <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    check if the given package is available.\n\n"
         "ppkg is-installed <PACKAGE-NAME>\n"
         "    check if the given package is installed.\n\n"
         "ppkg is-outdated  <PACKAGE-NAME>\n"
         "    check if the given package is outdated.\n\n"
-        "ppkg formula-view <PACKAGE-NAME> [--no-color]\n"
+        "ppkg formula-view <PACKAGE-NAME> [--no-color] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    view the formula of the given package.\n\n"
-        "ppkg formula-edit <PACKAGE-NAME> [--editor=EDITOR]\n"
+        "ppkg formula-edit <PACKAGE-NAME> [--editor=EDITOR] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    edit the formula of the given package.\n\n"
         "ppkg formula-repo-add  <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]\n"
         "    create a new empty formula repository then sync with server.\n\n"

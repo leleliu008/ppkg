@@ -453,6 +453,120 @@ int ppkg_util(int argc, char* argv[]) {
         return ret;
     }
 
+    if (strcmp(argv[2], "wfetch") == 0) {
+        if (argv[3] == NULL) {
+            fprintf(stderr, "USAGE: %s %s %s <URL> , <URL> is unspecified.\n", argv[0], argv[1], argv[2]);
+            return 1;
+        }
+
+        if (argv[3][0] == '\0') {
+            fprintf(stderr, "USAGE: %s %s %s <URL> , <URL> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+            return 1;
+        }
+
+        const char * url = argv[3];
+        const char * uri = NULL;
+
+        const char * expectedSHA256SUM = NULL;
+
+        const char * outputPath = NULL;
+
+        bool verbose = false;
+
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strncmp(argv[i], "--uri=", 6) == 0) {
+                uri = &argv[i][6];
+
+                if (uri[0] == '\0') {
+                    fprintf(stderr, "USAGE: %s %s %s <URL> [--uri=<URI>] , <URI> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+            } else if (strncmp(argv[i], "--sha256=", 9) == 0) {
+                expectedSHA256SUM = &argv[i][9];
+
+                if (expectedSHA256SUM[0] == '\0') {
+                    fprintf(stderr, "USAGE: %s %s %s <URL> [--uri=<URI>] , <URI> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                if (strlen(expectedSHA256SUM) != 64U) {
+                    fprintf(stderr, "USAGE: %s %s %s <URL> [--uri=<URI>] , <URI> should be a 64 length string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+            } else if (strcmp(argv[i], "-o") == 0) {
+                outputPath = argv[++i];
+
+                if (outputPath[0] == '\0') {
+                    fprintf(stderr, "USAGE: %s %s %s <URL> [-o <OUTPUT-PATH>] , <OUTPUT-PATH> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+            } else {
+                fprintf(stderr, "unrecognized argument: %s\n", argv[i]);
+                fprintf(stderr, "USAGE: %s %s %s <URL> [-v]\n", argv[0], argv[1], argv[2]);
+                return 1;
+            }
+        }
+
+        return ppkg_download(url, uri, expectedSHA256SUM, outputPath, verbose);
+    }
+
+    if (strcmp(argv[2], "uncompress") == 0) {
+        if (argv[3] == NULL) {
+            fprintf(stderr, "USAGE: %s %s %s <FILEPATH> , <FILEPATH> is unspecified.\n", argv[0], argv[1], argv[2]);
+            return 1;
+        }
+
+        if (argv[3][0] == '\0') {
+            fprintf(stderr, "USAGE: %s %s %s <FILEPATH> , <FILEPATH> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+            return 1;
+        }
+
+        const char * unpackDIR = NULL;
+
+        size_t stripComponentNumber = 1;
+
+        bool verbose = false;
+
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strcmp(argv[i], "-C") == 0) {
+                unpackDIR = argv[++i];
+
+                if (unpackDIR[0] == '\0') {
+                    fprintf(stderr, "USAGE: %s %s %s <FILEPATH> [-C <DIR>] , <DIR> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+            } else if (strncmp(argv[i], "--strip-components=", 19) == 0) {
+                if (argv[i][19] == '\0') {
+                    fprintf(stderr, "USAGE: %s %s %s <URL> [--strip-components=<N>] , <N> should be a non-empty string.\n", argv[0], argv[1], argv[2]);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                for (int j = 19; ;j++) {
+                    if (argv[i][j] == '\0') {
+                        break;
+                    }
+
+                    if (argv[i][j] < '0' || argv[i][j] > '0') {
+                        fprintf(stderr, "USAGE: %s %s %s <URL> [--strip-components=<N>] , <N> should be a integer.\n", argv[0], argv[1], argv[2]);
+                        return PPKG_ERROR_ARG_IS_INVALID;
+                    }
+                }
+
+                stripComponentNumber = atoi(argv[i]);
+            } else {
+                fprintf(stderr, "unrecognized argument: %s\n", argv[i]);
+                fprintf(stderr, "USAGE: %s %s %s <URL> [-v]\n", argv[0], argv[1], argv[2]);
+                return 1;
+            }
+        }
+
+        return ppkg_uncompress(argv[3], unpackDIR, stripComponentNumber, verbose);
+    }
+
     LOG_ERROR2("unrecognized command: ", argv[2]);
     return PPKG_ERROR_ARG_IS_UNKNOWN;
 }

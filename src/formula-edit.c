@@ -5,10 +5,10 @@
 
 #include "ppkg.h"
 
-int ppkg_formula_edit(const char * packageName, const char * editor) {
+int ppkg_formula_edit(const char * packageName, const char * targetPlatformName, const char * editor) {
     char * formulaFilePath = NULL;
 
-    int ret = ppkg_formula_locate(packageName, &formulaFilePath);
+    int ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
 
     if (ret != PPKG_OK) {
         return ret;

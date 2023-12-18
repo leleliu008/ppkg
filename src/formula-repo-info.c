@@ -41,7 +41,7 @@ int ppkg_formula_repo_info(PPKGFormulaRepo * formulaRepo) {
 
     ////////////////////////////////////////////////////////////
 
-    time_t tt = (time_t)atol(formulaRepo->timestamp_created);
+    time_t tt = (time_t)atol(formulaRepo->createdAt);
     struct tm *tms = localtime(&tt);
 
     char buff[26] = {0};
@@ -51,12 +51,12 @@ int ppkg_formula_repo_info(PPKGFormulaRepo * formulaRepo) {
     buff[23] = buff[22];
     buff[22] = ':';
 
-    printf("timestamp-created: %s\n", buff);
+    printf("created: %s\n", buff);
 
     ////////////////////////////////////////////////////////////
 
-    if (formulaRepo->timestamp_updated != NULL) {
-        time_t tt = (time_t)atol(formulaRepo->timestamp_updated);
+    if (formulaRepo->updatedAt != NULL) {
+        time_t tt = (time_t)atol(formulaRepo->updatedAt);
         struct tm *tms = localtime(&tt);
 
         char buff[26] = {0};
@@ -66,7 +66,7 @@ int ppkg_formula_repo_info(PPKGFormulaRepo * formulaRepo) {
         buff[23] = buff[22];
         buff[22] = ':';
 
-        printf("timestamp-updated: %s\n", buff);
+        printf("updated: %s\n", buff);
     }
 
     return PPKG_OK;

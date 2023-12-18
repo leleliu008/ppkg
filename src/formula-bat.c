@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <unistd.h>
 
 #include "ppkg.h"
 
-int ppkg_formula_bat(const char * packageName) {
+int ppkg_formula_bat(const char * packageName, const char * targetPlatformName) {
     char * formulaFilePath = NULL;
 
-    int ret = ppkg_formula_locate(packageName, &formulaFilePath);
+    int ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
 
     if (ret != PPKG_OK) {
         return ret;

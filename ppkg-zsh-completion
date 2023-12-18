@@ -3,24 +3,19 @@
 _ppkg_actions=(
     '-h:show help of this command.'
     '--help:show help of this command.'
+    'help:show help of this command.'
     '-V:show version of this command.'
     '--version:show version of this command.'
+    'version:show version of this command.'
     'env:show basic information about this software.'
+    'buildinfo:show build information about this software.'
     'sysinfo:show basic information about your current running operation system.'
-    'setup:install essential tools that are used by this shell script.'
+    'gen-url-transform-sample:generate url-transform sample.'
+    'setup:install essential tools.'
     'integrate:integrate zsh completions.'
-    'update:update all the formula repositories.'
     'upgrade-self:upgrade this software.'
-    'ls-available:list the available packages.'
-    'ls-installed:list the installed packages.'
-    'ls-outdated:list the installed packages which can be upgraded.'
-    'is-available:is the given package available.'
-    'is-installed:is the given package installed.'
-    'is-outdated:is the given package outdated.'
-    'search:search all available packages whose name matches the given regular expression partten.'
-    'tree:list the installed files of the given installed package in a tree-like format.'
-    'info:show infomation of the given package or all available packages.'
-    'formula-edit:edit formula of the given package.'
+    'cleanup:cleanup the unused cache.'
+    'update:update all the formula repositories.'
     'formula-repo-init:create a new empty formula repository.'
     'formula-repo-add:create a new empty formula repository then sync with server.'
     'formula-repo-del:delete the given formula repository from your local cache.'
@@ -28,18 +23,24 @@ _ppkg_actions=(
     'formula-repo-conf:change the config of the given formula repository.'
     'formula-repo-info:show infomation of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
-    'formula:show formula of the given package.'
-    'receipt:show receipt of the given package.'
+    'search:search all available packages whose name matches the given regular expression partten.'
+    'info:show infomation of the given package or all available packages.'
+    'depends:show the depends of the given package.'
+    'is-available:is the given package available.'
+    'is-installed:is the given package installed.'
+    'is-outdated:is the given package outdated.'
+    'ls-available:list the available packages.'
+    'ls-installed:list the installed packages.'
+    'ls-outdated:list the installed packages which can be upgraded.'
+    'fetch:download formula resources of the given package to the cache.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
-    'cleanup:cleanup the unused cache.'
     'upgrade:upgrade the outdated packages.'
-    'fetch:download formula resources of the given package to the cache.'
-    'depends:show the depends of the given package.'
-    'pack:pack the given installed package.'
+    'tree:list the installed files of the given installed package in a tree-like format.'
     'logs:show logs of the given installed package.'
-    'gen-url-transform-sample:generate url-transform sample.'
+    'pack:pack the given installed package.'
+    'util:common used utilities.'
 )
 
 function _ppkg_available_packages() {
@@ -71,11 +72,6 @@ function _ppkg() {
     case $state in
         option)
             case $words[1] in
-                formula-edit)
-                    _arguments \
-                        '1:package-name:_ppkg_available_packages' \
-                        '--editor=-[specify editor]'
-                    ;;
                 formula-repo-add)
                     _arguments \
                         '1:formula-repo-name:(name)' \
@@ -121,48 +117,29 @@ function _ppkg() {
                 formula-repo-info)
                     _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
-                formula)
-                    _arguments '1:package-name:_ppkg_available_packages' \
-                        + '(op)' \
-                        '--path[show formula file path only]' \
-                        '--yaml[show formula file content in yaml format]' \
-                        '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
-                    ;;
-                receipt)
-                    _arguments '1:package-name:_ppkg_installed_packages' \
-                        + '(op)' \
-                        '--path[show receipt file path only]' \
-                        '--yaml[show receipt file content in yaml format]' \
-                        '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
-                    ;;
                 info)
-                    case $words[3] in
-                        installed-*|receipt-*)
-                            _arguments \
-                                '1:package-name:()' \
-                                '2:key:(installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
-                            ;;
-                        *)  _arguments \
-                                '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
-                    esac
+                    _arguments \
+                        '1:package-name:(@all $(ppkg ls-available 2>/dev/null) $(ppkg ls-installed 2>/dev/null))' \
+                        '2:key:(-- --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc symlinked-files)' \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 fetch)
-                    _arguments ':package-name:(@all $(ppkg ls-available 2>/dev/null))'
+                    _arguments \
+                        '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '-t[set output format]:output-type:(dot box svg png)' \
-                        '-o[set output filepath or directory]:output-path:_files'
+                        '-t[specify output format]:output-type:(dot box svg png)' \
+                        '-o[specify output filepath or directory]:output-path:_files' \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[set output filepath or directory]:output-path:_files' \
+                        '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-o[specify output filepath or directory]:output-path:_files' \
                         '--keep-session-dir[do not delete the session directory even if packed success]'
                     ;;
                 tree)
@@ -179,15 +156,14 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--build-type=-[specify the build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -196,15 +172,14 @@ function _ppkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--build-type=-[specify the build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -213,15 +188,14 @@ function _ppkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ppkg_outdated_packages' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--build-type=-[specify the build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '-x[set -x for shell]' \
                         + '(verbose_level)' \
                         '-vv[very verbose mode. many many messages will be output to terminal]' \
                         '-v[verbose mode. many messages will be output to terminal]' \
@@ -230,8 +204,22 @@ function _ppkg() {
                 uninstall)
                     _arguments '*:package-name:_ppkg_installed_packages'
                     ;;
+                ls-available)
+                    _arguments \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
+                    ;;
+                ls-installed)
+                    _arguments \
+                        '--target=-[specify target platform]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)'
+                    ;;
+                ls-outdated)
+                    _arguments \
+                        '--target=-[specify target platform]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)'
+                    ;;
                 is-available)
-                    _arguments '1:package-name:_ppkg_available_packages'
+                    _arguments \
+                        '1:package-name:_ppkg_available_packages' \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 is-installed)
                     _arguments '1:package-name:_ppkg_installed_packages'
@@ -242,6 +230,22 @@ function _ppkg() {
                 integrate)
                     _arguments '1:what:(zsh)'
                     ;;
+                util)
+                    _arguments \
+                        '1: :(wfetch uncompress)' \
+                        '*:: :->util-option'
+
+                    case $state in
+                        util-option)
+                            case $words[1] in
+                                wfetch)
+                                    _arguments \
+                                        '1:what:(https://)' \
+                                        '-v[verbose mode. many messages will be output to terminal]'
+                                    ;;
+                            esac
+                    esac
+
             esac
             ;;
         *);;

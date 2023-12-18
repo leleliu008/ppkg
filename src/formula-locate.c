@@ -5,18 +5,11 @@
 
 #include "ppkg.h"
 
-int ppkg_formula_locate(const char * packageName, char ** out) {
+int ppkg_formula_locate(const char * packageName, const char * targetPlatformName, char ** out) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
         return ret;
-    }
-
-    char osType[31] = {0};
-
-    if (sysinfo_type(osType, 30) != 0) {
-        perror(NULL);
-        return PPKG_ERROR;
     }
 
     PPKGFormulaRepoList * formulaRepoList = NULL;
@@ -35,13 +28,11 @@ int ppkg_formula_locate(const char * packageName, char ** out) {
     for (size_t i = 0U; i < formulaRepoList->size; i++) {
         char * formulaRepoPath = formulaRepoList->repos[i]->path;
 
-        const char* a[2] = { osType, ""};
+        if (targetPlatformName != NULL && targetPlatformName[0] != '\0') {
+            size_t formulaFilePathCapacity = strlen(formulaRepoPath) + strlen(targetPlatformName) + packageNameLength + 15U;
+            char   formulaFilePath[formulaFilePathCapacity];
 
-        for (int j = 0; j < 2; j++) {
-            size_t formulaFilePathLength = strlen(formulaRepoPath) + strlen(a[j]) + packageNameLength + 15U;
-            char   formulaFilePath[formulaFilePathLength];
-
-            ret = snprintf(formulaFilePath, formulaFilePathLength, "%s/formula/%s/%s.yml", formulaRepoPath, a[j], packageName);
+            ret = snprintf(formulaFilePath, formulaFilePathCapacity, "%s/formula/%s/%s.yml", formulaRepoPath, targetPlatformName, packageName);
 
             if (ret < 0) {
                 perror(NULL);
@@ -58,6 +49,28 @@ int ppkg_formula_locate(const char * packageName, char ** out) {
                 } else {
                     return PPKG_OK;
                 }
+            }
+        }
+
+        size_t formulaFilePathCapacity = strlen(formulaRepoPath) + packageNameLength + 15U;
+        char   formulaFilePath[formulaFilePathCapacity];
+
+        ret = snprintf(formulaFilePath, formulaFilePathCapacity, "%s/formula/%s.yml", formulaRepoPath, packageName);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (stat(formulaFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
+            ppkg_formula_repo_list_free(formulaRepoList);
+
+            (*out) = strdup(formulaFilePath);
+
+            if (*out == NULL) {
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            } else {
+                return PPKG_OK;
             }
         }
     }

@@ -25,7 +25,7 @@ int ppkg_formula_repo_config(const char * formulaRepoName, const char * url, con
         enabled = formulaRepo->enabled;
     }
 
-    ret = ppkg_formula_repo_config_write(formulaRepo->path, url, branch, pinned, enabled, formulaRepo->timestamp_created, formulaRepo->timestamp_updated);
+    ret = ppkg_formula_repo_config_write(formulaRepo->path, url, branch, pinned, enabled, formulaRepo->createdAt, formulaRepo->updatedAt);
 
     ppkg_formula_repo_free(formulaRepo);
 

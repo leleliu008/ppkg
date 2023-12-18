@@ -62,44 +62,6 @@
 // libcurl's error [1, 99]
 #define PPKG_ERROR_NETWORK_BASE    150
 
-/*
- * This macro should be employed only if there is no memory should be freed before returing.
- */
-#define PPKG_RETURN_IF_MEMORY_ALLOCATION_FAILED(ptr) if ((ptr) == NULL) { return PPKG_ERROR_MEMORY_ALLOCATE; }
-
-#define PPKG_PERROR(ret, packageName, ...) \
-    if (ret == PPKG_ERROR) { \
-        fprintf(stderr, "occurs error.\n"); \
-    } else if (ret == PPKG_ERROR_ARG_IS_NULL) { \
-        fprintf(stderr, "package name not specified.\n"); \
-    } else if (ret == PPKG_ERROR_ARG_IS_EMPTY) { \
-        fprintf(stderr, "package name should be a non-empty string.\n"); \
-    } else if (ret == PPKG_ERROR_ARG_IS_INVALID) { \
-        fprintf(stderr, "package name not match pattern: %s, %s\n", packageName, PPKG_PACKAGE_NAME_PATTERN); \
-    } else if (ret == PPKG_ERROR_PACKAGE_NOT_AVAILABLE) { \
-        fprintf(stderr, "package not available: %s\n", packageName); \
-    } else if (ret == PPKG_ERROR_PACKAGE_NOT_INSTALLED) { \
-        fprintf(stderr, "package not installed: %s\n", packageName); \
-    } else if (ret == PPKG_ERROR_PACKAGE_NOT_OUTDATED) { \
-        fprintf(stderr, "package not outdated: %s\n", packageName); \
-    } else if (ret == PPKG_ERROR_PACKAGE_IS_BROKEN) { \
-        fprintf(stderr, "package is broken: %s\n", packageName); \
-    } else if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) { \
-        fprintf(stderr, "%s\n", "HOME environment variable not set.\n"); \
-    } else if (ret == PPKG_ERROR_ENV_PATH_NOT_SET) { \
-        fprintf(stderr, "%s\n", "PATH environment variable not set.\n"); \
-    } else if (ret == PPKG_ERROR_URL_TRANSFORM_ENV_NOT_SET) { \
-        fprintf(stderr, "%s\n", "PPKG_URL_TRANSFORM environment variable not set.\n"); \
-    } else if (ret == PPKG_ERROR_URL_TRANSFORM_ENV_VALUE_IS_EMPTY) { \
-        fprintf(stderr, "%s\n", "PPKG_URL_TRANSFORM environment variable's value should be a non-empty string.\n"); \
-    } else if (ret == PPKG_ERROR_URL_TRANSFORM_ENV_POINT_TO_PATH_NOT_EXIST) { \
-        fprintf(stderr, "%s\n", "PPKG_URL_TRANSFORM environment variable's value point to path not exist.\n"); \
-    } else if (ret == PPKG_ERROR_URL_TRANSFORM_RUN_NO_RESULT) { \
-        fprintf(stderr, "%s\n", "PPKG_URL_TRANSFORM environment variable's value point to path runs no result.\n"); \
-    } else if (ret > PPKG_ERROR_NETWORK_BASE) { \
-        fprintf(stderr, "network error.\n"); \
-    }
-
 
 typedef struct {
     char * summary;
@@ -169,12 +131,12 @@ typedef struct {
 } PPKGFormula;
 
 int  ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out);
-int  ppkg_formula_lookup(const char * packageName, PPKGFormula * * formula);
-int  ppkg_formula_locate(const char * packageName, char * * out);
-int  ppkg_formula_edit(const char * packageName, const char * editor);
-int  ppkg_formula_view(const char * packageName, bool raw);
-int  ppkg_formula_cat (const char * packageName);
-int  ppkg_formula_bat (const char * packageName);
+int  ppkg_formula_lookup(const char * packageName, const char * targetPlatformName, PPKGFormula * * formula);
+int  ppkg_formula_locate(const char * packageName, const char * targetPlatformName, char * * out);
+int  ppkg_formula_edit(const char * packageName, const char * targetPlatformName, const char * editor);
+int  ppkg_formula_view(const char * packageName, const char * targetPlatformName, bool raw);
+int  ppkg_formula_cat (const char * packageName, const char * targetPlatformName);
+int  ppkg_formula_bat (const char * packageName, const char * targetPlatformName);
 
 
 void ppkg_formula_free(PPKGFormula * formula);
@@ -187,8 +149,8 @@ typedef struct {
     char * url;
     char * branch;
     char * path;
-    char * timestamp_created;
-    char * timestamp_updated;
+    char * createdAt;
+    char * updatedAt;
     bool   pinned;
     bool   enabled;
 } PPKGFormulaRepo ;
@@ -204,7 +166,7 @@ int  ppkg_formula_repo_remove(const char * formulaRepoName);
 int  ppkg_formula_repo_sync_ (const char * formulaRepoName);
 int  ppkg_formula_repo_info_ (const char * formulaRepoName);
 int  ppkg_formula_repo_config(const char * formulaRepoName, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled);
-int  ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled, const char * timestamp_created, const char * timestamp_updated);
+int  ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char * formulaRepoUrl, const char * branchName, int pinned, int enabled, const char * createdAt, const char * updatedAt);
 int  ppkg_formula_repo_lookup(const char * formulaRepoName, PPKGFormulaRepo * * formulaRepo);
 int  ppkg_formula_repo_parse (const char * formulaRepoConfigFilePath, PPKGFormulaRepo * * formulaRepo);
 
@@ -219,6 +181,18 @@ void ppkg_formula_repo_list_free(PPKGFormulaRepoList   * p);
 int  ppkg_formula_repo_list_printf();
 int  ppkg_formula_repo_list_update();
 
+
+//////////////////////////////////////////////////////////////////////
+
+typedef struct {
+    char * name;
+    char * version;
+    char * arch;
+} PPKGTargetPlatform;
+
+int ppkg_inspect_target_platform(const char * str, PPKGTargetPlatform * targetPlatform);
+
+int ppkg_inspect_package_spec(const char * str, char ** packageName, PPKGTargetPlatform * targetPlatform);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -269,11 +243,12 @@ typedef struct {
 
     char * path;
 
-    char * signature;
-    char * timestamp;
+    char * builtBy;
+    char * builtAt;
+    char * builtFor;
 } PPKGReceipt;
 
-int  ppkg_receipt_parse(const char * packageName, PPKGReceipt * * receipt);
+int  ppkg_receipt_parse(const char * packageName, const PPKGTargetPlatform * targetPlatform, PPKGReceipt * * receipt);
 void ppkg_receipt_free(PPKGReceipt * receipt);
 void ppkg_receipt_dump(PPKGReceipt * receipt);
 
@@ -331,15 +306,17 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
 
 int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize);
 
-int ppkg_search(const char * regPattern);
+int ppkg_search(const char * regPattern, const char * targetPlatformName);
 
-int ppkg_info(const char * packageName, const char * key);
+int ppkg_available_info(const char * packageName, const char * targetPlatformName, const char * key);
 
-int ppkg_tree(const char * packageName, size_t argc, char* argv[]);
+int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * targetPlatform, const char * key);
 
-int ppkg_logs(const char * packageName);
+int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatform, size_t argc, char* argv[]);
 
-int ppkg_pack(const char * packageName, ArchiveType outputType, const char * outputPath, bool verbose);
+int ppkg_logs(const char * packageName, const PPKGTargetPlatform * targetPlatform);
+
+int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, bool verbose);
 
 typedef enum {
     PPKGDependsOutputType_DOT,
@@ -348,9 +325,9 @@ typedef enum {
     PPKGDependsOutputType_PNG,
 } PPKGDependsOutputType;
 
-int ppkg_depends(const char * packageName, PPKGDependsOutputType outputType, const char * outputPath);
+int ppkg_depends(const char * packageName, const char * targetPlatformName, PPKGDependsOutputType outputType, const char * outputPath);
 
-int ppkg_fetch(const char * packageName, bool verbose);
+int ppkg_fetch(const char * packageName, const char * targetPlatformName, bool verbose);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -396,13 +373,13 @@ typedef struct {
     PPKGLogLevel  logLevel;
 } PPKGInstallOptions;
 
-int ppkg_install  (const char * packageName, PPKGInstallOptions options);
+int ppkg_install  (const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * options);
 
-int ppkg_upgrade  (const char * packageName, PPKGInstallOptions options);
+int ppkg_upgrade  (const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * options);
 
-int ppkg_reinstall(const char * packageName, PPKGInstallOptions options);
+int ppkg_reinstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * options);
 
-int ppkg_uninstall(const char * packageName, bool verbose);
+int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, bool verbose);
 
 int ppkg_upgrade_self(bool verbose);
 
@@ -416,27 +393,33 @@ int ppkg_cleanup(bool verbose);
 
 int ppkg_check_if_the_given_argument_matches_package_name_pattern(const char * arg);
 
-int ppkg_check_if_the_given_package_is_available(const char * packageName);
-int ppkg_check_if_the_given_package_is_installed(const char * packageName);
-int ppkg_check_if_the_given_package_is_outdated (const char * packageName);
+int ppkg_check_if_the_given_package_is_available(const char * packageName, const char * targetPlatformName);
+int ppkg_check_if_the_given_package_is_installed(const char * packageName, const PPKGTargetPlatform * targetPlatform);
+int ppkg_check_if_the_given_package_is_outdated (const char * packageName, const PPKGTargetPlatform * targetPlatform);
 
-typedef int (*PPKGPackageNameCallbak)(const char * packageName, size_t index, const void * payload);
+typedef int (*PPKGPackageNameCallbak)(const char * packageName, const char * targetPlatformName, size_t index, const void * payload);
 
-int ppkg_list_the_available_packages(PPKGPackageNameCallbak packageNameCallbak, const void * payload);
-int ppkg_list_the_installed_packages();
-int ppkg_list_the_outdated__packages();
+int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackageNameCallbak packageNameCallbak, const void * payload);
+int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform);
+int ppkg_list_the_outdated__packages(const PPKGTargetPlatform * targetPlatform);
 
-int ppkg_show_the_available_packages();
+int ppkg_show_the_available_packages(const char * targetPlatformName);
 
 int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, const char * remoteRef, const char * remoteTrackingRef, const char * checkoutToBranchName, const size_t fetchDepth);
 
 int ppkg_generate_url_transform_sample();
 
-int ppkg_examine_file_extension_from_url(const char * url, char buf[], size_t bufSize);
+int ppkg_examine_filetype_from_url(const char * url, char buf[], size_t bufSize);
+
+int ppkg_examine_filename_from_url(const char * url, char buf[], size_t bufSize);
 
 int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress);
 
-int ppkg_download(const char * url, const char * sha256sum, const char * downloadDIR, const char * unpackDIR, size_t stripComponentsNumber, bool verbose);
+int ppkg_http_fetch_to_stream(const char * url, FILE * stream, bool verbose, bool showProgress);
+
+int ppkg_download(const char * url, const char * uri, const char * expectedSHA256SUM, const char * outputPath, bool verbose);
+
+int ppkg_uncompress(const char * filePath, const char * unpackDIR, size_t stripComponentsNumber, bool verbose);
 
 int ppkg_rename_or_copy_file(const char * fromFilePath, const char * toFilePath);
 

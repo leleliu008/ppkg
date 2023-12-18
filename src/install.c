@@ -156,7 +156,7 @@ static int write_to_file(const char * fp, const char * str) {
         return PPKG_ERROR;
     }
 
-    size_t  n = strlen(str);
+    size_t n = strlen(str);
 
     ssize_t writtenSize = write(fd, str, n);
 
@@ -189,7 +189,7 @@ static int write_to_file(const char * fp, const char * str) {
 static int download_via_http(const char * url, const char * uri, const char * expectedSHA256SUM, const char * downloadDIR, size_t downloadDIRLength, const char * unpackDIR, size_t unpackDIRLength, bool verbose) {
     char fileNameExtension[21] = {0};
 
-    int ret = ppkg_examine_file_extension_from_url(url, fileNameExtension, 20);
+    int ret = ppkg_examine_filetype_from_url(url, fileNameExtension, 20);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -331,7 +331,727 @@ static int download_via_http(const char * url, const char * uri, const char * ex
     return PPKG_OK;
 }
 
-static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const char * sessionDIR, const size_t sessionDIRLength) {
+static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+    size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
+    char   sysrootParentDIR[sysrootParentDIRCapacity];
+
+    int ret = snprintf(sysrootParentDIR, sysrootParentDIRCapacity, "%s/sysroot", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    struct stat st;
+
+    if (stat(sysrootParentDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", sysrootParentDIR);
+            return PPKG_ERROR;
+        }
+    } else {
+        if (mkdir(sysrootParentDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(sysrootParentDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    if (chdir(sysrootParentDIR) == -1) {
+        perror(sysrootParentDIR);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t targetPlatformNameLength = strlen(targetPlatform->name);
+    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformArchLength = strlen(targetPlatform->arch);
+
+    size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
+    char   targetPlatformSpec[targetPlatformSpecCapacity];
+
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t okFilePathCapacity = targetPlatformSpecCapacity + 3U;
+    char   okFilePath[okFilePathCapacity];
+
+    ret = snprintf(okFilePath, okFilePathCapacity, "%s/ok", targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (stat(okFilePath, &st) != 0) {
+        size_t outFileNameCapacity = targetPlatformSpecCapacity + 4U;
+        char   outFileName[outFileNameCapacity];
+
+        ret = snprintf(outFileName, outFileNameCapacity, "%s.txz", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (stat(outFileName, &st) == 0) {
+            if (!S_ISREG(st.st_mode)) {
+                fprintf(stderr, "%s/%s/%s was expected to be a regular file, but it was not.\n", sysrootParentDIR, targetPlatformSpec, outFileName);
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t urlCapacity = strlen(targetPlatform->arch) + strlen(targetPlatform->version) + 60U;
+            char   url[urlCapacity];
+
+            ret = snprintf(url, urlCapacity, "https://archive.freebsd.org/old-releases/%s/%s-RELEASE/base.txz", targetPlatform->arch, targetPlatform->version);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            size_t tmpStrCapacity = strlen(url) + 30U;
+            char   tmpStr[tmpStrCapacity];
+
+            ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            char sha256sum[65] = {0};
+
+            ret = sha256sum_of_string(sha256sum, tmpStr);
+
+            if (ret != 0) {
+                return PPKG_ERROR;
+            }
+
+            char tmpFileName[70];
+
+            ret = snprintf(tmpFileName, 70, "%s.tmp", sha256sum);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            ret = ppkg_http_fetch_to_file(url, tmpFileName, verbose, verbose);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            if (rename(tmpFileName, outFileName) == -1) {
+                perror(outFileName);
+                return PPKG_ERROR;
+            }
+        }
+
+        ////////////////////////////////////////////////////
+
+        ret = tar_extract(targetPlatformSpec, outFileName, ARCHIVE_EXTRACT_TIME, verbose, 1);
+
+        if (ret != 0) {
+            return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libstdcxxFilePathCapacity = targetPlatformSpecCapacity + 20U;
+        char   libstdcxxFilePath[libstdcxxFilePathCapacity];
+
+        ret = snprintf(libstdcxxFilePath, libstdcxxFilePathCapacity, "%s/usr/lib/libstdc++.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libstdcxxFilePath, "INPUT(-lc++)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libgccFilePathCapacity = targetPlatformSpecCapacity + 17U;
+        char   libgccFilePath[libgccFilePathCapacity];
+
+        ret = snprintf(libgccFilePath, libgccFilePathCapacity, "%s/usr/lib/libgcc.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (unlink(libgccFilePath) == -1) {
+            perror(libgccFilePath);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libgccFilePath, "INPUT(-lcompiler_rt -lgcc_eh)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libgcc_sFilePathCapacity = targetPlatformSpecCapacity + 19U;
+        char   libgcc_sFilePath[libgcc_sFilePathCapacity];
+
+        ret = snprintf(libgcc_sFilePath, libgcc_sFilePathCapacity, "%s/usr/lib/libgcc_s.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libgcc_sFilePath, "INPUT(-lcompiler_rt -lgcc_eh)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        ret = write_to_file(okFilePath, targetPlatformSpec);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    size_t sysrootCapacity = sysrootParentDIRCapacity + targetPlatformSpecCapacity;
+    char   sysroot[targetPlatformSpecCapacity];
+
+    ret = snprintf(sysroot, sysrootCapacity, "%s/%s", sysrootParentDIR, targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (setenv("SYSROOT", sysroot, 1) != 0) {
+        perror("SYSROOT");
+        return PPKG_ERROR;
+    }
+
+    return PPKG_OK;
+}
+
+static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+    size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
+    char   sysrootParentDIR[sysrootParentDIRCapacity];
+
+    int ret = snprintf(sysrootParentDIR, sysrootParentDIRCapacity, "%s/sysroot", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    struct stat st;
+
+    if (stat(sysrootParentDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", sysrootParentDIR);
+            return PPKG_ERROR;
+        }
+    } else {
+        if (mkdir(sysrootParentDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(sysrootParentDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    if (chdir(sysrootParentDIR) == -1) {
+        perror(sysrootParentDIR);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t targetPlatformNameLength = strlen(targetPlatform->name);
+    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformArchLength = strlen(targetPlatform->arch);
+
+    size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
+    char   targetPlatformSpec[targetPlatformSpecCapacity];
+
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t okFilePathCapacity = targetPlatformSpecCapacity + 3U;
+    char   okFilePath[okFilePathCapacity];
+
+    ret = snprintf(okFilePath, okFilePathCapacity, "%s/ok", targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (stat(okFilePath, &st) != 0) {
+        const char * items[2] = { "base", "comp" };
+
+        for (int i = 0; i < 2; i++) {
+            size_t outFileNameCapacity = targetPlatformSpecCapacity + 10U;
+            char   outFileName[outFileNameCapacity];
+
+            ret = snprintf(outFileName, outFileNameCapacity, "%s-%s.txz", targetPlatformSpec, items[i]);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (stat(outFileName, &st) == 0) {
+                if (!S_ISREG(st.st_mode)) {
+                    fprintf(stderr, "%s/%s/%s was expected to be a regular file, but it was not.\n", sysrootParentDIR, targetPlatformSpec, outFileName);
+                    return PPKG_ERROR;
+                }
+            } else {
+                int dotIndex = -1;
+
+                for(int i = 0; ;i++) {
+                    if (targetPlatform->version[i] == '\0') {
+                        break;
+                    }
+                    if (targetPlatform->version[i] == '.') {
+                        dotIndex = i;
+                    }
+                }
+
+                if (dotIndex <= 0) {
+                    fprintf(stderr, "invalid target platform version: %s\n", targetPlatform->version);
+                    return PPKG_ERROR;
+                }
+
+                char major[dotIndex];
+
+                strncpy(major, targetPlatform->version, dotIndex);
+                major[dotIndex] = '\0';
+
+                char * minor = targetPlatform->version + dotIndex + 1;
+
+
+                size_t urlCapacity = targetPlatformNameLength + targetPlatformArchLength + 60U;
+                char   url[urlCapacity];
+
+                ret = snprintf(url, urlCapacity, "https://cdn.openbsd.org/pub/OpenBSD/%s/%s/%s%s%s.tgz", targetPlatform->version, targetPlatform->arch, items[i], major, minor);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                size_t tmpStrCapacity = strlen(url) + 30U;
+                char   tmpStr[tmpStrCapacity];
+
+                ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                char sha256sum[65] = {0};
+
+                ret = sha256sum_of_string(sha256sum, tmpStr);
+
+                if (ret != 0) {
+                    return PPKG_ERROR;
+                }
+
+                char tmpFileName[70];
+
+                ret = snprintf(tmpFileName, 70, "%s.tmp", sha256sum);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                ret = ppkg_http_fetch_to_file(url, tmpFileName, verbose, verbose);
+
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
+
+                if (rename(tmpFileName, outFileName) == -1) {
+                    perror(outFileName);
+                    return PPKG_ERROR;
+                }
+            }
+
+            ret = tar_extract(targetPlatformSpec, outFileName, ARCHIVE_EXTRACT_TIME, verbose, 1);
+
+            if (ret != 0) {
+                return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
+            }
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libdlFilePathCapacity = targetPlatformSpecCapacity + 16U;
+        char   libdlFilePath[libdlFilePathCapacity];
+
+        ret = snprintf(libdlFilePath, libdlFilePathCapacity, "%s/usr/lib/libdl.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libdlFilePath, "INPUT(-lc)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t librtFilePathCapacity = targetPlatformSpecCapacity + 16U;
+        char   librtFilePath[librtFilePathCapacity];
+
+        ret = snprintf(librtFilePath, librtFilePathCapacity, "%s/usr/lib/librt.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(librtFilePath, "INPUT(-lc)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libcryptFilePathCapacity = targetPlatformSpecCapacity + 19U;
+        char   libcryptFilePath[libcryptFilePathCapacity];
+
+        ret = snprintf(libcryptFilePath, libcryptFilePathCapacity, "%s/usr/lib/libcrypt.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libcryptFilePath, "INPUT(-lc)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libstdcxxFilePathCapacity = targetPlatformSpecCapacity + 20U;
+        char   libstdcxxFilePath[libstdcxxFilePathCapacity];
+
+        ret = snprintf(libstdcxxFilePath, libstdcxxFilePathCapacity, "%s/usr/lib/libstdc++.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libstdcxxFilePath, "INPUT(-lc++)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libgccFilePathCapacity = targetPlatformSpecCapacity + 17U;
+        char   libgccFilePath[libgccFilePathCapacity];
+
+        ret = snprintf(libgccFilePath, libgccFilePathCapacity, "%s/usr/lib/libgcc.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libgccFilePath, "INPUT(-lcompiler_rt -lc++abi)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libgcc_sFilePathCapacity = targetPlatformSpecCapacity + 19U;
+        char   libgcc_sFilePath[libgcc_sFilePathCapacity];
+
+        ret = snprintf(libgcc_sFilePath, libgcc_sFilePathCapacity, "%s/usr/lib/libgcc_s.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libgcc_sFilePath, "INPUT(-lcompiler_rt -lc++abi)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        ret = write_to_file(okFilePath, targetPlatformSpec);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t sysrootCapacity = sysrootParentDIRCapacity + targetPlatformSpecCapacity;
+    char   sysroot[targetPlatformSpecCapacity];
+
+    ret = snprintf(sysroot, sysrootCapacity, "%s/%s", sysrootParentDIR, targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (setenv("SYSROOT", sysroot, 1) != 0) {
+        perror("SYSROOT");
+        return PPKG_ERROR;
+    }
+
+    return PPKG_OK;
+}
+
+static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+    size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
+    char   sysrootParentDIR[sysrootParentDIRCapacity];
+
+    int ret = snprintf(sysrootParentDIR, sysrootParentDIRCapacity, "%s/sysroot", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    struct stat st;
+
+    if (stat(sysrootParentDIR, &st) == 0) {
+        if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", sysrootParentDIR);
+            return PPKG_ERROR;
+        }
+    } else {
+        if (mkdir(sysrootParentDIR, S_IRWXU) != 0) {
+            if (errno != EEXIST) {
+                perror(sysrootParentDIR);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    if (chdir(sysrootParentDIR) == -1) {
+        perror(sysrootParentDIR);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t targetPlatformNameLength = strlen(targetPlatform->name);
+    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformArchLength = strlen(targetPlatform->arch);
+
+    size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
+    char   targetPlatformSpec[targetPlatformSpecCapacity];
+
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t okFilePathCapacity = targetPlatformSpecCapacity + 3U;
+    char   okFilePath[okFilePathCapacity];
+
+    ret = snprintf(okFilePath, okFilePathCapacity, "%s/ok", targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (stat(okFilePath, &st) != 0) {
+        const char * items[2] = { "base", "comp" };
+
+        for (int i = 0; i < 2; i++) {
+            size_t outFileNameCapacity = targetPlatformSpecCapacity + 10U;
+            char   outFileName[outFileNameCapacity];
+
+            ret = snprintf(outFileName, outFileNameCapacity, "%s-%s.txz", targetPlatformSpec, items[i]);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (stat(outFileName, &st) == 0) {
+                if (!S_ISREG(st.st_mode)) {
+                    fprintf(stderr, "%s/%s/%s was expected to be a regular file, but it was not.\n", sysrootParentDIR, targetPlatformSpec, outFileName);
+                    return PPKG_ERROR;
+                }
+            } else {
+                size_t urlCapacity = targetPlatformNameLength + targetPlatformArchLength + 70U;
+                char   url[urlCapacity];
+
+                ret = snprintf(url, urlCapacity, "https://ftp.netbsd.org/pub/NetBSD/NetBSD-%s/%s/binary/sets/%s.tar.xz", targetPlatform->version, targetPlatform->arch, items[i]);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+
+                size_t tmpStrCapacity = strlen(url) + 30U;
+                char   tmpStr[tmpStrCapacity];
+
+                ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                char sha256sum[65] = {0};
+
+                ret = sha256sum_of_string(sha256sum, tmpStr);
+
+                if (ret != 0) {
+                    return PPKG_ERROR;
+                }
+
+                char tmpFileName[70];
+
+                ret = snprintf(tmpFileName, 70, "%s.tmp", sha256sum);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                ret = ppkg_http_fetch_to_file(url, tmpFileName, verbose, verbose);
+
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
+
+                if (rename(tmpFileName, outFileName) == -1) {
+                    perror(outFileName);
+                    return PPKG_ERROR;
+                }
+            }
+
+            ret = tar_extract(targetPlatformSpec, outFileName, ARCHIVE_EXTRACT_TIME, verbose, 1);
+
+            if (ret != 0) {
+                return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
+            }
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libdlFilePathCapacity = targetPlatformSpecCapacity + 16U;
+        char   libdlFilePath[libdlFilePathCapacity];
+
+        ret = snprintf(libdlFilePath, libdlFilePathCapacity, "%s/usr/lib/libdl.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libdlFilePath, "INPUT(-lc)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        size_t libgcc_sFilePathCapacity = targetPlatformSpecCapacity + 19U;
+        char   libgcc_sFilePath[libgcc_sFilePathCapacity];
+
+        ret = snprintf(libgcc_sFilePath, libgcc_sFilePathCapacity, "%s/usr/lib/libgcc_s.a", targetPlatformSpec);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = write_to_file(libgcc_sFilePath, "INPUT(-lgcc_eh)");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ////////////////////////////////////////////////////
+
+        ret = write_to_file(okFilePath, targetPlatformSpec);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    size_t sysrootCapacity = sysrootParentDIRCapacity + targetPlatformSpecCapacity;
+    char   sysroot[targetPlatformSpecCapacity];
+
+    ret = snprintf(sysroot, sysrootCapacity, "%s/%s", sysrootParentDIR, targetPlatformSpec);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (setenv("SYSROOT", sysroot, 1) != 0) {
+        perror("SYSROOT");
+        return PPKG_ERROR;
+    }
+
+    return PPKG_OK;
+}
+
+
+static int setup_rust_toolchain(const PPKGInstallOptions * installOptions, const char * sessionDIR, const size_t sessionDIRLength) {
     const char * cargoHomeDIR = getenv("CARGO_HOME");
 
     if (cargoHomeDIR == NULL || cargoHomeDIR[0] == '\0') {
@@ -399,7 +1119,7 @@ static int setup_rust_toolchain(const PPKGInstallOptions installOptions, const c
             return PPKG_ERROR;
         }
 
-        ret = ppkg_http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, installOptions.verbose_net, installOptions.verbose_net);
+        ret = ppkg_http_fetch_to_file("https://sh.rustup.rs", rustupInitScriptFilePath, installOptions->verbose_net, installOptions->verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1001,11 +1721,11 @@ static int install_native_package(
         const char * downloadsDIR,
         const size_t downloadsDIRLength,
         const char * nativePackageInstallingRootDIR,
-        const size_t nativePackageInstallingRootDIRLength,
+        const size_t nativePackageInstallingRootDIRCapacity,
         const char * nativePackageInstalledRootDIR,
-        const size_t nativePackageInstalledRootDIRLength,
+        const size_t nativePackageInstalledRootDIRCapacity,
         const size_t njobs,
-        const PPKGInstallOptions installOptions) {
+        const PPKGInstallOptions * installOptions) {
     NativePackage nativePackage = {0};
 
     int ret = getNativePackageInfoByID(nativePackageID, &nativePackage);
@@ -1021,7 +1741,7 @@ static int install_native_package(
             break;
         }
 
-        ret = install_native_package(nativePackage.depPackageIDArray[i], downloadsDIR, downloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, njobs, installOptions);
+        ret = install_native_package(nativePackage.depPackageIDArray[i], downloadsDIR, downloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1047,7 +1767,7 @@ static int install_native_package(
 
     size_t packageNameLength = strlen(packageName);
 
-    size_t receiptFilePathLength = nativePackageInstalledRootDIRLength + packageNameLength + 14U;
+    size_t receiptFilePathLength = nativePackageInstalledRootDIRCapacity + packageNameLength + 14U;
     char   receiptFilePath[receiptFilePathLength];
 
     ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/%s/receipt.txt", nativePackageInstalledRootDIR, packageName);
@@ -1072,7 +1792,7 @@ static int install_native_package(
             if (strcmp(buf, srcSha) == 0) {
                 fprintf(stderr, "native package '%s' already has been installed.\n", packageName);
 
-                size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRLength + packageNameLength + 2U;
+                size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRCapacity + packageNameLength + 2U;
                 char   packageInstalledDIR[packageInstalledDIRCapacity];
 
                 ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", nativePackageInstalledRootDIR, packageName);
@@ -1098,7 +1818,7 @@ static int install_native_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t nativePackageWorkingTopDIRLength = nativePackageInstallingRootDIRLength + packageNameLength + 2U;
+    size_t nativePackageWorkingTopDIRLength = nativePackageInstallingRootDIRCapacity + packageNameLength + 2U;
     char   nativePackageWorkingTopDIR[nativePackageWorkingTopDIRLength];
 
     ret = snprintf(nativePackageWorkingTopDIR, nativePackageWorkingTopDIRLength, "%s/%s", nativePackageInstallingRootDIR, packageName);
@@ -1118,7 +1838,7 @@ static int install_native_package(
         return PPKG_ERROR;
     }
 
-    ret = download_via_http(srcUrl, srcUri, srcSha, downloadsDIR, downloadsDIRLength, nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, installOptions.verbose_net);
+    ret = download_via_http(srcUrl, srcUri, srcSha, downloadsDIR, downloadsDIRLength, nativePackageWorkingSrcDIR, nativePackageWorkingSrcDIRLength, installOptions->verbose_net);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -1151,7 +1871,7 @@ static int install_native_package(
         return ret;
     }
 
-    size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRLength + 66U;
+    size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRCapacity + 66U;
     char   packageInstalledDIR[packageInstalledDIRCapacity];
 
     ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", nativePackageInstalledRootDIR, packageInstalledSHA);
@@ -1285,7 +2005,7 @@ static int install_native_package(
         size_t configurePhaseCmdLength = cmakePathLength + packageInstalledDIRCapacity + strlen(buildConfigureArgs) + 124U;
         char   configurePhaseCmd[configurePhaseCmdLength];
 
-        ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=%s -DEXPAT_SHARED_LIBS=OFF -DCMAKE_VERBOSE_MAKEFILE=%s %s -S . -B build.d", cmakePath, packageInstalledDIR, (installOptions.logLevel >= PPKGLogLevel_verbose) ? "ON" : "OFF", buildConfigureArgs);
+        ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=%s -DEXPAT_SHARED_LIBS=OFF -DCMAKE_VERBOSE_MAKEFILE=%s %s -S . -B build.d", cmakePath, packageInstalledDIR, (installOptions->logLevel >= PPKGLogLevel_verbose) ? "ON" : "OFF", buildConfigureArgs);
 
         if (ret < 0) {
             perror(NULL);
@@ -1344,7 +2064,7 @@ static int install_native_package(
             };
 
             for (int i = 0; i < 5; i++) {
-                size_t ccflagsSLength = nativePackageInstalledRootDIRLength + strlen(xx[i].name) + 15U;
+                size_t ccflagsSLength = nativePackageInstalledRootDIRCapacity + strlen(xx[i].name) + 15U;
                 char   ccflags[ccflagsSLength];
 
                 ret = snprintf(ccflags, ccflagsSLength, "-I%s/%s/include", nativePackageInstalledRootDIR, xx[i].name);
@@ -1354,7 +2074,7 @@ static int install_native_package(
                     return PPKG_ERROR;
                 }
 
-                size_t ldflagsSLength = nativePackageInstalledRootDIRLength + strlen(xx[i].name) + strlen(xx[i].libs) + 10U;
+                size_t ldflagsSLength = nativePackageInstalledRootDIRCapacity + strlen(xx[i].name) + strlen(xx[i].libs) + 10U;
                 char   ldflags[ldflagsSLength];
 
                 ret = snprintf(ldflags, ldflagsSLength, "-L%s/%s/lib %s", nativePackageInstalledRootDIR, xx[i].name, xx[i].libs);
@@ -1414,10 +2134,10 @@ static int install_native_package(
             printf("CCFLAGS=%s\n", getenv("CFLAGS"));
             printf("LDFLAGS=%s\n", getenv("LDFLAGS"));
 
-            size_t configurePhaseCmdLength = packageInstalledDIRCapacity + nativePackageInstalledRootDIRLength + strlen(buildConfigureArgs) + 60U;
+            size_t configurePhaseCmdLength = packageInstalledDIRCapacity + nativePackageInstalledRootDIRCapacity + strlen(buildConfigureArgs) + 60U;
             char   configurePhaseCmd[configurePhaseCmdLength];
 
-            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s --with-openssl=%s/openssl %s %s", packageInstalledDIR, nativePackageInstalledRootDIR, (installOptions.logLevel == PPKGLogLevel_silent) ? "--silent" : "", buildConfigureArgs);
+            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s --with-openssl=%s/openssl %s %s", packageInstalledDIR, nativePackageInstalledRootDIR, (installOptions->logLevel == PPKGLogLevel_silent) ? "--silent" : "", buildConfigureArgs);
 
             if (ret < 0) {
                 perror(NULL);
@@ -1516,7 +2236,7 @@ static int install_native_package(
             size_t configurePhaseCmdLength = packageInstalledDIRCapacity + strlen(buildConfigureArgs) + 32U;
             char   configurePhaseCmd[configurePhaseCmdLength];
 
-            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s %s %s", packageInstalledDIR, (installOptions.logLevel == PPKGLogLevel_silent) ? "--silent" : "", buildConfigureArgs);
+            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "./configure --prefix=%s %s %s", packageInstalledDIR, (installOptions->logLevel == PPKGLogLevel_silent) ? "--silent" : "", buildConfigureArgs);
 
             if (ret < 0) {
                 perror(NULL);
@@ -1622,7 +2342,7 @@ static int install_native_package(
             if (errno == EEXIST) {
                 if (lstat(packageName, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(packageName, installOptions.logLevel >= PPKGLogLevel_verbose);
+                        ret = ppkg_rm_r(packageName, installOptions->logLevel >= PPKGLogLevel_verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;
@@ -1654,7 +2374,7 @@ static int install_dependent_packages_via_uppm(
         const char * uppmPackageNames,
         const size_t uppmPackageNamesLength,
         const char * ppkgCoreBinDIR,
-        const size_t ppkgCoreBinDIRLength,
+        const size_t ppkgCoreBinDIRCapacity,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
         const bool   requestToInstallCmake) {
@@ -1689,7 +2409,7 @@ static int install_dependent_packages_via_uppm(
     int ret;
 
     if (true) {
-        size_t uppmUpdateCmdLength = ppkgCoreBinDIRLength + 13U;
+        size_t uppmUpdateCmdLength = ppkgCoreBinDIRCapacity + 13U;
         char   uppmUpdateCmd[uppmUpdateCmdLength];
 
         ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
@@ -1706,7 +2426,7 @@ static int install_dependent_packages_via_uppm(
         }
     }
 
-    size_t uppmInstallCmdLength = ppkgCoreBinDIRLength + uppmPackageNamesLength + 15U;
+    size_t uppmInstallCmdLength = ppkgCoreBinDIRCapacity + uppmPackageNamesLength + 15U;
     char   uppmInstallCmd[uppmInstallCmdLength];
 
     ret = snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, uppmPackageNames);
@@ -1806,13 +2526,16 @@ static int install_dependent_packages_via_uppm(
 }
 
 static int generate_install_shell_script_file(
-        const char * packageName,
         const char * installShellScriptFilePath,
-        const SysInfo sysinfo,
+        const char * packageName,
+        const PPKGFormula * formula,
+        const PPKGTargetPlatform * targetPlatform,
+        const PPKGInstallOptions * installOptions,
+        const SysInfo * sysinfo,
+        const bool isCrossBuild,
+        const bool isTargetOSDarwin,
         const char * ppkgExeFilePath,
         const time_t ts,
-        const PPKGInstallOptions installOptions,
-        const PPKGFormula * formula,
         const size_t njobs,
         const char * ppkgHomeDIR,
         const char * ppkgCoreDIR,
@@ -1835,30 +2558,31 @@ static int generate_install_shell_script_file(
         const char * recursiveDependentPackageNamesString,
         const size_t recursiveDependentPackageNamesStringSize) {
     KB kbs[] = {
-        {"KEEP_SESSION_DIR", installOptions.keepSessionDIR},
-        {"BEAR_ENABLED", installOptions.enableBear},
-        {"CCACHE_ENABLED", installOptions.enableCcache},
-        {"EXPORT_COMPILE_COMMANDS_JSON", installOptions.exportCompileCommandsJson},
+        {"KEEP_SESSION_DIR", installOptions->keepSessionDIR},
+        {"BEAR_ENABLED", installOptions->enableBear},
+        {"CCACHE_ENABLED", installOptions->enableCcache},
+        {"EXPORT_COMPILE_COMMANDS_JSON", installOptions->exportCompileCommandsJson},
         {"PACKAGE_BINBSTD", formula->binbstd},
         {"PACKAGE_SYMLINK", formula->symlink},
         {"PACKAGE_PARALLEL", formula->parallel},
         {"PACKAGE_BUILD_IN_BSCRIPT_DIR", formula->binbstd},
-        {"PACKAGE_BUILD_SYSTEM_AUTOGENSH", formula->useBuildSystemAutogen},
-        {"PACKAGE_BUILD_SYSTEM_AUTOTOOLS", formula->useBuildSystemAutotools},
-        {"PACKAGE_BUILD_SYSTEM_CONFIGURE", formula->useBuildSystemConfigure},
-        {"PACKAGE_BUILD_SYSTEM_CMAKE", formula->useBuildSystemCmake},
-        {"PACKAGE_BUILD_SYSTEM_XMAKE", formula->useBuildSystemXmake},
-        {"PACKAGE_BUILD_SYSTEM_GMAKE", formula->useBuildSystemGmake},
-        {"PACKAGE_BUILD_SYSTEM_NINJA", formula->useBuildSystemNinja},
-        {"PACKAGE_BUILD_SYSTEM_MESON", formula->useBuildSystemMeson},
-        {"PACKAGE_BUILD_SYSTEM_CARGO", formula->useBuildSystemCargo},
-        {"PACKAGE_BUILD_SYSTEM_GO", formula->useBuildSystemGolang},
+        {"PACKAGE_USE_BSYSTEM_AUTOGENSH", formula->useBuildSystemAutogen},
+        {"PACKAGE_USE_BSYSTEM_AUTOTOOLS", formula->useBuildSystemAutotools},
+        {"PACKAGE_USE_BSYSTEM_CONFIGURE", formula->useBuildSystemConfigure},
+        {"PACKAGE_USE_BSYSTEM_CMAKE", formula->useBuildSystemCmake},
+        {"PACKAGE_USE_BSYSTEM_XMAKE", formula->useBuildSystemXmake},
+        {"PACKAGE_USE_BSYSTEM_GMAKE", formula->useBuildSystemGmake},
+        {"PACKAGE_USE_BSYSTEM_NINJA", formula->useBuildSystemNinja},
+        {"PACKAGE_USE_BSYSTEM_MESON", formula->useBuildSystemMeson},
+        {"PACKAGE_USE_BSYSTEM_CARGO", formula->useBuildSystemCargo},
+        {"PACKAGE_USE_BSYSTEM_GO", formula->useBuildSystemGolang},
+        {"CROSS_BUILD", isCrossBuild},
         {NULL,false}
     };
 
     char * libcName;
 
-    switch(sysinfo.libc) {
+    switch(sysinfo->libc) {
         case 1:  libcName = (char*)"glibc"; break;
         case 2:  libcName = (char*)"musl";  break;
         default: libcName = (char*)"";
@@ -1866,34 +2590,29 @@ static int generate_install_shell_script_file(
 
     const char * linkType;
 
-    switch (installOptions.linkType) {
+    switch (installOptions->linkType) {
         case PPKGLinkType_static_full: linkType = (formula->sfslink) ? "static-full" : "static-most"; break;
         case PPKGLinkType_static_most: linkType = "static-most"; break;
         case PPKGLinkType_shared_full: linkType = "shared-full"; break;
         case PPKGLinkType_shared_most: linkType = "shared-most"; break;
     }
 
-    const char * sharedLibrarySuffix;
-
-#if defined (__APPLE__)
-    sharedLibrarySuffix = ".dylib";
-#else
-    sharedLibrarySuffix = ".so";
-#endif
-
     KV kvs[] = {
-        {"NATIVE_OS_ARCH", sysinfo.arch },
-        {"NATIVE_OS_KIND", sysinfo.kind },
-        {"NATIVE_OS_TYPE", sysinfo.type },
-        {"NATIVE_OS_CODE", sysinfo.code },
-        {"NATIVE_OS_NAME", sysinfo.name },
-        {"NATIVE_OS_VERS", sysinfo.vers },
+        {"NATIVE_OS_ARCH", sysinfo->arch },
+        {"NATIVE_OS_KIND", sysinfo->kind },
+        {"NATIVE_OS_TYPE", sysinfo->type },
+        {"NATIVE_OS_CODE", sysinfo->code },
+        {"NATIVE_OS_NAME", sysinfo->name },
+        {"NATIVE_OS_VERS", sysinfo->vers },
         {"NATIVE_OS_LIBC", libcName },
-        {"BUILD_TYPE", installOptions.buildType == PPKGBuildType_release ? "release" : "debug"},
+        {"TARGET_PLATFORM_NAME", targetPlatform->name },
+        {"TARGET_PLATFORM_VERS", targetPlatform->version },
+        {"TARGET_PLATFORM_ARCH", targetPlatform->arch },
+        {"BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "release" : "debug"},
         {"LINK_TYPE", linkType},
         {"INSTALL_LIB", "both"},
         {"STATIC_LIBRARY_SUFFIX", ".a"},
-        {"SHARED_LIBRARY_SUFFIX", sharedLibrarySuffix},
+        {"SHARED_LIBRARY_SUFFIX", isTargetOSDarwin ? ".dylib" : ".so"},
         {"PPKG_VERSION", PPKG_VERSION},
         {"PPKG", ppkgExeFilePath},
         {"PPKG_HOME", ppkgHomeDIR},
@@ -1953,7 +2672,7 @@ static int generate_install_shell_script_file(
 
     int ret;
 
-    if (installOptions.xtrace) {
+    if (installOptions->xtrace) {
         ret = dprintf(fd, "set -x\n");
 
         if (ret < 0) {
@@ -1976,7 +2695,7 @@ static int generate_install_shell_script_file(
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, "NATIVE_OS_NCPU=%u\n", sysinfo.ncpu);
+    ret = dprintf(fd, "NATIVE_OS_NCPU=%u\n", sysinfo->ncpu);
 
     if (ret < 0) {
         close(fd);
@@ -1997,7 +2716,7 @@ static int generate_install_shell_script_file(
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, "LOG_LEVEL=%d\n", installOptions.logLevel);
+    ret = dprintf(fd, "LOG_LEVEL=%d\n", installOptions->logLevel);
 
     if (ret < 0) {
         close(fd);
@@ -2153,7 +2872,7 @@ static int generate_install_shell_script_file(
     return PPKG_OK;
 }
 
-static int adjust_la_file(const char * filePath, const char * ppkgHomeDIR, size_t ppkgHomeDIRLength) {
+static int adjust_la_file(const char * filePath, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength) {
     size_t eLength = ppkgHomeDIRLength + 14U;
     char   e[eLength];
 
@@ -2199,7 +2918,7 @@ static int adjust_la_file(const char * filePath, const char * ppkgHomeDIR, size_
     }
 }
 
-static int adjust_la_files(const char * packageInstalledDIR, size_t packageInstalledDIRCapacity, const char * ppkgHomeDIR, size_t ppkgHomeDIRLength) {
+static int adjust_la_files(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength) {
     size_t packageLibDIRLength = packageInstalledDIRCapacity + 5U;
     char   packageLibDIR[packageLibDIRLength];
 
@@ -2279,7 +2998,7 @@ static int adjust_la_files(const char * packageInstalledDIR, size_t packageInsta
     }
 }
 
-static int adjust_pc_files(const char * packageInstalledDIR, size_t packageInstalledDIRCapacity) {
+static int adjust_pc_files(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
     size_t packagePkgconfigDIRLength = packageInstalledDIRCapacity + 15U;
     char   packagePkgconfigDIR[packagePkgconfigDIRLength];
 
@@ -2359,11 +3078,11 @@ static int adjust_pc_files(const char * packageInstalledDIR, size_t packageInsta
     }
 }
 
-static int adjust_elf_files(const char * packageInstalledDIR, size_t packageInstalledDIRCapacity) {
+static int adjust_elf_files(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
     return PPKG_OK;
 }
 
-static int adjust_macho_files(const char * packageInstalledDIR, size_t packageInstalledDIRCapacity) {
+static int adjust_macho_files(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
     return PPKG_OK;
 }
 
@@ -2424,7 +3143,7 @@ static int backup_formulas(const char * sessionDIR, const char * packageMetaInfo
     return PPKG_OK;
 }
 
-static int generate_manifest_r(const char * dirPath, size_t offset, FILE * installedManifestFile) {
+static int generate_manifest_r(const char * dirPath, const size_t offset, FILE * installedManifestFile) {
     if (dirPath == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
@@ -2537,7 +3256,7 @@ int generate_manifest(const char * installedDIRPath) {
     return ret;
 }
 
-static int generate_receipt(const char * packageName, const PPKGFormula * formula, const SysInfo sysinfo, const time_t ts, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRCapacity) {
+static int generate_receipt(const char * packageName, const PPKGFormula * formula, const SysInfo * sysinfo, const time_t ts, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRCapacity) {
     size_t receiptFilePathLength = packageMetaInfoDIRCapacity + 12U;
     char   receiptFilePath[receiptFilePathLength];
 
@@ -2607,15 +3326,15 @@ static int generate_receipt(const char * packageName, const PPKGFormula * formul
 
     char * libcName;
 
-    switch(sysinfo.libc) {
+    switch(sysinfo->libc) {
         case 1:  libcName = (char*)"glibc"; break;
         case 2:  libcName = (char*)"musl";  break;
         default: libcName = (char*)"";
     }
 
-    fprintf(receiptFile, "\nsignature: %s\ntimestamp: %zu\n\n", PPKG_VERSION, ts);
+    fprintf(receiptFile, "\nbuiltby: %s\nbuiltat: %zu\n\n", PPKG_VERSION, ts);
 
-    fprintf(receiptFile, "build-on:\n    os-arch: %s\n    os-kind: %s\n    os-type: %s\n    os-name: %s\n    os-vers: %s\n    os-ncpu: %u\n    os-libc: %s\n    os-euid: %u\n    os-egid: %u\n", sysinfo.arch, sysinfo.kind, sysinfo.type, sysinfo.name, sysinfo.vers, sysinfo.ncpu, libcName, sysinfo.euid, sysinfo.egid);
+    fprintf(receiptFile, "build-on:\n    os-arch: %s\n    os-kind: %s\n    os-type: %s\n    os-name: %s\n    os-vers: %s\n    os-ncpu: %u\n    os-libc: %s\n    os-euid: %u\n    os-egid: %u\n", sysinfo->arch, sysinfo->kind, sysinfo->type, sysinfo->name, sysinfo->vers, sysinfo->ncpu, libcName, sysinfo->euid, sysinfo->egid);
 
     fclose(receiptFile);
 
@@ -2650,8 +3369,8 @@ static int install_files_to_metainfo_dir(struct stat st, const char * fromDIR, s
     return PPKG_OK;
 }
 
-static int generate_linker_script(const char * packageWorkingLibDIR, size_t packageWorkingLibDIRLength, const char * filename) {
-    size_t filepathCapacity = packageWorkingLibDIRLength + strlen(filename) + 2U;
+static int generate_linker_script(const char * packageWorkingLibDIR, const size_t packageWorkingLibDIRCapacity, const char * filename) {
+    size_t filepathCapacity = packageWorkingLibDIRCapacity + strlen(filename) + 2U;
     char   filepath[filepathCapacity];
 
     const int ret = snprintf(filepath, filepathCapacity, "%s/%s", packageWorkingLibDIR, filename);
@@ -2786,22 +3505,59 @@ static int copy_dependent_libraries(
     }
 }
 
-static int reset_environment_variable_for_compiler_driver_flags(const PPKGToolChain toolchain) {
-    const KV flags[8] = {
-        { "CFLAGS",   toolchain.ccflags  },
-        { "CXXFLAGS", toolchain.cxxflags },
-        { "CPPFLAGS", toolchain.cppflags },
-        { "LDFLAGS",  toolchain.ldflags  },
+static int ppkg_install_package(
+        const char * packageName,
+        const PPKGTargetPlatform * targetPlatform,
+        const PPKGFormula * formula,
+        const PPKGInstallOptions * installOptions,
+        const PPKGToolChain * toolchainForNativeBuild,
+        const PPKGToolChain * toolchainForTargetBuild,
+        const SysInfo * sysinfo,
+        const char * uppmPackageInstalledRootDIR,
+        const size_t uppmPackageInstalledRootDIRLength,
+        const char * ppkgExeFilePath,
+        const char * ppkgHomeDIR,
+        const size_t ppkgHomeDIRLength,
+        const char * ppkgCoreDIR,
+        const size_t ppkgCoreDIRLength,
+        const char * ppkgCoreLibexecDIR,
+        const char * ppkgDownloadsDIR,
+        const size_t ppkgDownloadsDIRCapacity,
+        const char * sessionDIR,
+        const size_t sessionDIRLength,
+        const char * recursiveDependentPackageNamesString,
+        const size_t recursiveDependentPackageNamesStringSize) {
+    fprintf(stderr, "%s=============== Installing%s %s%s%s %s===============%s\n", COLOR_PURPLE, COLOR_OFF, COLOR_GREEN, packageName, COLOR_OFF, COLOR_PURPLE, COLOR_OFF);
 
-        { "CFLAGS_FOR_BUILD",   toolchain.ccflags  },
-        { "CXXFLAGS_FOR_BUILD", toolchain.cxxflags },
-        { "CPPFLAGS_FOR_BUILD", toolchain.cppflags },
-        { "LDFLAGS_FOR_BUILD",  toolchain.ldflags  }
+    size_t njobs;
+
+    if (formula->parallel) {
+        if (installOptions->parallelJobsCount > 0) {
+            njobs = installOptions->parallelJobsCount;
+        } else {
+            njobs = sysinfo->ncpu;
+        }
+    } else {
+        njobs = 1U;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    const KV flagsForNativeBuild[8] = {
+        { "CFLAGS",   toolchainForNativeBuild->ccflags  },
+        { "CXXFLAGS", toolchainForNativeBuild->cxxflags },
+        { "CPPFLAGS", toolchainForNativeBuild->cppflags },
+        { "LDFLAGS",  toolchainForNativeBuild->ldflags  },
+
+        { "CFLAGS_FOR_BUILD",   toolchainForNativeBuild->ccflags  },
+        { "CXXFLAGS_FOR_BUILD", toolchainForNativeBuild->cxxflags },
+        { "CPPFLAGS_FOR_BUILD", toolchainForNativeBuild->cppflags },
+        { "LDFLAGS_FOR_BUILD",  toolchainForNativeBuild->ldflags  }
     };
 
     for (int i = 0; i < 8; i++) {
-        const char * name  = flags[i].name;
-        const char * value = flags[i].value;
+        const char * name  = flagsForNativeBuild[i].name;
+        const char * value = flagsForNativeBuild[i].value;
 
         if (value == NULL) {
             if (unsetenv(name) != 0) {
@@ -2814,43 +3570,6 @@ static int reset_environment_variable_for_compiler_driver_flags(const PPKGToolCh
                 return PPKG_ERROR;
             }
         }
-    }
-
-    return PPKG_OK;
-}
-
-static int ppkg_install_package(
-        const char * packageName,
-        const PPKGFormula * formula,
-        const PPKGInstallOptions installOptions,
-        const PPKGToolChain toolchain,
-        const SysInfo sysinfo,
-        const char * uppmPackageInstalledRootDIR,
-        const size_t uppmPackageInstalledRootDIRLength,
-        const char * ppkgExeFilePath,
-        const char * ppkgHomeDIR,
-        const size_t ppkgHomeDIRLength,
-        const char * ppkgCoreDIR,
-        const size_t ppkgCoreDIRLength,
-        const char * ppkgCoreLibexecDIR,
-        const char * ppkgDownloadsDIR,
-        const size_t ppkgDownloadsDIRLength,
-        const char * sessionDIR,
-        const size_t sessionDIRLength,
-        const char * recursiveDependentPackageNamesString,
-        const size_t recursiveDependentPackageNamesStringSize) {
-    fprintf(stderr, "%s=============== Installing%s %s%s%s %s===============%s\n", COLOR_PURPLE, COLOR_OFF, COLOR_GREEN, packageName, COLOR_OFF, COLOR_PURPLE, COLOR_OFF);
-
-    size_t njobs;
-
-    if (formula->parallel) {
-        if (installOptions.parallelJobsCount > 0) {
-            njobs = installOptions.parallelJobsCount;
-        } else {
-            njobs = sysinfo.ncpu;
-        }
-    } else {
-        njobs = 1U;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -2870,15 +3589,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret = reset_environment_variable_for_compiler_driver_flags(toolchain);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    ret = export_environment_variables_for_other_tools(ppkgCoreDIR, ppkgCoreDIRLength);
+    int ret = export_environment_variables_for_other_tools(ppkgCoreDIR, ppkgCoreDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -2888,10 +3599,10 @@ static int ppkg_install_package(
 
     size_t packageNameLength = strlen(packageName);
 
-    size_t packageWorkingTopDIRLength = sessionDIRLength + packageNameLength + 2U;
-    char   packageWorkingTopDIR[packageWorkingTopDIRLength];
+    size_t packageWorkingTopDIRCapacity = sessionDIRLength + packageNameLength + 2U;
+    char   packageWorkingTopDIR[packageWorkingTopDIRCapacity];
 
-    ret = snprintf(packageWorkingTopDIR, packageWorkingTopDIRLength, "%s/%s", sessionDIR, packageName);
+    ret = snprintf(packageWorkingTopDIR, packageWorkingTopDIRCapacity, "%s/%s", sessionDIR, packageName);
 
     if (ret < 0) {
         perror(NULL);
@@ -2902,7 +3613,7 @@ static int ppkg_install_package(
 
     if (stat(packageWorkingTopDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
-            int ret = ppkg_rm_r(packageWorkingTopDIR, installOptions.logLevel >= PPKGLogLevel_verbose);
+            int ret = ppkg_rm_r(packageWorkingTopDIR, installOptions->logLevel >= PPKGLogLevel_verbose);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -2920,10 +3631,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingSrcDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingSrcDIR[packageWorkingSrcDIRLength];
+    size_t packageWorkingSrcDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingSrcDIR[packageWorkingSrcDIRCapacity];
 
-    ret = snprintf(packageWorkingSrcDIR, packageWorkingSrcDIRLength, "%s/src", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingSrcDIR, packageWorkingSrcDIRCapacity, "%s/src", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -2937,10 +3648,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingFixDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingFixDIR[packageWorkingFixDIRLength];
+    size_t packageWorkingFixDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingFixDIR[packageWorkingFixDIRCapacity];
 
-    ret = snprintf(packageWorkingFixDIR, packageWorkingFixDIRLength, "%s/fix", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingFixDIR, packageWorkingFixDIRCapacity, "%s/fix", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -2954,10 +3665,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingResDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingResDIR[packageWorkingResDIRLength];
+    size_t packageWorkingResDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingResDIR[packageWorkingResDIRCapacity];
 
-    ret = snprintf(packageWorkingResDIR, packageWorkingResDIRLength, "%s/res", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingResDIR, packageWorkingResDIRCapacity, "%s/res", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -2971,10 +3682,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingBinDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingBinDIR[packageWorkingBinDIRLength];
+    size_t packageWorkingBinDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingBinDIR[packageWorkingBinDIRCapacity];
 
-    ret = snprintf(packageWorkingBinDIR, packageWorkingBinDIRLength, "%s/bin", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingBinDIR, packageWorkingBinDIRCapacity, "%s/bin", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -2988,10 +3699,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingIncDIRLength = packageWorkingTopDIRLength + 9U;
-    char   packageWorkingIncDIR[packageWorkingIncDIRLength];
+    size_t packageWorkingIncDIRCapacity = packageWorkingTopDIRCapacity + 9U;
+    char   packageWorkingIncDIR[packageWorkingIncDIRCapacity];
 
-    ret = snprintf(packageWorkingIncDIR, packageWorkingIncDIRLength, "%s/include", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingIncDIR, packageWorkingIncDIRCapacity, "%s/include", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -3005,10 +3716,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingLibDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingLibDIR[packageWorkingLibDIRLength];
+    size_t packageWorkingLibDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingLibDIR[packageWorkingLibDIRCapacity];
 
-    ret = snprintf(packageWorkingLibDIR, packageWorkingLibDIRLength, "%s/lib", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingLibDIR, packageWorkingLibDIRCapacity, "%s/lib", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -3022,10 +3733,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageWorkingTmpDIRLength = packageWorkingTopDIRLength + 5U;
-    char   packageWorkingTmpDIR[packageWorkingTmpDIRLength];
+    size_t packageWorkingTmpDIRCapacity = packageWorkingTopDIRCapacity + 5U;
+    char   packageWorkingTmpDIR[packageWorkingTmpDIRCapacity];
 
-    ret = snprintf(packageWorkingTmpDIR, packageWorkingTmpDIRLength, "%s/tmp", packageWorkingTopDIR);
+    ret = snprintf(packageWorkingTmpDIR, packageWorkingTmpDIRCapacity, "%s/tmp", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -3060,25 +3771,22 @@ static int ppkg_install_package(
 
     size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
 
-    bool isNativeOSLinux;
-    bool isNativeOSDarwin;
-
 #if defined (__APPLE__)
-    isNativeOSDarwin = true;
+    const bool isNativeOSDarwin = true;
 #else
-    isNativeOSDarwin = false;
+    const bool isNativeOSDarwin = false;
 #endif
 
 #if defined (__linux__)
-    isNativeOSLinux = true;
+    const bool isNativeOSLinux = true;
 #else
-    isNativeOSLinux = false;
+    const bool isNativeOSLinux = false;
 #endif
 
     size_t uppmPackageNamesCapacity = depPackageNamesLength + 100U;
     char   uppmPackageNames[uppmPackageNamesCapacity];
 
-    ret = snprintf(uppmPackageNames, 75U, "bash coreutils findutils gsed gawk grep tree %s%s%s", (isNativeOSLinux || isNativeOSDarwin) ? "pkg-config" : "pkgconf", isNativeOSDarwin ? "" : " patchelf", installOptions.enableCcache ? " ccache" : "");
+    ret = snprintf(uppmPackageNames, 75U, "bash coreutils findutils gsed gawk grep tree %s%s%s", (isNativeOSLinux || isNativeOSDarwin) ? "pkg-config" : "pkgconf", isNativeOSDarwin ? "" : " patchelf", installOptions->enableCcache ? " ccache" : "");
 
     if (ret < 0) {
         perror(NULL);
@@ -3175,17 +3883,17 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ppkgCoreBinDIRLength = ppkgCoreDIRLength + 5U;
-    char   ppkgCoreBinDIR[ppkgCoreBinDIRLength];
+    size_t ppkgCoreBinDIRCapacity = ppkgCoreDIRLength + 5U;
+    char   ppkgCoreBinDIR[ppkgCoreBinDIRCapacity];
 
-    ret = snprintf(ppkgCoreBinDIR, ppkgCoreBinDIRLength, "%s/bin", ppkgCoreDIR);
+    ret = snprintf(ppkgCoreBinDIR, ppkgCoreBinDIRCapacity, "%s/bin", ppkgCoreDIR);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreBinDIR, ppkgCoreBinDIRLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake);
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreBinDIR, ppkgCoreBinDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3265,20 +3973,20 @@ static int ppkg_install_package(
         nativePackageIDArraySize++;
     }
 
-    size_t nativePackageInstallingRootDIRLength = packageWorkingTopDIRLength + 8U;
-    char   nativePackageInstallingRootDIR[nativePackageInstallingRootDIRLength];
+    size_t nativePackageInstallingRootDIRCapacity = packageWorkingTopDIRCapacity + 8U;
+    char   nativePackageInstallingRootDIR[nativePackageInstallingRootDIRCapacity];
 
-    ret = snprintf(nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, "%s/native", packageWorkingTopDIR);
+    ret = snprintf(nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, "%s/native", packageWorkingTopDIR);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    size_t nativePackageInstalledRootDIRLength = ppkgHomeDIRLength + 8U;
-    char   nativePackageInstalledRootDIR[nativePackageInstalledRootDIRLength];
+    size_t nativePackageInstalledRootDIRCapacity = ppkgHomeDIRLength + 8U;
+    char   nativePackageInstalledRootDIR[nativePackageInstalledRootDIRCapacity];
 
-    ret = snprintf(nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, "%s/native", ppkgHomeDIR);
+    ret = snprintf(nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, "%s/native", ppkgHomeDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -3286,13 +3994,24 @@ static int ppkg_install_package(
     }
 
     for (int i = 0; i < nativePackageIDArraySize; i++) {
-        ret = reset_environment_variable_for_compiler_driver_flags(toolchain);
+        for (int i = 0; i < 8; i++) {
+            const char * name  = flagsForNativeBuild[i].name;
+            const char * value = flagsForNativeBuild[i].value;
 
-        if (ret != PPKG_OK) {
-            return ret;
+            if (value == NULL) {
+                if (unsetenv(name) != 0) {
+                    perror(name);
+                    return PPKG_ERROR;
+                }
+            } else {
+                if (setenv(name, value, 1) != 0) {
+                    perror(name);
+                    return PPKG_ERROR;
+                }
+            }
         }
 
-        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRLength, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRLength, njobs, installOptions);
+        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -3302,10 +4021,10 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->dep_pym != NULL) {
-        size_t pipUpgradeCmdLength = nativePackageInstalledRootDIRLength + 57U;
-        char   pipUpgradeCmd[pipUpgradeCmdLength];
+        size_t pipUpgradeCmdCapacity = nativePackageInstalledRootDIRCapacity + 57U;
+        char   pipUpgradeCmd[pipUpgradeCmdCapacity];
 
-        ret = snprintf(pipUpgradeCmd, pipUpgradeCmdLength, "%s/python3/bin/pip3 install --upgrade pip setuptools wheel", nativePackageInstalledRootDIR);
+        ret = snprintf(pipUpgradeCmd, pipUpgradeCmdCapacity, "%s/python3/bin/pip3 install --upgrade pip setuptools wheel", nativePackageInstalledRootDIR);
 
         if (ret < 0) {
             perror(NULL);
@@ -3318,10 +4037,12 @@ static int ppkg_install_package(
             return ret;
         }
 
-        size_t pipInstallCmdLength = nativePackageInstalledRootDIRLength + strlen(formula->dep_pym) + 37U;
-        char   pipInstallCmd[pipInstallCmdLength];
+        /////////////////////////////////////////////
 
-        ret = snprintf(pipInstallCmd, pipInstallCmdLength, "%s/python3/bin/pip3 install --upgrade %s", nativePackageInstalledRootDIR, formula->dep_pym);
+        size_t pipInstallCmdCapacity = nativePackageInstalledRootDIRCapacity + strlen(formula->dep_pym) + 37U;
+        char   pipInstallCmd[pipInstallCmdCapacity];
+
+        ret = snprintf(pipInstallCmd, pipInstallCmdCapacity, "%s/python3/bin/pip3 install --upgrade %s", nativePackageInstalledRootDIR, formula->dep_pym);
 
         if (ret < 0) {
             perror(NULL);
@@ -3363,134 +4084,40 @@ static int ppkg_install_package(
         if (ret != PPKG_OK) {
             return ret;
         }
-
-        // https://docs.rs/backtrace/latest/backtrace/
-        if (setenv("RUST_BACKTRACE", "1", 1) != 0) {
-            perror("RUST_BACKTRACE");
-            return PPKG_ERROR;
-        }
-
-        char ns[4];
-
-        ret = snprintf(ns, 4, "%zu", njobs);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        if (setenv("CARGO_BUILD_JOBS", ns, 1) != 0) {
-            perror("CARGO_BUILD_JOBS");
-            return PPKG_ERROR;
-        }
-
-        char rustTarget[64] = {0};
-
-#if defined (__linux__)
-        const char * libcName;
-
-        switch(sysinfo.libc) {
-            case 1:  libcName = "gnu" ; break;
-            case 2:  libcName = "musl"; break;
-            default: libcName = "";
-        }
-
-        ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo.arch, libcName);
-#else
-        const char * arch;
-
-        if (strcmp(sysinfo.arch, "amd64") == 0) {
-            arch = "x86_64";
-        } else {
-            arch = sysinfo.arch;
-        }
-
-        ret = snprintf(rustTarget, 64, "%s-unknown-%s", arch, sysinfo.kind);
-#endif
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("RUST_TARGET", rustTarget, 1) != 0) {
-            perror("RUST_TARGET");
-            return PPKG_ERROR;
-        }
-
-        size_t i = 0U;
-
-        for (;;) {
-            if (rustTarget[i] == '\0') {
-                break;
-            }
-
-            if (rustTarget[i] == '-') {
-                rustTarget[i] = '_';
-            }
-
-            if (rustTarget[i] >= 'a' && rustTarget[i] <= 'z') {
-                rustTarget[i] -= 32;
-            }
-
-            i++;
-        }
-
-        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        // https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker
-        size_t linkerLength = i + 21U;
-        char   linker[linkerLength];
-
-        ret = snprintf(linker, linkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv(linker, toolchain.cc, 1) != 0) {
-            perror(linker);
-            return PPKG_ERROR;
-        }
-
-        // https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags
-        // we want to use RUSTFLAGS
-        if (unsetenv("CARGO_ENCODED_RUSTFLAGS") != 0) {
-            perror("CARGO_ENCODED_RUSTFLAGS");
-            return PPKG_ERROR;
-        }
-
-        size_t rustFlagsCapacity = strlen(toolchain.cc) + 10U;
-        char   rustFlags[rustFlagsCapacity];
-
-        ret = snprintf(rustFlags, rustFlagsCapacity, "-Clinker=%s", toolchain.cc);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("RUSTFLAGS", rustFlags, 1) != 0) {
-            perror("RUSTFLAGS");
-            return PPKG_ERROR;
-        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
     ///                        below is for target                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    const KV flags[4] = {
-        { "CFLAGS_FOR_BUILD",   toolchain.ccflags  },
-        { "CXXFLAGS_FOR_BUILD", toolchain.cxxflags },
-        { "CPPFLAGS_FOR_BUILD", toolchain.cppflags },
-        { "LDFLAGS_FOR_BUILD",  toolchain.ldflags  }
-    };
+    const bool isCrossBuild = (strcmp(sysinfo->type, targetPlatform->name) == 0) && (strcmp(sysinfo->arch, targetPlatform->arch) == 0);
 
-    for (int i = 0; i < 4; i++) {
-        const char * name  = flags[i].name;
-        const char * value = flags[i].value;
+    bool isTargetOSFreeBSD = false;
+    bool isTargetOSOpenBSD = false;
+    bool isTargetOSNetBSD  = false;
+
+    if (isCrossBuild) {
+        if (strcmp(targetPlatform->name, "freebsd") == 0) {
+            isTargetOSFreeBSD = true;
+            ret = setup_sysroot_for_freebsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+        } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
+            isTargetOSOpenBSD = true;
+            ret = setup_sysroot_for_openbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+        } else if (strcmp(targetPlatform->name,  "netbsd") == 0) {
+            isTargetOSNetBSD = true;
+            ret = setup_sysroot_for__netbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+        }
+    }
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    for (int i = 4; i < 8; i++) {
+        const char * name  = flagsForNativeBuild[i].name;
+        const char * value = flagsForNativeBuild[i].value;
 
         if (value == NULL) {
             if (unsetenv(name) != 0) {
@@ -3508,7 +4135,7 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->ppflags == NULL) {
-        size_t cppflagsCapacity = packageWorkingIncDIRLength + 3U;
+        size_t cppflagsCapacity = packageWorkingIncDIRCapacity + 3U;
         char   cppflags[cppflagsCapacity];
 
         ret = snprintf(cppflags, cppflagsCapacity, "-I%s", packageWorkingIncDIR);
@@ -3523,7 +4150,7 @@ static int ppkg_install_package(
             return PPKG_ERROR;
         }
     } else {
-        size_t cppflagsCapacity = packageWorkingIncDIRLength + strlen(formula->ppflags) + 4U;
+        size_t cppflagsCapacity = packageWorkingIncDIRCapacity + strlen(formula->ppflags) + 4U;
         char   cppflags[cppflagsCapacity];
 
         ret = snprintf(cppflags, cppflagsCapacity, "-I%s %s", packageWorkingIncDIR, formula->ppflags);
@@ -3542,15 +4169,15 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->ccflags == NULL) {
-        if (setenv("CFLAGS", toolchain.ccflags, 1) != 0) {
+        if (setenv("CFLAGS", toolchainForTargetBuild->ccflags, 1) != 0) {
             perror("CFLAGS");
             return PPKG_ERROR;
         }
     } else {
-        size_t ccflagsCapacity = strlen(toolchain.ccflags) + strlen(formula->ccflags) + 2U;
+        size_t ccflagsCapacity = strlen(toolchainForTargetBuild->ccflags) + strlen(formula->ccflags) + 2U;
         char   ccflags[ccflagsCapacity];
 
-        ret = snprintf(ccflags, ccflagsCapacity, "%s %s", toolchain.ccflags, formula->ccflags);
+        ret = snprintf(ccflags, ccflagsCapacity, "%s %s", toolchainForTargetBuild->ccflags, formula->ccflags);
 
         if (ret < 0) {
             perror(NULL);
@@ -3566,15 +4193,15 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->xxflags == NULL) {
-        if (setenv("CXXFLAGS", toolchain.cxxflags, 1) != 0) {
+        if (setenv("CXXFLAGS", toolchainForTargetBuild->cxxflags, 1) != 0) {
             perror("CXXFLAGS");
             return PPKG_ERROR;
         }
     } else {
-        size_t cxxflagsCapacity = strlen(toolchain.cxxflags) + strlen(formula->xxflags) + 2U;
+        size_t cxxflagsCapacity = strlen(toolchainForTargetBuild->cxxflags) + strlen(formula->xxflags) + 2U;
         char   cxxflags[cxxflagsCapacity];
 
-        ret = snprintf(cxxflags, cxxflagsCapacity, "%s %s", toolchain.cxxflags, formula->xxflags);
+        ret = snprintf(cxxflags, cxxflagsCapacity, "%s %s", toolchainForTargetBuild->cxxflags, formula->xxflags);
 
         if (ret < 0) {
             perror(NULL);
@@ -3589,10 +4216,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + 11U;
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 14U;
     char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed", ppkgHomeDIR);
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
@@ -3603,7 +4230,7 @@ static int ppkg_install_package(
 
     bool flag = false;
 
-    if (installOptions.linkType == PPKGLinkType_static_full) {
+    if (installOptions->linkType == PPKGLinkType_static_full) {
         if (formula->sfslink) {
             flag = true;
         } else {
@@ -3613,14 +4240,14 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ldflagsCapacity = strlen(toolchain.ldflags) + packageWorkingLibDIRLength + packageInstalledRootDIRCapacity + packageNameLength + (formula->ldflags == NULL ? 0U : strlen(formula->ldflags)) + 40U;
+    size_t ldflagsCapacity = strlen(toolchainForTargetBuild->ldflags) + packageWorkingLibDIRCapacity + packageInstalledRootDIRCapacity + packageNameLength + (formula->ldflags == NULL ? 0U : strlen(formula->ldflags)) + 40U;
     char   ldflags[ldflagsCapacity];
 
     // both --static and -static flag should be given.
     //  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
     // --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
 
-    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib %s", flag ? "--static -static " : "", toolchain.ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags == NULL ? "" : formula->ldflags);
+    ret = snprintf(ldflags, ldflagsCapacity, "%s%s -L%s -Wl,-rpath,%s/%s/lib %s", flag ? "--static -static " : "", toolchainForTargetBuild->ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags == NULL ? "" : formula->ldflags);
 
     if (ret < 0) {
         perror(NULL);
@@ -3634,16 +4261,14 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    bool isTargetOSDarwin = strcmp(targetPlatform->name, "macos") == 0;
+
     const char * libSuffix;
 
-    if (installOptions.linkType == PPKGLinkType_static_full || installOptions.linkType == PPKGLinkType_static_most) {
+    if (installOptions->linkType == PPKGLinkType_static_full || installOptions->linkType == PPKGLinkType_static_most) {
         libSuffix = ".a";
     } else {
-#if defined (__APPLE__)
-        libSuffix = ".dylib";
-#else
-        libSuffix = ".so";
-#endif
+        libSuffix = isTargetOSDarwin ? ".dylib" : ".so";
     }
 
     const size_t libSuffixLength = strlen(libSuffix);
@@ -3680,7 +4305,7 @@ static int ppkg_install_package(
                 return ret;
             }
 
-            ret = copy_dependent_libraries(installedDIR, installedDIRCapacity, packageWorkingLibDIR, packageWorkingLibDIRLength, libSuffix, libSuffixLength);
+            ret = copy_dependent_libraries(installedDIR, installedDIRCapacity, packageWorkingLibDIR, packageWorkingLibDIRCapacity, libSuffix, libSuffixLength);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -3700,7 +4325,7 @@ static int ppkg_install_package(
         }
 
         // https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_TYPE.html
-        if (setenv("CMAKE_BUILD_TYPE", installOptions.buildType == PPKGBuildType_release ? "Release" : "Debug", 1) != 0) {
+        if (setenv("CMAKE_BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "Release" : "Debug", 1) != 0) {
             perror("CMAKE_BUILD_TYPE");
             return PPKG_ERROR;
         }
@@ -3721,7 +4346,7 @@ static int ppkg_install_package(
         }
 
         // https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-        if (setenv("CMAKE_EXPORT_COMPILE_COMMANDS", installOptions.exportCompileCommandsJson ? "ON" : "OFF", 1) != 0) {
+        if (setenv("CMAKE_EXPORT_COMPILE_COMMANDS", installOptions->exportCompileCommandsJson ? "ON" : "OFF", 1) != 0) {
             perror("CMAKE_EXPORT_COMPILE_COMMANDS");
             return PPKG_ERROR;
         }
@@ -3813,6 +4438,118 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (formula->useBuildSystemCargo) {
+        // https://docs.rs/backtrace/latest/backtrace/
+        if (setenv("RUST_BACKTRACE", "1", 1) != 0) {
+            perror("RUST_BACKTRACE");
+            return PPKG_ERROR;
+        }
+
+        char ns[4];
+
+        ret = snprintf(ns, 4, "%zu", njobs);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        if (setenv("CARGO_BUILD_JOBS", ns, 1) != 0) {
+            perror("CARGO_BUILD_JOBS");
+            return PPKG_ERROR;
+        }
+
+        char rustTarget[64] = {0};
+
+        if (strcmp(targetPlatform->name, "linux") == 0) {
+            const char * flavor;
+
+            if (strcmp(targetPlatform->version, "glibc") == 0) {
+                flavor = "gnu";
+            } else {
+                flavor = targetPlatform->version;
+            }
+
+            ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
+        } else {
+            const char * arch;
+
+            if (strcmp(targetPlatform->arch, "amd64") == 0) {
+                arch = "x86_64";
+            } else {
+                arch = targetPlatform->arch;
+            }
+
+            ret = snprintf(rustTarget, 64, "%s-unknown-%s", arch, targetPlatform->name);
+        }
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("RUST_TARGET", rustTarget, 1) != 0) {
+            perror("RUST_TARGET");
+            return PPKG_ERROR;
+        }
+
+        size_t i = 0U;
+
+        for (;;) {
+            if (rustTarget[i] == '\0') {
+                break;
+            }
+
+            if (rustTarget[i] == '-') {
+                rustTarget[i] = '_';
+            }
+
+            if (rustTarget[i] >= 'a' && rustTarget[i] <= 'z') {
+                rustTarget[i] -= 32;
+            }
+
+            i++;
+        }
+
+        // https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        // https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker
+        size_t linkerLength = i + 21U;
+        char   linker[linkerLength];
+
+        ret = snprintf(linker, linkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv(linker, toolchainForTargetBuild->cc, 1) != 0) {
+            perror(linker);
+            return PPKG_ERROR;
+        }
+
+        // https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags
+        // we want to use RUSTFLAGS
+        if (unsetenv("CARGO_ENCODED_RUSTFLAGS") != 0) {
+            perror("CARGO_ENCODED_RUSTFLAGS");
+            return PPKG_ERROR;
+        }
+
+        size_t rustFlagsCapacity = strlen(toolchainForTargetBuild->cc) + 10U;
+        char   rustFlags[rustFlagsCapacity];
+
+        ret = snprintf(rustFlags, rustFlagsCapacity, "-Clinker=%s", toolchainForTargetBuild->cc);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("RUSTFLAGS", rustFlags, 1) != 0) {
+            perror("RUSTFLAGS");
+            return PPKG_ERROR;
+        }
+
         // https://libraries.io/cargo/cc
         // https://crates.io/crates/cc
         // https://docs.rs/cc/latest/cc/
@@ -3849,17 +4586,17 @@ static int ppkg_install_package(
         }
 
         KV envs[10] = {
-            { "HOST_CC",         toolchain.cc },
+            { "HOST_CC",         toolchainForNativeBuild->cc },
             { "HOST_CFLAGS",     hostCFLAGS },
-            { "HOST_CXX",        toolchain.cxx },
+            { "HOST_CXX",        toolchainForNativeBuild->cxx },
             { "HOST_CXXFLAGS",   hostCXXFLAGS },
-            { "HOST_AR",         toolchain.ar },
+            { "HOST_AR",         toolchainForNativeBuild->ar },
 
-            { "TARGET_CC",       toolchain.cc },
+            { "TARGET_CC",       toolchainForTargetBuild->cc },
             { "TARGET_CFLAGS",   hostCFLAGS },
-            { "TARGET_CXX",      toolchain.cxx },
+            { "TARGET_CXX",      toolchainForTargetBuild->cxx },
             { "TARGET_CXXFLAGS", hostCXXFLAGS },
-            { "TARGET_AR",       toolchain.ar }
+            { "TARGET_AR",       toolchainForTargetBuild->ar }
         };
 
         for (int i = 0; i < 10; i++) {
@@ -3946,7 +4683,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t installShellScriptFilePathCapacity = packageWorkingBinDIRLength + 12U;
+    size_t installShellScriptFilePathCapacity = packageWorkingBinDIRCapacity + 12U;
     char   installShellScriptFilePath[installShellScriptFilePathCapacity];
 
     ret = snprintf(installShellScriptFilePath, installShellScriptFilePathCapacity, "%s/install.sh", packageWorkingBinDIR);
@@ -3956,7 +4693,7 @@ static int ppkg_install_package(
         return PPKG_ERROR;
     }
 
-    ret = generate_install_shell_script_file(packageName, installShellScriptFilePath, sysinfo, ppkgExeFilePath, ts, installOptions, formula, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgCoreLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
+    ret = generate_install_shell_script_file(installShellScriptFilePath, packageName, formula, targetPlatform, installOptions, sysinfo, isCrossBuild, isTargetOSDarwin, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgCoreLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3983,7 +4720,7 @@ static int ppkg_install_package(
             char * srcDIR = &formula->src_url[6];
             size_t srcDIRLength = strlen(srcDIR);
 
-            size_t cmdCapacity = srcDIRLength + packageWorkingSrcDIRLength + 10U;
+            size_t cmdCapacity = srcDIRLength + packageWorkingSrcDIRCapacity + 10U;
             char   cmd[cmdCapacity];
 
             ret = snprintf(cmd, cmdCapacity, "cp -r %s/. %s", srcDIR, packageWorkingSrcDIR);
@@ -3999,7 +4736,7 @@ static int ppkg_install_package(
                 return ret;
             }
         } else {
-            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingSrcDIR, packageWorkingSrcDIRLength, installOptions.verbose_net);
+            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingSrcDIR, packageWorkingSrcDIRCapacity, installOptions->verbose_net);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -4008,7 +4745,7 @@ static int ppkg_install_package(
     }
 
     if (formula->fix_url != NULL) {
-        ret = download_via_http(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingFixDIR, packageWorkingFixDIRLength, installOptions.verbose_net);
+        ret = download_via_http(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingFixDIR, packageWorkingFixDIRCapacity, installOptions->verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -4016,7 +4753,7 @@ static int ppkg_install_package(
     }
 
     if (formula->res_url != NULL) {
-        ret = download_via_http(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRLength, packageWorkingResDIR, packageWorkingResDIRLength, installOptions.verbose_net);
+        ret = download_via_http(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingResDIR, packageWorkingResDIRCapacity, installOptions->verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -4034,37 +4771,37 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-#if defined (__NetBSD__)
-    ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRLength, "libdl.a");
+    if (strcmp(targetPlatform->name, "netbsd") == 0) {
+        ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRCapacity, "libdl.a");
 
-    if (ret != PPKG_OK) {
-        return ret;
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
+        // https://github.com/mesonbuild/meson/issues/5390
+
+        ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRCapacity, "libdl.a");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRCapacity, "librt.a");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRCapacity, "libcrypt.a");
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
-#elif defined (__OpenBSD__)
-    // https://github.com/mesonbuild/meson/issues/5390
-
-    ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRLength, "libdl.a");
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRLength, "librt.a");
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    ret = generate_linker_script(packageWorkingLibDIR, packageWorkingLibDIRLength, "libcrypt.a");
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-#endif
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (installOptions.dryrun) {
+    if (installOptions->dryrun) {
         const char * const SHELL = getenv("SHELL");
 
         if (SHELL == NULL) {
@@ -4146,7 +4883,7 @@ static int ppkg_install_package(
         const char* item[4] = { "dependencies.dot", "dependencies.box", "dependencies.svg", "dependencies.png" };
 
         for (int i = 0; i < 4; i++) {
-            ret = install_files_to_metainfo_dir(st, packageWorkingTopDIR, packageWorkingTopDIRLength, packageMetaInfoDIR, packageMetaInfoDIRCapacity, item[i], strlen(item[i]));
+            ret = install_files_to_metainfo_dir(st, packageWorkingTopDIR, packageWorkingTopDIRCapacity, packageMetaInfoDIR, packageMetaInfoDIRCapacity, item[i], strlen(item[i]));
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -4157,7 +4894,7 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
     // install config.log
 
-    size_t packageBuildScriptDIRBufCapacity = packageWorkingSrcDIRLength + (formula->bscript == NULL ? 0U : strlen(formula->bscript)) + 2U;
+    size_t packageBuildScriptDIRBufCapacity = packageWorkingSrcDIRCapacity + (formula->bscript == NULL ? 0U : strlen(formula->bscript)) + 2U;
     char   packageBuildScriptDIRBuf[packageBuildScriptDIRBufCapacity];
 
     const char * packageBuildScriptDIR;
@@ -4210,7 +4947,7 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////////////
     // install compile_commands.json
 
-    if (installOptions.exportCompileCommandsJson) {
+    if (installOptions->exportCompileCommandsJson) {
         for (int i = 0; i < 2; i++) {
             size_t fromFilePathCapacity = strlen(b[i]) + 23U;
             char   fromFilePath[fromFilePathCapacity];
@@ -4260,7 +4997,7 @@ static int ppkg_install_package(
                 return PPKG_ERROR;
             }
 
-            ret = install_files_to_metainfo_dir(st, packageWorkingSrcDIR, packageWorkingSrcDIRLength, packageMetaInfoDIR, packageMetaInfoDIRCapacity, item, itemCapacity);
+            ret = install_files_to_metainfo_dir(st, packageWorkingSrcDIR, packageWorkingSrcDIRCapacity, packageMetaInfoDIR, packageMetaInfoDIRCapacity, item, itemCapacity);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -4317,7 +5054,7 @@ static int ppkg_install_package(
             if (errno == EEXIST) {
                 if (lstat(packageName, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(packageName, installOptions.logLevel >= PPKGLogLevel_verbose);
+                        ret = ppkg_rm_r(packageName, installOptions->logLevel >= PPKGLogLevel_verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;
@@ -4336,10 +5073,10 @@ static int ppkg_install_package(
         }
     }
 
-    if (installOptions.keepSessionDIR) {
+    if (installOptions->keepSessionDIR) {
         return PPKG_OK;
     } else {
-        return ppkg_rm_r(packageWorkingTopDIR, installOptions.logLevel >= PPKGLogLevel_verbose);
+        return ppkg_rm_r(packageWorkingTopDIR, installOptions->logLevel >= PPKGLogLevel_verbose);
     }
 }
 
@@ -4541,7 +5278,7 @@ static int getRecursiveDependentPackageNamesStringBuffer(char * packageName, PPK
     return PPKG_OK;
 }
 
-static int check_and_read_formula_in_cache(const char * packageName, const char * sessionDIR, PPKGPackage *** ppackageSet, size_t * ppackageSetSize, size_t * ppackageSetCapacity) {
+static int check_and_read_formula_in_cache(const char * packageName, const char * targetPlatformName, const char * sessionDIR, PPKGPackage *** ppackageSet, size_t * ppackageSetSize, size_t * ppackageSetCapacity) {
     size_t         packageSetCapacity = (*ppackageSetCapacity);
     size_t         packageSetSize    = (*ppackageSetSize);
     PPKGPackage ** packageSet        = (*ppackageSet);
@@ -4601,7 +5338,7 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
         if (formula == NULL) {
             char * formulaFilePath = NULL;
 
-            ret = ppkg_formula_locate(packageName, &formulaFilePath);
+            ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
 
             if (ret != PPKG_OK) {
                 free(packageName);
@@ -4777,7 +5514,7 @@ static int try_compile(const char * compilerFilePath, const char * compilerOptio
     }
 }
 
-static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, size_t sessionDIRLength, const char * compiler, bool iscc) {
+static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, const size_t sessionDIRLength, const char * compiler, const bool iscc) {
     size_t testCFilePathCapacity = sessionDIRLength + 10U;
     char   testCFilePath[testCFilePathCapacity];
 
@@ -4823,26 +5560,26 @@ static int check_if_compiler_support_Wno_error_unused_command_line_argument(cons
     return try_compile(compiler, "-Wno-error=unused-command-line-argument", testCFilePath);
 }
 
-int ppkg_toolchain_setup(
-        PPKGToolChain * toolchain,
+int ppkg_setup_toolchain_for_native_build(
+        PPKGToolChain * toolchainForNativeBuild,
         const char * sessionDIR,
         const size_t sessionDIRLength,
         const char * ppkgCoreLibexecDIR,
         const size_t ppkgCoreLibexecDIRLength,
-        const PPKGInstallOptions installOptions) {
+        const PPKGInstallOptions * installOptions) {
     struct stat st;
 
-    const size_t ccLength = strlen(toolchain->cc);
+    const size_t ccLength = strlen(toolchainForNativeBuild->cc);
 
     const char * compilerNames[3] = { "cc", "c++", "objc" };
 
     for (int i = 0; i < 3; i++) {
         const char * compilerName = compilerNames[i];
 
-        size_t wrapperFilePathLength = ppkgCoreLibexecDIRLength + 14U;
-        char   wrapperFilePath[wrapperFilePathLength];
+        size_t wrapperFilePathCapacity = ppkgCoreLibexecDIRLength + 21U;
+        char   wrapperFilePath[wrapperFilePathCapacity];
 
-        int ret = snprintf(wrapperFilePath, wrapperFilePathLength, "%s/wrapper-%s", ppkgCoreLibexecDIR, compilerName);
+        int ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-native-%s", ppkgCoreLibexecDIR, compilerName);
 
         if (ret < 0) {
             perror(NULL);
@@ -4850,20 +5587,20 @@ int ppkg_toolchain_setup(
         }
 
         if (stat(wrapperFilePath, &st) != 0) {
-            size_t outputFilePathLength = sessionDIRLength + 16U;
+            size_t outputFilePathLength = sessionDIRLength + 23U;
             char   outputFilePath[outputFilePathLength];
 
-            ret = snprintf(outputFilePath, outputFilePathLength, "%s/wrapper-%s", sessionDIR, compilerName);
+            ret = snprintf(outputFilePath, outputFilePathLength, "%s/wrapper-native-%s", sessionDIR, compilerName);
 
             if (ret < 0) {
                 perror(NULL);
                 return PPKG_ERROR;
             }
 
-            size_t cmdLength = ccLength + outputFilePathLength + ppkgCoreLibexecDIRLength + 20U;
+            size_t cmdLength = ccLength + outputFilePathLength + ppkgCoreLibexecDIRLength + 27U;
             char   cmd[cmdLength];
 
-            ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-%s.c", toolchain->cc, outputFilePath, ppkgCoreLibexecDIR, compilerName);
+            ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreLibexecDIR, compilerName);
 
             if (ret < 0) {
                 perror(NULL);
@@ -4886,9 +5623,9 @@ int ppkg_toolchain_setup(
     //////////////////////////////////////////////////////////////////////
 
     const KV kvs[3] = {
-        { "PROXIED_CC",   toolchain->cc   },
-        { "PROXIED_CXX",  toolchain->cxx  },
-        { "PROXIED_OBJC", toolchain->objc == NULL ? toolchain->cc : toolchain->objc }
+        { "PROXIED_NATIVE_CC",   toolchainForNativeBuild->cc   },
+        { "PROXIED_NATIVE_CXX",  toolchainForNativeBuild->cxx  },
+        { "PROXIED_NATIVE_OBJC", toolchainForNativeBuild->objc == NULL ? toolchainForNativeBuild->cc : toolchainForNativeBuild->objc }
     };
 
     for (int i = 0; i < 3; i++) {
@@ -4910,21 +5647,21 @@ int ppkg_toolchain_setup(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cc,  true);
-    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchain->cxx, true);
+    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cc,  true);
+    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cxx, true);
 
     //////////////////////////////////////////////////////////////////////////////
 
-    free(toolchain->cc);
-    free(toolchain->cxx);
-    free(toolchain->objc);
+    free(toolchainForNativeBuild->cc);
+    free(toolchainForNativeBuild->cxx);
+    free(toolchainForNativeBuild->objc);
 
     //////////////////////////////////////////////////////////////////////
 
     char * fields[3] = {NULL};
 
     for (int i = 0; i < 3; i++) {
-        size_t capacity = ppkgCoreLibexecDIRLength + 14U;
+        size_t capacity = ppkgCoreLibexecDIRLength + 21U;
 
         char * buf = (char*)malloc(capacity);
 
@@ -4938,7 +5675,7 @@ int ppkg_toolchain_setup(
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        int ret = snprintf(buf, capacity, "%s/wrapper-%s", ppkgCoreLibexecDIR, compilerNames[i]);
+        int ret = snprintf(buf, capacity, "%s/wrapper-native-%s", ppkgCoreLibexecDIR, compilerNames[i]);
 
         if (ret < 0) {
             perror(NULL);
@@ -4955,13 +5692,13 @@ int ppkg_toolchain_setup(
 
     //////////////////////////////////////////////////////////////////////
 
-    toolchain->cc   = fields[0];
-    toolchain->cxx  = fields[1];
-    toolchain->objc = fields[2];
+    toolchainForNativeBuild->cc   = fields[0];
+    toolchainForNativeBuild->cxx  = fields[1];
+    toolchainForNativeBuild->objc = fields[2];
 
     //////////////////////////////////////////////////////////////////////
 
-    size_t cppCapacity = strlen(toolchain->cc) + 4U;
+    size_t cppCapacity = strlen(toolchainForNativeBuild->cc) + 4U;
 
     char * cpp = (char*)malloc(cppCapacity);
 
@@ -4970,18 +5707,18 @@ int ppkg_toolchain_setup(
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    int ret = snprintf(cpp, cppCapacity, "%s -E", toolchain->cc);
+    int ret = snprintf(cpp, cppCapacity, "%s -E", toolchainForNativeBuild->cc);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    toolchain->cpp = cpp;
+    toolchainForNativeBuild->cpp = cpp;
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ccflagsCapacity = strlen(toolchain->ccflags) + 60U;
+    size_t ccflagsCapacity = strlen(toolchainForNativeBuild->ccflags) + 60U;
 
     char * ccflags = (char*)malloc(ccflagsCapacity);
 
@@ -4989,7 +5726,7 @@ int ppkg_toolchain_setup(
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    ret = snprintf(ccflags, ccflagsCapacity, "%s%s%s%s", toolchain->ccflags, (installOptions.buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions.verbose_cc ? " -v" : "", (ret1 == 0) ? " -Wno-error=unused-command-line-argument" : "");
+    ret = snprintf(ccflags, ccflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->ccflags, (installOptions->buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret1 == 0) ? " -Wno-error=unused-command-line-argument" : "");
 
     if (ret < 0) {
         perror(NULL);
@@ -4997,13 +5734,13 @@ int ppkg_toolchain_setup(
         return PPKG_ERROR;
     }
 
-    free(toolchain->ccflags);
+    free(toolchainForNativeBuild->ccflags);
 
-    toolchain->ccflags = ccflags;
+    toolchainForNativeBuild->ccflags = ccflags;
 
     //////////////////////////////////////////////////////////////////////
 
-    size_t cxxflagsCapacity = strlen(toolchain->cxxflags) + 60U;
+    size_t cxxflagsCapacity = strlen(toolchainForNativeBuild->cxxflags) + 60U;
 
     char * cxxflags = (char*)malloc(cxxflagsCapacity);
 
@@ -5011,21 +5748,21 @@ int ppkg_toolchain_setup(
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    ret = snprintf(cxxflags, cxxflagsCapacity, "%s%s%s%s", toolchain->cxxflags, (installOptions.buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions.verbose_cc ? " -v" : "", (ret2 == 0) ? " -Wno-error=unused-command-line-argument" : "");
+    ret = snprintf(cxxflags, cxxflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->cxxflags, (installOptions->buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret2 == 0) ? " -Wno-error=unused-command-line-argument" : "");
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    free(toolchain->cxxflags);
+    free(toolchainForNativeBuild->cxxflags);
 
-    toolchain->cxxflags = cxxflags;
+    toolchainForNativeBuild->cxxflags = cxxflags;
 
     //////////////////////////////////////////////////////////////////////
 
-    if (installOptions.buildType == PPKGBuildType_release || installOptions.verbose_ld) {
-        size_t ldflagsCapacity = strlen(toolchain->ldflags) + 60U;
+    if (installOptions->buildType == PPKGBuildType_release || installOptions->verbose_ld) {
+        size_t ldflagsCapacity = strlen(toolchainForNativeBuild->ldflags) + 60U;
 
         char * ldflags = (char*)malloc(ldflagsCapacity);
 
@@ -5033,38 +5770,38 @@ int ppkg_toolchain_setup(
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchain->ldflags, (installOptions.buildType == PPKGBuildType_release) ? " -Wl,-s" : "", installOptions.verbose_ld ? " -Wl,-v" : "");
+        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchainForNativeBuild->ldflags, (installOptions->buildType == PPKGBuildType_release) ? " -Wl,-s" : "", installOptions->verbose_ld ? " -Wl,-v" : "");
 
         if (ret < 0) {
             perror(NULL);
             return PPKG_ERROR;
         }
 
-        free(toolchain->ldflags);
+        free(toolchainForNativeBuild->ldflags);
 
-        toolchain->ldflags = ldflags;
+        toolchainForNativeBuild->ldflags = ldflags;
     }
 
     //////////////////////////////////////////////////////////////////////
 
     const KV envs[17] = {
-        { "CC", toolchain->cc },
-        { "OBJC", toolchain->objc },
-        { "CXX", toolchain->cxx },
-        { "CPP", toolchain->cpp },
-        { "AS", toolchain->as },
-        { "AR", toolchain->ar },
-        { "RANLIB", toolchain->ranlib },
-        { "LD", toolchain->ld },
-        { "NM", toolchain->nm },
-        { "SIZE", toolchain->size },
-        { "STRIP", toolchain->strip },
-        { "STRINGS", toolchain->strings },
-        { "OBJCOPY", toolchain->objcopy },
-        { "OBJDUMP", toolchain->objdump },
-        { "READELF", toolchain->readelf },
-        { "ADDR2LINE", toolchain->addr2line },
-        { "SYSROOT", toolchain->sysroot }
+        { "CC", toolchainForNativeBuild->cc },
+        { "OBJC", toolchainForNativeBuild->objc },
+        { "CXX", toolchainForNativeBuild->cxx },
+        { "CPP", toolchainForNativeBuild->cpp },
+        { "AS", toolchainForNativeBuild->as },
+        { "AR", toolchainForNativeBuild->ar },
+        { "RANLIB", toolchainForNativeBuild->ranlib },
+        { "LD", toolchainForNativeBuild->ld },
+        { "NM", toolchainForNativeBuild->nm },
+        { "SIZE", toolchainForNativeBuild->size },
+        { "STRIP", toolchainForNativeBuild->strip },
+        { "STRINGS", toolchainForNativeBuild->strings },
+        { "OBJCOPY", toolchainForNativeBuild->objcopy },
+        { "OBJDUMP", toolchainForNativeBuild->objdump },
+        { "READELF", toolchainForNativeBuild->readelf },
+        { "ADDR2LINE", toolchainForNativeBuild->addr2line },
+        { "SYSROOT", toolchainForNativeBuild->sysroot }
     };
 
     for (int i = 0; i < 17; i++) {
@@ -5135,16 +5872,19 @@ int ppkg_toolchain_setup(
     return PPKG_OK;
 }
 
-int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
-#if defined (__APPLE__)
-    if (installOptions.linkType == PPKGLinkType_static_full) {
-        fprintf(stderr, "--link-type=static-full option is not supported on macOS, because there is no static standard C library on macOS. We will use --link-type=static-most instead.\n");
-        installOptions.linkType = PPKGLinkType_static_most;
+int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * installOptions) {
+    if (installOptions->linkType == PPKGLinkType_static_full) {
+        if (strcmp(targetPlatform->name, "macos") == 0) {
+            fprintf(stderr, "--link-type=static-full option is not supported for macos, because there is no static standard C library for macos. please use --link-type=static-most instead.\n");
+        } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
+            fprintf(stderr, "--link-type=static-full option is not supported for openbsd. please use --link-type=static-most instead.\n");
+        }
+
+        return PPKG_ERROR;
     }
-#endif
 
     // redirect all stdout and stderr to /dev/null
-    if (installOptions.logLevel == PPKGLogLevel_silent) {
+    if (installOptions->logLevel == PPKGLogLevel_silent) {
         int fd = open("/dev/null", O_CREAT | O_TRUNC | O_WRONLY, 0666);
 
         if (fd < 0) {
@@ -5248,10 +5988,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ppkgDownloadsDIRLength = ppkgHomeDIRLength + 11U;
-    char   ppkgDownloadsDIR[ppkgDownloadsDIRLength];
+    size_t ppkgDownloadsDIRCapacity = ppkgHomeDIRLength + 11U;
+    char   ppkgDownloadsDIR[ppkgDownloadsDIRCapacity];
 
-    ret = snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRLength, "%s/downloads", ppkgHomeDIR);
+    ret = snprintf(ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, "%s/downloads", ppkgHomeDIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -5313,9 +6053,9 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    PPKGToolChain toolchain = {0};
+    PPKGToolChain toolchainForNativeBuild = {0};
 
-    ret = ppkg_toolchain_locate(&toolchain);
+    ret = ppkg_toolchain_locate(&toolchainForNativeBuild);
 
     if (ret != PPKG_OK) {
         return PPKG_ERROR;
@@ -5323,10 +6063,10 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = ppkg_toolchain_setup(&toolchain, sessionDIR, sessionDIRLength, ppkgCoreLibexecDIR, ppkgCoreLibexecDIRCapacity, installOptions);
+    ret = ppkg_setup_toolchain_for_native_build(&toolchainForNativeBuild, sessionDIR, sessionDIRLength, ppkgCoreLibexecDIR, ppkgCoreLibexecDIRCapacity, installOptions);
 
     if (ret != PPKG_OK) {
-        ppkg_toolchain_free(toolchain);
+        ppkg_toolchain_free(toolchainForNativeBuild);
         return PPKG_ERROR;
     }
 
@@ -5346,7 +6086,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
     if (ppkgExeFilePath == NULL) {
         sysinfo_free(sysinfo);
-        ppkg_toolchain_free(toolchain);
+        ppkg_toolchain_free(toolchainForNativeBuild);
         return PPKG_ERROR;
     }
 
@@ -5356,7 +6096,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
     size_t         packageSetSize     = 0U;
     PPKGPackage ** packageSet         = NULL;
 
-    ret = check_and_read_formula_in_cache(packageName, sessionDIR, &packageSet, &packageSetSize, &packageSetCapacity);
+    ret = check_and_read_formula_in_cache(packageName, targetPlatform->name, sessionDIR, &packageSet, &packageSetSize, &packageSetCapacity);
 
     if (ret != PPKG_OK) {
         goto finalize;
@@ -5380,8 +6120,8 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
         PPKGPackage * package = packageSet[i];
         char * packageName = package->packageName;
 
-        if (!installOptions.force) {
-            ret = ppkg_check_if_the_given_package_is_installed(packageName);
+        if (!installOptions->force) {
+            ret = ppkg_check_if_the_given_package_is_installed(packageName, targetPlatform);
 
             if (ret == PPKG_OK) {
                 fprintf(stderr, "package already has been installed : %s\n", packageName);
@@ -5406,7 +6146,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
         //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
 
-        ret = ppkg_install_package(packageName, package->formula, installOptions, toolchain, sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgCoreLibexecDIR, ppkgDownloadsDIR, ppkgDownloadsDIRLength, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+        ret = ppkg_install_package(packageName, targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgCoreLibexecDIR, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
 
         free(recursiveDependentPackageNamesStringBuffer);
         recursiveDependentPackageNamesStringBuffer = NULL;
@@ -5418,7 +6158,7 @@ int ppkg_install(const char * packageName, PPKGInstallOptions installOptions) {
 
 finalize:
     sysinfo_free(sysinfo);
-    ppkg_toolchain_free(toolchain);
+    ppkg_toolchain_free(toolchainForNativeBuild);
     free(ppkgExeFilePath);
 
     for (size_t i = 0; i < packageSetSize; i++) {

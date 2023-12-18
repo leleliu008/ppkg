@@ -13,8 +13,8 @@ typedef enum {
     PPKGFormulaRepoKeyCode_branch,
     PPKGFormulaRepoKeyCode_pinned,
     PPKGFormulaRepoKeyCode_enabled,
-    PPKGFormulaRepoKeyCode_timestamp_created,
-    PPKGFormulaRepoKeyCode_timestamp_updated
+    PPKGFormulaRepoKeyCode_createdAt,
+    PPKGFormulaRepoKeyCode_updatedAt
 } PPKGFormulaRepoKeyCode;
 
 void ppkg_formula_repo_dump(PPKGFormulaRepo * formulaRepo) {
@@ -28,8 +28,8 @@ void ppkg_formula_repo_dump(PPKGFormulaRepo * formulaRepo) {
     printf("branch: %s\n", formulaRepo->branch);
     printf("pinned: %s\n", formulaRepo->pinned ? "yes" : "no");
     printf("enabled: %s\n", formulaRepo->enabled ? "yes" : "no");
-    printf("timestamp-created: %s\n", formulaRepo->timestamp_created);
-    printf("timestamp-updated: %s\n", formulaRepo->timestamp_updated);
+    printf("created: %s\n", formulaRepo->createdAt);
+    printf("updated: %s\n", formulaRepo->updatedAt);
 }
 
 void ppkg_formula_repo_free(PPKGFormulaRepo * formulaRepo) {
@@ -57,14 +57,14 @@ void ppkg_formula_repo_free(PPKGFormulaRepo * formulaRepo) {
         formulaRepo->branch = NULL;
     }
 
-    if (formulaRepo->timestamp_created != NULL) {
-        free(formulaRepo->timestamp_created);
-        formulaRepo->timestamp_created = NULL;
+    if (formulaRepo->createdAt != NULL) {
+        free(formulaRepo->createdAt);
+        formulaRepo->createdAt = NULL;
     }
 
-    if (formulaRepo->timestamp_updated != NULL) {
-        free(formulaRepo->timestamp_updated);
-        formulaRepo->timestamp_updated = NULL;
+    if (formulaRepo->updatedAt != NULL) {
+        free(formulaRepo->updatedAt);
+        formulaRepo->updatedAt = NULL;
     }
 
     free(formulaRepo);
@@ -79,10 +79,10 @@ static PPKGFormulaRepoKeyCode ppkg_formula_repo_key_code_from_key_name(char * ke
         return PPKGFormulaRepoKeyCode_pinned;
     } else if (strcmp(key, "enabled") == 0) {
         return PPKGFormulaRepoKeyCode_enabled;
-    } else if (strcmp(key, "timestamp-created") == 0) {
-        return PPKGFormulaRepoKeyCode_timestamp_created;
-    } else if (strcmp(key, "timestamp-updated") == 0) {
-        return PPKGFormulaRepoKeyCode_timestamp_updated;
+    } else if (strcmp(key, "created") == 0) {
+        return PPKGFormulaRepoKeyCode_createdAt;
+    } else if (strcmp(key, "updated") == 0) {
+        return PPKGFormulaRepoKeyCode_updatedAt;
     } else {
         return PPKGFormulaRepoKeyCode_unknown;
     }
@@ -123,19 +123,19 @@ static int ppkg_formula_repo_set_value(PPKGFormulaRepoKeyCode keyCode, char * va
             formulaRepo->branch = strdup(value);
 
             return formulaRepo->branch == NULL ? PPKG_ERROR_MEMORY_ALLOCATE : PPKG_OK;
-        case PPKGFormulaRepoKeyCode_timestamp_created:
-            if (formulaRepo->timestamp_created != NULL) {
-                free(formulaRepo->timestamp_created);
+        case PPKGFormulaRepoKeyCode_createdAt:
+            if (formulaRepo->createdAt != NULL) {
+                free(formulaRepo->createdAt);
             }
 
-            formulaRepo->timestamp_created = strdup(value);
+            formulaRepo->createdAt = strdup(value);
 
-            return formulaRepo->timestamp_created == NULL ? PPKG_ERROR_MEMORY_ALLOCATE : PPKG_OK;
-        case PPKGFormulaRepoKeyCode_timestamp_updated:
-            free(formulaRepo->timestamp_updated);
-            formulaRepo->timestamp_updated = strdup(value);
+            return formulaRepo->createdAt == NULL ? PPKG_ERROR_MEMORY_ALLOCATE : PPKG_OK;
+        case PPKGFormulaRepoKeyCode_updatedAt:
+            free(formulaRepo->updatedAt);
+            formulaRepo->updatedAt = strdup(value);
 
-            return formulaRepo->timestamp_updated == NULL ? PPKG_ERROR_MEMORY_ALLOCATE : PPKG_OK;
+            return formulaRepo->updatedAt == NULL ? PPKG_ERROR_MEMORY_ALLOCATE : PPKG_OK;
         case PPKGFormulaRepoKeyCode_pinned:
             if (strcmp(value, "1") == 0) {
                 formulaRepo->pinned = 1;
@@ -175,8 +175,8 @@ static int ppkg_formula_repo_check(PPKGFormulaRepo * formulaRepo, const char * f
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (formulaRepo->timestamp_created == NULL) {
-        fprintf(stderr, "scheme error in formula repo config file: %s : timestamp-created mapping not found.\n", formulaRepoConfigFilePath);
+    if (formulaRepo->createdAt == NULL) {
+        fprintf(stderr, "scheme error in formula repo config file: %s : created mapping not found.\n", formulaRepoConfigFilePath);
         return PPKG_ERROR_FORMULA_REPO_CONFIG_SCHEME;
     }
 
@@ -184,43 +184,43 @@ static int ppkg_formula_repo_check(PPKGFormulaRepo * formulaRepo, const char * f
     char   c;
 
     for (;; i++) {
-        c = formulaRepo->timestamp_created[i];
+        c = formulaRepo->createdAt[i];
 
         if (c == '\0') {
             break;
         }
 
         if ((c < '0') || (c > '9')) {
-            fprintf(stderr, "scheme error in formula repo config file: %s : timestamp-created mapping's value should only contains non-numeric characters.\n", formulaRepoConfigFilePath);
+            fprintf(stderr, "scheme error in formula repo config file: %s : created mapping's value should only contains non-numeric characters.\n", formulaRepoConfigFilePath);
             return PPKG_ERROR_FORMULA_REPO_CONFIG_SCHEME;
         }
     }
 
     if (i != 10) {
-        fprintf(stderr, "scheme error in formula repo config file: %s : timestamp-created mapping's value's length must be 10.\n", formulaRepoConfigFilePath);
+        fprintf(stderr, "scheme error in formula repo config file: %s : created mapping's value's length must be 10.\n", formulaRepoConfigFilePath);
         return PPKG_ERROR_FORMULA_REPO_CONFIG_SCHEME;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (formulaRepo->timestamp_updated != NULL) {
+    if (formulaRepo->updatedAt != NULL) {
         i = 0;
 
         for (;; i++) {
-            c = formulaRepo->timestamp_updated[i];
+            c = formulaRepo->updatedAt[i];
 
             if (c == '\0') {
                 break;
             }
 
             if ((c < '0') || (c > '9')) {
-                fprintf(stderr, "scheme error in formula repo config file: %s : timestamp-updated mapping's value should only contains non-numeric characters.\n", formulaRepoConfigFilePath);
+                fprintf(stderr, "scheme error in formula repo config file: %s : updated mapping's value should only contains non-numeric characters.\n", formulaRepoConfigFilePath);
                 return PPKG_ERROR_FORMULA_REPO_CONFIG_SCHEME;
             }
         }
 
         if (i != 10) {
-            fprintf(stderr, "scheme error in formula repo config file: %s : timestamp-updated mapping's value's length must be 10.\n", formulaRepoConfigFilePath);
+            fprintf(stderr, "scheme error in formula repo config file: %s : updated mapping's value's length must be 10.\n", formulaRepoConfigFilePath);
             return PPKG_ERROR_FORMULA_REPO_CONFIG_SCHEME;
         }
     }

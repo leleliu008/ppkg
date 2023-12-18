@@ -56,8 +56,9 @@ typedef enum {
 
     PPKGReceiptKeyCode_parallel,
 
-    PPKGReceiptKeyCode_signature,
-    PPKGReceiptKeyCode_timestamp,
+    PPKGReceiptKeyCode_builtby,
+    PPKGReceiptKeyCode_builtat,
+    PPKGReceiptKeyCode_builtfor,
 } PPKGReceiptKeyCode;
 
 void ppkg_receipt_dump(PPKGReceipt * receipt) {
@@ -103,10 +104,11 @@ void ppkg_receipt_dump(PPKGReceipt * receipt) {
 
     printf("symlink: %d\n", receipt->symlink);
 
-    printf("path:    %s\n", receipt->path);
+    printf("builtby: %s\n", receipt->builtBy);
+    printf("builtat: %s\n", receipt->builtAt);
+    printf("builtfor: %s\n", receipt->builtFor);
 
-    printf("signature: %s\n", receipt->signature);
-    printf("timestamp: %s\n", receipt->timestamp);
+    printf("path:    %s\n", receipt->path);
 }
 
 void ppkg_receipt_free(PPKGReceipt * receipt) {
@@ -279,14 +281,19 @@ void ppkg_receipt_free(PPKGReceipt * receipt) {
 
     ///////////////////////////////
 
-    if (receipt->signature != NULL) {
-        free(receipt->signature);
-        receipt->signature = NULL;
+    if (receipt->builtBy != NULL) {
+        free(receipt->builtBy);
+        receipt->builtBy = NULL;
     }
 
-    if (receipt->timestamp != NULL) {
-        free(receipt->timestamp);
-        receipt->timestamp = NULL;
+    if (receipt->builtAt != NULL) {
+        free(receipt->builtAt);
+        receipt->builtAt = NULL;
+    }
+
+    if (receipt->builtFor != NULL) {
+        free(receipt->builtFor);
+        receipt->builtAt = NULL;
     }
 
     free(receipt);
@@ -357,10 +364,12 @@ static PPKGReceiptKeyCode ppkg_receipt_key_code_from_key_name(char * key) {
         return PPKGReceiptKeyCode_binbstd;
     } else if (strcmp(key, "parallel") == 0) {
         return PPKGReceiptKeyCode_parallel;
-    } else if (strcmp(key, "signature") == 0) {
-        return PPKGReceiptKeyCode_signature;
-    } else if (strcmp(key, "timestamp") == 0) {
-        return PPKGReceiptKeyCode_timestamp;
+    } else if (strcmp(key, "builtby") == 0) {
+        return PPKGReceiptKeyCode_builtby;
+    } else if (strcmp(key, "builtat") == 0) {
+        return PPKGReceiptKeyCode_builtat;
+    } else if (strcmp(key, "builtfor") == 0) {
+        return PPKGReceiptKeyCode_builtfor;
     } else {
         return PPKGReceiptKeyCode_unknown;
     }
@@ -425,8 +434,9 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
         case PPKGReceiptKeyCode_bsystem: if (receipt->bsystem != NULL) free(receipt->bsystem); receipt->bsystem = strdup(value); break;
         case PPKGReceiptKeyCode_bscript: if (receipt->bscript != NULL) free(receipt->bscript); receipt->bscript = strdup(value); break;
 
-        case PPKGReceiptKeyCode_signature: if (receipt->signature != NULL) free(receipt->signature); receipt->signature = strdup(value); break;
-        case PPKGReceiptKeyCode_timestamp: if (receipt->timestamp != NULL) free(receipt->timestamp); receipt->timestamp = strdup(value); break;
+        case PPKGReceiptKeyCode_builtby: if (receipt->builtBy != NULL) free(receipt->builtBy); receipt->builtBy = strdup(value); break;
+        case PPKGReceiptKeyCode_builtat: if (receipt->builtAt != NULL) free(receipt->builtAt); receipt->builtAt = strdup(value); break;
+        case PPKGReceiptKeyCode_builtfor: if (receipt->builtFor != NULL) free(receipt->builtFor); receipt->builtFor = strdup(value); break;
 
         case PPKGReceiptKeyCode_git_nth:
             receipt->git_nth = atoi(value);
@@ -496,46 +506,55 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
         return PPKG_ERROR_FORMULA_SCHEME;
     }
 
-    if (receipt->signature == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : signature mapping not found.\n", receiptFilePath);
+    if (receipt->builtBy == NULL) {
+        fprintf(stderr, "scheme error in receipt file: %s : builtBy mapping not found.\n", receiptFilePath);
+        return PPKG_ERROR_RECEIPT_SCHEME;
+    }
+
+    if (receipt->builtFor == NULL) {
+        fprintf(stderr, "scheme error in receipt file: %s : builtFor mapping not found.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (receipt->timestamp == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping not found.\n", receiptFilePath);
+    if (receipt->builtAt == NULL) {
+        fprintf(stderr, "scheme error in receipt file: %s : builtAt mapping not found.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     size_t i = 0;
 
     for (;; i++) {
-        char c = receipt->timestamp[i];
+        char c = receipt->builtAt[i];
 
         if (c == '\0') {
             break;
         }
 
         if ((c < '0') || (c > '9')) {
-            fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping's value should only contains non-numeric characters.\n", receiptFilePath);
+            fprintf(stderr, "scheme error in receipt file: %s : builtAt mapping's value should only contains non-numeric characters.\n", receiptFilePath);
             return PPKG_ERROR_RECEIPT_SCHEME;
         }
     }
 
     if (i != 10U) {
-        fprintf(stderr, "scheme error in receipt file: %s : timestamp mapping's value's length must be 10.\n", receiptFilePath);
+        fprintf(stderr, "scheme error in receipt file: %s : builtAt mapping's value's length must be 10.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     return PPKG_OK;
 }
 
-int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
+int ppkg_receipt_parse(const char * packageName, const PPKGTargetPlatform * targetPlatform, PPKGReceipt * * out) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
         return ret;
+    }
+
+    if (targetPlatform == NULL) {
+        return PPKG_ERROR_ARG_IS_NULL;
     }
 
     char   ppkgHomeDIR[PATH_MAX];
@@ -547,14 +566,14 @@ int ppkg_receipt_parse(const char * packageName, PPKGReceipt * * out) {
         return ret;
     }
 
-    size_t receiptFilePathLength = ppkgHomeDIRLength + strlen(packageName) + 30U;
+    size_t receiptFilePathLength = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 34U;
     char * receiptFilePath = (char*)calloc(receiptFilePathLength, sizeof(char));
 
     if (receiptFilePath == NULL) {
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    if (snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, packageName) < 0) {
+    if (snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s-%s-%s/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName) < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }

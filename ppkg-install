@@ -88,218 +88,8 @@ is_integer() {
     esac
 }
 
-# }}}
-##############################################################################
-# {{{ wfetch
-
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>
-
-# influential environment variable:
-# PPKG_URL_TRANSFORM
 wfetch() {
-    unset FETCH_URL
-    unset FETCH_URI
-
-    unset FETCH_SHA256_EXPECTED
-
-    unset FETCH_BUFFER_DIR
-    unset FETCH_BUFFER_FILEPATH
-
-    unset FETCH_OUTPUT_DIR
-    unset FETCH_OUTPUT_FILENAME
-    unset FETCH_OUTPUT_FILEPATH
-
-    unset FETCH_SILENT
-
-    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
-
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-        FETCH_URL="$1"
-    else
-        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")" || return 1
-    fi
-
-    shift
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --silent)
-                FETCH_SILENT=yes
-                RUN_SILENT=yes
-                ;;
-            --sha256=*)
-                FETCH_SHA256_EXPECTED="${1#*=}"
-                ;;
-            --uri=*)
-                FETCH_URI="${1#*=}"
-                if [ -n "$FETCH_URI" ] && [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
-                fi
-                ;;
-            --buffer-dir=*)
-                FETCH_BUFFER_DIR="${1#*=}"
-                if [ -z "$FETCH_BUFFER_DIR" ] ; then
-                    abort 1 "wfetch <URL> --buffer-dir=<DIR> , <DIR> must be non-empty."
-                fi
-                ;;
-            --output-dir=*)
-                FETCH_OUTPUT_DIR="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    abort 1 "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
-                fi
-                ;;
-            --output-filename=*)
-                FETCH_OUTPUT_FILENAME="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                    abort 1 "wfetch <URL> --output-filename=<NAME> , <NAME> must be non-empty."
-                fi
-                ;;
-            --output-filepath=*)
-                FETCH_OUTPUT_FILEPATH="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-                    abort 1 "wfetch <URL> --output-filepath=<FILEPATH> , <FILEPATH> must be non-empty."
-                fi
-                ;;
-            *)  abort 1 "wfetch <URL> [OPTION]..., unrecognized option: $1
-
-    wfetch command usage:
-
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>"
-        esac
-        shift
-    done
-
-    if [ -z "$FETCH_URI" ] ; then
-        # remove query params
-        FETCH_URL__="${FETCH_URL%%'?'*}"
-
-        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URL__##*/}"
-    fi
-
-    if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-            FETCH_BUFFER_FILEPATH='-'
-            FETCH_OUTPUT_FILEPATH='-'
-        else
-            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                FETCH_OUTPUT_DIR="$PWD"
-            fi
-
-            if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                FETCH_OUTPUT_FILENAME=$(basename "$FETCH_URL")
-            fi
-
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILENAME"
-        fi
-    elif [ "$FETCH_OUTPUT_FILEPATH" = '-' ] ; then
-        unset FETCH_OUTPUT_DIR
-        unset FETCH_OUTPUT_FILENAME
-    else
-        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_FILEPATH")"
-        FETCH_OUTPUT_FILENAME="$(basename "$FETCH_OUTPUT_FILEPATH")"
-    fi
-
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
-        if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
-            if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-                if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
-                    success "$FETCH_OUTPUT_FILEPATH already have been fetched."
-                    return 0
-                fi
-            fi
-        fi
-
-        if [ -z "$FETCH_BUFFER_DIR" ] ; then
-            FETCH_BUFFER_DIR="$FETCH_OUTPUT_DIR"
-        fi
-
-        if [ -z "$FETCH_BUFFER_FILEPATH" ] ; then
-            FETCH_BUFFER_FILEPATH="$FETCH_BUFFER_DIR/$FETCH_OUTPUT_FILENAME"
-        fi
-    fi
-
-    for FETCH_TOOL in curl wget http lynx aria2c axel
-    do
-        if command -v "$FETCH_TOOL" > /dev/null ; then
-            break
-        else
-            unset FETCH_TOOL
-        fi
-    done
-
-    if [ -z "$FETCH_TOOL" ] ; then
-        abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
-    fi
-
-    if [ !          -d "$FETCH_BUFFER_DIR" ] ; then
-        run install -d "$FETCH_BUFFER_DIR" || return 1
-    fi
-
-    case $FETCH_TOOL in
-        curl)
-            unset CURL_OPTIONS
-
-            if [ "$FETCH_SILENT" = yes ] ; then
-                CURL_OPTIONS='--no-progress-meter'
-            fi
-
-            if [ -n "$SSL_CERT_FILE" ] ; then
-                CURL_OPTIONS="--cacert $SSL_CERT_FILE"
-            fi
-
-            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
-            ;;
-        wget)
-            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
-            ;;
-        http)
-            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
-            ;;
-        lynx)
-            run "lynx -source '$FETCH_URL' > '$FETCH_BUFFER_FILEPATH'" ||
-            run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
-            ;;
-        aria2c)
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
-            ;;
-        axel)
-            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
-            ;;
-        *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
-            ;;
-    esac
-
-    [ $? -eq 0 ] || return 1
-
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
-        if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-            FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
-
-            if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
-                abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
-            fi
-        fi
-
-        if [ "$FETCH_BUFFER_DIR" != "$FETCH_OUTPUT_DIR" ] ; then
-            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-                run install -d "$FETCH_OUTPUT_DIR" || return 1
-            fi
-
-            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_DIR/"
-        fi
-    fi
+    "$PPKG" util wfetch "$@"
 }
 
 # }}}
@@ -397,7 +187,7 @@ gow() {
     fi
 
     # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         GOMOD="$PACKAGE_BSCRIPT_DIR/go.mod"
 
         if [ -f "$GOMOD" ] && go mod graph | grep -q 'golang\.org/x/sys' ; then
@@ -513,10 +303,12 @@ gow() {
 
 cargow() {
     if [ "$LINK_TYPE" = 'static-full' ] ; then
-        if [ "$NATIVE_OS_LIBC" != 'glibc' ] ; then
-            # There is no libgcc_s.a on glibc-based GNU/Linux
-            printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
-            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+            if [ "$TARGET_PLATFORM_VERS" != glibc ] ; then
+                # There is no libgcc_s.a on glibc-based GNU/Linux
+                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+            fi
         fi
     fi
 
@@ -682,7 +474,23 @@ configure_only() {
     export ac_cv_func_calloc_0_nonnull=yes
     export ac_cv_func_realloc_0_nonnull=yes
 
-    CONFIGURE_ARGS="--prefix='$PACKAGE_INSTALL_DIR' --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
+    CONFIGURE_ARGS="--prefix=$PACKAGE_INSTALL_DIR"
+
+    if [ "$CROSS_BUILD" = 1 ] ; then
+        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+            case $TARGET_PLATFORM_VERS in
+                glibc) TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-gnu"  ;;
+                musl)  TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-musl" ;;
+                *)     TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux"
+            esac
+        elif [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+            TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-apple-darwin"
+        else
+            TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+        fi
+
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --host=$TARGET_TRIPLE"
+    fi
 
     if [ "$BUILD_TYPE" = release ] ; then
         CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
@@ -696,6 +504,8 @@ configure_only() {
         both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
         no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
     esac
+
+    CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
 
     if [ -n "$PPKG_XTRACE" ] ; then
         sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
@@ -815,7 +625,7 @@ cmakew() {
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         case $LINK_TYPE in
             static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
             static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
@@ -882,14 +692,19 @@ set(CMAKE_STRIP   "$STRIP")
 
 set(CMAKE_ADDR2LINE "$ADDR2LINE")
 
-set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
-
-set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
-
 if ("\${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
     set(CMAKE_SKIP_INSTALL_RPATH ON)
 endif()
+
+set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
+set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
+
+    if [ "$CROSS_BUILD" = 1 ] ; then
+        cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+EOF
+    fi
 
     if [ "$LOG_LEVEL" -ge 2 ] ; then
         if command -v bat > /dev/null ; then
@@ -1262,7 +1077,7 @@ dopatch
 
 run cd "$PACKAGE_BSCRIPT_DIR"
 
-if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = 1 ] ; then
+if [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ; then
     if [ -f configure ] ; then
         CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -1274,7 +1089,7 @@ if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = 1 ] ; then
     else
         run NOCONFIGURE=yes ./autogen.sh
     fi
-elif [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = 1 ] ; then
+elif [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ; then
     if [ -f configure ] ; then
         CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -1308,7 +1123,7 @@ if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
     __adjust_pc_files
 fi
 
-if [ "$NATIVE_OS_KIND" = darwin ] ; then
+if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
     __adjust_mach_o_files
 else
     __adjust_elf_files
