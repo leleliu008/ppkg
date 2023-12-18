@@ -197,25 +197,32 @@ version_match() {
 ##############################################################################
 # {{{ wfetch
 
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>
-
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q]
+#
+# If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
+#
+# If <OUTPUT-PATH> ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+#
+# If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
+#
 # influential environment variable:
 # PPKG_URL_TRANSFORM
 wfetch() {
+    unset FETCH_UTS
+    unset FETCH_SHA
+
     unset FETCH_URL
     unset FETCH_URI
 
-    unset FETCH_SHA256_EXPECTED
-
-    unset FETCH_BUFFER_DIR
-    unset FETCH_BUFFER_FILEPATH
+    unset FETCH_PATH
 
     unset FETCH_OUTPUT_DIR
-    unset FETCH_OUTPUT_FILENAME
     unset FETCH_OUTPUT_FILEPATH
+    unset FETCH_OUTPUT_FILENAME
+
+    unset FETCH_BUFFER_FILEPATH
+
+    unset FETCH_SHA256_EXPECTED
 
     unset FETCH_SILENT
 
@@ -232,86 +239,60 @@ wfetch() {
     while [ -n "$1" ]
     do
         case $1 in
-            --silent)
-                FETCH_SILENT=1
-                RUN_SILENT=1
+            --uri=*)
+                FETCH_URI="${1#*=}"
                 ;;
             --sha256=*)
                 FETCH_SHA256_EXPECTED="${1#*=}"
                 ;;
-            --uri=*)
-                FETCH_URI="${1#*=}"
-                if [ -n "$FETCH_URI" ] && [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                    FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                else
+                    FETCH_PATH="$1"
                 fi
                 ;;
-            --buffer-dir=*)
-                FETCH_BUFFER_DIR="${1#*=}"
-                if [ -z "$FETCH_BUFFER_DIR" ] ; then
-                    abort 1 "wfetch <URL> --buffer-dir=<DIR> , <DIR> must be non-empty."
-                fi
+            -q)
+                FETCH_SILENT=1
+                RUN_SILENT=1
                 ;;
-            --output-dir=*)
-                FETCH_OUTPUT_DIR="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    abort 1 "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
-                fi
-                ;;
-            --output-filename=*)
-                FETCH_OUTPUT_FILENAME="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                    abort 1 "wfetch <URL> --output-filename=<NAME> , <NAME> must be non-empty."
-                fi
-                ;;
-            --output-filepath=*)
-                FETCH_OUTPUT_FILEPATH="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-                    abort 1 "wfetch <URL> --output-filepath=<FILEPATH> , <FILEPATH> must be non-empty."
-                fi
-                ;;
-            *)  abort 1 "wfetch <URL> [OPTION]..., unrecognized option: $1
-
-    wfetch command usage:
-
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>"
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
         esac
         shift
     done
 
     if [ -z "$FETCH_URI" ] ; then
         # remove query params
-        FETCH_URL__="${FETCH_URL%%'?'*}"
-
-        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URL__##*/}"
-    fi
-
-    if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-            FETCH_BUFFER_FILEPATH='-'
-            FETCH_OUTPUT_FILEPATH='-'
-        else
-            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                FETCH_OUTPUT_DIR="$PWD"
-            fi
-
-            if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                FETCH_OUTPUT_FILENAME=$(basename "$FETCH_URL")
-            fi
-
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILENAME"
-        fi
-    elif [ "$FETCH_OUTPUT_FILEPATH" = '-' ] ; then
-        unset FETCH_OUTPUT_DIR
-        unset FETCH_OUTPUT_FILENAME
+        FETCH_URI="${FETCH_URL%%'?'*}"
+        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URI##*/}"
     else
-        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_FILEPATH")"
-        FETCH_OUTPUT_FILENAME="$(basename "$FETCH_OUTPUT_FILEPATH")"
+        if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+            FETCH_URI="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+        fi
     fi
 
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+    case $FETCH_PATH in
+        '')
+            FETCH_BUFFER_FILEPATH='-'
+            ;;
+        .)
+            FETCH_OUTPUT_DIR='.'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        ..)
+            FETCH_OUTPUT_DIR='..'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        */)
+            FETCH_OUTPUT_DIR="${FETCH_PATH%/}"
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        *)
+            FETCH_OUTPUT_DIR="${FETCH_PATH%/*}"
+            FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
+    esac
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
             if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
                 if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
@@ -321,13 +302,11 @@ wfetch() {
             fi
         fi
 
-        if [ -z "$FETCH_BUFFER_DIR" ] ; then
-            FETCH_BUFFER_DIR="$FETCH_OUTPUT_DIR"
-        fi
+        FETCH_UTS="$(date +%s)"
 
-        if [ -z "$FETCH_BUFFER_FILEPATH" ] ; then
-            FETCH_BUFFER_FILEPATH="$FETCH_BUFFER_DIR/$FETCH_OUTPUT_FILENAME"
-        fi
+        FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
+
+        FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
     fi
 
     for FETCH_TOOL in curl wget http lynx aria2c axel
@@ -343,8 +322,10 @@ wfetch() {
         abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
     fi
 
-    if [ !          -d "$FETCH_BUFFER_DIR" ] ; then
-        run install -d "$FETCH_BUFFER_DIR" || return 1
+    if [                -n "$FETCH_OUTPUT_DIR" ] ; then
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
     fi
 
     case $FETCH_TOOL in
@@ -375,8 +356,8 @@ wfetch() {
             run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
             ;;
         aria2c)
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
             ;;
         axel)
             run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
@@ -388,7 +369,7 @@ wfetch() {
 
     [ $? -eq 0 ] || return 1
 
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
             FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
 
@@ -397,13 +378,7 @@ wfetch() {
             fi
         fi
 
-        if [ "$FETCH_BUFFER_DIR" != "$FETCH_OUTPUT_DIR" ] ; then
-            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-                run install -d "$FETCH_OUTPUT_DIR" || return 1
-            fi
-
-            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_DIR/"
-        fi
+        run mv -T "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
     fi
 }
 
@@ -1875,8 +1850,8 @@ __show_packages_depended_by_the_given_package() {
 
     ###########################################################################################
 
-    unset OUTPUT_FILETYPE
-    unset OUTPUT_FILEPATH
+    unset OUTPUT_TYPE
+    unset OUTPUT_PATH
 
     while [ -n "$1" ]
     do
@@ -1884,7 +1859,7 @@ __show_packages_depended_by_the_given_package() {
             -t) shift
                 case $1 in
                     dot|box|svg|png)
-                        OUTPUT_FILETYPE="$1" ;;
+                        OUTPUT_TYPE="$1" ;;
                     '') abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
                     *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|box|svg|png"
                 esac
@@ -1893,7 +1868,7 @@ __show_packages_depended_by_the_given_package() {
                 if [ -z "$1" ] ; then
                     abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
                 else
-                    OUTPUT_FILEPATH="$1"
+                    OUTPUT_PATH="$1"
                 fi
                 ;;
             *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
@@ -1903,63 +1878,68 @@ __show_packages_depended_by_the_given_package() {
 
     ###########################################################################################
 
-    if [ -z "$OUTPUT_FILEPATH" ] ; then
-        if [ -z "$OUTPUT_FILETYPE" ] ; then
-            OUTPUT_FILETYPE='box'
-        fi
-    else
-        if [ -d "$OUTPUT_FILEPATH" ] ; then
-            if [ -z "$OUTPUT_FILETYPE" ] ; then
-                OUTPUT_FILETYPE='box'
+    unset OUTPUT_DIR
+    unset OUTPUT_FILEPATH
+
+    case $OUTPUT_PATH in
+        '')
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='box'
+            fi
+            ;;
+        ..|../)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='box'
             fi
 
-            unset OUTPUT_DIR
-            OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
+            OUTPUT_FILEPATH="$PWD/../$PACKAGE_NAME-dependencies.$OUTPUT_TYPE"
+            ;;
+        .|./)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='box'
+            fi
 
+            OUTPUT_FILEPATH="$PWD/$PACKAGE_NAME-dependencies.$OUTPUT_TYPE"
+            ;;
+        */)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='box'
+            fi
 
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
-        else
-            case $OUTPUT_FILEPATH in
-                */)
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        OUTPUT_FILETYPE='box'
-                    fi
-
-                    unset OUTPUT_DIR
-                    OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
-
-                    OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKAGE_NAME-dependencies.$OUTPUT_FILETYPE"
-
-                    [ -d "$OUTPUT_DIR" ] || install -d "$OUTPUT_DIR"
-                    ;;
-                *)
-                    OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
-
-                    unset OUTPUT_DIR
-                    OUTPUT_DIR="$(dirname "$OUTPUT_FILEPATH")"
-
-                    [ -d "$OUTPUT_DIR" ] || install -d "$OUTPUT_DIR"
-
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        case $OUTPUT_FILEPATH in
-                            *.box)
-                                OUTPUT_FILETYPE='box'
-                                ;;
-                            *.dot)
-                                OUTPUT_FILETYPE='dot'
-                                ;;
-                            *.svg)
-                                OUTPUT_FILETYPE='svg'
-                                ;;
-                            *.png)
-                                OUTPUT_FILETYPE='png'
-                                ;;
-                            *)  OUTPUT_FILETYPE='box'
-                        esac
-                    fi
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
+                *)  OUTPUT_DIR="$PWD/$OUTPUT_PATH"
             esac
-        fi
-    fi
+
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKAGE_NAME-dependencies.$OUTPUT_TYPE"
+            ;;
+        *)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                case $OUTPUT_PATH in
+                    *.box)
+                        OUTPUT_TYPE='box'
+                        ;;
+                    *.dot)
+                        OUTPUT_TYPE='dot'
+                        ;;
+                    *.svg)
+                        OUTPUT_TYPE='svg'
+                        ;;
+                    *.png)
+                        OUTPUT_TYPE='png'
+                        ;;
+                    *)  OUTPUT_TYPE='box'
+                esac
+            fi
+
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="${OUTPUT_PATH%/*}"
+                    OUTPUT_FILEPATH="$OUTPUT_PATH"
+                    ;;
+                *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
+                    OUTPUT_FILEPATH="$PWD/$OUTPUT_PATH"
+            esac
+    esac
 
     ###########################################################################################
 
@@ -2067,7 +2047,7 @@ $DOT_CONTENT
 
     ###########################################################################################
 
-    case $OUTPUT_FILETYPE in
+    case $OUTPUT_TYPE in
         dot)
             if [ -z "$OUTPUT_FILEPATH" ] ; then
                 printf '%s\n' "$DOT_CONTENT"
@@ -2079,6 +2059,10 @@ $DOT_CONTENT
                 cd         "$SESSION_DIR"
 
                 printf '%s\n' "$DOT_CONTENT" > dependencies.dot
+
+                if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
 
                 mv dependencies.dot "$OUTPUT_FILEPATH"
 
@@ -2110,6 +2094,10 @@ $DOT_CONTENT
                     --data-urlencode "src=$DOT_CONTENT" \
                     'https://dot-to-ascii.ggerganov.com/dot-to-ascii.php'
 
+                if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
                 mv dependencies.box "$OUTPUT_FILEPATH"
 
                 rm -rf "$SESSION_DIR"
@@ -2128,6 +2116,11 @@ $DOT_CONTENT
                 dot -Tsvg dependencies.dot
             else
                 dot -Tsvg -o dependencies.svg dependencies.dot
+
+                if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
                 mv dependencies.svg "$OUTPUT_FILEPATH"
             fi
 
@@ -2146,6 +2139,11 @@ $DOT_CONTENT
                 dot -Tpng dependencies.dot
             else
                 dot -Tpng -o dependencies.png dependencies.dot
+
+                if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
                 mv dependencies.png "$OUTPUT_FILEPATH"
             fi
 
@@ -2227,15 +2225,15 @@ __fetch_resources_of_the_given_package() {
             run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
             run git submodule update --init
         else
-            wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+            wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
         fi
 
         if [ -n    "$PACKAGE_FIX_URL" ] ; then
-            wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
         fi
 
         if [ -n    "$PACKAGE_RES_URL" ] ; then
-            wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
         fi
 
         if [    -d "$SESSION_DIR" ] ; then
@@ -2313,9 +2311,8 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    unset OUTPUT_DIR
-    unset OUTPUT_FILETYPE
-    unset OUTPUT_FILEPATH
+    unset OUTPUT_PATH
+    unset OUTPUT_TYPE
 
     while [ -n "$1" ]
     do
@@ -2326,21 +2323,21 @@ __fetch_resources_of_the_given_package() {
             -t) shift
 
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified."
+                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
                 else
-                    OUTPUT_FILETYPE="$1"
+                    OUTPUT_TYPE="$1"
                 fi
 
-                case $OUTPUT_FILETYPE in
+                case $OUTPUT_TYPE in
                     zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_FILETYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
+                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
-                    OUTPUT_FILEPATH="$1"
+                    OUTPUT_PATH="$1"
                 fi
                 ;;
             *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
@@ -2405,63 +2402,79 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    if [ -z "$OUTPUT_FILEPATH" ] ; then
-        if [ -z "$OUTPUT_FILETYPE" ] ; then
-            OUTPUT_FILETYPE='tar.xz'
-        fi
+    unset OUTPUT_DIR
+    unset OUTPUT_FILEPATH
 
-        OUTPUT_DIR="$PWD"
-        OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-    else
-        if [ -d "$OUTPUT_FILEPATH" ] ; then
-            if [ -z "$OUTPUT_FILETYPE" ] ; then
-                OUTPUT_FILETYPE='tar.xz'
+    case $OUTPUT_PATH in
+        '')
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
             fi
 
-            OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
-            OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-        else
-            case $OUTPUT_FILEPATH in
-                */)
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        OUTPUT_FILETYPE='tar.xz'
-                    fi
+            OUTPUT_DIR="$PWD"
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        .|./)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
 
-                    OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
-                    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-                    ;;
-                *)
-                    OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
+            OUTPUT_DIR="$PWD"
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        ..|../)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
 
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        case $OUTPUT_FILEPATH in
-                            *.tar.gz|*.tgz)
-                                OUTPUT_FILETYPE=tar.gz
-                                ;;
-                            *.tar.xz|*.txz)
-                                OUTPUT_FILETYPE=tar.xz
-                                ;;
-                            *.tar.lz|*.tlz)
-                                OUTPUT_FILETYPE=tar.lz
-                                ;;
-                            *.tar.bz2|*.tbz2)
-                                OUTPUT_FILETYPE=tar.bz2
-                                ;;
-                            *.zip)
-                                OUTPUT_FILETYPE=zip
-                                ;;
-                            *.7z)
-                                OUTPUT_FILETYPE=7z
-                                ;;
-                            *)  OUTPUT_FILETYPE=tar.xz
-                        esac
-                    fi
+            OUTPUT_DIR="$PWD/.."
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        */)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
 
-                    OUTPUT_DIR="$(dirname "$OUTPUT_FILEPATH")"
-                    OUTPUT_FILENAME="$(basename "$OUTPUT_FILEPATH")"
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
+                *)  OUTPUT_DIR="$PWD/$OUTPUT_PATH"
             esac
-        fi
-    fi
+
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        *)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                case $OUTPUT_PATH in
+                    *.tar.gz|*.tgz)
+                        OUTPUT_TYPE=tar.gz
+                        ;;
+                    *.tar.xz|*.txz)
+                        OUTPUT_TYPE=tar.xz
+                        ;;
+                    *.tar.lz|*.tlz)
+                        OUTPUT_TYPE=tar.lz
+                        ;;
+                    *.tar.bz2|*.tbz2)
+                        OUTPUT_TYPE=tar.bz2
+                        ;;
+                    *.zip)
+                        OUTPUT_TYPE=zip
+                        ;;
+                    *.7z)
+                        OUTPUT_TYPE=7z
+                        ;;
+                    *)  OUTPUT_TYPE=tar.xz
+                esac
+            fi
+
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="${OUTPUT_PATH%/*}"
+                    OUTPUT_FILEPATH="$OUTPUT_PATH"
+                    ;;
+                *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
+                    OUTPUT_FILEPATH="$PWD/$OUTPUT_PATH"
+            esac
+    esac
 
     ###########################################################################################
 
@@ -2476,10 +2489,10 @@ __fetch_resources_of_the_given_package() {
     run ln -s "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
+    run bsdtar cvaf "packed.$OUTPUT_TYPE" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
 
     step "show size of packed file"
-    run "du -sh $OUTPUT_FILENAME | cut -f1"
+    run "du -sh "packed.$OUTPUT_TYPE" | cut -f1"
 
     if [ ! -d "$OUTPUT_DIR" ] ; then
         step "create output directory"
@@ -2487,11 +2500,11 @@ __fetch_resources_of_the_given_package() {
     fi
 
     step "move the packed file to output directory"
-    run mv "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
+    run mv -T "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
 
     if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         echo
-        note "the session directory [$SESSION_DIR] is not deleted as --keep-session-dir option is given."
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
     else
         step "delete the session directory"
         run rm -rf "$SESSION_DIR"
@@ -3938,6 +3951,7 @@ EOF
 
     NATIVE_PACKAGE_SRC_FILETYPE="$(filetype_from_url "$NATIVE_PACKAGE_SRC_URL")"
     NATIVE_PACKAGE_SRC_FILENAME="$NATIVE_PACKAGE_SRC_SHA$NATIVE_PACKAGE_SRC_FILETYPE"
+    NATIVE_PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME"
 
     NATIVE_PACKAGE_WORKING_DIR="$PACKAGE_WORKING_DIR/native/$1"
 
@@ -4018,9 +4032,9 @@ EOF
     run install -d "$NATIVE_PACKAGE_WORKING_DIR/src"
     run cd         "$NATIVE_PACKAGE_WORKING_DIR"
 
-    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" --buffer-dir="$NATIVE_PACKAGE_WORKING_DIR" --output-dir="$PPKG_DOWNLOADS_DIR" --output-filename="$NATIVE_PACKAGE_SRC_FILENAME"
+    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" -o "$NATIVE_PACKAGE_SRC_FILEPATH"
 
-    run bsdtar xvf "$PPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME" --strip-components=1 --no-same-owner -C src
+    run bsdtar xvf "$NATIVE_PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C src
 
     run cd src
 
@@ -4120,12 +4134,12 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    STATIC_LIBRARY_SUFFIX=.a
+    STATIC_LIBRARY_SUFFIX='.a'
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-        SHARED_LIBRARY_SUFFIX=.dylib
+        SHARED_LIBRARY_SUFFIX='.dylib'
     else
-        SHARED_LIBRARY_SUFFIX=.so
+        SHARED_LIBRARY_SUFFIX='.so'
     fi
 
     #########################################################################################
@@ -4614,7 +4628,7 @@ $DOT_CONTENT
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
-            wfetch 'https://sh.rustup.rs' --output-filename=rustup-init.sh
+            wfetch 'https://sh.rustup.rs' -o rustup-init.sh
 
             run bash rustup-init.sh -y
 
@@ -4763,40 +4777,36 @@ $DOT_CONTENT
     if [ "$CROSS_COMPILING" = 1 ] ; then
         step "prepare C/C++ sysroot for target build"
 
-        export SYSROOT="$PPKG_HOME/sysroot/$TARGET_PLATFORM_SPEC"
+        export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
         printf "%11s = %s\n" SYSROOT "$SYSROOT"
 
         [ -f "$SYSROOT/ok" ] || {
+            run install -d "$PPKG_SYSROOT"
+            run cd         "$PPKG_SYSROOT"
+
             case $TARGET_PLATFORM_NAME in
                 dragonflybsd)
-                    SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-sysroot.txz"
-                    SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+                    FILENAME="$TARGET_PLATFORM_SPEC.txz"
 
-                    # https://archive.freebsd.org/old-releases/
-                    SYSROOT_URL="https://github.com/leleliu008/test/releases/download/2023.10.08/dragonflybsd-6.4-x86_64-sysroot.tar.xz"
-                    wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+                    wfetch "https://github.com/leleliu008/test/releases/download/2023.10.08/dragonflybsd-6.4-x86_64-sysroot.tar.xz" -o "$FILENAME"
 
                     run install -d "$TARGET_PLATFORM_SPEC"
-                    run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+                    run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
                     run touch "$TARGET_PLATFORM_SPEC/ok"
-                    run install -d "$PPKG_HOME/sysroot"
-                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     ;;
                 freebsd)
-                    SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-sysroot.txz"
-                    SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
+                    FILENAME="$TARGET_PLATFORM_SPEC.txz"
 
                     # https://archive.freebsd.org/old-releases/
-                    SYSROOT_URL="https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz"
-                    wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+                    wfetch "https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz" -o "$FILENAME"
 
                     run install -d "$TARGET_PLATFORM_SPEC"
                     run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
 
-                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
 
                     rm "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
 
@@ -4805,8 +4815,6 @@ $DOT_CONTENT
                     printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
-                    run install -d "$PPKG_HOME/sysroot"
-                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     ;;
                 openbsd)
                     TARGET_PLATFORM_VERS_MAJOR="$(printf '%s\n' "$TARGET_PLATFORM_VERS" | cut -d. -f1)"
@@ -4816,17 +4824,16 @@ $DOT_CONTENT
 
                     for item in base comp
                     do
-                        SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-$item.tgz"
-                        SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
-                        SYSROOT_URL="https://cdn.openbsd.org/pub/OpenBSD/$TARGET_PLATFORM_VERS/$TARGET_PLATFORM_ARCH/$item$TARGET_PLATFORM_VERS_MAJOR$TARGET_PLATFORM_VERS_MINOR.tgz"
-                        wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
-                        run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+                        FILENAME="$TARGET_PLATFORM_SPEC-$item.tgz"
+                        URL="https://cdn.openbsd.org/pub/OpenBSD/$TARGET_PLATFORM_VERS/$TARGET_PLATFORM_ARCH/$item$TARGET_PLATFORM_VERS_MAJOR$TARGET_PLATFORM_VERS_MINOR.tgz"
+                        wfetch "$URL" -o "$FILENAME"
+                        run bsdtar xvf   "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
                     done
 
-                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
 
                     # https://github.com/mesonbuild/meson/issues/5390
                     printf '%s\n' 'INPUT(-lc)'                    > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
@@ -4837,8 +4844,6 @@ $DOT_CONTENT
                     printf '%s\n' 'INPUT(-lcompiler_rt -lc++abi)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
-                    run install -d "$PPKG_HOME/sysroot"
-                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     ;;
                 netbsd)
                     run install -d "$TARGET_PLATFORM_SPEC"
@@ -4846,38 +4851,31 @@ $DOT_CONTENT
                     for item in base comp
                     do
                         FILENAME="$TARGET_PLATFORM_SPEC-$item.txz"
-                        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
                         URL="https://ftp.netbsd.org/pub/NetBSD/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
-                        wfetch "$URL" --buffer-dir="$SESSION_DIR" --output-filepath="$FILEPATH"
+                        wfetch "$URL" -o "$FILENAME"
                         run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
                     done
 
-                    run rm -rf "$TARGET_PLATFORM_SPEC/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
-                    run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
+                    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
 
                     printf '%s\n' 'INPUT(-lc)'      > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
                     printf '%s\n' 'INPUT(-lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
-                    run install -d "$PPKG_HOME/sysroot"
-                    run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     ;;
                 linux)
                     if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
-                        SYSROOT_URL='https://github.com/leleliu008/test/releases/download/2023.10.08/musl-libc-1.2.3-linux-x86_64-musl.tar.xz'
+                        FILENAME="$TARGET_PLATFORM_SPEC-libc.txz"
 
-                        SYSROOT_FILENAME="$TARGET_PLATFORM_SPEC-libc.txz"
-                        SYSROOT_FILEPATH="$PPKG_DOWNLOADS_DIR/$SYSROOT_FILENAME"
-
-                        wfetch "$SYSROOT_URL" --buffer-dir="$SESSION_DIR" --output-filepath="$SYSROOT_FILEPATH"
+                        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/musl-libc-1.2.3-linux-x86_64-musl.tar.xz' -o "$FILENAME"
 
                         run install -d "$TARGET_PLATFORM_SPEC"
-                        run bsdtar xvf "$SYSROOT_FILEPATH" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+                        run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+
                         run touch "$TARGET_PLATFORM_SPEC/ok"
-                        run install -d "$PPKG_HOME/sysroot"
-                        run mv "$TARGET_PLATFORM_SPEC" "$PPKG_HOME/sysroot/"
                     fi
                     ;;
             esac
@@ -5605,15 +5603,15 @@ EOF
             run git submodule update --init
         fi
     else
-        wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
     fi
 
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
     fi
 
     if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
     fi
 
     #########################################################################################
@@ -5751,7 +5749,7 @@ $PACKAGE_DOPATCH_ACTIONS
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
 
-            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" --output-filepath="$FILEPATH"
+            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
 
             run chmod a+x "$FILEPATH"
 
@@ -7085,7 +7083,7 @@ __uninstall_the_given_packages() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    wfetch "$1" --output-filename=self
+    wfetch "$1" -o self
 
     run chmod 755 self
 
@@ -7159,7 +7157,7 @@ __uninstall_the_given_packages() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename=_ppkg
+    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" -o _ppkg
 
     run chmod 644 _ppkg
 
@@ -7299,7 +7297,7 @@ __setup() {
                 BREW="$(command -v brew || true)"
 
                 if [ -z "$BREW" ] ; then
-                    wfetch 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' --output-filename=homebrew-install.sh
+                    wfetch 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' -o homebrew-install.sh
                     run "yes | bash homebrew-install.sh"
 
                     BREW=$(command -v brew || true)
@@ -7439,7 +7437,7 @@ EOF
         step "install CA Certificate"
 
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc
+        wfetch 'https://curl.se/ca/cacert.pem' -o etc/
 
         export SSL_CERT_FILE="$PWD/etc/cacert.pem"
 
@@ -7468,7 +7466,7 @@ EOF
         #################################################################################
 
         step "install uppm shim"
-        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" --output-filepath=bin/uppm
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o bin/uppm
         run chmod +x bin/uppm
 
         #################################################################################
@@ -7499,7 +7497,7 @@ EOF
         esac
 
         if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-            wfetch "$YQ_URL"  --sha256="$YQ_SHA" --output-filepath=bin/yq
+            wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq
             run chmod +x bin/yq
         fi
 
@@ -7507,13 +7505,13 @@ EOF
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' --output-filename=patchelf-0.17.2.zip
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip
             run bsdtar xf patchelf-0.17.2.zip --no-same-owner
             run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
         }
 
         step "install base16-encode and base16-decode"
-        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' --output-filename=C-examples-master.zip
+        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' -o C-examples-master.zip
         run bsdtar xf C-examples-master.zip --no-same-owner
 
         run cmake -S C-examples-master/algorithm/base16 -B C-examples-master/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
@@ -7906,7 +7904,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' --output-filename=uppm-latest-release
+    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release
 
     ##################################################################################
 
@@ -7927,14 +7925,14 @@ __setup_uppm() {
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
     run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc
+    wfetch 'https://curl.se/ca/cacert.pem' -o etc/
 
     ##################################################################################
 
@@ -8086,9 +8084,11 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
 
     <OUTPUT-TYPE> must be one of dot box svg png
 
-    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.
+    <OUTPUT-PATH> can be either the filepath or directory.
 
-    <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
+
+    If <OUTPUT-PATH> ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
 
@@ -8213,7 +8213,7 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [
 
     <OUTPUT-PATH> can be either the filepath or directory which indicates where the packed archive file would be written to.
 
-    If <OUTPUT-PATH> is an existing directory or ends with slash, then it would be treated as a directory, otherwize, it would be treated as a filepath.
+    If <OUTPUT-PATH> ends with slash, then it would be treated as a directory, otherwize, it would be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
 
@@ -8254,6 +8254,8 @@ main() {
     PPKG_CORE_DIR="$PPKG_HOME/core"
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
     PPKG_CORE_LIBEXEC_DIR="$PPKG_CORE_DIR/libexec"
+
+    PPKG_SYSROOT="$PPKG_HOME/sysroot"
 
     NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
 

@@ -45,6 +45,221 @@ chmod a+x ppkg
 ./ppkg setup
 ```
 
+## Build from C source dependencies
+
+|dependency|required?|purpose|
+|----|---------|-------|
+|[cmake](https://cmake.org/)|required |for generating `build.ninja`|
+|[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
+|[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
+||||
+|[jansson](https://github.com/akheron/jansson)|required|for parsing and creating JSON.|
+|[libyaml](https://github.com/yaml/libyaml/)|required|for parsing formula files whose format is YAML.|
+|[libgit2](https://libgit2.org/)|required|for updating formula repositories.|
+|[libcurl](https://curl.se/)|required|for http requesting support.|
+|[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
+|[libarchive](https://www.libarchive.org/)|required|for uncompressing .zip and .tar.* files.|
+|[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
+|[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
+
+### Build from C source via [ppkg](https://github.com/leleliu008/ppkg)
+
+```bash
+ppkg install ppkg
+```
+
+### Build from C source via [xcpkg](https://github.com/leleliu008/xcpkg)
+
+```bash
+xcpkg install ppkg
+```
+
+### Build from C source using [vcpkg](https://github.com/microsoft/vcpkg)
+
+```bash
+# install g++ curl zip unzip tar git
+
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+export VCPKG_ROOT="$PWD/vcpkg"
+export PATH="$VCPKG_ROOT:$PATH"
+
+vcpkg install curl openssl libgit2 libarchive libyaml jansson
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+cmake --build   build.d
+cmake --install build.d
+```
+
+## Build from C source using your system's default package manager
+
+**[Ubuntu](https://ubuntu.com/)**
+
+```bash
+apt -y update
+apt -y install git cmake ninja-build pkg-config gcc libcurl4 libcurl4-openssl-dev libgit2-dev libarchive-dev libyaml-dev libjansson-dev zlib1g-dev
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[Fedora](https://getfedora.org/)**
+
+```bash
+dnf -y update
+dnf -y install git cmake ninja-build pkg-config gcc libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[ArchLinux](https://archlinux.org/)**
+
+```bash
+pacman -Syyuu --noconfirm
+pacman -S     --noconfirm git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[AlpineLinux](https://www.alpinelinux.org/)**
+
+```bash
+apk add git cmake ninja pkgconf gcc libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev zlib-dev
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[VoidLinux](https://voidlinux.org/)**
+
+```bash
+xbps-install -Suy xbps
+xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel zlib-devel
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[Gentoo Linux](https://www.gentoo.org/)**
+
+```bash
+emerge dev-vcs/git cmake dev-util/ninja gcc pkg-config net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-libs/zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[openSUSE](https://www.opensuse.org/)**
+
+```bash
+zypper update  -y
+zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel zlib-devel
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[macOS](https://www.apple.com/macos/)**
+
+```bash
+brew update
+brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
+
+CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
+CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
+
+cmake \
+    -S . \
+    -B build.d \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=./output \
+    -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
+    -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH"
+
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[FreeBSD](https://www.freebsd.org/)** and **[DragonFlyBSD](https://www.dragonflybsd.org/)**
+
+```bash
+pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[OpenBSD](https://www.openbsd.org/)**
+
+```bash
+pkg_add git cmake ninja pkgconf llvm curl libgit2 libarchive libyaml jansson zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[NetBSD](https://www.netbsd.org/)**
+
+```bash
+pkgin -y install git mozilla-rootcerts cmake ninja-build pkg-config clang curl openssl libgit2 libarchive libyaml jansson zlib
+
+mozilla-rootcerts install
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
 ## ~/.ppkg
 
 all relevant directories and files are located under `~/.ppkg` directory.
@@ -506,7 +721,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
 |`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
-|`wfetch`|`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-path=PATH`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] --output-name=NAME`|
+|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
 
 **commands that can be used out of the box in `install` block only:**
 
