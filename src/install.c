@@ -2373,8 +2373,8 @@ static int install_native_package(
 static int install_dependent_packages_via_uppm(
         const char * uppmPackageNames,
         const size_t uppmPackageNamesLength,
-        const char * ppkgCoreBinDIR,
-        const size_t ppkgCoreBinDIRCapacity,
+        const char * ppkgCoreDIR,
+        const size_t ppkgCoreDIRCapacity,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
         const bool   requestToInstallCmake) {
@@ -2409,10 +2409,10 @@ static int install_dependent_packages_via_uppm(
     int ret;
 
     if (true) {
-        size_t uppmUpdateCmdLength = ppkgCoreBinDIRCapacity + 13U;
+        size_t uppmUpdateCmdLength = ppkgCoreDIRCapacity + 13U;
         char   uppmUpdateCmd[uppmUpdateCmdLength];
 
-        ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreBinDIR);
+        ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreDIR);
 
         if (ret < 0) {
             perror(NULL);
@@ -2426,10 +2426,10 @@ static int install_dependent_packages_via_uppm(
         }
     }
 
-    size_t uppmInstallCmdLength = ppkgCoreBinDIRCapacity + uppmPackageNamesLength + 15U;
+    size_t uppmInstallCmdLength = ppkgCoreDIRCapacity + uppmPackageNamesLength + 15U;
     char   uppmInstallCmd[uppmInstallCmdLength];
 
-    ret = snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreBinDIR, uppmPackageNames);
+    ret = snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreDIR, uppmPackageNames);
 
     if (ret < 0) {
         perror(NULL);
@@ -2539,8 +2539,6 @@ static int generate_install_shell_script_file(
         const size_t njobs,
         const char * ppkgHomeDIR,
         const char * ppkgCoreDIR,
-        const char * ppkgCoreBinDIR,
-        const char * ppkgCoreLibexecDIR,
         const char * ppkgDownloadsDIR,
         const char * sessionDIR,
         const char * packageWorkingTopDIR,
@@ -2617,7 +2615,6 @@ static int generate_install_shell_script_file(
         {"PPKG", ppkgExeFilePath},
         {"PPKG_HOME", ppkgHomeDIR},
         {"PPKG_CORE_DIR", ppkgCoreDIR},
-        {"PPKG_CORE_BIN_DIR", ppkgCoreBinDIR},
         {"PPKG_DOWNLOADS_DIR", ppkgDownloadsDIR},
         {"PPKG_PACKAGE_INSTALLED_ROOT", packageInstalledRootDIR},
         {"SESSION_DIR", sessionDIR},
@@ -2860,7 +2857,7 @@ static int generate_install_shell_script_file(
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, ". %s/ppkg-install\n", ppkgCoreLibexecDIR);
+    ret = dprintf(fd, ". %s/ppkg-install\n", ppkgCoreDIR);
 
     if (ret < 0) {
         close(fd);
@@ -3519,8 +3516,7 @@ static int ppkg_install_package(
         const char * ppkgHomeDIR,
         const size_t ppkgHomeDIRLength,
         const char * ppkgCoreDIR,
-        const size_t ppkgCoreDIRLength,
-        const char * ppkgCoreLibexecDIR,
+        const size_t ppkgCoreDIRCapacity,
         const char * ppkgDownloadsDIR,
         const size_t ppkgDownloadsDIRCapacity,
         const char * sessionDIR,
@@ -3589,7 +3585,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret = export_environment_variables_for_other_tools(ppkgCoreDIR, ppkgCoreDIRLength);
+    int ret = export_environment_variables_for_other_tools(ppkgCoreDIR, ppkgCoreDIRCapacity);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3883,17 +3879,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t ppkgCoreBinDIRCapacity = ppkgCoreDIRLength + 5U;
-    char   ppkgCoreBinDIR[ppkgCoreBinDIRCapacity];
-
-    ret = snprintf(ppkgCoreBinDIR, ppkgCoreBinDIRCapacity, "%s/bin", ppkgCoreDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreBinDIR, ppkgCoreBinDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake);
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreDIR, ppkgCoreDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -4693,7 +4679,7 @@ static int ppkg_install_package(
         return PPKG_ERROR;
     }
 
-    ret = generate_install_shell_script_file(installShellScriptFilePath, packageName, formula, targetPlatform, installOptions, sysinfo, isCrossBuild, isTargetOSDarwin, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgCoreBinDIR, ppkgCoreLibexecDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
+    ret = generate_install_shell_script_file(installShellScriptFilePath, packageName, formula, targetPlatform, installOptions, sysinfo, isCrossBuild, isTargetOSDarwin, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -5564,8 +5550,8 @@ int ppkg_setup_toolchain_for_native_build(
         PPKGToolChain * toolchainForNativeBuild,
         const char * sessionDIR,
         const size_t sessionDIRLength,
-        const char * ppkgCoreLibexecDIR,
-        const size_t ppkgCoreLibexecDIRLength,
+        const char * ppkgCoreDIR,
+        const size_t ppkgCoreDIRLength,
         const PPKGInstallOptions * installOptions) {
     struct stat st;
 
@@ -5576,10 +5562,10 @@ int ppkg_setup_toolchain_for_native_build(
     for (int i = 0; i < 3; i++) {
         const char * compilerName = compilerNames[i];
 
-        size_t wrapperFilePathCapacity = ppkgCoreLibexecDIRLength + 21U;
+        size_t wrapperFilePathCapacity = ppkgCoreDIRLength + 21U;
         char   wrapperFilePath[wrapperFilePathCapacity];
 
-        int ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-native-%s", ppkgCoreLibexecDIR, compilerName);
+        int ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-native-%s", ppkgCoreDIR, compilerName);
 
         if (ret < 0) {
             perror(NULL);
@@ -5597,10 +5583,10 @@ int ppkg_setup_toolchain_for_native_build(
                 return PPKG_ERROR;
             }
 
-            size_t cmdLength = ccLength + outputFilePathLength + ppkgCoreLibexecDIRLength + 27U;
+            size_t cmdLength = ccLength + outputFilePathLength + ppkgCoreDIRLength + 27U;
             char   cmd[cmdLength];
 
-            ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreLibexecDIR, compilerName);
+            ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
 
             if (ret < 0) {
                 perror(NULL);
@@ -5661,7 +5647,7 @@ int ppkg_setup_toolchain_for_native_build(
     char * fields[3] = {NULL};
 
     for (int i = 0; i < 3; i++) {
-        size_t capacity = ppkgCoreLibexecDIRLength + 21U;
+        size_t capacity = ppkgCoreDIRLength + 21U;
 
         char * buf = (char*)malloc(capacity);
 
@@ -5675,7 +5661,7 @@ int ppkg_setup_toolchain_for_native_build(
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        int ret = snprintf(buf, capacity, "%s/wrapper-native-%s", ppkgCoreLibexecDIR, compilerNames[i]);
+        int ret = snprintf(buf, capacity, "%s/wrapper-native-%s", ppkgCoreDIR, compilerNames[i]);
 
         if (ret < 0) {
             perror(NULL);
@@ -5965,16 +5951,6 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
         return PPKG_ERROR;
     }
 
-    size_t ppkgCoreLibexecDIRCapacity = ppkgCoreDIRCapacity + 9U;
-    char   ppkgCoreLibexecDIR[ppkgCoreLibexecDIRCapacity];
-
-    ret = snprintf(ppkgCoreLibexecDIR, ppkgCoreLibexecDIRCapacity, "%s/libexec", ppkgCoreDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
     //////////////////////////////////////////////////////////////////////////////
 
     char   sessionDIR[PATH_MAX];
@@ -6063,7 +6039,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = ppkg_setup_toolchain_for_native_build(&toolchainForNativeBuild, sessionDIR, sessionDIRLength, ppkgCoreLibexecDIR, ppkgCoreLibexecDIRCapacity, installOptions);
+    ret = ppkg_setup_toolchain_for_native_build(&toolchainForNativeBuild, sessionDIR, sessionDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, installOptions);
 
     if (ret != PPKG_OK) {
         ppkg_toolchain_free(toolchainForNativeBuild);
@@ -6146,7 +6122,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
         //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
 
-        ret = ppkg_install_package(packageName, targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgCoreLibexecDIR, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+        ret = ppkg_install_package(packageName, targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
 
         free(recursiveDependentPackageNamesStringBuffer);
         recursiveDependentPackageNamesStringBuffer = NULL;

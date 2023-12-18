@@ -105,36 +105,14 @@ int ppkg_setup(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t libexecDIRCapacity = sessionDIRCapacity + 9U;
-    char   libexecDIR[libexecDIRCapacity];
-
-    ret = snprintf(libexecDIR, libexecDIRCapacity, "%s/libexec", sessionDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (mkdir(libexecDIR, S_IRWXU) != 0) {
-        perror(libexecDIR);
+    if (chdir(sessionDIR) != 0) {
+        perror(sessionDIR);
         return PPKG_ERROR;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * const ppkgInstallScriptUrl = "https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-install";
-
-    size_t ppkgInstallScriptFilePathCapacity = libexecDIRCapacity + 14U;
-    char   ppkgInstallScriptFilePath[ppkgInstallScriptFilePathCapacity];
-
-    ret = snprintf(ppkgInstallScriptFilePath, ppkgInstallScriptFilePathCapacity, "%s/ppkg-install", libexecDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = ppkg_http_fetch_to_file(ppkgInstallScriptUrl, ppkgInstallScriptFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file("https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-install", "ppkg-install", verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -142,32 +120,22 @@ int ppkg_setup(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char* compilers[3] = { "cc", "c++", "objc" };
+    const char* items[8] = { "wrapper-native-c++.c", "wrapper-native-objc.c", "wrapper-target-cc.c", "wrapper-target-clang.c", "wrapper-native-cc.c", "wrapper-target-c++.c", "wrapper-target-clang++.c", "wrapper-target-objc.c" };
 
-    for (int i = 0; i < 3; i++) {
-        const char * compiler = compilers[i];
+    for (int i = 0; i < 8; i++) {
+        const char * item = items[i];
 
-        size_t wrapperCompilerSourceUrlCapacity = sessionDIRCapacity + 75U;
-        char   wrapperCompilerSourceUrl[wrapperCompilerSourceUrlCapacity];
+        size_t urlCapacity = sessionDIRCapacity + strlen(item) + 53U;
+        char   url[urlCapacity];
 
-        ret = snprintf(wrapperCompilerSourceUrl, wrapperCompilerSourceUrlCapacity, "https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-wrapper-%s.c", compiler);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        size_t wrapperCompilerSourceFilePathCapacity = sessionDIRCapacity + 16U;
-        char   wrapperCompilerSourceFilePath[wrapperCompilerSourceFilePathCapacity];
-
-        ret = snprintf(wrapperCompilerSourceFilePath, wrapperCompilerSourceFilePathCapacity, "%s/wrapper-%s.c", libexecDIR, compiler);
+        ret = snprintf(url, urlCapacity, "https://raw.githubusercontent.com/leleliu008/ppkg/c/%s", item);
 
         if (ret < 0) {
             perror(NULL);
             return PPKG_ERROR;
         }
 
-        ret = ppkg_http_fetch_to_file(wrapperCompilerSourceUrl, wrapperCompilerSourceFilePath, verbose, verbose);
+        ret = ppkg_http_fetch_to_file(url, item, verbose, verbose);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -176,29 +144,17 @@ int ppkg_setup(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * const githubApiUrl = "https://api.github.com/repos/leleliu008/uppm/releases/latest";
-
-    size_t githubApiResultJsonFilePathCapacity = sessionDIRCapacity + 18U;
-    char   githubApiResultJsonFilePath[githubApiResultJsonFilePathCapacity];
-
-    ret = snprintf(githubApiResultJsonFilePath, githubApiResultJsonFilePathCapacity, "%s/latest-uppm.json", sessionDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
     char * latestReleaseName = NULL;
 
     char buf[30];
 
-    ret = ppkg_http_fetch_to_file(githubApiUrl, githubApiResultJsonFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file("https://api.github.com/repos/leleliu008/uppm/releases/latest", "uppm.json", verbose, verbose);
 
     if (ret == PPKG_OK) {
-        FILE * file = fopen(githubApiResultJsonFilePath, "r");
+        FILE * file = fopen("uppm.json", "r");
 
         if (file == NULL) {
-            perror(githubApiResultJsonFilePath);
+            perror("uppm.json");
             return PPKG_ERROR;
         }
 
@@ -207,7 +163,7 @@ int ppkg_setup(bool verbose) {
         for (;;) {
             if (fgets(buf, 30, file) == NULL) {
                 if (ferror(file)) {
-                    perror(githubApiResultJsonFilePath);
+                    perror("uppm.json");
                     fclose(file);
                     return PPKG_ERROR;
                 } else {
@@ -330,62 +286,44 @@ int ppkg_setup(bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t tarballFilePathCapacity = sessionDIRCapacity + tarballFileNameCapacity + 2U;
-    char   tarballFilePath[tarballFilePathCapacity];
-
-    ret = snprintf(tarballFilePath, tarballFilePathCapacity, "%s/%s", sessionDIR, tarballFileName);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = ppkg_http_fetch_to_file(tarballUrl, tarballFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file(tarballUrl, tarballFileName, verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    ret = tar_extract(sessionDIR, tarballFilePath, 0, verbose, 1);
+    //////////////////////////////////////////////////////////////////////////////////
+
+    ret = tar_extract(sessionDIR, tarballFileName, 0, verbose, 1);
 
     if (ret != ARCHIVE_OK) {
         return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
     }
 
+    if (rename("bin/uppm", "uppm") == -1) {
+        perror("bin/uppm");
+        return PPKG_ERROR;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t etcDIRCapacity = sessionDIRCapacity + 5U;
-    char   etcDIR[etcDIRCapacity];
-
-    ret = snprintf(etcDIR, etcDIRCapacity, "%s/etc", sessionDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (mkdir(etcDIR, S_IRWXU) != 0) {
-        perror(etcDIR);
-        return PPKG_ERROR;
-    }
-
-    size_t cacertPemFilePathCapacity = etcDIRCapacity + 12U;
-    char   cacertPemFilePath[cacertPemFilePathCapacity];
-
-    ret = snprintf(cacertPemFilePath, cacertPemFilePathCapacity, "%s/cacert.pem", etcDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = ppkg_http_fetch_to_file("https://curl.se/ca/cacert.pem", cacertPemFilePath, verbose, verbose);
+    ret = ppkg_http_fetch_to_file("https://curl.se/ca/cacert.pem", "cacert.pem", verbose, verbose);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
     //////////////////////////////////////////////////////////////////////////////////
+
+    size_t cacertPemFilePathCapacity = sessionDIRCapacity + 12U;
+    char   cacertPemFilePath[cacertPemFilePathCapacity];
+
+    ret = snprintf(cacertPemFilePath, cacertPemFilePathCapacity, "%s/cacert.pem", sessionDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
 
     if (setenv("SSL_CERT_FILE", cacertPemFilePath, 1) != 0) {
         perror("SSL_CERT_FILE");
@@ -405,16 +343,6 @@ int ppkg_setup(bool verbose) {
 
     //////////////////////////////////////////////////////////////////////////////////
 
-    size_t uppmCmdPathCapacity = sessionDIRCapacity + 10U;
-    char   uppmCmdPath[uppmCmdPathCapacity];
-
-    ret = snprintf(uppmCmdPath, uppmCmdPathCapacity, "%s/bin/uppm", sessionDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -423,8 +351,8 @@ int ppkg_setup(bool verbose) {
     }
 
     if (pid == 0) {
-        execl(uppmCmdPath, uppmCmdPath, "update", NULL);
-        perror(uppmCmdPath);
+        execl ("./uppm", "./uppm", "update", NULL);
+        perror("./uppm");
         exit(255);
     } else {
         int childProcessExitStatusCode;
@@ -435,26 +363,23 @@ int ppkg_setup(bool verbose) {
         }
 
         if (childProcessExitStatusCode != 0) {
-            size_t cmdCapacity = uppmCmdPathCapacity + 6U;
-            char   cmd[cmdCapacity];
-
-            ret = snprintf(cmd, cmdCapacity, "%s update", uppmCmdPath);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
             if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' exit with status code: %d\n", cmd, WEXITSTATUS(childProcessExitStatusCode));
+                fprintf(stderr, "running command './uppm update' exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
             } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' killed by signal: %d\n", cmd, WTERMSIG(childProcessExitStatusCode));
+                fprintf(stderr, "running command './uppm update' killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
             } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command '%s' stopped by signal: %d\n", cmd, WSTOPSIG(childProcessExitStatusCode));
+                fprintf(stderr, "running command './uppm update' stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
             }
 
             return PPKG_ERROR;
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (chdir(ppkgRunDIR) != 0) {
+        perror(ppkgRunDIR);
+        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////////

@@ -19,10 +19,10 @@ int ppkg_setenv_SSL_CERT_FILE() {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t cacertFilePathCapacity = strlen(userHomeDIR) + 27U;
+        size_t cacertFilePathCapacity = strlen(userHomeDIR) + 23U;
         char   cacertFilePath[cacertFilePathCapacity];
 
-        int ret = snprintf(cacertFilePath, cacertFilePathCapacity, "%s/.ppkg/core/etc/cacert.pem", userHomeDIR);
+        int ret = snprintf(cacertFilePath, cacertFilePathCapacity, "%s/.ppkg/core/cacert.pem", userHomeDIR);
 
         if (ret < 0) {
             perror(NULL);
@@ -39,10 +39,10 @@ int ppkg_setenv_SSL_CERT_FILE() {
             }
         }
     } else {
-        size_t cacertFilePathCapacity = strlen(ppkgHomeDIR) + 21U;
+        size_t cacertFilePathCapacity = strlen(ppkgHomeDIR) + 17U;
         char   cacertFilePath[cacertFilePathCapacity];
 
-        int ret = snprintf(cacertFilePath, cacertFilePathCapacity, "%s/core/etc/cacert.pem", ppkgHomeDIR);
+        int ret = snprintf(cacertFilePath, cacertFilePathCapacity, "%s/core/cacert.pem", ppkgHomeDIR);
 
         if (ret < 0) {
             perror(NULL);
