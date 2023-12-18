@@ -288,7 +288,7 @@ wfetch() {
             FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
             ;;
         *)
-            FETCH_OUTPUT_DIR="${FETCH_PATH%/*}"
+            FETCH_OUTPUT_DIR="$(dirname "$FETCH_PATH")"
             FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
     esac
 
@@ -8238,7 +8238,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.15
+    PPKG_VERSION=0.3.16
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
