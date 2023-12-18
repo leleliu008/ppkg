@@ -378,7 +378,7 @@ wfetch() {
             fi
         fi
 
-        run mv -T "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
+        run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
     fi
 }
 
@@ -2500,7 +2500,7 @@ __fetch_resources_of_the_given_package() {
     fi
 
     step "move the packed file to output directory"
-    run mv -T "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
+    run mv "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
 
     if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         echo
