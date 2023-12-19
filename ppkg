@@ -133,7 +133,7 @@ sed_in_place() {
 
         export SED
 
-        "$PPKG_CORE_DIR/libexec/sed-in-place" "$@"
+        "$PPKG_CORE_DIR/sed-in-place" "$@"
     fi
 }
 
@@ -201,7 +201,7 @@ version_match() {
 #
 # If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
 #
-# If <OUTPUT-PATH> ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwize, it will be treated as a filepath.
 #
 # If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
 #
@@ -3519,9 +3519,9 @@ __inspect_install_arguments() {
     PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
     PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
 
-     CC_FOR_BUILD="$PPKG_CORE_LIBEXEC_DIR/wrapper-native-cc"
-   OBJC_FOR_BUILD="$PPKG_CORE_LIBEXEC_DIR/wrapper-native-objc"
-    CXX_FOR_BUILD="$PPKG_CORE_LIBEXEC_DIR/wrapper-native-c++"
+     CC_FOR_BUILD="$PPKG_CORE_DIR/wrapper-native-cc"
+   OBJC_FOR_BUILD="$PPKG_CORE_DIR/wrapper-native-objc"
+    CXX_FOR_BUILD="$PPKG_CORE_DIR/wrapper-native-c++"
     CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
     #########################################################################################
@@ -4762,8 +4762,8 @@ $DOT_CONTENT
         PROXIED_CXX="$PROXIED_CXX_FOR_BUILD"
     fi
 
-     CC="$PPKG_CORE_LIBEXEC_DIR/wrapper-target-cc"
-    CXX="$PPKG_CORE_LIBEXEC_DIR/wrapper-target-c++"
+     CC="$PPKG_CORE_DIR/wrapper-target-cc"
+    CXX="$PPKG_CORE_DIR/wrapper-target-c++"
     CPP="$CC -E"
 
     for TOOL in PROXIED_CC PROXIED_CXX CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
@@ -7246,7 +7246,6 @@ __setup() {
     run cd         "$SESSION_DIR"
 
     run install -d bin
-    run install -d etc
 
     ##################################################################################
 
@@ -7291,7 +7290,7 @@ __setup() {
 
                 run ln -s /usr/bin/make bin/gmake
 
-                printf 'export ACLOCAL_PATH=/usr/share/aclocal' > etc/profile
+                printf 'export ACLOCAL_PATH=/usr/share/aclocal' > profile
                 ;;
             darwin)
                 BREW="$(command -v brew || true)"
@@ -7339,7 +7338,7 @@ __setup() {
                 run ln -sf /usr/local/bin/ginstall bin/install
                 run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
 
-                cat > etc/profile <<EOF
+                cat > profile <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
@@ -7361,7 +7360,7 @@ EOF
                 run ln -sf /usr/local/bin/ginstall   bin/install
                 run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
 
-                printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > etc/profile
+                printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > profile
                 ;;
             openbsd)
                 # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
@@ -7390,7 +7389,7 @@ EOF
                 printf '%s\n' '#!/bin/sh' > bin/tree
                 chmod +x                    bin/tree
 
-                cat > etc/profile <<EOF
+                cat > profile <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 
 PPFLAGS=-I/usr/local/include
@@ -7414,7 +7413,7 @@ EOF
                 run ln -sf /usr/pkg/bin/ginstall   bin/install
                 run ln -sf /usr/pkg/bin/gsha256sum bin/sha256sum
 
-                printf 'export ACLOCAL_PATH=/usr/pkg/share/aclocal' > etc/profile
+                printf 'export ACLOCAL_PATH=/usr/pkg/share/aclocal' > profile
 
                 run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
                 run sudo update-ca-certificates
@@ -7437,9 +7436,9 @@ EOF
         step "install CA Certificate"
 
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' -o etc/
+        wfetch 'https://curl.se/ca/cacert.pem' -o .
 
-        export SSL_CERT_FILE="$PWD/etc/cacert.pem"
+        export SSL_CERT_FILE="$PWD/cacert.pem"
 
         #################################################################################
 
@@ -7466,8 +7465,8 @@ EOF
         #################################################################################
 
         step "install uppm shim"
-        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o bin/uppm
-        run chmod +x bin/uppm
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o uppm
+        run chmod +x uppm
 
         #################################################################################
 
@@ -7820,16 +7819,14 @@ int main(int argc, char* argv[]) {
 }
 EOF
 
-    install -d libexec
+    run cc -std=c99 -o wrapper-native-cc   wrapper-native-cc.c
+    run cc -std=c99 -o wrapper-native-c++  wrapper-native-c++.c
+    run cc -std=c99 -o wrapper-native-objc wrapper-native-objc.c
 
-    run cc -std=c99 -o libexec/wrapper-native-cc   wrapper-native-cc.c
-    run cc -std=c99 -o libexec/wrapper-native-c++  wrapper-native-c++.c
-    run cc -std=c99 -o libexec/wrapper-native-objc wrapper-native-objc.c
+    run cc -std=c99 -o wrapper-target-cc   wrapper-target-cc.c
+    run cc -std=c99 -o wrapper-target-c++  wrapper-target-cc.c -DWRAPPER_CXX
 
-    run cc -std=c99 -o libexec/wrapper-target-cc   wrapper-target-cc.c
-    run cc -std=c99 -o libexec/wrapper-target-c++  wrapper-target-cc.c -DWRAPPER_CXX
-
-    run cp libexec/wrapper-target-cc libexec/wrapper-target-objc
+    run cp wrapper-target-cc wrapper-target-objc
 
     #########################################################################################
 
@@ -7870,7 +7867,7 @@ int main(int argc, char* argv[]) {
 }
 EOF
 
-    run cc -std=c99 -o libexec/sed-in-place sed-in-place.c
+    run cc -std=c99 -o sed-in-place sed-in-place.c
 
     #########################################################################################
 
@@ -7929,26 +7926,28 @@ __setup_uppm() {
 
     run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
+    run mv bin/uppm .
+
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' -o etc/
+    wfetch 'https://curl.se/ca/cacert.pem' -o .
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$PWD/etc/cacert.pem"
+    export SSL_CERT_FILE="$PWD/cacert.pem"
 
-    run bin/uppm env
-    run bin/uppm update
+    run ./uppm env
+    run ./uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
     for item in bash coreutils findutils easyutils gawk gsed grep bsdtar jq yq git curl tree patchelf
     do
-        run bin/uppm install "$item"
+        run ./uppm install "$item"
 
-        UPPM_PACKAGE_INSTALLED_DIR="$(bin/uppm info "$item" installed-dir)"
+        UPPM_PACKAGE_INSTALLED_DIR="$(./uppm info "$item" installed-dir)"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/bin"
@@ -7966,7 +7965,7 @@ __setup_uppm() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > etc/profile <<EOF
+    cat > profile <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8088,7 +8087,7 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
 
     If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
 
-    If <OUTPUT-PATH> ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwize, it will be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
 
@@ -8213,7 +8212,7 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [
 
     <OUTPUT-PATH> can be either the filepath or directory which indicates where the packed archive file would be written to.
 
-    If <OUTPUT-PATH> ends with slash, then it would be treated as a directory, otherwize, it would be treated as a filepath.
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwize, it would be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
 
@@ -8238,7 +8237,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.16
+    PPKG_VERSION=0.3.17
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8253,13 +8252,12 @@ main() {
 
     PPKG_CORE_DIR="$PPKG_HOME/core"
     PPKG_CORE_BIN_DIR="$PPKG_CORE_DIR/bin"
-    PPKG_CORE_LIBEXEC_DIR="$PPKG_CORE_DIR/libexec"
 
     PPKG_SYSROOT="$PPKG_HOME/sysroot"
 
     NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
 
-    UPPM="$PPKG_CORE_BIN_DIR/uppm"
+    UPPM="$PPKG_CORE_DIR/uppm"
 
     TIMESTAMP_UNIX="$(date +%s)"
 
@@ -8268,8 +8266,8 @@ main() {
     fi
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$PPKG_CORE_DIR/etc/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$PPKG_CORE_DIR/etc/cacert.pem"
+    if [ -f "$PPKG_CORE_DIR/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
     fi
 
     #########################################################################################
@@ -8334,8 +8332,8 @@ EOF
 
     #########################################################################################
 
-    if [ -f "$PPKG_CORE_DIR/etc/profile" ] ; then
-        .   "$PPKG_CORE_DIR/etc/profile"
+    if [ -f "$PPKG_CORE_DIR/profile" ] ; then
+        .   "$PPKG_CORE_DIR/profile"
     else
         abort 1 "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
     fi
