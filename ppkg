@@ -197,7 +197,7 @@ version_match() {
 ##############################################################################
 # {{{ wfetch
 
-# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q]
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
 #
 # If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
 #
@@ -225,6 +225,8 @@ wfetch() {
     unset FETCH_SHA256_EXPECTED
 
     unset FETCH_SILENT
+
+    unset NOT_BUFFER
 
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
 
@@ -255,6 +257,9 @@ wfetch() {
             -q)
                 FETCH_SILENT=1
                 RUN_SILENT=1
+                ;;
+            --no-buffer)
+                NOT_BUFFER=1
                 ;;
             *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
         esac
@@ -302,11 +307,15 @@ wfetch() {
             fi
         fi
 
-        FETCH_UTS="$(date +%s)"
+        if [ "$NOT_BUFFER" = 1 ] ; then
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_FILEPATH"
+        else
+            FETCH_UTS="$(date +%s)"
 
-        FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
+            FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
 
-        FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
+        fi
     fi
 
     for FETCH_TOOL in curl wget http lynx aria2c axel
@@ -378,7 +387,9 @@ wfetch() {
             fi
         fi
 
-        run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
+        if [ "$NOT_BUFFER" != 1 ] ; then
+            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
+        fi
     fi
 }
 
@@ -7296,7 +7307,7 @@ __setup() {
                 BREW="$(command -v brew || true)"
 
                 if [ -z "$BREW" ] ; then
-                    wfetch 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' -o homebrew-install.sh
+                    wfetch 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' -o homebrew-install.sh --no-buffer
                     run "yes | bash homebrew-install.sh"
 
                     BREW=$(command -v brew || true)
@@ -7436,7 +7447,7 @@ EOF
         step "install CA Certificate"
 
         # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' -o .
+        wfetch 'https://curl.se/ca/cacert.pem' -o cacert.pem --no-buffer
 
         export SSL_CERT_FILE="$PWD/cacert.pem"
 
@@ -7465,7 +7476,7 @@ EOF
         #################################################################################
 
         step "install uppm shim"
-        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o uppm
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o uppm --no-buffer
         run chmod +x uppm
 
         #################################################################################
@@ -7496,7 +7507,7 @@ EOF
         esac
 
         if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-            wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq
+            wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq --no-buffer
             run chmod +x bin/yq
         fi
 
@@ -7504,13 +7515,13 @@ EOF
 
         [ "$NATIVE_OS_KIND" != darwin ] && {
             step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip
+            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
             run bsdtar xf patchelf-0.17.2.zip --no-same-owner
             run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
         }
 
         step "install base16-encode and base16-decode"
-        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' -o C-examples-master.zip
+        wfetch 'https://github.com/leleliu008/C-examples/archive/refs/heads/master.zip' -o C-examples-master.zip --no-buffer
         run bsdtar xf C-examples-master.zip --no-same-owner
 
         run cmake -S C-examples-master/algorithm/base16 -B C-examples-master/algorithm/base16/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
@@ -7901,7 +7912,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release
+    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release --no-buffer
 
     ##################################################################################
 
@@ -7922,7 +7933,7 @@ __setup_uppm() {
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --no-buffer
 
     run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
@@ -7931,7 +7942,7 @@ __setup_uppm() {
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' -o .
+    wfetch 'https://curl.se/ca/cacert.pem' -o cacert.pem --no-buffer
 
     ##################################################################################
 
@@ -8237,7 +8248,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.17
+    PPKG_VERSION=0.3.18
 
     PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
