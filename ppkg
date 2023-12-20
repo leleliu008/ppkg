@@ -4801,7 +4801,7 @@ $DOT_CONTENT
                     wfetch "https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz" -o "$FILENAME"
 
                     run install -d "$TARGET_PLATFORM_SPEC"
-                    run bsdtar xvf "$FILEPATH" -C "$TARGET_PLATFORM_SPEC"
+                    run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
 
                     #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
                     #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
