@@ -118,10 +118,10 @@ int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatfor
 
     /////////////////////////////////////////////////////////////////////////////////
 
-    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
+    size_t packageInstalledDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 15U;
     char   packageInstalledDIR[packageInstalledDIRCapacity];
 
-    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
     if (ret < 0) {
         perror(NULL);

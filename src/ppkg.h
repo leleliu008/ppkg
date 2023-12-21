@@ -31,6 +31,8 @@
 #define PPKG_ERROR_NOT_FOUND    10
 #define PPKG_ERROR_NOT_MATCH    11
 
+#define PPKG_ERROR_PACKAGE_SPEC_IS_INVALID 15
+
 #define PPKG_ERROR_PACKAGE_NOT_AVAILABLE 20
 #define PPKG_ERROR_PACKAGE_NOT_INSTALLED 21
 #define PPKG_ERROR_PACKAGE_NOT_OUTDATED  22
@@ -185,14 +187,18 @@ int  ppkg_formula_repo_list_update();
 //////////////////////////////////////////////////////////////////////
 
 typedef struct {
-    char * name;
-    char * version;
-    char * arch;
+    char   name[16];
+    char   vers[16];
+    char   arch[16];
+
+    size_t nameLen;
+    size_t versLen;
+    size_t archLen;
 } PPKGTargetPlatform;
 
-int ppkg_inspect_target_platform(const char * str, PPKGTargetPlatform * targetPlatform);
+int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTargetPlatform * targetPlatform);
 
-int ppkg_inspect_package_spec(const char * str, char ** packageName, PPKGTargetPlatform * targetPlatform);
+int ppkg_inspect_package(const char * package, const char * userSpecifiedTargetPlatformSpec, const char ** packageName, PPKGTargetPlatform * targetPlatform);
 
 //////////////////////////////////////////////////////////////////////
 

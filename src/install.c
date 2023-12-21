@@ -366,13 +366,13 @@ static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, 
     ////////////////////////////////////////////////////////////////////////////////////////
 
     size_t targetPlatformNameLength = strlen(targetPlatform->name);
-    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformVersLength = strlen(targetPlatform->vers);
     size_t targetPlatformArchLength = strlen(targetPlatform->arch);
 
     size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
     char   targetPlatformSpec[targetPlatformSpecCapacity];
 
-    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
@@ -408,10 +408,10 @@ static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, 
                 return PPKG_ERROR;
             }
         } else {
-            size_t urlCapacity = strlen(targetPlatform->arch) + strlen(targetPlatform->version) + 60U;
+            size_t urlCapacity = strlen(targetPlatform->arch) + strlen(targetPlatform->vers) + 60U;
             char   url[urlCapacity];
 
-            ret = snprintf(url, urlCapacity, "https://archive.freebsd.org/old-releases/%s/%s-RELEASE/base.txz", targetPlatform->arch, targetPlatform->version);
+            ret = snprintf(url, urlCapacity, "https://archive.freebsd.org/old-releases/%s/%s-RELEASE/base.txz", targetPlatform->arch, targetPlatform->vers);
 
             if (ret < 0) {
                 perror(NULL);
@@ -586,13 +586,13 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
     ////////////////////////////////////////////////////////////////////////////////////////
 
     size_t targetPlatformNameLength = strlen(targetPlatform->name);
-    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformVersLength = strlen(targetPlatform->vers);
     size_t targetPlatformArchLength = strlen(targetPlatform->arch);
 
     size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
     char   targetPlatformSpec[targetPlatformSpecCapacity];
 
-    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
@@ -634,31 +634,31 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
                 int dotIndex = -1;
 
                 for(int i = 0; ;i++) {
-                    if (targetPlatform->version[i] == '\0') {
+                    if (targetPlatform->vers[i] == '\0') {
                         break;
                     }
-                    if (targetPlatform->version[i] == '.') {
+                    if (targetPlatform->vers[i] == '.') {
                         dotIndex = i;
                     }
                 }
 
                 if (dotIndex <= 0) {
-                    fprintf(stderr, "invalid target platform version: %s\n", targetPlatform->version);
+                    fprintf(stderr, "invalid target platform version: %s\n", targetPlatform->vers);
                     return PPKG_ERROR;
                 }
 
                 char major[dotIndex];
 
-                strncpy(major, targetPlatform->version, dotIndex);
+                strncpy(major, targetPlatform->vers, dotIndex);
                 major[dotIndex] = '\0';
 
-                char * minor = targetPlatform->version + dotIndex + 1;
+                const char * minor = targetPlatform->vers + dotIndex + 1;
 
 
                 size_t urlCapacity = targetPlatformNameLength + targetPlatformArchLength + 60U;
                 char   url[urlCapacity];
 
-                ret = snprintf(url, urlCapacity, "https://cdn.openbsd.org/pub/OpenBSD/%s/%s/%s%s%s.tgz", targetPlatform->version, targetPlatform->arch, items[i], major, minor);
+                ret = snprintf(url, urlCapacity, "https://cdn.openbsd.org/pub/OpenBSD/%s/%s/%s%s%s.tgz", targetPlatform->vers, targetPlatform->arch, items[i], major, minor);
 
                 if (ret < 0) {
                     perror(NULL);
@@ -883,13 +883,13 @@ static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, 
     ////////////////////////////////////////////////////////////////////////////////////////
 
     size_t targetPlatformNameLength = strlen(targetPlatform->name);
-    size_t targetPlatformVersLength = strlen(targetPlatform->version);
+    size_t targetPlatformVersLength = strlen(targetPlatform->vers);
     size_t targetPlatformArchLength = strlen(targetPlatform->arch);
 
     size_t targetPlatformSpecCapacity = targetPlatformNameLength + targetPlatformVersLength + targetPlatformArchLength + 3U;
     char   targetPlatformSpec[targetPlatformSpecCapacity];
 
-    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
@@ -931,7 +931,7 @@ static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, 
                 size_t urlCapacity = targetPlatformNameLength + targetPlatformArchLength + 70U;
                 char   url[urlCapacity];
 
-                ret = snprintf(url, urlCapacity, "https://ftp.netbsd.org/pub/NetBSD/NetBSD-%s/%s/binary/sets/%s.tar.xz", targetPlatform->version, targetPlatform->arch, items[i]);
+                ret = snprintf(url, urlCapacity, "https://ftp.netbsd.org/pub/NetBSD/NetBSD-%s/%s/binary/sets/%s.tar.xz", targetPlatform->vers, targetPlatform->arch, items[i]);
 
                 if (ret < 0) {
                     perror(NULL);
@@ -2604,7 +2604,7 @@ static int generate_install_shell_script_file(
         {"NATIVE_OS_VERS", sysinfo->vers },
         {"NATIVE_OS_LIBC", libcName },
         {"TARGET_PLATFORM_NAME", targetPlatform->name },
-        {"TARGET_PLATFORM_VERS", targetPlatform->version },
+        {"TARGET_PLATFORM_VERS", targetPlatform->vers },
         {"TARGET_PLATFORM_ARCH", targetPlatform->arch },
         {"BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "release" : "debug"},
         {"LINK_TYPE", linkType},
@@ -3253,7 +3253,7 @@ int generate_manifest(const char * installedDIRPath) {
     return ret;
 }
 
-static int generate_receipt(const char * packageName, const PPKGFormula * formula, const SysInfo * sysinfo, const time_t ts, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRCapacity) {
+static int generate_receipt(const char * packageName, const PPKGFormula * formula, const PPKGTargetPlatform * targetPlatform, const SysInfo * sysinfo, const time_t ts, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRCapacity) {
     size_t receiptFilePathLength = packageMetaInfoDIRCapacity + 12U;
     char   receiptFilePath[receiptFilePathLength];
 
@@ -3329,7 +3329,7 @@ static int generate_receipt(const char * packageName, const PPKGFormula * formul
         default: libcName = (char*)"";
     }
 
-    fprintf(receiptFile, "\nbuiltby: %s\nbuiltat: %zu\n\n", PPKG_VERSION, ts);
+    fprintf(receiptFile, "\nbuiltfor: %s-%s-%s\nbuiltby: %s\nbuiltat: %zu\n\n", targetPlatform->name, targetPlatform->vers, targetPlatform->arch, PPKG_VERSION, ts);
 
     fprintf(receiptFile, "build-on:\n    os-arch: %s\n    os-kind: %s\n    os-type: %s\n    os-name: %s\n    os-vers: %s\n    os-ncpu: %u\n    os-libc: %s\n    os-euid: %u\n    os-egid: %u\n", sysinfo->arch, sysinfo->kind, sysinfo->type, sysinfo->name, sysinfo->vers, sysinfo->ncpu, libcName, sysinfo->euid, sysinfo->egid);
 
@@ -4203,10 +4203,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 14U;
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 14U;
     char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);
@@ -4451,10 +4451,10 @@ static int ppkg_install_package(
         if (strcmp(targetPlatform->name, "linux") == 0) {
             const char * flavor;
 
-            if (strcmp(targetPlatform->version, "glibc") == 0) {
+            if (strcmp(targetPlatform->vers, "glibc") == 0) {
                 flavor = "gnu";
             } else {
-                flavor = targetPlatform->version;
+                flavor = targetPlatform->vers;
             }
 
             ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
@@ -5006,7 +5006,7 @@ static int ppkg_install_package(
         return ret;
     }
 
-    ret = generate_receipt(packageName, formula, sysinfo, ts, packageMetaInfoDIR, packageMetaInfoDIRCapacity);
+    ret = generate_receipt(packageName, formula, targetPlatform, sysinfo, ts, packageMetaInfoDIR, packageMetaInfoDIRCapacity);
 
     if (ret != PPKG_OK) {
         return ret;

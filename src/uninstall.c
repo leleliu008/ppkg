@@ -23,10 +23,10 @@ int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPl
         return ret;
     }
 
-    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 14U;
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 14U;
     char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);

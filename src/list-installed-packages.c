@@ -127,38 +127,15 @@ static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR
             continue;
         }
 
-        size_t targetPlarformSpecLength = strlen(dir_entry->d_name);
-        size_t targetPlarformSpecCapacity = targetPlarformSpecLength + 1U;
+        PPKGTargetPlatform targetPlarform;
 
-        char   targetPlarformSpec[targetPlarformSpecCapacity];
+        int ret = ppkg_inspect_target_platform_spec(dir_entry->d_name, &targetPlarform);
 
-        strncpy(targetPlarformSpec, dir_entry->d_name, targetPlarformSpecLength);
-
-        targetPlarformSpec[targetPlarformSpecLength] = '\0';
-
-        char * targetPlarformName = strtok(targetPlarformSpec, "-");
-        char * targetPlarformVers = strtok(NULL, "-");
-        char * targetPlarformArch = strtok(NULL, "-");
-        char * p                  = strtok(NULL, "-");
-
-        if (targetPlarformVers == NULL || targetPlarformVers[0] == '\0') {
-            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
+        if (ret != PPKG_OK) {
             continue;
         }
 
-        if (targetPlarformArch == NULL || targetPlarformArch[0] == '\0') {
-            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
-            continue;
-        }
-
-        if (p != NULL) {
-            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
-            continue;
-        }
-
-        PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
-
-        int ret = _list_dir(&targetPlarform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, targetPlarformSpecCapacity, verbose);
+        ret = _list_dir(&targetPlarform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, strlen(dir_entry->d_name) + 1U, verbose);
 
         if (ret != PPKG_OK) {
             closedir(dir);
@@ -197,10 +174,10 @@ int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform, 
         return ppkg_list_all_installed_packages(packageInstalledRootDIR, packageInstalledRootDIRCapacity, verbose);
     }
 
-    size_t platformDIRNameCapacity = strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 3U;
+    size_t platformDIRNameCapacity = targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 3U;
     char   platformDIRName[platformDIRNameCapacity];
 
-    ret = snprintf(platformDIRName, platformDIRNameCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(platformDIRName, platformDIRNameCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);

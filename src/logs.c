@@ -30,10 +30,10 @@ int ppkg_logs(const char * packageName, const PPKGTargetPlatform * targetPlatfor
         return ret;
     }
 
-    size_t metaInfoDIRCapacity = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 21U;
+    size_t metaInfoDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 21U;
     char   metaInfoDIR[metaInfoDIRCapacity];
 
-    ret = snprintf(metaInfoDIR, metaInfoDIRCapacity, "%s/installed/%s-%s-%s/%s/.ppkg", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+    ret = snprintf(metaInfoDIR, metaInfoDIRCapacity, "%s/installed/%s-%s-%s/%s/.ppkg", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
     if (ret < 0) {
         perror(NULL);

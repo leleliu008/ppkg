@@ -20,10 +20,10 @@ int ppkg_list_the__outdated_packages(const PPKGTargetPlatform * targetPlatform, 
 
     struct stat st;
 
-    size_t ppkgInstalledRootDIRCapacity = ppkgHomeDIRLength + 15U + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch);
+    size_t ppkgInstalledRootDIRCapacity = ppkgHomeDIRLength + 15U + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen;
     char   ppkgInstalledRootDIR[ppkgInstalledRootDIRCapacity];
 
-    ret = snprintf(ppkgInstalledRootDIR, ppkgInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch);
+    ret = snprintf(ppkgInstalledRootDIR, ppkgInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
     if (ret < 0) {
         perror(NULL);

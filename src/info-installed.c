@@ -43,10 +43,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
 
         /////////////////////////////////////////////////////////////////////
 
-        size_t packageInstalledDIRLength = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
+        size_t packageInstalledDIRLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 15U;
         char   packageInstalledDIR[packageInstalledDIRLength];
 
-        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
         if (ret < 0) {
             perror(NULL);
@@ -97,10 +97,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
 
         /////////////////////////////////////////////////////////////////////
 
-        size_t packageInstalledDIRLength = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
+        size_t packageInstalledDIRLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 15U;
         char   packageInstalledDIR[packageInstalledDIRLength];
 
-        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
         if (ret < 0) {
             perror(NULL);
@@ -196,10 +196,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
 
         /////////////////////////////////////////////////////////////////////
 
-        size_t packageInstalledDIRLength = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
+        size_t packageInstalledDIRLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 15U;
         char   packageInstalledDIR[packageInstalledDIRLength];
 
-        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
         if (ret < 0) {
             perror(NULL);
@@ -250,10 +250,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
 
         struct stat st;
 
-        size_t packageInstalledDIRLength = ppkgHomeDIRLength + strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + strlen(packageName) + 15U;
+        size_t packageInstalledDIRLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 15U;
         char   packageInstalledDIR[packageInstalledDIRLength];
 
-        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->version, targetPlatform->arch, packageName);
+        ret = snprintf(packageInstalledDIR, packageInstalledDIRLength, "%s/installed/%s-%s-%s/%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName);
 
         if (ret < 0) {
             perror(NULL);
