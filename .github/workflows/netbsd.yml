@@ -70,7 +70,6 @@ jobs:
             run ./output/bin/ppkg search lib
             run ./output/bin/ppkg search zip
 
-            run ./output/bin/ppkg info @all
             run ./output/bin/ppkg info libzip
             run ./output/bin/ppkg info libzip --yaml
             run ./output/bin/ppkg info libzip --json
@@ -92,15 +91,14 @@ jobs:
 
             run ./output/bin/ppkg tree libzip
 
-            run  ./output/bin/ppkg info libzip installed-dir
-            run  ./output/bin/ppkg info libzip installed-files
-            run  ./output/bin/ppkg info libzip receipt-path
-            run  ./output/bin/ppkg info libzip receipt-json
-            run  ./output/bin/ppkg info libzip receipt-yaml
-            run  ./output/bin/ppkg info libzip installed-timestamp-unix
-            run  ./output/bin/ppkg info libzip installed-timestamp-iso-8601
-            run  ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
-            run  ./output/bin/ppkg info libzip installed-version
+            run  ./output/bin/ppkg info libzip --prefix
+            run  ./output/bin/ppkg info libzip --files
+            run  ./output/bin/ppkg info libzip --json
+            run  ./output/bin/ppkg info libzip --yaml
+            run  ./output/bin/ppkg info libzip builtat
+            run  ./output/bin/ppkg info libzip builtat-iso-8601
+            run  ./output/bin/ppkg info libzip builtat-rfc-3339
+            run  ./output/bin/ppkg info libzip version
 
             run ./output/bin/ppkg pack libzip
             run ./output/bin/ppkg pack libzip -t tar.gz

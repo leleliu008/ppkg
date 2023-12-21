@@ -27,11 +27,11 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    if (key == NULL || key[0] == '\0' || strcmp(key, "--") == 0) {
+    if (key == NULL || key[0] == '\0') {
         key = "--yaml";
     }
 
-    if (strcmp(key, "installed-dir") == 0) {
+    if (strcmp(key, "--prefix") == 0) {
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
@@ -85,7 +85,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         } else {
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
-    } else if (strcmp(key, "installed-files") == 0) {
+    } else if (strcmp(key, "--files") == 0) {
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 

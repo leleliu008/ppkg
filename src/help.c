@@ -42,7 +42,7 @@ int ppkg_help() {
         COLOR_OFF
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
         COLOR_GREEN
-        "ppkg info <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg info <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    show information of the given package.\n\n"
         COLOR_GREEN
@@ -68,7 +68,7 @@ int ppkg_help() {
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
         COLOR_GREEN
-        "ppkg fetch   <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg fetch   <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    download resources of the given package to the local cache.\n\n"
         COLOR_GREEN
@@ -88,15 +88,15 @@ int ppkg_help() {
         COLOR_OFF
         "    uninstall the given packages.\n\n"
         COLOR_GREEN
-        "ppkg ls-available [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg ls-available [-v] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         COLOR_OFF
         "    list the available packages.\n\n"
         COLOR_GREEN
-        "ppkg ls-installed\n"
+        "ppkg ls-installed [-v]\n"
         COLOR_OFF
         "    list the installed packages.\n\n"
         COLOR_GREEN
-        "ppkg ls-outdated\n"
+        "ppkg ls-outdated [-v]\n"
         COLOR_OFF
         "    list the outdated  packages.\n\n"
         COLOR_GREEN
@@ -232,7 +232,7 @@ int ppkg_help() {
         "    update all available formula repositories.\n\n"
         "ppkg search <REGULAR-EXPRESSION> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
-        "ppkg info <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg info <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    show information of the given package.\n\n"
         "ppkg tree <PACKAGE-NAME> [--dirsfirst | -L N]\n"
         "    list files of the given installed package in a tree-like format.\n\n"
@@ -248,7 +248,7 @@ int ppkg_help() {
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
-        "ppkg fetch   <PACKAGE-NAME|@all> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg fetch   <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    download resources of the given package to the local cache.\n\n"
         "ppkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"
         "    install the given packages.\n\n"
@@ -258,11 +258,11 @@ int ppkg_help() {
         "    reinstall the given packages.\n\n"
         "ppkg uninstall <PACKAGE-NAME>\n"
         "    uninstall the given packages.\n\n"
-        "ppkg ls-available [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
+        "ppkg ls-available [-v] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    list the available packages.\n\n"
-        "ppkg ls-installed\n"
+        "ppkg ls-installed [-v]\n"
         "    list the installed packages.\n\n"
-        "ppkg ls-outdated\n"
+        "ppkg ls-outdated [-v]\n"
         "    list the outdated  packages.\n\n"
         "ppkg is-available <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    check if the given package is available.\n\n"

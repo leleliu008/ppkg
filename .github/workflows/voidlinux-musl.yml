@@ -1,4 +1,4 @@
-name: AlpineLinux
+name: voidlinux
 
 on:
   push:
@@ -7,26 +7,27 @@ on:
     branches: [ c ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ['3.18', '3.17', '3.16','3.15']
+  voidlinux-musl:
 
-    container: alpine:${{ matrix.tag }}
+    runs-on: ubuntu-latest
+
+    container: voidlinux/voidlinux-musl
 
     steps:
-      - run: apk update
-      - run: apk add cmake ninja gcc pkgconf libc-dev curl-dev openssl-dev libgit2-dev libarchive-dev yaml-dev jansson-dev sqlite-dev
+      # SSL certificate subject doesn't match host alpha.de.repo.voidlinux.org
+      # ERROR: [reposync] failed to fetch file `https://alpha.de.repo.voidlinux.org/current/x86_64-repodata': Operation not permitted
+      - run: sed -i s/alpha.de.repo.voidlinux.org/repo-default.voidlinux.org/g /usr/share/xbps.d/*
 
-      - uses: actions/checkout@main
+      - run: xbps-install -Syu xbps
+      - run: xbps-install -Suy ca-certificates
+      - run: xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
+
+      # https://github.com/actions/checkout/issues/334
+      - uses: actions/checkout@v1
 
       - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
       - run:  cmake --build   build.d
       - run:  cmake --install build.d
-
 
       - run: ./output/bin/ppkg
 
@@ -50,16 +51,12 @@ jobs:
       - run: ./output/bin/ppkg search zip
 
       - run: ./output/bin/ppkg info libzip
-      - run: ./output/bin/ppkg info libzip formula
       - run: ./output/bin/ppkg info libzip --yaml
       - run: ./output/bin/ppkg info libzip --json
       - run: ./output/bin/ppkg info libzip summary
       - run: ./output/bin/ppkg info libzip version
       - run: ./output/bin/ppkg info libzip license
       - run: ./output/bin/ppkg info libzip web-url
-      - run: ./output/bin/ppkg info libzip git-url
-      - run: ./output/bin/ppkg info libzip git-sha
-      - run: ./output/bin/ppkg info libzip git-ref
       - run: ./output/bin/ppkg info libzip src-url
       - run: ./output/bin/ppkg info libzip src-sha
 
@@ -70,22 +67,18 @@ jobs:
       - run: ./output/bin/ppkg fetch gzip
       - run: ./output/bin/ppkg fetch gsed -v
 
-      - run: apk add curl g++ libc-dev linux-headers
-
       - run: ./output/bin/ppkg install libzip
 
       - run: ./output/bin/ppkg tree libzip
 
-      - run: ./output/bin/ppkg info libzip --prefix
-      - run: ./output/bin/ppkg info libzip --files
-      - run: ./output/bin/ppkg info libzip --json
-      - run: ./output/bin/ppkg info libzip --yaml
-      - run: ./output/bin/ppkg info libzip builtat
-      - run: ./output/bin/ppkg info libzip builtat-iso-8601
-      - run: ./output/bin/ppkg info libzip builtat-rfc-3339
-      - run: ./output/bin/ppkg info libzip builtat-iso-8601-utc
-      - run: ./output/bin/ppkg info libzip builtat-rfc-3339-utc
-      - run: ./output/bin/ppkg info libzip version
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip --prefix
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip --files
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip --json
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip --yaml
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip builtat
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip builtat-iso-8601
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip builtat-rfc-3339
+      - run: ./output/bin/ppkg info linux-musl-x86_64/libzip version
 
       - run: ./output/bin/ppkg pack libzip
       - run: ./output/bin/ppkg pack libzip -t tar.gz

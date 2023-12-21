@@ -14,34 +14,14 @@
 
 #include "ppkg.h"
 
-static int package_name_callback(const char * packageName, const char * targetPlatformName, size_t i, const void * key) {
-    if (i != 0) {
-        printf("\n");
-    }
-
-    return ppkg_available_info(packageName, targetPlatformName, (char*)key);
-}
-
 int ppkg_available_info(const char * packageName, const char * targetPlatformName, const char * key) {
-    if (packageName == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
-    }
-
-    if (packageName[0] == '\0') {
-        return PPKG_ERROR_ARG_IS_EMPTY;
-    }
-
-    if (strcmp(packageName, "@all") == 0) {
-        return ppkg_list_the_available_packages(targetPlatformName, package_name_callback, key);
-    }
-
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "--") == 0) || (strcmp(key, "--yaml") == 0)) {
+    if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "--yaml") == 0)) {
         char * formulaFilePath = NULL;
 
         ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
@@ -613,7 +593,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
             return ret;
         }
 
-        printf("%s\n", formula->binbstd ? "yes" : "no");
+        printf("%d\n", formula->binbstd);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "symlink") == 0) {
@@ -625,7 +605,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
             return ret;
         }
 
-        printf("%s\n", formula->symlink ? "yes" : "no");
+        printf("%d\n", formula->symlink);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "parallel") == 0) {
@@ -637,7 +617,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
             return ret;
         }
 
-        printf("%s\n", formula->parallel ? "yes" : "no");
+        printf("%d\n", formula->parallel);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "ppflags") == 0) {

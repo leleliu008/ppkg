@@ -7,7 +7,7 @@
 
 #include "ppkg.h"
 
-static int _list_dir(const char * formulaDIR, const char * targetPlatformName, PPKGPackageNameCallbak packageNameCallbak, const void * payload, size_t * counter) {
+static int _list_dir(const char * formulaDIR, const char * targetPlatformName, const bool verbose, PPKGPackageNameFilter packageNameFilter, const void * payload, size_t * counter) {
     DIR * dir = opendir(formulaDIR);
 
     if (dir == NULL) {
@@ -52,7 +52,7 @@ static int _list_dir(const char * formulaDIR, const char * targetPlatformName, P
                 int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(fileName);
 
                 if (ret == PPKG_OK) {
-                    ret = packageNameCallbak(fileName, targetPlatformName, *counter, payload);
+                    ret = packageNameFilter(fileName, targetPlatformName, verbose, *counter, payload);
 
                     (*counter)++;
 
@@ -66,7 +66,7 @@ static int _list_dir(const char * formulaDIR, const char * targetPlatformName, P
     }
 }
 
-int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackageNameCallbak packageNameCallbak, const void * payload) {
+int ppkg_list_the_available_packages(const char * targetPlatformName, const bool verbose, PPKGPackageNameFilter packageNameFilter, const void * payload) {
     char nativeOSType[31] = {0};
 
     if (targetPlatformName == NULL || targetPlatformName[0] == '\0') {
@@ -109,7 +109,7 @@ int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackag
         }
 
         if (stat(formulaDIR1, &st) == 0 && S_ISDIR(st.st_mode)) {
-            ret = _list_dir(formulaDIR1, targetPlatformName, packageNameCallbak, payload, &j);
+            ret = _list_dir(formulaDIR1, targetPlatformName, verbose, packageNameFilter, payload, &j);
 
             if (ret < 0) {
                 ppkg_formula_repo_list_free(formulaRepoList);
@@ -130,7 +130,7 @@ int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackag
         }
 
         if (stat(formulaDIR2, &st) == 0 && S_ISDIR(st.st_mode)) {
-            ret = _list_dir(formulaDIR2, targetPlatformName, packageNameCallbak, payload, &j);
+            ret = _list_dir(formulaDIR2, targetPlatformName, verbose, packageNameFilter, payload, &j);
 
             if (ret < 0) {
                 ppkg_formula_repo_list_free(formulaRepoList);
@@ -144,11 +144,15 @@ int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackag
     return PPKG_OK;
 }
 
-static int package_name_callback(const char * packageName, const char * targetPlatformName, size_t i, const void * payload) {
-    printf("%s\n", packageName);
-    return PPKG_OK;
+static int package_name_filter(const char * packageName, const char * targetPlatformName, const bool verbose, size_t i, const void * payload) {
+    if (verbose) {
+        return ppkg_available_info(packageName, targetPlatformName, NULL);
+    } else {
+        printf("%s\n", packageName);
+        return PPKG_OK;
+    }
 }
 
-int ppkg_show_the_available_packages(const char * targetPlatformName) {
-    return ppkg_list_the_available_packages(targetPlatformName, package_name_callback, NULL);
+int ppkg_show_the_available_packages(const char * targetPlatformName, const bool verbose) {
+    return ppkg_list_the_available_packages(targetPlatformName, verbose, package_name_filter, NULL);
 }

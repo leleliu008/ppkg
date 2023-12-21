@@ -507,19 +507,19 @@ static int ppkg_receipt_check(PPKGReceipt * receipt, const char * receiptFilePat
     }
 
     if (receipt->builtBy == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : builtBy mapping not found.\n", receiptFilePath);
+        fprintf(stderr, "scheme error in receipt file: %s : builtby mapping not found.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     if (receipt->builtFor == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : builtFor mapping not found.\n", receiptFilePath);
+        fprintf(stderr, "scheme error in receipt file: %s : builtfor mapping not found.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (receipt->builtAt == NULL) {
-        fprintf(stderr, "scheme error in receipt file: %s : builtAt mapping not found.\n", receiptFilePath);
+        fprintf(stderr, "scheme error in receipt file: %s : builtat mapping not found.\n", receiptFilePath);
         return PPKG_ERROR_RECEIPT_SCHEME;
     }
 

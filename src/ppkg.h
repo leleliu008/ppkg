@@ -306,7 +306,7 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
 
 int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize);
 
-int ppkg_search(const char * regPattern, const char * targetPlatformName);
+int ppkg_search(const char * regPattern, const char * targetPlatformName, const bool verbose);
 
 int ppkg_available_info(const char * packageName, const char * targetPlatformName, const char * key);
 
@@ -397,13 +397,13 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName, const
 int ppkg_check_if_the_given_package_is_installed(const char * packageName, const PPKGTargetPlatform * targetPlatform);
 int ppkg_check_if_the_given_package_is_outdated (const char * packageName, const PPKGTargetPlatform * targetPlatform);
 
-typedef int (*PPKGPackageNameCallbak)(const char * packageName, const char * targetPlatformName, size_t index, const void * payload);
+typedef int (*PPKGPackageNameFilter)(const char * packageName, const char * targetPlatformName, const bool verbose, size_t index, const void * payload);
 
-int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackageNameCallbak packageNameCallbak, const void * payload);
-int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform);
-int ppkg_list_the_outdated__packages(const PPKGTargetPlatform * targetPlatform);
+int ppkg_show_the_available_packages(const char * targetPlatformName, const bool verbose);
 
-int ppkg_show_the_available_packages(const char * targetPlatformName);
+int ppkg_list_the_available_packages(const char * targetPlatformName, const bool verbose, PPKGPackageNameFilter packageNameFilter, const void * payload);
+int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform, const bool verbose);
+int ppkg_list_the__outdated_packages(const PPKGTargetPlatform * targetPlatform, const bool verbose);
 
 int ppkg_git_sync(const char * gitRepositoryDIRPath, const char * remoteUrl, const char * remoteRef, const char * remoteTrackingRef, const char * checkoutToBranchName, const size_t fetchDepth);
 

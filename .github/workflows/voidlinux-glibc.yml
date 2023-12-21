@@ -8,14 +8,10 @@ on:
 
 jobs:
   voidlinux:
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: ['voidlinux', 'voidlinux-musl']
 
     runs-on: ubuntu-latest
 
-    container: voidlinux/${{ matrix.variant }}
+    container: voidlinux/voidlinux
 
     steps:
       # SSL certificate subject doesn't match host alpha.de.repo.voidlinux.org
@@ -54,7 +50,6 @@ jobs:
       - run: ./output/bin/ppkg search lib
       - run: ./output/bin/ppkg search zip
 
-      - run: ./output/bin/ppkg info @all
       - run: ./output/bin/ppkg info libzip
       - run: ./output/bin/ppkg info libzip --yaml
       - run: ./output/bin/ppkg info libzip --json
@@ -76,15 +71,14 @@ jobs:
 
       - run: ./output/bin/ppkg tree libzip
 
-      - run:  ./output/bin/ppkg info libzip installed-dir
-      - run:  ./output/bin/ppkg info libzip installed-files
-      - run:  ./output/bin/ppkg info libzip receipt-path
-      - run:  ./output/bin/ppkg info libzip receipt-json
-      - run:  ./output/bin/ppkg info libzip receipt-yaml
-      - run:  ./output/bin/ppkg info libzip installed-timestamp-unix
-      - run:  ./output/bin/ppkg info libzip installed-timestamp-iso-8601
-      - run:  ./output/bin/ppkg info libzip installed-timestamp-rfc-3339
-      - run:  ./output/bin/ppkg info libzip installed-version
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip --prefix
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip --files
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip --json
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip --yaml
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip builtat
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip builtat-iso-8601
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip builtat-rfc-3339
+      - run: ./output/bin/ppkg info linux-glibc-x86_64/libzip version
 
       - run: ./output/bin/ppkg pack libzip
       - run: ./output/bin/ppkg pack libzip -t tar.gz

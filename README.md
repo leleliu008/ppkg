@@ -350,7 +350,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **show information of all available packages**
 
     ```bash
-    ppkg info @all
     ```
 
 - **show information of the given available package**
@@ -420,10 +419,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg fetch curl
-    ppkg fetch @all
-
     ppkg fetch curl -v
-    ppkg fetch @all -v
     ```
 
 - **install packages**

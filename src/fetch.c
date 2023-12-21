@@ -12,10 +12,6 @@
 
 #include "ppkg.h"
 
-static int package_name_callback(const char * packageName, const char * targetPlatformName, size_t i, const void * payload) {
-    return ppkg_fetch(packageName, targetPlatformName, *((bool*)payload));
-}
-
 static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength) {
     size_t gitRepositoryDIRCapacity = ppkgDownloadsDIRLength + strlen(packageName) + 6U;
     char   gitRepositoryDIR[gitRepositoryDIRCapacity];
@@ -129,20 +125,6 @@ static int ppkg_fetch_file(const char * url, const char * uri, const char * expe
 }
 
 int ppkg_fetch(const char * packageName, const char * targetPlatformName, bool verbose) {
-    if (packageName == NULL) {
-        return PPKG_ERROR_ARG_IS_NULL;
-    }
-
-    if (packageName[0] == '\0') {
-        return PPKG_ERROR_ARG_IS_EMPTY;
-    }
-
-    if (strcmp(packageName, "@all") == 0) {
-        return ppkg_list_the_available_packages(targetPlatformName, package_name_callback, &verbose);
-    }
-
-    ///////////////////////////////////////////////////////////////
-
     PPKGFormula * formula = NULL;
 
     int ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);

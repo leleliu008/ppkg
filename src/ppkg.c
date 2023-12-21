@@ -98,8 +98,12 @@ int ppkg_main(int argc, char* argv[]) {
     if (strcmp(argv[1], "search") == 0) {
         const char * targetPlarformName = NULL;
 
+        char verbose = false;
+
         for (int i = 3; i < argc; i++) {
-            if (strcmp(argv[i], "-p") == 0) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strcmp(argv[i], "-p") == 0) {
                 targetPlarformName = argv[++i];
 
                 if (targetPlarformName == NULL) {
@@ -133,7 +137,7 @@ int ppkg_main(int argc, char* argv[]) {
             }
         }
 
-        int ret = ppkg_search(argv[2], targetPlarformName);
+        int ret = ppkg_search(argv[2], targetPlarformName, verbose);
 
         if (ret == PPKG_ERROR_ARG_IS_NULL) {
             fprintf(stderr, "Usage: %s search <KEYWORD>, <KEYWORD> is not given.\n", argv[0]);
@@ -148,6 +152,168 @@ int ppkg_main(int argc, char* argv[]) {
         }
 
         return ret;
+    }
+
+    if (strcmp(argv[1], "info-available") == 0) {
+        const char * targetPlarformName = NULL;
+
+        for (int i = 4; i < argc; i++) {
+            if (strcmp(argv[i], "-p") == 0) {
+                targetPlarformName = argv[++i];
+
+                if (targetPlarformName == NULL) {
+                    fprintf(stderr, "-p <TARGET-PLATFORM-NAME>, <TARGET-PLATFORM-NAME> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                if (targetPlarformName[0] == '\0') {
+                    fprintf(stderr, "-p <TARGET-PLATFORM-NAME>, <TARGET-PLATFORM-NAME> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_EMPTY;
+                }
+
+                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+
+                bool isSupported = false;
+
+                for (int j = 0; j < 6; j++) {
+                    if (strcmp(targetPlarformName, supportedTargetPlarformNames[j]) == 0) {
+                        isSupported = true;
+                        break;
+                    }
+                }
+
+                if (!isSupported) {
+                    LOG_ERROR2("unsupported target platform name: ", targetPlarformName);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+            }
+        }
+
+        int ret = ppkg_available_info(argv[2], targetPlarformName, argv[3]);
+
+        if (ret == PPKG_ERROR_ARG_IS_NULL) {
+            fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
+        } else if (ret == PPKG_ERROR_ARG_IS_EMPTY) {
+            fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is empty string.\n", argv[0]);
+        } else if (ret == PPKG_ERROR_ARG_IS_INVALID) {
+            fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not match pattern %s\n", argv[0], PPKG_PACKAGE_NAME_PATTERN);
+        } else if (ret == PPKG_ERROR_ARG_IS_UNKNOWN) {
+            fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], unrecognized KEY: %s\n", argv[0], argv[3]);
+        } else if (ret == PPKG_ERROR_PACKAGE_NOT_AVAILABLE) {
+            fprintf(stderr, "package '%s' is not available for target '%s'\n", argv[2], targetPlarformName);
+        } else if (ret == PPKG_ERROR_PACKAGE_NOT_INSTALLED) {
+            fprintf(stderr, "package '%s' is not installed.\n", argv[2]);
+        } else if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
+            fprintf(stderr, "%s\n", "HOME environment variable is not set.\n");
+        } else if (ret == PPKG_ERROR_ENV_PATH_NOT_SET) {
+            fprintf(stderr, "%s\n", "PATH environment variable is not set.\n");
+        } else if (ret == PPKG_ERROR) {
+            fprintf(stderr, "occurs error.\n");
+        }
+
+        return ret;
+    }
+
+    if (strcmp(argv[1], "info-installed") == 0) {
+        char * targetPlarform = NULL;
+
+        for (int i = 4; i < argc; i++) {
+            if (strncmp(argv[i], "--target=", 9) == 0) {
+                targetPlarform = &argv[i][9];
+
+                if (targetPlarform[0] == '\0') {
+                    fprintf(stderr, "--target=<TARGET-PLATFORM-SPEC>, <TARGET-PLATFORM-SPEC> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_EMPTY;
+                }
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////
+
+        int slashIndex = -1;
+
+        for (int i = 0; ;i++) {
+            if (argv[2][i] == '\0') {
+                break;
+            }
+            if (argv[2][i] == '/') {
+                slashIndex = i;
+                break;
+            }
+        }
+
+        if (slashIndex == -1) {
+            if (targetPlarform == NULL) {
+
+            } else {
+
+            }
+        } else {
+            const char * packageName = argv[2] + slashIndex + 1;
+
+            if (packageName[0] == '\0') {
+                fprintf(stderr, "invalid package spec : %s\n", argv[2]);
+                return PPKG_ERROR;
+            }
+
+            argv[2][slashIndex] = '\0';
+
+            char * targetPlarformName = strtok(argv[2], "-");
+            char * targetPlarformVers = strtok(NULL, "-");
+            char * targetPlarformArch = strtok(NULL, "-");
+
+            const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+
+            bool isSupported = false;
+
+            for (int j = 0; j < 6; j++) {
+                if (strcmp(targetPlarformName, supportedTargetPlarformNames[j]) == 0) {
+                    isSupported = true;
+                    break;
+                }
+            }
+
+            if (!isSupported) {
+                fprintf(stderr, "invalid package spec. unsupported target platform name: %s\n", targetPlarformName);
+                return PPKG_ERROR;
+            }
+
+            if (targetPlarformVers == NULL || targetPlarformVers[0] == '\0') {
+                fprintf(stderr, "invalid package spec : %s\n", argv[2]);
+                return PPKG_ERROR;
+            }
+
+            if (targetPlarformArch == NULL || targetPlarformArch[0] == '\0') {
+                fprintf(stderr, "invalid package spec : %s\n", argv[2]);
+                return PPKG_ERROR;
+            }
+
+            PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
+
+            int ret = ppkg_installed_info(packageName, &targetPlarform, argv[3]);
+
+            if (ret == PPKG_ERROR_ARG_IS_NULL) {
+                fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
+            } else if (ret == PPKG_ERROR_ARG_IS_EMPTY) {
+                fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is empty string.\n", argv[0]);
+            } else if (ret == PPKG_ERROR_ARG_IS_INVALID) {
+                fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not match pattern %s\n", argv[0], PPKG_PACKAGE_NAME_PATTERN);
+            } else if (ret == PPKG_ERROR_ARG_IS_UNKNOWN) {
+                fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], unrecognized KEY: %s\n", argv[0], argv[3]);
+            } else if (ret == PPKG_ERROR_PACKAGE_NOT_AVAILABLE) {
+                fprintf(stderr, "package '%s' is not available for target '%s'\n", argv[2], targetPlarformName);
+            } else if (ret == PPKG_ERROR_PACKAGE_NOT_INSTALLED) {
+                fprintf(stderr, "package '%s' is not installed.\n", argv[2]);
+            } else if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
+                fprintf(stderr, "%s\n", "HOME environment variable is not set.\n");
+            } else if (ret == PPKG_ERROR_ENV_PATH_NOT_SET) {
+                fprintf(stderr, "%s\n", "PATH environment variable is not set.\n");
+            } else if (ret == PPKG_ERROR) {
+                fprintf(stderr, "occurs error.\n");
+            }
+
+            return ret;
+        }
     }
 
     if (strcmp(argv[1], "info") == 0) {
@@ -200,7 +366,7 @@ int ppkg_main(int argc, char* argv[]) {
         }
 
         if (slashIndex == -1) {
-            int ret= ppkg_available_info(argv[2], targetPlarformName, argv[3]);
+            int ret = ppkg_available_info(argv[2], targetPlarformName, argv[3]);
 
             if (ret == PPKG_ERROR_ARG_IS_NULL) {
                 fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
@@ -265,7 +431,7 @@ int ppkg_main(int argc, char* argv[]) {
 
             PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
 
-            int ret= ppkg_installed_info(packageName, &targetPlarform, argv[3]);
+            int ret = ppkg_installed_info(packageName, &targetPlarform, argv[3]);
 
             if (ret == PPKG_ERROR_ARG_IS_NULL) {
                 fprintf(stderr, "Usage: %s info <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
@@ -1592,8 +1758,12 @@ int ppkg_main(int argc, char* argv[]) {
     if (strcmp(argv[1], "ls-available") == 0) {
         const char * targetPlarformName = NULL;
 
+        bool verbose = false;
+
         for (int i = 2; i < argc; i++) {
-            if (strcmp(argv[i], "-p") == 0) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strcmp(argv[i], "-p") == 0) {
                 targetPlarformName = argv[++i];
 
                 if (targetPlarformName == NULL) {
@@ -1627,7 +1797,7 @@ int ppkg_main(int argc, char* argv[]) {
             }
         }
 
-        int ret = ppkg_show_the_available_packages(targetPlarformName);
+        int ret = ppkg_show_the_available_packages(targetPlarformName, verbose);
 
         if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
             fprintf(stderr, "%s\n", "HOME environment variable is not set.\n");
@@ -1643,8 +1813,12 @@ int ppkg_main(int argc, char* argv[]) {
     if (strcmp(argv[1], "ls-installed") == 0) {
         char * targetPlarform = NULL;
 
+        bool verbose = false;
+
         for (int i = 2; i < argc; i++) {
-            if (strncmp(argv[i], "--target=", 9) == 0) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strncmp(argv[i], "--target=", 9) == 0) {
                 targetPlarform = &argv[i][9];
 
                 if (targetPlarform[0] == '\0') {
@@ -1660,7 +1834,7 @@ int ppkg_main(int argc, char* argv[]) {
         int ret;
 
         if (targetPlarform == NULL) {
-            ret = ppkg_list_the_installed_packages(NULL);
+            ret = ppkg_list_the_installed_packages(NULL, verbose);
         } else {
             char * targetPlarformName = strtok(targetPlarform, "-");
             char * targetPlarformVers = strtok(NULL, "-");
@@ -1694,7 +1868,7 @@ int ppkg_main(int argc, char* argv[]) {
 
             PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
 
-            ret = ppkg_list_the_installed_packages(&targetPlarform);
+            ret = ppkg_list_the_installed_packages(&targetPlarform, verbose);
         }
 
         if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
@@ -1711,8 +1885,12 @@ int ppkg_main(int argc, char* argv[]) {
     if (strcmp(argv[1], "ls-outdated") == 0) {
         char * targetPlarform = NULL;
 
+        bool verbose = false;
+
         for (int i = 2; i < argc; i++) {
-            if (strncmp(argv[i], "--target=", 9) == 0) {
+            if (strcmp(argv[i], "-v") == 0) {
+                verbose = true;
+            } else if (strncmp(argv[i], "--target=", 9) == 0) {
                 targetPlarform = &argv[i][9];
 
                 if (targetPlarform[0] == '\0') {
@@ -1751,7 +1929,7 @@ int ppkg_main(int argc, char* argv[]) {
 
                 PPKGTargetPlatform targetPlarform = { .name = osType, .version = osVersion, .arch = osArch };
 
-                ret = ppkg_list_the_outdated__packages(&targetPlarform);
+                ret = ppkg_list_the__outdated_packages(&targetPlarform, verbose);
             } else {
                 char * targetPlarformName = strtok(PPKG_DEFAULT_TARGET, "-");
                 char * targetPlarformVers = strtok(NULL, "-");
@@ -1785,7 +1963,7 @@ int ppkg_main(int argc, char* argv[]) {
 
                 PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
 
-                ret = ppkg_list_the_outdated__packages(&targetPlarform);
+                ret = ppkg_list_the__outdated_packages(&targetPlarform, verbose);
             }
         } else {
             char * targetPlarformName = strtok(targetPlarform, "-");
@@ -1820,7 +1998,7 @@ int ppkg_main(int argc, char* argv[]) {
 
             PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
 
-            ret = ppkg_list_the_outdated__packages(&targetPlarform);
+            ret = ppkg_list_the__outdated_packages(&targetPlarform, verbose);
         }
 
         if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {

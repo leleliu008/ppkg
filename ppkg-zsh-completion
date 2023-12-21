@@ -24,7 +24,9 @@ _ppkg_actions=(
     'formula-repo-info:show infomation of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
     'search:search all available packages whose name matches the given regular expression partten.'
-    'info:show infomation of the given package or all available packages.'
+    'info:show infomation of the given available package.'
+    'info-available:show infomation of the given available package.'
+    'info-installed:show infomation of the given installed package.'
     'depends:show the depends of the given package.'
     'is-available:is the given package available.'
     'is-installed:is the given package installed.'
@@ -119,13 +121,24 @@ function _ppkg() {
                     ;;
                 info)
                     _arguments \
-                        '1:package-name:(@all $(ppkg ls-available 2>/dev/null) $(ppkg ls-installed 2>/dev/null))' \
-                        '2:key:(-- --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc symlinked-files)' \
+                        '1:package-name:($(ppkg ls-available 2>/dev/null) $(ppkg ls-installed 2>/dev/null))' \
+                        '2:key:(--prefix --files -- --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
+                    ;;
+                info-available)
+                    _arguments \
+                        '1:package-name:_ppkg_available_packages' \
+                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)' \
+                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
+                    ;;
+                info-installed)
+                    _arguments \
+                        '1:package-name:_ppkg_installed_packages' \
+                        '2:key:(--prefix --files --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
                     ;;
                 fetch)
                     _arguments \
-                        '1:package-name:(@all $(ppkg ls-available 2>/dev/null))' \
+                        '1:package-name:_ppkg_available_packages' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 depends)
@@ -155,7 +168,7 @@ function _ppkg() {
                     ;;
                 install)
                     _arguments \
-                        ':package-name:(@all $(ppkg ls-available 2>/dev/null))' \
+                        ':package-name:_ppkg_available_packages' \
                         '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \

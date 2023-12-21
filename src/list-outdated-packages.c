@@ -8,7 +8,7 @@
 
 #include "ppkg.h"
 
-int ppkg_list_the_outdated__packages(const PPKGTargetPlatform * targetPlatform) {
+int ppkg_list_the__outdated_packages(const PPKGTargetPlatform * targetPlatform, const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 

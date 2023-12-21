@@ -8,7 +8,7 @@
 
 static size_t j = 0U;
 
-static int package_name_callback(const char * packageName, const char * targetPlatformName, size_t i, const void * regPattern) {
+static int package_name_filter(const char * packageName, const char * targetPlatformName, const bool verbose, size_t i, const void * regPattern) {
     if (regex_matched(packageName, (char*)regPattern) == 0) {
         if (j != 0) {
             printf("\n");
@@ -16,7 +16,12 @@ static int package_name_callback(const char * packageName, const char * targetPl
 
         j++;
 
-        return ppkg_available_info(packageName, targetPlatformName, NULL);
+        if (verbose) {
+            return ppkg_available_info(packageName, targetPlatformName, NULL);
+        } else {
+            puts(packageName);
+            return PPKG_OK;
+        }
     } else {
         if (errno == 0) {
             return PPKG_OK;
@@ -27,7 +32,7 @@ static int package_name_callback(const char * packageName, const char * targetPl
     }
 }
 
-int ppkg_search(const char * regPattern, const char * targetPlatformName) {
+int ppkg_search(const char * regPattern, const char * targetPlatformName, const bool verbose) {
     if (regPattern == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
@@ -36,5 +41,5 @@ int ppkg_search(const char * regPattern, const char * targetPlatformName) {
         return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
-    return ppkg_list_the_available_packages(targetPlatformName, package_name_callback, regPattern);
+    return ppkg_list_the_available_packages(targetPlatformName, verbose, package_name_filter, regPattern);
 }

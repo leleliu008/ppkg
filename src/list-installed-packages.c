@@ -10,7 +10,7 @@
 
 #include "ppkg.h"
 
-static int _list_dir(const char * packageInstalledRootDIR, const size_t packageInstalledRootDIRCapacity, const char * platformDIRName, const size_t platformDIRNameCapacity) {
+static int _list_dir(const PPKGTargetPlatform * targetPlatform, const char * packageInstalledRootDIR, const size_t packageInstalledRootDIRCapacity, const char * platformDIRName, const size_t platformDIRNameCapacity, const bool verbose) {
     size_t packageInstalledRootSubDIRCapacity = packageInstalledRootDIRCapacity + platformDIRNameCapacity;
     char   packageInstalledRootSubDIR[packageInstalledRootSubDIRCapacity];
 
@@ -85,12 +85,21 @@ static int _list_dir(const char * packageInstalledRootDIR, const size_t packageI
         }
 
         if (lstat(receiptFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-            printf("%s/%s\n", platformDIRName, dir_entry->d_name);
+            if (verbose) {
+                ret = ppkg_installed_info(dir_entry->d_name, targetPlatform, NULL);
+
+                if (ret != PPKG_OK) {
+                    closedir(dir);
+                    return ret;
+                }
+            } else {
+                printf("%s/%s\n", platformDIRName, dir_entry->d_name);
+            }
         }
     }
 }
 
-static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR, const size_t packageInstalledRootDIRCapacity) {
+static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR, const size_t packageInstalledRootDIRCapacity, const bool verbose) {
     DIR * dir = opendir(packageInstalledRootDIR);
 
     if (dir == NULL) {
@@ -118,7 +127,38 @@ static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR
             continue;
         }
 
-        int ret = _list_dir(packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, strlen(dir_entry->d_name) + 1U);
+        size_t targetPlarformSpecLength = strlen(dir_entry->d_name);
+        size_t targetPlarformSpecCapacity = targetPlarformSpecLength + 1U;
+
+        char   targetPlarformSpec[targetPlarformSpecCapacity];
+
+        strncpy(targetPlarformSpec, dir_entry->d_name, targetPlarformSpecLength);
+
+        targetPlarformSpec[targetPlarformSpecLength] = '\0';
+
+        char * targetPlarformName = strtok(targetPlarformSpec, "-");
+        char * targetPlarformVers = strtok(NULL, "-");
+        char * targetPlarformArch = strtok(NULL, "-");
+        char * p                  = strtok(NULL, "-");
+
+        if (targetPlarformVers == NULL || targetPlarformVers[0] == '\0') {
+            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
+            continue;
+        }
+
+        if (targetPlarformArch == NULL || targetPlarformArch[0] == '\0') {
+            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
+            continue;
+        }
+
+        if (p != NULL) {
+            fprintf(stderr, "invalid target : %s\n", dir_entry->d_name);
+            continue;
+        }
+
+        PPKGTargetPlatform targetPlarform = { .name = targetPlarformName, .version = targetPlarformVers, .arch = targetPlarformArch };
+
+        int ret = _list_dir(&targetPlarform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, targetPlarformSpecCapacity, verbose);
 
         if (ret != PPKG_OK) {
             closedir(dir);
@@ -127,7 +167,7 @@ static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR
     }
 }
 
-int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform) {
+int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform, const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
@@ -154,7 +194,7 @@ int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform) 
     }
 
     if (targetPlatform == NULL) {
-        return ppkg_list_all_installed_packages(packageInstalledRootDIR, packageInstalledRootDIRCapacity);
+        return ppkg_list_all_installed_packages(packageInstalledRootDIR, packageInstalledRootDIRCapacity, verbose);
     }
 
     size_t platformDIRNameCapacity = strlen(targetPlatform->name) + strlen(targetPlatform->version) + strlen(targetPlatform->arch) + 3U;
@@ -167,5 +207,5 @@ int ppkg_list_the_installed_packages(const PPKGTargetPlatform * targetPlatform) 
         return PPKG_ERROR;
     }
 
-    return _list_dir(packageInstalledRootDIR, packageInstalledRootDIRCapacity, platformDIRName, platformDIRNameCapacity);
+    return _list_dir(targetPlatform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, platformDIRName, platformDIRNameCapacity, verbose);
 }
