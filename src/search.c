@@ -10,13 +10,13 @@ static size_t j = 0U;
 
 static int package_name_filter(const char * packageName, const char * targetPlatformName, const bool verbose, size_t i, const void * regPattern) {
     if (regex_matched(packageName, (char*)regPattern) == 0) {
-        if (j != 0) {
-            printf("\n");
-        }
-
-        j++;
-
         if (verbose) {
+            if (j != 0U) {
+                printf("\n");
+            }
+
+            j++;
+
             return ppkg_available_info(packageName, targetPlatformName, NULL);
         } else {
             puts(packageName);

@@ -24,17 +24,16 @@ _ppkg_actions=(
     'formula-repo-info:show infomation of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
     'search:search all available packages whose name matches the given regular expression partten.'
-    'info:show infomation of the given available package.'
     'info-available:show infomation of the given available package.'
     'info-installed:show infomation of the given installed package.'
-    'depends:show the depends of the given package.'
-    'is-available:is the given package available.'
-    'is-installed:is the given package installed.'
-    'is-outdated:is the given package outdated.'
+    'depends:show packages that are depended by the given package.'
+    'is-available:check if the given package is available.'
+    'is-installed:check if the given package is installed.'
+    'is-outdated:check if the given package is outdated.'
     'ls-available:list the available packages.'
     'ls-installed:list the installed packages.'
     'ls-outdated:list the installed packages which can be upgraded.'
-    'fetch:download formula resources of the given package to the cache.'
+    'fetch:download resources of the given package to the local cache.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -118,12 +117,6 @@ function _ppkg() {
                     ;;
                 formula-repo-info)
                     _arguments '1:formula-repo-name:($(ppkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
-                    ;;
-                info)
-                    _arguments \
-                        '1:package-name:($(ppkg ls-available 2>/dev/null) $(ppkg ls-installed 2>/dev/null))' \
-                        '2:key:(--prefix --files -- --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)' \
-                        '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 info-available)
                     _arguments \

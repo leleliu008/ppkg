@@ -344,54 +344,49 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg search curl
-    ppkg search lib
-    ```
-
-- **show information of all available packages**
-
-    ```bash
+    ppkg search curl -v
+    ppkg search curl -p macos
     ```
 
 - **show information of the given available package**
 
     ```bash
-    ppkg info curl
-    ppkg info curl --yaml
-    ppkg info curl --json
-    ppkg info curl version
-    ppkg info curl license
-    ppkg info curl summary
-    ppkg info curl web-url
-    ppkg info curl git-url
-    ppkg info curl git-sha
-    ppkg info curl git-ref
-    ppkg info curl src-url
-    ppkg info curl src-sha
+    ppkg info-available curl
+    ppkg info-available curl --yaml
+    ppkg info-available curl --json
+    ppkg info-available curl version
+    ppkg info-available curl license
+    ppkg info-available curl summary
+    ppkg info-available curl web-url
+    ppkg info-available curl git-url
+    ppkg info-available curl git-sha
+    ppkg info-available curl git-ref
+    ppkg info-available curl src-url
+    ppkg info-available curl src-sha
     ```
 
 - **show information of the given installed package**
 
     ```bash
-    ppkg info freebsd-13.2-amd64/curl
-    ppkg info freebsd-13.2-amd64/curl --yaml
-    ppkg info freebsd-13.2-amd64/curl --json
-    ppkg info freebsd-13.2-amd64/curl --path
-    ppkg info freebsd-13.2-amd64/curl version
-    ppkg info freebsd-13.2-amd64/curl license
-    ppkg info freebsd-13.2-amd64/curl summary
-    ppkg info freebsd-13.2-amd64/curl web-url
-    ppkg info freebsd-13.2-amd64/curl git-url
-    ppkg info freebsd-13.2-amd64/curl git-sha
-    ppkg info freebsd-13.2-amd64/curl git-ref
-    ppkg info freebsd-13.2-amd64/curl src-url
-    ppkg info freebsd-13.2-amd64/curl src-sha
-    ppkg info freebsd-13.2-amd64/curl builtat
-    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601
-    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339
-    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
-    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
-    ppkg info freebsd-13.2-amd64/curl installed-dir
-    ppkg info freebsd-13.2-amd64/curl installed-files
+    ppkg info-installed freebsd-13.2-amd64/curl
+    ppkg info-installed freebsd-13.2-amd64/curl --prefix
+    ppkg info-installed freebsd-13.2-amd64/curl --files
+    ppkg info-installed freebsd-13.2-amd64/curl --yaml
+    ppkg info-installed freebsd-13.2-amd64/curl --json
+    ppkg info-installed freebsd-13.2-amd64/curl version
+    ppkg info-installed freebsd-13.2-amd64/curl license
+    ppkg info-installed freebsd-13.2-amd64/curl summary
+    ppkg info-installed freebsd-13.2-amd64/curl web-url
+    ppkg info-installed freebsd-13.2-amd64/curl git-url
+    ppkg info-installed freebsd-13.2-amd64/curl git-sha
+    ppkg info-installed freebsd-13.2-amd64/curl git-ref
+    ppkg info-installed freebsd-13.2-amd64/curl src-url
+    ppkg info-installed freebsd-13.2-amd64/curl src-sha
+    ppkg info-installed freebsd-13.2-amd64/curl builtat
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339-utc
     ```
 
 - **show packages that are depended by the given package**
@@ -537,18 +532,24 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg ls-available
+    ppkg ls-available -v
+    ppkg ls-available -p macos
     ```
 
 - **list all installed packages**
 
     ```bash
     ppkg ls-installed
+    ppkg ls-installed -v
+    ppkg ls-installed --target=linux-musl-x86_64
     ```
 
 - **list all outdated packages**
 
     ```bash
     ppkg ls-outdated
+    ppkg ls-outdated -v
+    ppkg ls-outdated --target=linux-musl-x86_64
     ```
 
 - **list installed files of the given installed package in a tree-like format**

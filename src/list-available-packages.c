@@ -144,8 +144,16 @@ int ppkg_list_the_available_packages(const char * targetPlatformName, const bool
     return PPKG_OK;
 }
 
+static size_t j = 0U;
+
 static int package_name_filter(const char * packageName, const char * targetPlatformName, const bool verbose, size_t i, const void * payload) {
     if (verbose) {
+        if (j != 0U) {
+            printf("\n");
+        }
+
+        j++;
+
         return ppkg_available_info(packageName, targetPlatformName, NULL);
     } else {
         printf("%s\n", packageName);
