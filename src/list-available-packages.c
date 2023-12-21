@@ -67,6 +67,19 @@ static int _list_dir(const char * formulaDIR, const char * targetPlatformName, P
 }
 
 int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackageNameCallbak packageNameCallbak, const void * payload) {
+    char nativeOSType[31] = {0};
+
+    if (targetPlatformName == NULL || targetPlatformName[0] == '\0') {
+        targetPlatformName = nativeOSType;
+
+        if (sysinfo_type(nativeOSType, 30) < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+
     PPKGFormulaRepoList * formulaRepoList = NULL;
 
     int ret = ppkg_formula_repo_list(&formulaRepoList);
@@ -75,47 +88,49 @@ int ppkg_list_the_available_packages(const char * targetPlatformName, PPKGPackag
         return ret;
     }
 
+    ////////////////////////////////////////////////////////////////
+
     size_t j = 0U;
 
-    struct stat status;
+    struct stat st;
 
     for (size_t i = 0U; i < formulaRepoList->size; i++) {
         char * formulaRepoPath  = formulaRepoList->repos[i]->path;
 
-        if (targetPlatformName != NULL && targetPlatformName[0] != '\0') {
-            size_t formulaDIRCapacity = strlen(formulaRepoPath) + strlen(targetPlatformName) + 10U;
-            char   formulaDIR[formulaDIRCapacity];
+        size_t formulaDIR1Capacity = strlen(formulaRepoPath) + strlen(targetPlatformName) + 10U;
+        char   formulaDIR1[formulaDIR1Capacity];
 
-            ret = snprintf(formulaDIR, formulaDIRCapacity, "%s/formula/%s", formulaRepoPath, targetPlatformName);
+        ret = snprintf(formulaDIR1, formulaDIR1Capacity, "%s/formula/%s", formulaRepoPath, targetPlatformName);
+
+        if (ret < 0) {
+            perror(NULL);
+            ppkg_formula_repo_list_free(formulaRepoList);
+            return PPKG_ERROR;
+        }
+
+        if (stat(formulaDIR1, &st) == 0 && S_ISDIR(st.st_mode)) {
+            ret = _list_dir(formulaDIR1, targetPlatformName, packageNameCallbak, payload, &j);
 
             if (ret < 0) {
-                perror(NULL);
                 ppkg_formula_repo_list_free(formulaRepoList);
-                return PPKG_ERROR;
-            }
-
-            if (stat(formulaDIR, &status) == 0 && S_ISDIR(status.st_mode)) {
-                ret = _list_dir(formulaDIR, targetPlatformName, packageNameCallbak, payload, &j);
-
-                if (ret < 0) {
-                    ppkg_formula_repo_list_free(formulaRepoList);
-                    return ret;
-                }
+                return ret;
             }
         }
 
-        size_t formulaDIRCapacity = strlen(formulaRepoPath) + 10U;
-        char   formulaDIR[formulaDIRCapacity];
+        ////////////////////////////////////////////////////////////////
 
-        ret = snprintf(formulaDIR, formulaDIRCapacity, "%s/formula", formulaRepoPath);
+        size_t formulaDIR2Capacity = strlen(formulaRepoPath) + 10U;
+        char   formulaDIR2[formulaDIR2Capacity];
+
+        ret = snprintf(formulaDIR2, formulaDIR2Capacity, "%s/formula", formulaRepoPath);
 
         if (ret < 0) {
             perror(NULL);
             return PPKG_ERROR;
         }
 
-        if (stat(formulaDIR, &status) == 0 && S_ISDIR(status.st_mode)) {
-            ret = _list_dir(formulaDIR, targetPlatformName, packageNameCallbak, payload, &j);
+        if (stat(formulaDIR2, &st) == 0 && S_ISDIR(st.st_mode)) {
+            ret = _list_dir(formulaDIR2, targetPlatformName, packageNameCallbak, payload, &j);
 
             if (ret < 0) {
                 ppkg_formula_repo_list_free(formulaRepoList);
