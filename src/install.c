@@ -5842,7 +5842,7 @@ int ppkg_setup_toolchain_for_native_build(
 
 #if defined (__APPLE__)
     // https://keith.github.io/xcode-man-pages/xcrun.1.html
-    if (setenv("SDKROOT", toolchain->sysroot, 1) != 0) {
+    if (setenv("SDKROOT", toolchainForNativeBuild->sysroot, 1) != 0) {
         perror("SDKROOT");
         return PPKG_ERROR;
     }
