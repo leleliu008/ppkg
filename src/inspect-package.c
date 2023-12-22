@@ -40,35 +40,43 @@ int ppkg_inspect_package(const char * package, const char * userSpecifiedTargetP
             const char * PPKG_DEFAULT_TARGET = getenv("PPKG_DEFAULT_TARGET");
 
             if (PPKG_DEFAULT_TARGET == NULL || PPKG_DEFAULT_TARGET[0] == '\0') {
-                char osType[15] = {0};
+                char nativeOSType[15] = {0};
 
-                if (sysinfo_type(osType, 30) != 0) {
+                if (sysinfo_type(nativeOSType, 30) != 0) {
                     return PPKG_ERROR;
                 }
 
-                char osVers[15] = {0};
+                char nativeOSVers[15] = {0};
 
-                if (sysinfo_vers(osVers, 30) != 0) {
+                if (strcmp(nativeOSType, "linux") == 0) {
+                    switch(sysinfo_libc()) {
+                        case 1:  strncpy(nativeOSVers, "glibc", 5); break;
+                        case 2:  strncpy(nativeOSVers, "musl",  4); break;
+                        default: strncpy(nativeOSVers, "unknown",7);
+                    }
+                } else {
+                    if (sysinfo_vers(nativeOSVers, 30) != 0) {
+                        return PPKG_ERROR;
+                    }
+                }
+
+                char nativeOSArch[15] = {0};
+
+                if (sysinfo_arch(nativeOSArch, 30) != 0) {
                     return PPKG_ERROR;
                 }
 
-                char osArch[15] = {0};
+                size_t nativeOSTypeLen = strlen(nativeOSType);
+                size_t nativeOSVersLen = strlen(nativeOSVers);
+                size_t nativeOSArchLen = strlen(nativeOSArch);
 
-                if (sysinfo_arch(osArch, 30) != 0) {
-                    return PPKG_ERROR;
-                }
+                strncpy(targetPlatform->name, nativeOSType, nativeOSTypeLen + 1U);
+                strncpy(targetPlatform->vers, nativeOSVers, nativeOSVersLen + 1U);
+                strncpy(targetPlatform->arch, nativeOSArch, nativeOSArchLen + 1U);
 
-                size_t osTypeLen = strlen(osType);
-                size_t osVersLen = strlen(osVers);
-                size_t osArchLen = strlen(osArch);
-
-                strncpy(targetPlatform->name, osType, osTypeLen + 1U);
-                strncpy(targetPlatform->vers, osVers, osVersLen + 1U);
-                strncpy(targetPlatform->arch, osArch, osArchLen + 1U);
-
-                targetPlatform->nameLen = osTypeLen;
-                targetPlatform->versLen = osVersLen;
-                targetPlatform->archLen = osArchLen;
+                targetPlatform->nameLen = nativeOSTypeLen;
+                targetPlatform->versLen = nativeOSVersLen;
+                targetPlatform->archLen = nativeOSArchLen;
 
                 (*packageName) = package;
 
