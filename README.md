@@ -310,16 +310,22 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
 
-- **show basic information about your current running operation system**
-
-    ```bash
-    ppkg sysinfo
-    ```
-
 - **show basic information about this software**
 
     ```bash
     ppkg env
+    ```
+
+- **show build information about this software**
+
+    ```bash
+    ppkg buildinfo
+    ```
+
+- **show basic information about your current running operation system**
+
+    ```bash
+    ppkg sysinfo
     ```
 
 - **integrate `zsh-completion` script**
@@ -338,6 +344,61 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg update
+    ```
+
+- **list all avaliable formula repositories**
+
+    ```bash
+    ppkg formula-repo-list
+    ```
+
+- **create a new empty formula repository**
+
+    ```bash
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```
+
+- **create a new empty formula repository then sync with server**
+
+    ```bash
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
+    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ```
+
+- **delete the given formula repository**
+
+    ```bash
+    uppm formula-repo-del my_repo
+    ```
+
+- **sync the given formula repository with server**
+
+    ```bash
+    uppm formula-repo-sync my_repo
+    ```
+
+- **show information of the given formula repository**
+
+    ```bash
+    uppm formula-repo-info my_repo
+    ```
+
+- **change the config of the given formula repository**
+
+    ```bash
+    uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
+    uppm formula-repo-conf my_repo --branch=main
+    uppm formula-repo-conf my_repo --pin
+    uppm formula-repo-conf my_repo --unpin
+    uppm formula-repo-conf my_repo --enable
+    uppm formula-repo-conf my_repo --disable
     ```
 
 - **search all available packages whose name matches the given regular expression partten**
@@ -417,7 +478,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg fetch curl -v
     ```
 
-- **install packages**
+- **install the given packages**
 
     ```bash
     ppkg install curl
@@ -426,14 +487,14 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
 
-- **reinstall packages**
+- **reinstall the given packages**
 
     ```bash
     ppkg reinstall curl
     ppkg reinstall curl bzip2 -v
     ```
 
-- **uninstall packages**
+- **uninstall the given packages**
 
     ```bash
     ppkg uninstall curl
@@ -455,65 +516,10 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg upgrade-self -v
     ```
 
-- **list all avaliable formula repositories**
-
-    ```bash
-    ppkg formula-repo-list
-    ```
-
-- **create a new empty formula repository**
-
-    ```bash
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
-    ```
-
-- **create a new empty formula repository then sync with server**
-
-    ```bash
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
-    ```
-
-- **delete the given formula repository**
-
-    ```bash
-    uppm formula-repo-del my_repo
-    ```
-
-- **sync the given formula repository with server**
-
-    ```bash
-    uppm formula-repo-sync my_repo
-    ```
-
-- **show information of the given formula repository**
-
-    ```bash
-    uppm formula-repo-info my_repo
-    ```
-
-- **change the config of the given formula repository**
-
-    ```bash
-    uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-conf my_repo --branch=main
-    uppm formula-repo-conf my_repo --pin
-    uppm formula-repo-conf my_repo --unpin
-    uppm formula-repo-conf my_repo --enable
-    uppm formula-repo-conf my_repo --disable
-    ```
-
 - **check if the given package is available**
 
     ```bash
-    ppkg is-available curl
+    ppkg is-available curl -p macos
     ```
 
 - **check if the given package is installed**
