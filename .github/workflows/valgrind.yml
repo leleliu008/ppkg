@@ -68,15 +68,15 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg search lib
       - run: $VALGRIND ./output/bin/ppkg search zip
 
-      - run: $VALGRIND ./output/bin/ppkg info libzip
-      - run: $VALGRIND ./output/bin/ppkg info libzip --yaml
-      - run: $VALGRIND ./output/bin/ppkg info libzip --json
-      - run: $VALGRIND ./output/bin/ppkg info libzip summary
-      - run: $VALGRIND ./output/bin/ppkg info libzip version
-      - run: $VALGRIND ./output/bin/ppkg info libzip license
-      - run: $VALGRIND ./output/bin/ppkg info libzip web-url
-      - run: $VALGRIND ./output/bin/ppkg info libzip src-url
-      - run: $VALGRIND ./output/bin/ppkg info libzip src-sha
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip --yaml
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip --json
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip summary
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip version
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip license
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip web-url
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip src-url
+      - run: $VALGRIND ./output/bin/ppkg info-available libzip src-sha
 
       - run: $VALGRIND ./output/bin/ppkg depends libzip
       - run: $VALGRIND ./output/bin/ppkg depends libzip -t dot
@@ -91,14 +91,14 @@ jobs:
 
       - run: $VALGRIND ./output/bin/ppkg tree libzip
 
-      - run: $VALGRIND ./output/bin/ppkg info libzip --prefix
-      - run: $VALGRIND ./output/bin/ppkg info libzip --files
-      - run: $VALGRIND ./output/bin/ppkg info libzip --json
-      - run: $VALGRIND ./output/bin/ppkg info libzip --yaml
-      - run: $VALGRIND ./output/bin/ppkg info libzip builtat
-      - run: $VALGRIND ./output/bin/ppkg info libzip builtat-iso-8601
-      - run: $VALGRIND ./output/bin/ppkg info libzip builtat-rfc-3339
-      - run: $VALGRIND ./output/bin/ppkg info libzip version
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip --prefix
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip --files
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip --json
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip --yaml
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip builtat
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip builtat-iso-8601
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip builtat-rfc-3339
+      - run: $VALGRIND ./output/bin/ppkg info-installed libzip version
 
       - run: $VALGRIND ./output/bin/ppkg pack libzip
       - run: $VALGRIND ./output/bin/ppkg pack libzip -t tar.gz

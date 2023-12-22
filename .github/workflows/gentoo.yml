@@ -43,15 +43,15 @@ jobs:
       - run: ./output/bin/ppkg search lib
       - run: ./output/bin/ppkg search zip
 
-      - run: ./output/bin/ppkg info libzip
-      - run: ./output/bin/ppkg info libzip --yaml
-      - run: ./output/bin/ppkg info libzip --json
-      - run: ./output/bin/ppkg info libzip summary
-      - run: ./output/bin/ppkg info libzip version
-      - run: ./output/bin/ppkg info libzip license
-      - run: ./output/bin/ppkg info libzip web-url
-      - run: ./output/bin/ppkg info libzip src-url
-      - run: ./output/bin/ppkg info libzip src-sha
+      - run: ./output/bin/ppkg info-available libzip
+      - run: ./output/bin/ppkg info-available libzip --yaml
+      - run: ./output/bin/ppkg info-available libzip --json
+      - run: ./output/bin/ppkg info-available libzip summary
+      - run: ./output/bin/ppkg info-available libzip version
+      - run: ./output/bin/ppkg info-available libzip license
+      - run: ./output/bin/ppkg info-available libzip web-url
+      - run: ./output/bin/ppkg info-available libzip src-url
+      - run: ./output/bin/ppkg info-available libzip src-sha
 
       - run: ./output/bin/ppkg depends libzip
       - run: ./output/bin/ppkg depends libzip -t dot
@@ -64,14 +64,14 @@ jobs:
 
       - run: ./output/bin/ppkg tree libzip
 
-      - run: ./output/bin/ppkg info libzip --prefix
-      - run: ./output/bin/ppkg info libzip --files
-      - run: ./output/bin/ppkg info libzip --json
-      - run: ./output/bin/ppkg info libzip --yaml
-      - run: ./output/bin/ppkg info libzip builtat
-      - run: ./output/bin/ppkg info libzip builtat-iso-8601
-      - run: ./output/bin/ppkg info libzip builtat-rfc-3339
-      - run: ./output/bin/ppkg info libzip version
+      - run: ./output/bin/ppkg info-installed libzip --prefix
+      - run: ./output/bin/ppkg info-installed libzip --files
+      - run: ./output/bin/ppkg info-installed libzip --json
+      - run: ./output/bin/ppkg info-installed libzip --yaml
+      - run: ./output/bin/ppkg info-installed libzip builtat
+      - run: ./output/bin/ppkg info-installed libzip builtat-iso-8601
+      - run: ./output/bin/ppkg info-installed libzip builtat-rfc-3339
+      - run: ./output/bin/ppkg info-installed libzip version
 
       - run: ./output/bin/ppkg pack libzip
       - run: ./output/bin/ppkg pack libzip -t tar.gz

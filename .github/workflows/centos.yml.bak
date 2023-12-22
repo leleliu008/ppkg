@@ -48,10 +48,10 @@ jobs:
       - run: bin/ppkg search lib
       - run: bin/ppkg search libzip
 
-      - run: bin/ppkg info libzip
-      - run: bin/ppkg info libzip version
-      - run: bin/ppkg info libzip web-url
-      - run: bin/ppkg info libzip src-url
+      - run: bin/ppkg info-available libzip
+      - run: bin/ppkg info-available libzip version
+      - run: bin/ppkg info-available libzip web-url
+      - run: bin/ppkg info-available libzip src-url
 
       - run: bin/ppkg depends libzip
 
