@@ -476,7 +476,7 @@ configure_only() {
 
     CONFIGURE_ARGS="--prefix=$PACKAGE_INSTALL_DIR"
 
-    if [ "$CROSS_BUILD" = 1 ] ; then
+    if [ "$CROSS_COMPILING" = 1 ] ; then
         if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
             case $TARGET_PLATFORM_VERS in
                 glibc) TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-gnu"  ;;
@@ -700,7 +700,7 @@ set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 EOF
 
-    if [ "$CROSS_BUILD" = 1 ] ; then
+    if [ "$CROSS_COMPILING" = 1 ] ; then
         cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 EOF

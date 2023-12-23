@@ -108,7 +108,7 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg pack libzip -t zip
 
       - run: |
-          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
 
       - run: $VALGRIND ./output/bin/ppkg ls-available
       - run: $VALGRIND ./output/bin/ppkg ls-installed
@@ -123,7 +123,7 @@ jobs:
       - run: $VALGRIND ./output/bin/ppkg uninstall libzip
 
       - run: $VALGRIND ./output/bin/ppkg formula-repo-list
-      - run: $VALGRIND ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: $VALGRIND ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
       - run: $VALGRIND ./output/bin/ppkg formula-repo-list
       - run: $VALGRIND ./output/bin/ppkg formula-repo-del my_repo
 

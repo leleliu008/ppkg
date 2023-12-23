@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include <regex.h>
 
 int regex_matched(const char * content, const char * pattern) {

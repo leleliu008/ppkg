@@ -146,7 +146,7 @@ int check_if_is_a_empty_dir(const char * dirpath, bool * value) {
 
 // implement following steps:
 // git -c init.defaultBranch=master init
-// git remote add origin https://github.com/leleliu008/ppkg-formula-repository-offical-core.git
+// git remote add origin https://github.com/leleliu008/ppkg-formula-repository-official-core.git
 // git fetch --progress origin +refs/heads/master:refs/remotes/origin/master
 // git checkout --progress --force -B master refs/remotes/origin/master
 int ppkg_git_sync(const char * repositoryDIR, const char * remoteUrl, const char * remoteRefPath, const char * remoteTrackingRefPath, const char * checkoutToBranchName, const size_t fetchDepth) {

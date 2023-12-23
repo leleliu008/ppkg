@@ -16,8 +16,8 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR_ARG_IS_EMPTY;
     }
 
-    if (strcmp(formulaRepoName, "offical-core") == 0) {
-        fprintf(stderr, "offical-core formula repo is not allowed to delete.\n");
+    if (strcmp(formulaRepoName, "official-core") == 0) {
+        fprintf(stderr, "official-core formula repo is not allowed to delete.\n");
         return PPKG_ERROR;
     }
 

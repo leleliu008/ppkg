@@ -3,6 +3,8 @@
 
 #include "ppkg.h"
 
+static const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+
 int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTargetPlatform * targetPlatform) {
     if (targetPlatformSpec == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
@@ -15,6 +17,8 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
     //////////////////////////////////////////////
 
     const char * p = targetPlatformSpec;
+
+    int k = -1;
 
     //////////////////////////////////////////////
 
@@ -33,18 +37,17 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 return PPKG_ERROR;
             }
 
-            const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
-
-            bool isSupported = false;
-
             for (int j = 0; j < 6; j++) {
                 if (strncmp(p, supportedTargetPlarformNames[j], i) == 0) {
-                    isSupported = true;
+                    k = j;
                     break;
                 }
             }
 
-            if (isSupported) {
+            if (k == -1) {
+                fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
+                return PPKG_ERROR;
+            } else {
                 targetPlarformNameLength = i;
                 strncpy(targetPlarformName, p, targetPlarformNameLength);
                 targetPlarformName[targetPlarformNameLength] = '\0';
@@ -52,16 +55,13 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 p += i + 1;
 
                 break;
-            } else {
-                fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
-                return PPKG_ERROR;
             }
         }
     }
 
     //////////////////////////////////////////////
 
-    char   targetPlarformVers[16];
+    char   targetPlarformVers[6];
     size_t targetPlarformVersLength;
 
     for (int i = 0; ;i++) {
@@ -71,7 +71,7 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
         }
 
         if (p[i] == '-') {
-            if (i > 15) {
+            if (i > 5) {
                 fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                 return PPKG_ERROR;
             }
@@ -80,6 +80,41 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
             targetPlarformVers[i] = '\0';
 
             targetPlarformVersLength = i;
+
+            // linux
+            if (k == 0) {
+                if (!(strcmp(targetPlarformVers, "glibc") == 0 || strcmp(targetPlarformVers, "musl"))) {
+                    fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
+                    return PPKG_ERROR;
+                }
+            } else {
+                int dotIndex = -1;
+
+                for (int m = 0; ;m++) {
+                    if (targetPlarformVers[m] == '\0') {
+                        break;
+                    }
+
+                    if (targetPlarformVers[m] == '.') {
+                        if (dotIndex == -1) {
+                            if (m == 0 || m == ((int)targetPlarformVersLength - 1)) {
+                                fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
+                                return PPKG_ERROR;
+                            } else {
+                                dotIndex = m;
+                            }
+                        } else {
+                            fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
+                            return PPKG_ERROR;
+                        }
+                    } else {
+                        if (targetPlarformVers[m] < '0' || targetPlarformVers[m] > '9') {
+                            fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+            }
 
             p += i + 1;
 

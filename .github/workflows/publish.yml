@@ -74,7 +74,7 @@ jobs:
             run ./ppkg setup
             run ./ppkg update
 
-            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
             run ./ppkg install ppkg --link-type=static-only --install-lib=static
             run ./ppkg pack    ppkg -o /home/vagrant
@@ -122,7 +122,7 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
 
-          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
           run ./ppkg install ppkg --link-type=static-only --install-lib=static
           run ./ppkg pack    ppkg -o .
@@ -183,7 +183,7 @@ jobs:
             run ./ppkg setup
             run ./ppkg update
 
-            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
             run ./ppkg install ppkg --link-type=static-only --install-lib=static
             run ./ppkg pack    ppkg -o /home/vagrant
@@ -215,7 +215,7 @@ jobs:
       - run: ./xcpkg update
 
       - run: |
-          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.xcpkg/repos.d/offical-core/formula/ppkg.yml
+          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.xcpkg/repos.d/official-core/formula/ppkg.yml
 
       - run: ./xcpkg install ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
       - run: ./xcpkg pack    ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} -o .
@@ -246,7 +246,7 @@ jobs:
       - run: ./ppkg update
 
       - run: |
-          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
       - run: ./ppkg install ppkg --link-type=static-only --install-lib=static
       - run: ./ppkg pack    ppkg -o .
@@ -291,7 +291,7 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
 
-          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
           run ./ppkg install ppkg --link-type=static-only --install-lib=static
           run ./ppkg pack    ppkg -o .
@@ -345,7 +345,7 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
 
-          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
           run ./ppkg install ppkg --link-type=static-only --install-lib=static
           run ./ppkg pack    ppkg -o .
@@ -399,7 +399,7 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
 
-          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
           run ./ppkg install ppkg --link-type=static-only --install-lib=static
           run ./ppkg pack    ppkg -o .
@@ -454,7 +454,7 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
 
-          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/offical-core/formula/ppkg.yml
+          sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
           run ./ppkg install ppkg gh --link-type=static-only --install-lib=static
           run ./ppkg pack    ppkg -o .

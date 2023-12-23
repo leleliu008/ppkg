@@ -95,7 +95,7 @@ jobs:
             run ./output/bin/ppkg pack libzip -t tar.bz2
             run ./output/bin/ppkg pack libzip -t zip
 
-            printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+            printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
 
             run ./output/bin/ppkg ls-available
             run ./output/bin/ppkg ls-installed
@@ -110,7 +110,7 @@ jobs:
             run ./output/bin/ppkg uninstall libzip
 
             run ./output/bin/ppkg formula-repo-list
-            run ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
+            run ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
             run ./output/bin/ppkg formula-repo-del my_repo
 
             run ./output/bin/ppkg cleanup
