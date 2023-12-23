@@ -83,7 +83,7 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
 
             // linux
             if (k == 0) {
-                if (!(strcmp(targetPlarformVers, "glibc") == 0 || strcmp(targetPlarformVers, "musl"))) {
+                if (!(strcmp(targetPlarformVers, "glibc") == 0 || strcmp(targetPlarformVers, "musl") == 0)) {
                     fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                     return PPKG_ERROR;
                 }
