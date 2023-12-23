@@ -32,17 +32,17 @@ main() {
             shift 1
             for UPPM_PACKAGE_NAME in "$@"
             do
-                BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkgin "$UPPM_PACKAGE_NAME")"
-                pkgin -y install "$BREW_PACKAGE_NMAE"
+                BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkgin "$UPPM_PACKAGE_NAME")"
+                pkgin -y install "$BREW_PACKAGE_NAME"
             done
             ;;
         is-installed)
             shift 1
-            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_pkgin "$1")"
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkgin "$1")"
             for item in $(pkgin list | cut -d ' ' -f1)
             do
                 case $item in
-                    "$BREW_PACKAGE_NMAE-"*) return 0
+                    "$BREW_PACKAGE_NAME-"*) return 0
                 esac
             done
             return 1

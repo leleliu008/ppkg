@@ -26,7 +26,7 @@
 # 4. all utilities are GNU-style
 ######################################################################################
 
-# If IFS is not set, the deault value will be <space><tab><newline>
+# If IFS is not set, the default value will be <space><tab><newline>
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
@@ -199,9 +199,9 @@ version_match() {
 
 # wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
 #
-# If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
+# If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
 #
-# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwize, it will be treated as a filepath.
+# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
 #
 # If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
 #
@@ -613,7 +613,7 @@ EOF
   __delete_a_formula_repository() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
 
-    [ "$1" = 'offical-core' ] && abort 1 "'offical-core' formula repository is not allowed to delete."
+    [ "$1" = 'official-core' ] && abort 1 "'official-core' formula repository is not allowed to delete."
 
     if [ -d    "$PPKG_FORMULA_REPO_ROOT/$1" ] ; then
         rm -rf "$PPKG_FORMULA_REPO_ROOT/$1"
@@ -789,7 +789,7 @@ __sync_available_formula_repositories() {
     }
 
     [ -d "$PPKG_FORMULA_REPO_ROOT/offical-core" ] || {
-        __create_a_formula_repository_then_sync_it offical-core "$PPKG_OFFICAL_FORMULA_REPO_URL"
+        __create_a_formula_repository_then_sync_it official-core "$PPKG_OFFICIAL_FORMULA_REPO_URL"
     }
 }
 
@@ -3573,7 +3573,7 @@ __inspect_install_arguments() {
 
     #########################################################################################
 
-    for TOOL in PROXIED_CC PROXIED_CXX PROXIED_OBJC 
+    for TOOL in PROXIED_CC PROXIED_CXX PROXIED_OBJC
     do
         export "${TOOL}_FOR_BUILD"
         printf "%21s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$"${TOOL}_FOR_BUILD")"
@@ -4261,7 +4261,7 @@ EOF
 
     step "view formula"
     run yq "$PACKAGE_FORMULA_FILEPATH"
-   
+
     step "load formula"
     __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
 
@@ -5754,7 +5754,7 @@ $PACKAGE_DOPATCH_ACTIONS
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
 
-        step "replace config.sub and config.guess with the lastest version"
+        step "replace config.sub and config.guess with the latest version"
 
         for FILENAME in config.sub config.guess
         do
@@ -5967,7 +5967,7 @@ __adjust_elf_files_for_the_given_target() {
                 ELF_TYPE_SHAREDABLE=1
                 ;;
             7F454C46*)
-                abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                abort 1 "mismatched ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
                 ;;
             *)  continue
         esac
@@ -7888,7 +7888,7 @@ EOF
 
     run mv "$SESSION_DIR" "$PPKG_HOME/"
 
-    success "ppkg have been succefully setup."
+    success "ppkg have been successfully setup."
 }
 
 # use commands: uname curl|wget tar xz cut
@@ -8096,13 +8096,13 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
 
     <OUTPUT-PATH> can be either the filepath or directory.
 
-    If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwize, the result will be written to stdout.
+    If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
 
-    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
 
-    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.
+    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
@@ -8192,7 +8192,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
             generates compile_commands.json
 
         ${COLOR_BLUE}--upgrade${COLOR_OFF}
-            If this package has been alreadly intsalled, then it will be upgrated if it could be.
+            If this package has been already installed, then it will be upgraded if it could be.
 
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
             do not actually install the package.
@@ -8223,7 +8223,7 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [
 
     <OUTPUT-PATH> can be either the filepath or directory which indicates where the packed archive file would be written to.
 
-    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwize, it would be treated as a filepath.
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
 
@@ -8250,7 +8250,7 @@ main() {
 
     PPKG_VERSION=0.3.18
 
-    PPKG_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
+    PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-offical-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
 
     PPKG_HOME="$HOME/.ppkg"
@@ -8424,7 +8424,7 @@ EOF
             shift
 
             case $1 in
-                offical-*) abort 1 "ppkg formula repository name that starts with 'offical-' is reserved for ppkg offical formula repository, please use other name."
+                official-*) abort 1 "ppkg formula repository name that starts with 'official-' is reserved for ppkg official formula repository, please use other name."
             esac
 
             __create_a_formula_repository "$@"
@@ -8433,7 +8433,7 @@ EOF
             shift
 
             case $1 in
-                offical-*) abort 1 "ppkg formula repository name that starts with 'offical-' is reserved for ppkg offical formula repository, please use other name."
+                official-*) abort 1 "ppkg formula repository name that starts with 'official-' is reserved for ppkg official formula repository, please use other name."
             esac
 
             __create_a_formula_repository_then_sync_it "$@"
@@ -8446,7 +8446,7 @@ EOF
         cleanup) shift; __cleanup "$@" ;;
 
         search)  shift; __search_packages "$@" ;;
- 
+
         install) shift;   __install_the_given_packages "$@" ;;
       reinstall) shift; __reinstall_the_given_packages "$@" ;;
       uninstall) shift; __uninstall_the_given_packages "$@" ;;

@@ -40,21 +40,21 @@ main() {
             shift 1
             for UPPM_PACKAGE_NAME in "$@"
             do
-                BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$UPPM_PACKAGE_NAME")"
-                brew install "$BREW_PACKAGE_NMAE"
+                BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$UPPM_PACKAGE_NAME")"
+                brew install "$BREW_PACKAGE_NAME"
             done
             ;;
         is-installed)
             shift 1
-            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$1")"
-            brew list "$BREW_PACKAGE_NMAE" 2>/dev/null
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$1")"
+            brew list "$BREW_PACKAGE_NAME" 2>/dev/null
             ;;
         info)
             shift 1
-            BREW_PACKAGE_NMAE="$(package_name_transform_from_uppm_to_brew "$1")"
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$1")"
             case $2 in
                 installed-dir)
-                    brew --prefix "$BREW_PACKAGE_NMAE"
+                    brew --prefix "$BREW_PACKAGE_NAME"
                     ;;
             esac
             ;;
