@@ -171,12 +171,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }
@@ -226,12 +226,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }
@@ -353,12 +353,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }
@@ -456,12 +456,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }
@@ -894,12 +894,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }
@@ -1041,12 +1041,12 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+                const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
                 bool isSupported = false;
 
                 for (int j = 0; j < 6; j++) {
-                    if (strcmp(targetPlatformName, supportedTargetPlarformNames[j]) == 0) {
+                    if (strcmp(targetPlatformName, supportedTargetPlatformNames[j]) == 0) {
                         isSupported = true;
                         break;
                     }

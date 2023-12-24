@@ -3,7 +3,7 @@
 
 #include "ppkg.h"
 
-static const char * supportedTargetPlarformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
+static const char * supportedTargetPlatformNames[6] = { "linux", "macos", "freebsd", "openbsd", "netbsd", "dragonflybsd" };
 
 int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTargetPlatform * targetPlatform) {
     if (targetPlatformSpec == NULL) {
@@ -22,8 +22,8 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
 
     //////////////////////////////////////////////
 
-    char   targetPlarformName[16];
-    size_t targetPlarformNameLength;
+    char   targetPlatformName[16];
+    size_t targetPlatformNameLength;
 
     for (int i = 0; ;i++) {
         if (p[i] == '\0') {
@@ -38,7 +38,7 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
             }
 
             for (int j = 0; j < 6; j++) {
-                if (strncmp(p, supportedTargetPlarformNames[j], i) == 0) {
+                if (strncmp(p, supportedTargetPlatformNames[j], i) == 0) {
                     k = j;
                     break;
                 }
@@ -48,9 +48,9 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                 return PPKG_ERROR;
             } else {
-                targetPlarformNameLength = i;
-                strncpy(targetPlarformName, p, targetPlarformNameLength);
-                targetPlarformName[targetPlarformNameLength] = '\0';
+                targetPlatformNameLength = i;
+                strncpy(targetPlatformName, p, targetPlatformNameLength);
+                targetPlatformName[targetPlatformNameLength] = '\0';
 
                 p += i + 1;
 
@@ -61,8 +61,8 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
 
     //////////////////////////////////////////////
 
-    char   targetPlarformVers[6];
-    size_t targetPlarformVersLength;
+    char   targetPlatformVers[6];
+    size_t targetPlatformVersLength;
 
     for (int i = 0; ;i++) {
         if (p[i] == '\0') {
@@ -76,14 +76,14 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 return PPKG_ERROR;
             }
 
-            strncpy(targetPlarformVers, p, i);
-            targetPlarformVers[i] = '\0';
+            strncpy(targetPlatformVers, p, i);
+            targetPlatformVers[i] = '\0';
 
-            targetPlarformVersLength = i;
+            targetPlatformVersLength = i;
 
             // linux
             if (k == 0) {
-                if (!(strcmp(targetPlarformVers, "glibc") == 0 || strcmp(targetPlarformVers, "musl") == 0)) {
+                if (!(strcmp(targetPlatformVers, "glibc") == 0 || strcmp(targetPlatformVers, "musl") == 0)) {
                     fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                     return PPKG_ERROR;
                 }
@@ -91,13 +91,13 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 int dotIndex = -1;
 
                 for (int m = 0; ;m++) {
-                    if (targetPlarformVers[m] == '\0') {
+                    if (targetPlatformVers[m] == '\0') {
                         break;
                     }
 
-                    if (targetPlarformVers[m] == '.') {
+                    if (targetPlatformVers[m] == '.') {
                         if (dotIndex == -1) {
-                            if (m == 0 || m == ((int)targetPlarformVersLength - 1)) {
+                            if (m == 0 || m == ((int)targetPlatformVersLength - 1)) {
                                 fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                                 return PPKG_ERROR;
                             } else {
@@ -108,7 +108,7 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                             return PPKG_ERROR;
                         }
                     } else {
-                        if (targetPlarformVers[m] < '0' || targetPlarformVers[m] > '9') {
+                        if (targetPlatformVers[m] < '0' || targetPlatformVers[m] > '9') {
                             fprintf(stderr, "invalid target: %s\n", targetPlatformSpec);
                             return PPKG_ERROR;
                         }
@@ -124,8 +124,8 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
 
     //////////////////////////////////////////////
 
-    char   targetPlarformArch[16];
-    size_t targetPlarformArchLength;
+    char   targetPlatformArch[16];
+    size_t targetPlatformArchLength;
 
     for (int i = 0; ;i++) {
         if (p[i] == '-') {
@@ -139,10 +139,10 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
                 return PPKG_ERROR;
             }
 
-            strncpy(targetPlarformArch, p, i);
-            targetPlarformArch[i] = '\0';
+            strncpy(targetPlatformArch, p, i);
+            targetPlatformArch[i] = '\0';
 
-            targetPlarformArchLength = i;
+            targetPlatformArchLength = i;
 
             break;
         }
@@ -150,13 +150,13 @@ int ppkg_inspect_target_platform_spec(const char * targetPlatformSpec, PPKGTarge
 
     //////////////////////////////////////////////
 
-    strncpy(targetPlatform->name, targetPlarformName, targetPlarformNameLength + 1U);
-    strncpy(targetPlatform->vers, targetPlarformVers, targetPlarformVersLength + 1U);
-    strncpy(targetPlatform->arch, targetPlarformArch, targetPlarformArchLength + 1U);
+    strncpy(targetPlatform->name, targetPlatformName, targetPlatformNameLength + 1U);
+    strncpy(targetPlatform->vers, targetPlatformVers, targetPlatformVersLength + 1U);
+    strncpy(targetPlatform->arch, targetPlatformArch, targetPlatformArchLength + 1U);
 
-    targetPlatform->nameLen = targetPlarformNameLength;
-    targetPlatform->versLen = targetPlarformVersLength;
-    targetPlatform->archLen = targetPlarformArchLength;
+    targetPlatform->nameLen = targetPlatformNameLength;
+    targetPlatform->versLen = targetPlatformVersLength;
+    targetPlatform->archLen = targetPlatformArchLength;
 
     return PPKG_OK;
 }

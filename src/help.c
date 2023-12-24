@@ -62,10 +62,10 @@ int ppkg_help() {
         COLOR_OFF
         "    show packages that are depended by the given package.\n\n"
         "    <OUTPUT-TYPE> must be one of <dot|box|svg|png>\n\n"
-        "    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.\n\n"
-        "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.\n\n"
+        "    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwise, the result will be written to stdout.\n\n"
+        "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.\n\n"
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
-        "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
+        "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
         COLOR_GREEN
         "ppkg fetch   <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
@@ -146,7 +146,7 @@ int ppkg_help() {
         COLOR_GREEN
         "ppkg formula-repo-info <FORMULA-REPO-NAME>\n"
         COLOR_OFF
-        "    show infomation of the given formula repository.\n\n"
+        "    show information of the given formula repository.\n\n"
         COLOR_GREEN
         "ppkg gen-url-transform-sample\n"
         COLOR_OFF
@@ -243,10 +243,10 @@ int ppkg_help() {
         "ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    show packages that are depended by the given package.\n\n"
         "    <OUTPUT-TYPE> must be one of <dot|box|svg|png>\n\n"
-        "    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwize, the result will be written to stdout.\n\n"
-        "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.\n\n"
+        "    If -o <OUTPUT-PATH> option is given, the result will be written to file, otherwise, the result will be written to stdout.\n\n"
+        "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.\n\n"
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
-        "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwize, <OUTPUT-TYPE> will be box.\n\n"
+        "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.\n\n"
         "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
         "ppkg fetch   <PACKAGE-NAME> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"
         "    download resources of the given package to the local cache.\n\n"
@@ -285,7 +285,7 @@ int ppkg_help() {
         "ppkg formula-repo-sync <FORMULA-REPO-NAME>\n"
         "    sync the given formula repository with server.\n\n"
         "ppkg formula-repo-info <FORMULA-REPO-NAME>\n"
-        "    show infomation of the given formula repository.\n\n"
+        "    show information of the given formula repository.\n\n"
         "ppkg formula-repo-list\n"
         "    list all available formula repositories.\n\n"
         "ppkg gen-url-transform-sample\n"

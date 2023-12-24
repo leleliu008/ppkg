@@ -127,15 +127,15 @@ static int ppkg_list_all_installed_packages(const char * packageInstalledRootDIR
             continue;
         }
 
-        PPKGTargetPlatform targetPlarform;
+        PPKGTargetPlatform targetPlatform;
 
-        int ret = ppkg_inspect_target_platform_spec(dir_entry->d_name, &targetPlarform);
+        int ret = ppkg_inspect_target_platform_spec(dir_entry->d_name, &targetPlatform);
 
         if (ret != PPKG_OK) {
             continue;
         }
 
-        ret = _list_dir(&targetPlarform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, strlen(dir_entry->d_name) + 1U, verbose);
+        ret = _list_dir(&targetPlatform, packageInstalledRootDIR, packageInstalledRootDIRCapacity, dir_entry->d_name, strlen(dir_entry->d_name) + 1U, verbose);
 
         if (ret != PPKG_OK) {
             closedir(dir);

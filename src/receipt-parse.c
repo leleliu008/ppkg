@@ -443,19 +443,19 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
             break;
 
         case PPKGReceiptKeyCode_binbstd:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 receipt->binbstd = true;
             }
             break;
 
         case PPKGReceiptKeyCode_symlink:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 receipt->symlink = true;
             }
             break;
 
         case PPKGReceiptKeyCode_parallel:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 receipt->parallel = true;
             }
             break;

@@ -430,7 +430,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
             formula->git_nth = atoi(value);
             break;
         case FORMULA_KEY_CODE_binbstd:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 formula->binbstd = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->binbstd = false;
@@ -439,7 +439,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
             }
             break;
         case FORMULA_KEY_CODE_symlink:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 formula->symlink = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->symlink = false;
@@ -448,7 +448,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
             }
             break;
         case FORMULA_KEY_CODE_sfslink:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 formula->sfslink = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->sfslink = false;
@@ -457,7 +457,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
             }
             break;
         case FORMULA_KEY_CODE_parallel:
-            if (strcmp(value, "yes") == 0) {
+            if (strcmp(value, "1") == 0) {
                 formula->parallel = true;
             } else if (strcmp(value, "no") == 0) {
                 formula->parallel = false;
@@ -869,11 +869,11 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
 
             //printf("----------------srcFileName = %s\n", srcFileName);
 
-            char * splitedStr = strtok(srcFileName, "-");
+            char * splitStr = strtok(srcFileName, "-");
 
-            while (splitedStr != NULL) {
-                if (regex_matched(splitedStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
-                    formula->version = strdup(splitedStr);
+            while (splitStr != NULL) {
+                if (regex_matched(splitStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
+                    formula->version = strdup(splitStr);
                     formula->version_is_calculated = true;
                     break;
                 } else {
@@ -883,8 +883,8 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                     }
                 }
 
-                if (regex_matched(splitedStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
-                    formula->version = strdup(&splitedStr[1]);
+                if (regex_matched(splitStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
+                    formula->version = strdup(&splitStr[1]);
                     formula->version_is_calculated = true;
                     break;
                 } else {
@@ -894,8 +894,8 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                     }
                 }
 
-                if (regex_matched(splitedStr, "^[0-9]{3,8}$") == 0) {
-                    formula->version = strdup(splitedStr);
+                if (regex_matched(splitStr, "^[0-9]{3,8}$") == 0) {
+                    formula->version = strdup(splitStr);
                     formula->version_is_calculated = true;
                     break;
                 } else {
@@ -905,8 +905,8 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                     }
                 }
 
-                if (regex_matched(splitedStr, "^[vrR][0-9]{2,8}$") == 0) {
-                    formula->version = strdup(&splitedStr[1]);
+                if (regex_matched(splitStr, "^[vrR][0-9]{2,8}$") == 0) {
+                    formula->version = strdup(&splitStr[1]);
                     formula->version_is_calculated = true;
                     break;
                 } else {
@@ -916,7 +916,7 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
                     }
                 }
 
-                splitedStr = strtok(NULL, "-");
+                splitStr = strtok(NULL, "-");
             }
 
             if (formula->version == NULL) {

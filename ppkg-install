@@ -15,7 +15,7 @@
 
 # https://github.com/leleliu008/ppkg
 
-# If IFS is not set, the deault value will be <space><tab><newline>
+# If IFS is not set, the default value will be <space><tab><newline>
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
@@ -884,7 +884,7 @@ __adjust_elf_files() {
                 ELF_TYPE_SHAREDABLE=yes
                 ;;
             7F454C46*)
-                abort 1 "mismached ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                abort 1 "mismatched ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
                 ;;
             *)  continue
         esac
@@ -1069,6 +1069,13 @@ __adjust_pc_files() {
 ##############################################################################
 # {{{ main
 
+if [ "$CROSS_COMPILING" = 1 ] ; then
+    if [ -n "$SYSROOT" ] ; then
+        export CPPFLAGS="$CPPFLAGS -I$SYSROOT/usr/include/c++/v1"
+        export CXXFLAGS="$CXXFLAGS -I$SYSROOT/usr/include/c++/v1"
+    fi
+fi
+
 run export -p
 
 run cd "$PACKAGE_BSCRIPT_DIR"
@@ -1103,7 +1110,7 @@ elif [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ; then
     fi
 fi
 
-if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
+if [ "$PACKAGE_BINBSTD" = 1 ] ; then
     run cd "$PACKAGE_BSCRIPT_DIR"
 else
     run install -d "$PACKAGE_BCACHED_DIR"
