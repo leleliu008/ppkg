@@ -601,7 +601,7 @@ cmakew() {
         CMAKE_FIND_DEBUG_MODE=OFF
     fi
 
-    CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
+    ##############################################################################
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_FIND_ROOT_PATH
@@ -617,7 +617,15 @@ cmakew() {
         fi
     done
 
-    env | sed -n '/^CMAKE_/p'
+    if [ -n "$SYSROOT" ] ; then
+        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
+            CMAKE_FIND_ROOT_PATH="$SYSROOT"
+        else
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$SYSROOT"
+        fi
+    fi
+
+    ##############################################################################
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
 
@@ -644,6 +652,10 @@ cmakew() {
     if [ "$LOG_LEVEL" -gt 0 ] ; then
         run cat "$CMAKE_PROJECT_INCLUDE"
     fi
+
+    ##############################################################################
+
+    CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
 
     printf '%s\n' "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
 
@@ -713,6 +725,10 @@ EOF
             run cat "$CMAKE_TOOLCHAIN_FILE"
         fi
     fi
+
+    env | sed -n '/^CMAKE_/p'
+
+    ##############################################################################
 
     CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
 
@@ -861,27 +877,27 @@ __adjust_elf_files() {
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         case $FILE_HEADER_ACTUAL in
-            7F454C460[12]01010[039]00000000000000000100)
+            7F454C460[12]01010[0239C]00000000000000000100)
                 continue
                 ;;
-            7F454C460[12]01010[039]00000000000000000200)
+            7F454C460[12]01010[0239C]00000000000000000200)
                 # little-endian mode
-                ELF_TYPE_EXECUTABLE=yes
+                ELF_TYPE_EXECUTABLE=1
                 ;;
-            7F454C460[12]01010[039]00000000000000000300)
+            7F454C460[12]01010[0239C]00000000000000000300)
                 # little-endian mode
-                ELF_TYPE_SHAREDABLE=yes
+                ELF_TYPE_SHAREDABLE=1
                 ;;
-            7F454C460[12]02010[039]00000000000000000001)
+            7F454C460[12]02010[0239C]00000000000000000001)
                 continue
                 ;;
-            7F454C460[12]02010[039]00000000000000000002)
+            7F454C460[12]02010[0239C]00000000000000000002)
                 # big-endian mode
-                ELF_TYPE_EXECUTABLE=yes
+                ELF_TYPE_EXECUTABLE=1
                 ;;
-            7F454C460[12]02010[039]00000000000000000003)
+            7F454C460[12]02010[0239C]00000000000000000003)
                 # big-endian mode
-                ELF_TYPE_SHAREDABLE=yes
+                ELF_TYPE_SHAREDABLE=1
                 ;;
             7F454C46*)
                 abort 1 "mismatched ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"

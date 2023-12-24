@@ -639,7 +639,7 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
                     return PPKG_ERROR;
                 }
 
-                char major[dotIndex];
+                char major[dotIndex + 1];
 
                 strncpy(major, targetPlatform->vers, dotIndex);
                 major[dotIndex] = '\0';
@@ -823,7 +823,7 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
     ////////////////////////////////////////////////////////////////////////////////////////
 
     size_t sysrootCapacity = sysrootParentDIRCapacity + targetPlatformSpecCapacity;
-    char   sysroot[sysrootParentDIRCapacity];
+    char   sysroot[sysrootCapacity];
 
     ret = snprintf(sysroot, sysrootCapacity, "%s/%s", sysrootParentDIR, targetPlatformSpec);
 
