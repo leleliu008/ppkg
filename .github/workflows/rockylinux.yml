@@ -104,7 +104,7 @@ jobs:
 
 
       - run: |
-          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
 
 
       - run: ./ppkg ls-available
@@ -120,7 +120,7 @@ jobs:
       - run: ./ppkg uninstall libzip
 
       - run: ./ppkg formula-repo-list
-      - run: ./ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: ./ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
       - run: ./ppkg formula-repo-del my_repo
 
       - run: ./ppkg cleanup

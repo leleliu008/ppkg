@@ -83,7 +83,7 @@ jobs:
 
 
       - run: |
-          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/offical-core/formula/libzip.yml
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
 
 
       - run: ./ppkg ls-available
@@ -107,21 +107,21 @@ jobs:
 
       - run: ./ppkg formula-repo-list
 
-      - run: ./ppkg formula-repo-add my_repo1 https://github.com/leleliu008/ppkg-formula-repository-offical-core
-      - run: ./ppkg formula-repo-add my_repo2 https://github.com/leleliu008/ppkg-formula-repository-offical-core --branch=master
-      - run: ./ppkg formula-repo-add my_repo3 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin
-      - run: ./ppkg formula-repo-add my_repo4 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin --disable
+      - run: ./ppkg formula-repo-add my_repo1 https://github.com/leleliu008/ppkg-formula-repository-official-core
+      - run: ./ppkg formula-repo-add my_repo2 https://github.com/leleliu008/ppkg-formula-repository-official-core --branch=master
+      - run: ./ppkg formula-repo-add my_repo3 https://github.com/leleliu008/ppkg-formula-repository-official-core --unpin
+      - run: ./ppkg formula-repo-add my_repo4 https://github.com/leleliu008/ppkg-formula-repository-official-core --unpin --disable
 
       - run: ./ppkg formula-repo-list
 
-      - run: ./ppkg formula-repo-init my_repo10 https://github.com/leleliu008/ppkg-formula-repository-offical-core
-      - run: ./ppkg formula-repo-init my_repo11 https://github.com/leleliu008/ppkg-formula-repository-offical-core --branch=main
-      - run: ./ppkg formula-repo-init my_repo12 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin
-      - run: ./ppkg formula-repo-init my_repo13 https://github.com/leleliu008/ppkg-formula-repository-offical-core --unpin --disable
+      - run: ./ppkg formula-repo-init my_repo10 https://github.com/leleliu008/ppkg-formula-repository-official-core
+      - run: ./ppkg formula-repo-init my_repo11 https://github.com/leleliu008/ppkg-formula-repository-official-core --branch=main
+      - run: ./ppkg formula-repo-init my_repo12 https://github.com/leleliu008/ppkg-formula-repository-official-core --unpin
+      - run: ./ppkg formula-repo-init my_repo13 https://github.com/leleliu008/ppkg-formula-repository-official-core --unpin --disable
 
       - run: ./ppkg formula-repo-list
 
-      - run: ./ppkg formula-repo-conf my_repo1 --url=https://github.com/leleliu008/ppkg-formula-repository-offical-core
+      - run: ./ppkg formula-repo-conf my_repo1 --url=https://github.com/leleliu008/ppkg-formula-repository-official-core
       - run: ./ppkg formula-repo-conf my_repo2 --branch=master --unpin
       - run: ./ppkg formula-repo-conf my_repo3 --pin
       - run: ./ppkg formula-repo-conf my_repo4 --pin --enable

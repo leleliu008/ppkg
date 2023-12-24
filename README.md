@@ -8,7 +8,7 @@ A portable package manager for Unix-like system.
 
 - Please do NOT place your own files under `~/.ppkg` directory, as `ppkg` will change files under `~/.ppkg` directory without notice.
 
-- Please do NOT run `ppkg` command in parallell to avoid generating dirty data.
+- Please do NOT run `ppkg` command in parallel to avoid generating dirty data.
 
 ## Two implementations
 
@@ -23,7 +23,7 @@ In theroy, these two implementations should have the same behaver except for hav
 
 ## Manually build packages using this software via GitHub Actions
 
-In this way, you will be liberated from the rut of setting up the build environemt.
+In this way, you will be liberated from the rut of setting up the build environment.
 
 In this way, all you need to do is just clicking the buttons and waiting for finishing. After finishing, a url refers to a zip archive will be provided to download.
 
@@ -433,7 +433,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg install curl bzip2 -v
     ```
 
-    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this comand.
+    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this command.
 
 - **reinstall packages**
 
@@ -464,7 +464,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg upgrade-self -v
     ```
 
-- **list all avaliable formula repositories**
+- **list all available formula repositories**
 
     ```bash
     ppkg formula-repo-list
@@ -639,7 +639,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 - **PPKG_DEFAULT_TARGET**
 
-    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrive your current running os's information.
+    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrieve your current running os's information.
 
     `<TARGET>` has the form `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
 
@@ -715,7 +715,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |command|usage-example|
 |-|-|
 |`echo`|`echo 'your message.'`|
-|`info`|`info 'your infomation.'`|
+|`info`|`info 'your information.'`|
 |`warn`|`warn "no package manager found."`|
 |`error`|`error 'error message.'`|
 |`abort`|`abort 1 "please specify a package name."`|
@@ -804,7 +804,7 @@ After a ppkg formula repository is successfully fetched from server to local, a 
 a typical ppkg formula repository's config as following:
 
 ```yaml
-url: https://github.com/leleliu008/ppkg-formula-repository-offical-core
+url: https://github.com/leleliu008/ppkg-formula-repository-official-core
 branch: master
 pinned: 0
 enabled: 1
@@ -816,10 +816,10 @@ If a ppkg formula repository is `pinned`, which means it would not be updated.
 
 If a ppkg formula repository is `disabled`, which means ppkg would not search formulas in this formula repository.
 
-## ppkg offical formula repository
+## ppkg official formula repository
 
-ppkg offical formula repository's url: <https://github.com/leleliu008/ppkg-formula-repository-offical-core>
+ppkg official formula repository's url: <https://github.com/leleliu008/ppkg-formula-repository-official-core>
 
-ppkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ppkg update` command.
+ppkg official formula repository would be automatically fetched to local cache as name `official-core` when you run `ppkg update` command.
 
-**Note:** If you find that a package is not in ppkg offical formula repository yet, PR is welcomed.
+**Note:** If you find that a package is not in ppkg official formula repository yet, PR is welcomed.
