@@ -5339,7 +5339,7 @@ EOF
         fi
 
         if [ -n "$SYSROOT" ] ; then
-            if [ -z "$CMAKE_FIND_ROOT_PATH=" ] ; then
+            if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
                 CMAKE_FIND_ROOT_PATH="$SYSROOT"
             else
                 CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$SYSROOT"
