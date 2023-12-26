@@ -121,13 +121,13 @@ function _ppkg() {
                 info-available)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)' \
+                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem do12345 dopatch install symlink)' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
                 info-installed)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '2:key:(--prefix --files --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
+                        '2:key:(--prefix --files --yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem do12345 dopatch install symlink builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
                     ;;
                 fetch)
                     _arguments \

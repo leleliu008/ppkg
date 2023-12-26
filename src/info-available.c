@@ -127,6 +127,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         json_object_set_new(root, "parallel", json_boolean(formula->parallel));
         json_object_set_new(root, "symlink", json_boolean(formula->symlink));
 
+        json_object_set_new(root, "do12345", json_string(formula->do12345));
         json_object_set_new(root, "dopatch", json_string(formula->dopatch));
         json_object_set_new(root, "install", json_string(formula->install));
 
@@ -673,6 +674,20 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         if (formula->ldflags != NULL) {
             printf("%s\n", formula->ldflags);
+        }
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "do12345") == 0) {
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        if (formula->do12345 != NULL) {
+            printf("%s\n", formula->do12345);
         }
 
         ppkg_formula_free(formula);

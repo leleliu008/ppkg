@@ -1155,222 +1155,6 @@ static int setup_rust_toolchain(const PPKGInstallOptions * installOptions, const
 }
 
 
-#define BUILD_SYSTEM_TYPE_CMAKE 1
-#define BUILD_SYSTEM_TYPE_CONFIGURE 2
-
-#define NATIVE_PACKAGE_ID_ZLIB     1
-#define NATIVE_PACKAGE_ID_LIBBZ2   2
-#define NATIVE_PACKAGE_ID_LIBLZMA  3
-
-#define NATIVE_PACKAGE_ID_PERL     4
-#define NATIVE_PACKAGE_ID_OPENSSL  5
-#define NATIVE_PACKAGE_ID_TEXINFO  6
-#define NATIVE_PACKAGE_ID_HELP2MAN 7
-#define NATIVE_PACKAGE_ID_LIBTOOL  8
-#define NATIVE_PACKAGE_ID_AUTOCONF 9
-#define NATIVE_PACKAGE_ID_AUTOMAKE 10
-
-#define NATIVE_PACKAGE_ID_INTLTOOL 11
-#define NATIVE_PACKAGE_ID_EXPAT    12
-#define NATIVE_PACKAGE_ID_GDBM     13
-#define NATIVE_PACKAGE_ID_SQLITE3  14
-#define NATIVE_PACKAGE_ID_LIBFFI   15
-#define NATIVE_PACKAGE_ID_LIBYAML  16
-#define NATIVE_PACKAGE_ID_PYTHON3  17
-#define NATIVE_PACKAGE_ID_RUBY     18
-#define NATIVE_PACKAGE_ID_PERL_XML_PARSER 19
-
-#define NATIVE_PACKAGE_ID_LIBPCRE2 20
-#define NATIVE_PACKAGE_ID_SWIG     21
-
-typedef struct {
-    const char * name;
-
-    const char * srcUrl;
-    const char * srcUri;
-    const char * srcSha;
-
-    const char * buildConfigureArgs;
-
-    int buildSystemType;
-
-    int depPackageIDArray[10];
-} NativePackage;
-
-static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage) {
-    switch (packageID) {
-        case NATIVE_PACKAGE_ID_EXPAT:
-            nativePackage->name = "expat";
-            nativePackage->srcUrl = "https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz";
-            nativePackage->srcSha = "ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe";
-            nativePackage->buildConfigureArgs = "-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
-            break;
-        case NATIVE_PACKAGE_ID_ZLIB:
-            nativePackage->name = "zlib";
-            nativePackage->srcUrl = "https://zlib.net/fossils/zlib-1.3.tar.gz";
-            nativePackage->srcSha = "ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBBZ2:
-            nativePackage->name = "libbz2";
-            nativePackage->srcUrl = "https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz";
-            nativePackage->srcSha = "fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789";
-            nativePackage->buildConfigureArgs = "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
-            break;
-        case NATIVE_PACKAGE_ID_PERL:
-            nativePackage->name = "perl";
-            nativePackage->srcUrl = "https://www.cpan.org/src/5.0/perl-5.38.0.tar.xz";
-            nativePackage->srcUri = "https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz";
-            nativePackage->srcSha = "eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_OPENSSL:
-            nativePackage->name = "openssl";
-            nativePackage->srcUrl = "https://www.openssl.org/source/openssl-3.1.1.tar.gz";
-            nativePackage->srcSha = "b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_TEXINFO:
-            nativePackage->name = "texinfo";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz";
-            nativePackage->srcSha = "deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->buildConfigureArgs = "--with-included-regex --enable-threads=posix --disable-nls";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_HELP2MAN:
-            nativePackage->name = "help2man";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz";
-            nativePackage->srcSha = "4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_INTLTOOL:
-            nativePackage->name = "intltool";
-            nativePackage->srcUrl = "https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz";
-            nativePackage->srcSha = "67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL_XML_PARSER;
-            nativePackage->buildConfigureArgs = "";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBTOOL:
-            nativePackage->name = "libtool";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz";
-            nativePackage->srcSha = "4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d";
-            nativePackage->buildConfigureArgs = "--enable-ltdl-install";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_AUTOCONF:
-            nativePackage->name = "autoconf";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz";
-            nativePackage->srcSha = "431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_AUTOMAKE:
-            nativePackage->name = "automake";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz";
-            nativePackage->srcSha = "f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_AUTOCONF;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBLZMA:
-            nativePackage->name = "liblzma";
-            nativePackage->srcUrl = "https://github.com/tukaani-project/xz/releases/download/v5.4.4/xz-5.4.4.tar.gz";
-            nativePackage->srcSha = "aae39544e254cfd27e942d35a048d592959bd7a79f9a624afb0498bb5613bdf8";
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-            ;;
-        case NATIVE_PACKAGE_ID_GDBM:
-            nativePackage->name = "gdbm";
-            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz";
-            nativePackage->srcSha = "74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd";
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_SQLITE3:
-            nativePackage->name = "sqlite3";
-            nativePackage->srcUrl = "https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz";
-            nativePackage->srcSha = "b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBFFI:
-            nativePackage->name = "libffi";
-            nativePackage->srcUrl = "https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz";
-            nativePackage->srcSha = "d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676";
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBYAML:
-            nativePackage->name = "libyaml";
-            nativePackage->srcUrl = "https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz";
-            nativePackage->srcSha = "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4";
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --enable-largefile";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_RUBY:
-            nativePackage->name = "ruby";
-            nativePackage->srcUrl = "https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz";
-            nativePackage->srcSha = "96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
-            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBFFI;
-            nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBYAML;
-            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --enable-shared --disable-docs";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_PYTHON3:
-            nativePackage->name = "python3";
-            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz";
-            nativePackage->srcSha = "c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
-            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBBZ2;
-            nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBLZMA;
-            nativePackage->depPackageIDArray[3] = NATIVE_PACKAGE_ID_LIBFFI;
-            nativePackage->depPackageIDArray[4] = NATIVE_PACKAGE_ID_GDBM;
-            nativePackage->depPackageIDArray[5] = NATIVE_PACKAGE_ID_EXPAT;
-            nativePackage->depPackageIDArray[6] = NATIVE_PACKAGE_ID_SQLITE3;
-            nativePackage->depPackageIDArray[7] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->depPackageIDArray[8] = NATIVE_PACKAGE_ID_OPENSSL;
-            nativePackage->buildConfigureArgs = "--with-system-expat --with-system-ffi --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_PERL_XML_PARSER:
-            nativePackage->name = "perl-XML-Parser";
-            nativePackage->srcUrl = "https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz";
-            nativePackage->srcSha = "d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
-            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_EXPAT;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            break;
-        case NATIVE_PACKAGE_ID_LIBPCRE2:
-            nativePackage->name = "libpcre2";
-            nativePackage->srcUrl = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2";
-            nativePackage->srcSha = "8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840";
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
-            nativePackage->buildConfigureArgs = "-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON";
-            break;
-        case NATIVE_PACKAGE_ID_SWIG:
-            nativePackage->name = "swig";
-            nativePackage->srcUrl = "https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz";
-            nativePackage->srcSha = "2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b";
-            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_LIBPCRE2;
-            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
-            nativePackage->buildConfigureArgs = "--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go";
-            break;
-        default:
-            fprintf(stderr, "unknown native package id: %d\n", packageID);
-            return PPKG_ERROR;
-    }
-
-    return PPKG_OK;
-}
-
 typedef int (*setenv_fn)(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity);
 
 static int setenv_CPPFLAGS(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity) {
@@ -1729,6 +1513,223 @@ static int setenv_XDG_DATA_DIRS(const char * packageInstalledDIR, const size_t p
     return PPKG_OK;
 }
 
+
+#define BUILD_SYSTEM_TYPE_CMAKE 1
+#define BUILD_SYSTEM_TYPE_CONFIGURE 2
+
+#define NATIVE_PACKAGE_ID_ZLIB     1
+#define NATIVE_PACKAGE_ID_LIBBZ2   2
+#define NATIVE_PACKAGE_ID_LIBLZMA  3
+
+#define NATIVE_PACKAGE_ID_PERL     4
+#define NATIVE_PACKAGE_ID_OPENSSL  5
+#define NATIVE_PACKAGE_ID_TEXINFO  6
+#define NATIVE_PACKAGE_ID_HELP2MAN 7
+#define NATIVE_PACKAGE_ID_LIBTOOL  8
+#define NATIVE_PACKAGE_ID_AUTOCONF 9
+#define NATIVE_PACKAGE_ID_AUTOMAKE 10
+
+#define NATIVE_PACKAGE_ID_INTLTOOL 11
+#define NATIVE_PACKAGE_ID_EXPAT    12
+#define NATIVE_PACKAGE_ID_GDBM     13
+#define NATIVE_PACKAGE_ID_SQLITE3  14
+#define NATIVE_PACKAGE_ID_LIBFFI   15
+#define NATIVE_PACKAGE_ID_LIBYAML  16
+#define NATIVE_PACKAGE_ID_PYTHON3  17
+#define NATIVE_PACKAGE_ID_RUBY     18
+#define NATIVE_PACKAGE_ID_PERL_XML_PARSER 19
+
+#define NATIVE_PACKAGE_ID_LIBPCRE2 20
+#define NATIVE_PACKAGE_ID_SWIG     21
+
+typedef struct {
+    const char * name;
+
+    const char * srcUrl;
+    const char * srcUri;
+    const char * srcSha;
+
+    const char * buildConfigureArgs;
+
+    int buildSystemType;
+
+    int depPackageIDArray[10];
+} NativePackage;
+
+static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage) {
+    switch (packageID) {
+        case NATIVE_PACKAGE_ID_EXPAT:
+            nativePackage->name = "expat";
+            nativePackage->srcUrl = "https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz";
+            nativePackage->srcSha = "ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe";
+            nativePackage->buildConfigureArgs = "-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
+            break;
+        case NATIVE_PACKAGE_ID_ZLIB:
+            nativePackage->name = "zlib";
+            nativePackage->srcUrl = "https://zlib.net/fossils/zlib-1.3.tar.gz";
+            nativePackage->srcSha = "ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBBZ2:
+            nativePackage->name = "libbz2";
+            nativePackage->srcUrl = "https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz";
+            nativePackage->srcSha = "fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789";
+            nativePackage->buildConfigureArgs = "-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
+            break;
+        case NATIVE_PACKAGE_ID_PERL:
+            nativePackage->name = "perl";
+            nativePackage->srcUrl = "https://www.cpan.org/src/5.0/perl-5.38.0.tar.xz";
+            nativePackage->srcUri = "https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz";
+            nativePackage->srcSha = "eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_OPENSSL:
+            nativePackage->name = "openssl";
+            nativePackage->srcUrl = "https://www.openssl.org/source/openssl-3.1.1.tar.gz";
+            nativePackage->srcSha = "b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_TEXINFO:
+            nativePackage->name = "texinfo";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz";
+            nativePackage->srcSha = "deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->buildConfigureArgs = "--with-included-regex --enable-threads=posix --disable-nls";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_HELP2MAN:
+            nativePackage->name = "help2man";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz";
+            nativePackage->srcSha = "4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_INTLTOOL:
+            nativePackage->name = "intltool";
+            nativePackage->srcUrl = "https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz";
+            nativePackage->srcSha = "67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL_XML_PARSER;
+            nativePackage->buildConfigureArgs = "";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBTOOL:
+            nativePackage->name = "libtool";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz";
+            nativePackage->srcSha = "4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d";
+            nativePackage->buildConfigureArgs = "--enable-ltdl-install";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_AUTOCONF:
+            nativePackage->name = "autoconf";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz";
+            nativePackage->srcSha = "431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_AUTOMAKE:
+            nativePackage->name = "automake";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz";
+            nativePackage->srcSha = "f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_AUTOCONF;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBLZMA:
+            nativePackage->name = "liblzma";
+            nativePackage->srcUrl = "https://github.com/tukaani-project/xz/releases/download/v5.4.4/xz-5.4.4.tar.gz";
+            nativePackage->srcSha = "aae39544e254cfd27e942d35a048d592959bd7a79f9a624afb0498bb5613bdf8";
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+            ;;
+        case NATIVE_PACKAGE_ID_GDBM:
+            nativePackage->name = "gdbm";
+            nativePackage->srcUrl = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz";
+            nativePackage->srcSha = "74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd";
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_SQLITE3:
+            nativePackage->name = "sqlite3";
+            nativePackage->srcUrl = "https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz";
+            nativePackage->srcSha = "b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBFFI:
+            nativePackage->name = "libffi";
+            nativePackage->srcUrl = "https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz";
+            nativePackage->srcSha = "d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676";
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBYAML:
+            nativePackage->name = "libyaml";
+            nativePackage->srcUrl = "https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz";
+            nativePackage->srcSha = "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4";
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --enable-largefile";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_RUBY:
+            nativePackage->name = "ruby";
+            nativePackage->srcUrl = "https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz";
+            nativePackage->srcSha = "96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
+            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBFFI;
+            nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBYAML;
+            nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --enable-shared --disable-docs";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_PYTHON3:
+            nativePackage->name = "python3";
+            nativePackage->srcUrl = "https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz";
+            nativePackage->srcSha = "c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_ZLIB;
+            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_LIBBZ2;
+            nativePackage->depPackageIDArray[2] = NATIVE_PACKAGE_ID_LIBLZMA;
+            nativePackage->depPackageIDArray[3] = NATIVE_PACKAGE_ID_LIBFFI;
+            nativePackage->depPackageIDArray[4] = NATIVE_PACKAGE_ID_GDBM;
+            nativePackage->depPackageIDArray[5] = NATIVE_PACKAGE_ID_EXPAT;
+            nativePackage->depPackageIDArray[6] = NATIVE_PACKAGE_ID_SQLITE3;
+            nativePackage->depPackageIDArray[7] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->depPackageIDArray[8] = NATIVE_PACKAGE_ID_OPENSSL;
+            nativePackage->buildConfigureArgs = "--with-system-expat --with-system-ffi --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_PERL_XML_PARSER:
+            nativePackage->name = "perl-XML-Parser";
+            nativePackage->srcUrl = "https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz";
+            nativePackage->srcSha = "d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_PERL;
+            nativePackage->depPackageIDArray[1] = NATIVE_PACKAGE_ID_EXPAT;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            break;
+        case NATIVE_PACKAGE_ID_LIBPCRE2:
+            nativePackage->name = "libpcre2";
+            nativePackage->srcUrl = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2";
+            nativePackage->srcSha = "8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840";
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
+            nativePackage->buildConfigureArgs = "-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON";
+            break;
+        case NATIVE_PACKAGE_ID_SWIG:
+            nativePackage->name = "swig";
+            nativePackage->srcUrl = "https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz";
+            nativePackage->srcSha = "2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b";
+            nativePackage->depPackageIDArray[0] = NATIVE_PACKAGE_ID_LIBPCRE2;
+            nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
+            nativePackage->buildConfigureArgs = "--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go";
+            break;
+        default:
+            fprintf(stderr, "unknown native package id: %d\n", packageID);
+            return PPKG_ERROR;
+    }
+
+    return PPKG_OK;
+}
+
 typedef struct {
     const char * name;
     const char * libs;
@@ -1740,8 +1741,8 @@ static int install_native_package(
         int nativePackageID,
         const char * downloadsDIR,
         const size_t downloadsDIRLength,
-        const char * nativePackageInstallingRootDIR,
-        const size_t nativePackageInstallingRootDIRCapacity,
+        const char * packageWorkingTopDIR,
+        const size_t packageWorkingTopDIRCapacity,
         const char * nativePackageInstalledRootDIR,
         const size_t nativePackageInstalledRootDIRCapacity,
         const size_t njobs,
@@ -1761,7 +1762,7 @@ static int install_native_package(
             break;
         }
 
-        ret = install_native_package(nativePackage.depPackageIDArray[i], downloadsDIR, downloadsDIRLength, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
+        ret = install_native_package(nativePackage.depPackageIDArray[i], downloadsDIR, downloadsDIRLength, packageWorkingTopDIR, packageWorkingTopDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -1842,10 +1843,10 @@ static int install_native_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t nativePackageWorkingTopDIRLength = nativePackageInstallingRootDIRCapacity + packageNameLength + 2U;
+    size_t nativePackageWorkingTopDIRLength = packageWorkingTopDIRCapacity + packageNameLength + 14U;
     char   nativePackageWorkingTopDIR[nativePackageWorkingTopDIRLength];
 
-    ret = snprintf(nativePackageWorkingTopDIR, nativePackageWorkingTopDIRLength, "%s/%s", nativePackageInstallingRootDIR, packageName);
+    ret = snprintf(nativePackageWorkingTopDIR, nativePackageWorkingTopDIRLength, "%s/native-build-%s", packageWorkingTopDIR, packageName);
 
     if (ret < 0) {
         perror(NULL);
@@ -2405,10 +2406,10 @@ static int install_dependent_packages_via_uppm(
         const size_t ppkgCoreDIRCapacity,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
-        const bool   requestToInstallCmake) {
+        const bool   needToInstallCmake) {
 
 #if defined (__NetBSD__)
-    if (requestToInstallCmake) {
+    if (needToInstallCmake) {
         char cmd[28];
 
         int ret;
@@ -2565,15 +2566,12 @@ static int install_dependent_packages_via_uppm(
     return PPKG_OK;
 }
 
-static int generate_install_shell_script_file(
-        const char * installShellScriptFilePath,
+static int generate_shell_vars_file(
+        const char * varsFilePath,
         const char * packageName,
         const PPKGFormula * formula,
-        const PPKGTargetPlatform * targetPlatform,
         const PPKGInstallOptions * installOptions,
         const SysInfo * sysinfo,
-        const bool isCrossBuild,
-        const bool isTargetOSDarwin,
         const char * ppkgExeFilePath,
         const time_t ts,
         const size_t njobs,
@@ -2581,20 +2579,7 @@ static int generate_install_shell_script_file(
         const char * ppkgCoreDIR,
         const char * ppkgDownloadsDIR,
         const char * sessionDIR,
-        const char * packageWorkingTopDIR,
-        const char * packageWorkingSrcDIR,
-        const char * packageWorkingFixDIR,
-        const char * packageWorkingResDIR,
-        const char * packageWorkingBinDIR,
-        const char * packageWorkingLibDIR,
-        const char * packageWorkingIncDIR,
-        const char * packageWorkingTmpDIR,
-        const char * packageInstalledRootDIR,
-        const size_t packageInstalledRootDIRCapacity,
-        const char * packageInstalledDIR,
-        const char * packageMetaInfoDIR,
-        const char * recursiveDependentPackageNamesString,
-        const size_t recursiveDependentPackageNamesStringSize) {
+        const char * recursiveDependentPackageNamesString) {
     KB kbs[] = {
         {"KEEP_SESSION_DIR", installOptions->keepSessionDIR},
         {"BEAR_ENABLED", installOptions->enableBear},
@@ -2614,7 +2599,6 @@ static int generate_install_shell_script_file(
         {"PACKAGE_USE_BSYSTEM_MESON", formula->useBuildSystemMeson},
         {"PACKAGE_USE_BSYSTEM_CARGO", formula->useBuildSystemCargo},
         {"PACKAGE_USE_BSYSTEM_GO", formula->useBuildSystemGolang},
-        {"CROSS_COMPILING", isCrossBuild},
         {NULL,false}
     };
 
@@ -2643,20 +2627,14 @@ static int generate_install_shell_script_file(
         {"NATIVE_OS_NAME", sysinfo->name },
         {"NATIVE_OS_VERS", sysinfo->vers },
         {"NATIVE_OS_LIBC", libcName },
-        {"TARGET_PLATFORM_NAME", targetPlatform->name },
-        {"TARGET_PLATFORM_VERS", targetPlatform->vers },
-        {"TARGET_PLATFORM_ARCH", targetPlatform->arch },
         {"BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "release" : "debug"},
         {"LINK_TYPE", linkType},
         {"INSTALL_LIB", "both"},
-        {"STATIC_LIBRARY_SUFFIX", ".a"},
-        {"SHARED_LIBRARY_SUFFIX", isTargetOSDarwin ? ".dylib" : ".so"},
         {"PPKG_VERSION", PPKG_VERSION},
         {"PPKG", ppkgExeFilePath},
         {"PPKG_HOME", ppkgHomeDIR},
         {"PPKG_CORE_DIR", ppkgCoreDIR},
         {"PPKG_DOWNLOADS_DIR", ppkgDownloadsDIR},
-        {"PPKG_PACKAGE_INSTALLED_ROOT", packageInstalledRootDIR},
         {"SESSION_DIR", sessionDIR},
         {"RECURSIVE_DEPENDENT_PACKAGE_NAMES", recursiveDependentPackageNamesString},
         {"PACKAGE_FORMULA_FILEPATH", formula->path},
@@ -2687,23 +2665,13 @@ static int generate_install_shell_script_file(
         {"PACKAGE_CCFLAGS", formula->ccflags},
         {"PACKAGE_XXFLAGS", formula->xxflags},
         {"PACKAGE_LDFLAGS", formula->ldflags},
-        {"PACKAGE_INSTALLING_SRC_DIR", packageWorkingSrcDIR},
-        {"PACKAGE_INSTALLING_FIX_DIR", packageWorkingFixDIR},
-        {"PACKAGE_INSTALLING_RES_DIR", packageWorkingResDIR},
-        {"PACKAGE_INSTALLING_BIN_DIR", packageWorkingBinDIR},
-        {"PACKAGE_INSTALLING_INC_DIR", packageWorkingIncDIR},
-        {"PACKAGE_INSTALLING_LIB_DIR", packageWorkingLibDIR},
-        {"PACKAGE_INSTALLING_TMP_DIR", packageWorkingTmpDIR},
-        {"PACKAGE_WORKING_DIR", packageWorkingTopDIR},
-        {"PACKAGE_INSTALL_DIR", packageInstalledDIR},
-        {"PACKAGE_METAINF_DIR", packageMetaInfoDIR},
         {NULL, NULL},
     };
 
-    int fd = open(installShellScriptFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+    int fd = open(varsFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
 
     if (fd == -1) {
-        perror(installShellScriptFilePath);
+        perror(varsFilePath);
         return PPKG_ERROR;
     }
 
@@ -2792,6 +2760,107 @@ static int generate_install_shell_script_file(
         }
     }
 
+    close(fd);
+
+    return PPKG_OK;
+}
+
+static int generate_install_shell_script_file(
+        const char * installshFilePath,
+        const char * varsFilePath,
+        const char * packageName,
+        const PPKGFormula * formula,
+        const PPKGTargetPlatform * targetPlatform,
+        const PPKGInstallOptions * installOptions,
+        const bool isCrossBuild,
+        const bool isTargetOSDarwin,
+        const char * ppkgCoreDIR,
+        const char * packageWorkingTopDIR,
+        const char * packageWorkingSrcDIR,
+        const char * packageWorkingFixDIR,
+        const char * packageWorkingResDIR,
+        const char * packageWorkingBinDIR,
+        const char * packageWorkingLibDIR,
+        const char * packageWorkingIncDIR,
+        const char * packageWorkingTmpDIR,
+        const char * packageInstalledRootDIR,
+        const size_t packageInstalledRootDIRCapacity,
+        const char * nativePackageInstalledRootDIR,
+        const char * packageInstalledDIR,
+        const char * packageMetaInfoDIR,
+        const char * recursiveDependentPackageNamesString,
+        const size_t recursiveDependentPackageNamesStringSize) {
+    int fd = open(installshFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
+    if (fd == -1) {
+        perror(installshFilePath);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    int ret;
+
+    if (installOptions->xtrace) {
+        ret = dprintf(fd, "set -x\n");
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "set -e\n\n");
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "CROSS_COMPILING=%d\n\n", isCrossBuild);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    KV kvs[] = {
+        {"TARGET_PLATFORM_NAME", targetPlatform->name },
+        {"TARGET_PLATFORM_VERS", targetPlatform->vers },
+        {"TARGET_PLATFORM_ARCH", targetPlatform->arch },
+        {"STATIC_LIBRARY_SUFFIX", ".a"},
+        {"SHARED_LIBRARY_SUFFIX", isTargetOSDarwin ? ".dylib" : ".so"},
+        {"PPKG_PACKAGE_INSTALLED_ROOT", packageInstalledRootDIR},
+        {"PACKAGE_INSTALLING_SRC_DIR", packageWorkingSrcDIR},
+        {"PACKAGE_INSTALLING_FIX_DIR", packageWorkingFixDIR},
+        {"PACKAGE_INSTALLING_RES_DIR", packageWorkingResDIR},
+        {"PACKAGE_INSTALLING_BIN_DIR", packageWorkingBinDIR},
+        {"PACKAGE_INSTALLING_INC_DIR", packageWorkingIncDIR},
+        {"PACKAGE_INSTALLING_LIB_DIR", packageWorkingLibDIR},
+        {"PACKAGE_INSTALLING_TMP_DIR", packageWorkingTmpDIR},
+        {"PACKAGE_WORKING_DIR", packageWorkingTopDIR},
+        {"PACKAGE_INSTALL_DIR", packageInstalledDIR},
+        {"PACKAGE_METAINF_DIR", packageMetaInfoDIR},
+        {NULL, NULL},
+    };
+
+    for (int i = 0; kvs[i].name != NULL; i++) {
+        ret = dprintf(fd, "%s='%s'\n", kvs[i].name, (kvs[i].value == NULL) ? "" : kvs[i].value);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     if (formula->bscript == NULL) {
         ret = dprintf(fd, "PACKAGE_BSCRIPT_DIR='%s'\n", packageWorkingSrcDIR);
     } else {
@@ -2803,7 +2872,36 @@ static int generate_install_shell_script_file(
         return PPKG_ERROR;
     }
 
+    //////////////////////////////////////////////////////////////////////////////
+
     ret = dprintf(fd, "PACKAGE_BCACHED_DIR='%s/_'\n", packageWorkingSrcDIR);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->bscript == NULL) {
+        ret = dprintf(fd, "NATIVE_BCACHED_DIR='%s/build-native-%s/_'\n", packageWorkingTopDIR, packageName);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    } else {
+        ret = dprintf(fd, "NATIVE_BCACHED_DIR='%s/build-native-%s/%s/_'\n", packageWorkingTopDIR, packageName, formula->bscript);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "NATIVE_INSTALL_DIR='%s/%s'\n", nativePackageInstalledRootDIR, packageName);
 
     if (ret < 0) {
         close(fd);
@@ -2886,21 +2984,21 @@ static int generate_install_shell_script_file(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = dprintf(fd, "dopatch() {\n%s\n}\n\n", formula->dopatch == NULL ? ":" : formula->dopatch);
+    ret = dprintf(fd, "\ndopatch() {\n%s\n}\n", formula->dopatch == NULL ? ":" : formula->dopatch);
 
     if (ret < 0) {
         close(fd);
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, "dobuild() {\n%s\n}\n\n", formula->install);
+    ret = dprintf(fd, "\ndobuild() {\n%s\n}\n\n", formula->install);
 
     if (ret < 0) {
         close(fd);
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, ". %s/ppkg-install\n", ppkgCoreDIR);
+    ret = dprintf(fd, ". %s\n. %s/ppkg-install\n", varsFilePath, ppkgCoreDIR);
 
     if (ret < 0) {
         close(fd);
@@ -3545,14 +3643,374 @@ static int copy_dependent_libraries(
     }
 }
 
+//  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>                     <- packageWorkingTopDIR
+//  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>/native-build-<PKG>  <- workingDIR
+static int ppkg_build_for_native(
+        const PPKGInstallOptions * installOptions,
+        const PPKGFormula * formula,
+        const char * packageName,
+        const size_t packageNameLength,
+        const char * ppkgCoreDIR,
+        const size_t ppkgCoreDIRCapacity,
+        const char * ppkgDownloadsDIR,
+        const size_t ppkgDownloadsDIRCapacity,
+        const char * packageWorkingTopDIR,
+        const size_t packageWorkingTopDIRCapacity,
+        const char * nativePackageInstalledRootDIR,
+        const size_t nativePackageInstalledRootDIRCapacity,
+        const char * packageInstalledSHA,
+        const char * varsFilePath,
+        const bool verbose) {
+    size_t receiptFilePathLength = nativePackageInstalledRootDIRCapacity + packageNameLength + 14U;
+    char   receiptFilePath[receiptFilePathLength];
+
+    int ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/%s/receipt.txt", nativePackageInstalledRootDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    struct stat st;
+
+    if (stat(receiptFilePath, &st) == 0) {
+        if (S_ISREG(st.st_mode)) {
+            char buf[65] = {0};
+
+            ret = get_the_first_n_bytes_of_a_file(receiptFilePath, 64, buf);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            if (strcmp(buf, formula->src_sha) == 0) {
+                fprintf(stderr, "native package '%s' already has been installed.\n", packageName);
+
+                size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRCapacity + packageNameLength + 2U;
+                char   packageInstalledDIR[packageInstalledDIRCapacity];
+
+                ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", nativePackageInstalledRootDIR, packageName);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                setenv_fn funs[3] = { setenv_PATH, setenv_ACLOCAL_PATH, setenv_XDG_DATA_DIRS };
+
+                for (int i = 0; i < 3; i++) {
+                    ret = funs[i](packageInstalledDIR, packageInstalledDIRCapacity);
+
+                    if (ret != PPKG_OK) {
+                        return ret;
+                    }
+                }
+
+                return PPKG_OK;
+            }
+        } else {
+            fprintf(stderr, "%s was expected to be a regular file, but it was not.\n", receiptFilePath);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t workingDIRCapacity = packageWorkingTopDIRCapacity + packageNameLength + 14U;
+    char   workingDIR[workingDIRCapacity];
+
+    ret = snprintf(workingDIR, workingDIRCapacity, "%s/native-build-%s", packageWorkingTopDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (mkdir (workingDIR, S_IRWXU) != 0) {
+        perror(workingDIR);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->src_url == NULL) {
+        const char * remoteRef;
+
+        if (formula->git_sha == NULL) {
+            remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
+        } else {
+            remoteRef = formula->git_sha;
+        }
+
+        ret = ppkg_git_sync(workingDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master", formula->git_nth);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    } else {
+        if (formula->src_is_dir) {
+            char * srcDIR = &formula->src_url[6];
+            size_t srcDIRLength = strlen(srcDIR);
+
+            size_t cmdCapacity = srcDIRLength + workingDIRCapacity + 10U;
+            char   cmd[cmdCapacity];
+
+            ret = snprintf(cmd, cmdCapacity, "cp -r %s/. %s", srcDIR, workingDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            ret = run_cmd(cmd, STDOUT_FILENO);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        } else {
+            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, workingDIR, workingDIRCapacity, installOptions->verbose_net);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t cmdFilePathCapacity = workingDIRCapacity + 12U;
+    char   cmdFilePath[cmdFilePathCapacity];
+
+    ret = snprintf(cmdFilePath, cmdFilePathCapacity, "%s/do12345.sh", workingDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t do12345shFilePathCapacity = ppkgCoreDIRCapacity + 14U;
+    char   do12345shFilePath[do12345shFilePathCapacity];
+
+    ret = snprintf(do12345shFilePath, do12345shFilePathCapacity, "%s/ppkg-do12345", ppkgCoreDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t packageInstallDIRCapacity = nativePackageInstalledRootDIRCapacity + 66U;
+    char   packageInstallDIR[packageInstallDIRCapacity];
+
+    ret = snprintf(packageInstallDIR, packageInstallDIRCapacity, "%s/%s", nativePackageInstalledRootDIR, packageInstalledSHA);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    int fd = open(cmdFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
+    if (fd == -1) {
+        perror(cmdFilePath);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (installOptions->xtrace) {
+        ret = dprintf(fd, "set -x\n");
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "STATIC_LIBRARY_SUFFIX='.a'\n");
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+#if defined (__APPLE__)
+    const char * sharedLibrarySuffix = ".dylib";
+#else
+    const char * sharedLibrarySuffix = ".so";
+#endif
+
+    ret = dprintf(fd, "SHARED_LIBRARY_SUFFIX='%s'\n", sharedLibrarySuffix);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "PACKAGE_INSTALL_DIR='%s'\n", packageInstallDIR);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->bscript == NULL) {
+        ret = dprintf(fd, "PACKAGE_BSCRIPT_DIR='%s'\n", workingDIR);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+
+        ret = dprintf(fd, "PACKAGE_BCACHED_DIR='%s/_'\n", workingDIR);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    } else {
+        ret = dprintf(fd, "PACKAGE_BSCRIPT_DIR='%s/%s'\n", workingDIR, formula->bscript);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+
+        ret = dprintf(fd, "PACKAGE_BCACHED_DIR='%s/%s/_'\n", workingDIR, formula->bscript);
+
+        if (ret < 0) {
+            close(fd);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = dprintf(fd, "\ndo12345() {\n%s\n}\n\n. %s\n. %s\n", formula->do12345, varsFilePath, do12345shFilePath);
+
+    if (ret < 0) {
+        close(fd);
+        return PPKG_ERROR;
+    }
+
+    close(fd);
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t cmdCapacity = cmdFilePathCapacity + 10U;
+    char   cmd[cmdCapacity];
+
+    ret = snprintf(cmd, cmdCapacity, "/bin/sh %s", cmdFilePath);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ret = run_cmd(cmd, STDOUT_FILENO);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t receiptFilePath2Length = packageInstallDIRCapacity + 12U;
+    char   receiptFilePath2[receiptFilePath2Length];
+
+    ret = snprintf(receiptFilePath2, receiptFilePath2Length, "%s/receipt.txt", packageInstallDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ret = write_to_file(receiptFilePath2, formula->src_sha);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (chdir (nativePackageInstalledRootDIR) != 0) {
+        perror(nativePackageInstalledRootDIR);
+        return PPKG_ERROR;
+    }
+
+    for (;;) {
+        if (symlink(packageInstalledSHA, packageName) == 0) {
+            fprintf(stderr, "native package '%s' was successfully installed.\n", packageName);
+            break;
+        } else {
+            if (errno == EEXIST) {
+                if (lstat(packageName, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        ret = ppkg_rm_r(packageName, verbose);
+
+                        if (ret != PPKG_OK) {
+                            return ret;
+                        }
+                    } else {
+                        if (unlink(packageName) != 0) {
+                            perror(packageName);
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+            } else {
+                perror(packageName);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
+    size_t packageInstalledDIRCapacity = nativePackageInstalledRootDIRCapacity + packageNameLength + 2U;
+    char   packageInstalledDIR[packageInstalledDIRCapacity];
+
+    ret = snprintf(packageInstalledDIR, packageInstalledDIRCapacity, "%s/%s", nativePackageInstalledRootDIR, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    setenv_fn funs[3] = { setenv_PATH, setenv_ACLOCAL_PATH, setenv_XDG_DATA_DIRS };
+
+    for (int i = 0; i < 3; i++) {
+        ret = funs[i](packageInstalledDIR, packageInstalledDIRCapacity);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    return PPKG_OK;
+}
+
 static int ppkg_install_package(
         const char * packageName,
+        const size_t packageNameLength,
         const PPKGTargetPlatform * targetPlatform,
         const PPKGFormula * formula,
         const PPKGInstallOptions * installOptions,
         const PPKGToolChain * toolchainForNativeBuild,
         const PPKGToolChain * toolchainForTargetBuild,
         const SysInfo * sysinfo,
+        const time_t ts,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRLength,
         const char * ppkgExeFilePath,
@@ -3578,6 +4036,131 @@ static int ppkg_install_package(
         }
     } else {
         njobs = 1U;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t strBufSize = packageNameLength + 50U;
+    char   strBuf[strBufSize];
+
+    int ret = snprintf(strBuf, strBufSize, "%s:%zu:%u", packageName, ts, getpid());
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    char packageInstalledSHA[65] = {0};
+
+    ret = sha256sum_of_string(packageInstalledSHA, strBuf);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t targetPlatformSpecCapacity = targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 3U;
+    char   targetPlatformSpec[targetPlatformSpecCapacity];
+
+    ret = snprintf(targetPlatformSpec, targetPlatformSpecCapacity, "%s-%s-%s", targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    //  /home/leleliu008/.ppkg                                                                     <- ppkgHomeDIR
+    //  /home/leleliu008/.ppkg/run/<pid>                                                           <- sessionDIR
+    //  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>                     <- packageWorkingTopDIR
+    //  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>/native-build-<PKG>  <- buildForNativeDIR
+    //  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>/src                 <- packageWorkingSrcDIR
+    //  /home/leleliu008/.ppkg/run/<pid>/<target-platform-spec>-<package-name>/fix                 <- packageWorkingFixDIR
+
+    size_t packageWorkingTopDIRCapacity = sessionDIRLength + targetPlatformSpecCapacity + packageNameLength + 2U;
+    char   packageWorkingTopDIR[packageWorkingTopDIRCapacity];
+
+    ret = snprintf(packageWorkingTopDIR, packageWorkingTopDIRCapacity, "%s/%s-%s", sessionDIR, targetPlatformSpec, packageName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (mkdir (packageWorkingTopDIR, S_IRWXU) != 0) {
+        perror(packageWorkingTopDIR);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////
+
+    const KV toolsForNativeBuild[17] = {
+        { "CC", toolchainForNativeBuild->cc },
+        { "OBJC", toolchainForNativeBuild->objc },
+        { "CXX", toolchainForNativeBuild->cxx },
+        { "CPP", toolchainForNativeBuild->cpp },
+        { "AS", toolchainForNativeBuild->as },
+        { "AR", toolchainForNativeBuild->ar },
+        { "RANLIB", toolchainForNativeBuild->ranlib },
+        { "LD", toolchainForNativeBuild->ld },
+        { "NM", toolchainForNativeBuild->nm },
+        { "SIZE", toolchainForNativeBuild->size },
+        { "STRIP", toolchainForNativeBuild->strip },
+        { "STRINGS", toolchainForNativeBuild->strings },
+        { "OBJCOPY", toolchainForNativeBuild->objcopy },
+        { "OBJDUMP", toolchainForNativeBuild->objdump },
+        { "READELF", toolchainForNativeBuild->readelf },
+        { "ADDR2LINE", toolchainForNativeBuild->addr2line },
+        { "SYSROOT", toolchainForNativeBuild->sysroot }
+    };
+
+    for (int i = 0; i < 17; i++) {
+        const char * name  = toolsForNativeBuild[i].name;
+        const char * value = toolsForNativeBuild[i].value;
+
+        if (value == NULL) {
+            if (unsetenv(name) != 0) {
+                perror(name);
+                return PPKG_ERROR;
+            }
+
+            size_t name2Length = strlen(name) + 11U;
+            char   name2[name2Length];
+
+            ret = snprintf(name2, name2Length, "%s_FOR_BUILD", name);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (unsetenv(name2) != 0) {
+                perror(name2);
+                return PPKG_ERROR;
+            }
+        } else {
+            if (setenv(name, value, 1) != 0) {
+                perror(name);
+                return PPKG_ERROR;
+            }
+
+            size_t name2Length = strlen(name) + 11U;
+            char   name2[name2Length];
+
+            ret = snprintf(name2, name2Length, "%s_FOR_BUILD", name);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv(name2, value, 1) != 0) {
+                perror(name2);
+                return PPKG_ERROR;
+            }
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -3613,13 +4196,15 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char* unsetenvs[3] = {
-        "ACLOCAL_PATH",
+    const char* unsetenvs[5] = {
+        "LIBS",
+        "PKG_CONFIG_LIBDIR",
         "PKG_CONFIG_PATH",
+        "ACLOCAL_PATH",
         "XDG_DATA_DIRS"
     };
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 5; i++) {
         if (unsetenv(unsetenvs[i]) != 0) {
             perror(unsetenvs[i]);
             return PPKG_ERROR;
@@ -3628,7 +4213,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret = setenv_ACLOCAL_PATH(ppkgCoreDIR, ppkgCoreDIRCapacity);
+    ret = setenv_ACLOCAL_PATH(ppkgCoreDIR, ppkgCoreDIRCapacity);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -3642,38 +4227,353 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageNameLength = strlen(packageName);
+    // these packages are not relocatable, we need to build them from source locally.
+    bool needToBuildRuby     = false;
+    bool needToBuildPerl     = false;
+    bool needToBuildPython3  = false;
+    bool needToBuildLibtool  = false;
+    bool needToBuildAutomake = false;
+    bool needToBuildAutoconf = false;
+    bool needToBuildTexinfo  = false;
+    bool needToBuildHelp2man = false;
+    bool needToBuildIntltool = false;
+    bool needToBuildSwig     = false;
 
-    size_t packageWorkingTopDIRCapacity = sessionDIRLength + packageNameLength + 2U;
-    char   packageWorkingTopDIR[packageWorkingTopDIRCapacity];
+    size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
 
-    ret = snprintf(packageWorkingTopDIR, packageWorkingTopDIRCapacity, "%s/%s", sessionDIR, packageName);
+#if defined (__APPLE__)
+    const bool isNativeOSDarwin = true;
+#else
+    const bool isNativeOSDarwin = false;
+#endif
+
+#if defined (__linux__)
+    const bool isNativeOSLinux = true;
+#else
+    const bool isNativeOSLinux = false;
+#endif
+
+    size_t uppmPackageNamesCapacity = depPackageNamesLength + 100U;
+    char   uppmPackageNames[uppmPackageNamesCapacity];
+
+    ret = snprintf(uppmPackageNames, 75U, "bash coreutils findutils gsed gawk grep tree %s%s%s", (isNativeOSLinux || isNativeOSDarwin) ? "pkg-config" : "pkgconf", isNativeOSDarwin ? "" : " patchelf", installOptions->enableCcache ? " ccache" : "");
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    struct stat st;
+    size_t uppmPackageNamesLength = ret;
 
-    if (stat(packageWorkingTopDIR, &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
-            int ret = ppkg_rm_r(packageWorkingTopDIR, installOptions->logLevel >= PPKGLogLevel_verbose);
+    bool needToInstallCmake = false;
+    bool needToInstallGmake = false;
+    bool needToInstallGm4   = false;
 
-            if (ret != PPKG_OK) {
-                return ret;
+    if (formula->dep_upp != NULL) {
+        size_t  depPackageNamesCopyCapacity = depPackageNamesLength + 1U;
+        char    depPackageNamesCopy[depPackageNamesCopyCapacity];
+        strncpy(depPackageNamesCopy, formula->dep_upp, depPackageNamesCopyCapacity);
+
+        char * depPackageName = strtok(depPackageNamesCopy, " ");
+
+        while (depPackageName != NULL) {
+            if (strcmp(depPackageName, "ruby") == 0) {
+                needToBuildRuby = true;
+                needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "perl") == 0) {
+                needToBuildPerl = true;
+                needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "python3") == 0) {
+                needToBuildPython3 = true;
+                needToInstallGmake = true;
+                needToInstallCmake = true;
+            } else if (strcmp(depPackageName, "texinfo") == 0) {
+                needToBuildTexinfo = true;
+                needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "help2man") == 0) {
+                needToBuildHelp2man = true;
+                needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "intltool") == 0) {
+                needToBuildIntltool = true;
+                needToInstallGmake = true;
+                needToInstallCmake = true;
+            } else if (strcmp(depPackageName, "libtool") == 0) {
+                needToBuildLibtool = true;
+                needToInstallGmake = true;
+                needToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "autoconf") == 0) {
+                needToBuildAutoconf = true;
+                needToInstallGmake = true;
+                needToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "automake") == 0) {
+                needToBuildAutomake = true;
+                needToInstallGmake = true;
+                needToInstallGm4   = true;
+            } else if (strcmp(depPackageName, "cmake") == 0) {
+                needToInstallCmake = true;
+            } else if (strcmp(depPackageName, "gmake") == 0) {
+                needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "swig") == 0) {
+                needToBuildSwig    = true;
+                needToInstallGmake = true;
+                needToInstallCmake = true;
+            } else {
+                int len = snprintf(uppmPackageNames + uppmPackageNamesLength, strlen(depPackageName) + 2U, " %s", depPackageName);
+
+                if (len < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                uppmPackageNamesLength += len;
             }
-        } else {
-            fprintf(stderr, "%s was expected to be a directory, but it was not.\n", packageWorkingTopDIR);
+
+            depPackageName = strtok(NULL, " ");
+        }
+
+#ifndef __NetBSD__
+        if (needToInstallCmake) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " cmake", 6U);
+            uppmPackageNamesLength += 6U;
+        }
+#endif
+
+        if (needToInstallGmake) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " gmake", 6U);
+            uppmPackageNamesLength += 6U;
+        }
+
+        if (needToInstallGm4) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " gm4", 4U);
+            uppmPackageNamesLength += 4U;
+        }
+
+        uppmPackageNames[uppmPackageNamesLength] = '\0';
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreDIR, ppkgCoreDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, needToInstallCmake);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    char   m4Path[PATH_MAX];
+    size_t m4PathLength = 0U;
+
+    ret = exe_where("m4", m4Path, PATH_MAX, &m4PathLength);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    if (m4PathLength > 0U) {
+        if (setenv("M4", m4Path, 1) != 0) {
+            perror("M4");
             return PPKG_ERROR;
         }
     }
 
-    if (mkdir(packageWorkingTopDIR, S_IRWXU) != 0) {
-        perror(packageWorkingTopDIR);
+    //////////////////////////////////////////////////////////////////////////////
+
+    int nativePackageIDArray[22] = {0};
+    int nativePackageIDArraySize = 0;
+
+    if (needToBuildPerl) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PERL;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildLibtool) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_LIBTOOL;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildAutoconf) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOCONF;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildAutomake) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOMAKE;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildTexinfo) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_TEXINFO;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildHelp2man) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_HELP2MAN;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildPython3) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PYTHON3;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildRuby) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_RUBY;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildIntltool) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_INTLTOOL;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildSwig) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_SWIG;
+        nativePackageIDArraySize++;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t nativePackageInstalledRootDIRCapacity = ppkgHomeDIRLength + 8U;
+    char   nativePackageInstalledRootDIR[nativePackageInstalledRootDIRCapacity];
+
+    ret = snprintf(nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, "%s/native", ppkgHomeDIR);
+
+    if (ret < 0) {
+        perror(NULL);
         return PPKG_ERROR;
     }
 
+    //////////////////////////////////////////////////////////////////////////////
+
+    for (int i = 0; i < nativePackageIDArraySize; i++) {
+        for (int i = 0; i < 8; i++) {
+            const char * name  = flagsForNativeBuild[i].name;
+            const char * value = flagsForNativeBuild[i].value;
+
+            if (value == NULL) {
+                if (unsetenv(name) != 0) {
+                    perror(name);
+                    return PPKG_ERROR;
+                }
+            } else {
+                if (setenv(name, value, 1) != 0) {
+                    perror(name);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+
+        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingTopDIR, packageWorkingTopDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->dep_pym != NULL) {
+        size_t pipUpgradeCmdCapacity = nativePackageInstalledRootDIRCapacity + 57U;
+        char   pipUpgradeCmd[pipUpgradeCmdCapacity];
+
+        ret = snprintf(pipUpgradeCmd, pipUpgradeCmdCapacity, "%s/python3/bin/pip3 install --upgrade pip setuptools wheel", nativePackageInstalledRootDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = run_cmd(pipUpgradeCmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        /////////////////////////////////////////////
+
+        size_t pipInstallCmdCapacity = nativePackageInstalledRootDIRCapacity + strlen(formula->dep_pym) + 37U;
+        char   pipInstallCmd[pipInstallCmdCapacity];
+
+        ret = snprintf(pipInstallCmd, pipInstallCmdCapacity, "%s/python3/bin/pip3 install --upgrade %s", nativePackageInstalledRootDIR, formula->dep_pym);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = run_cmd(pipInstallCmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->dep_plm != NULL) {
+        size_t cpanInstallCmdLength = ppkgHomeDIRLength + strlen(formula->dep_plm) + 24U;
+        char   cpanInstallCmd[cpanInstallCmdLength];
+
+        ret = snprintf(cpanInstallCmd, cpanInstallCmdLength, "%s/native/perl/bin/cpan %s", ppkgHomeDIR, formula->dep_plm);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        ret = run_cmd(cpanInstallCmd, STDOUT_FILENO);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (formula->useBuildSystemCargo) {
+        ret = setup_rust_toolchain(installOptions, sessionDIR, sessionDIRLength);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    size_t varsFilePathCapacity = packageWorkingTopDIRCapacity + 12U;
+    char   varsFilePath[varsFilePathCapacity];
+
+    ret = snprintf(varsFilePath, varsFilePathCapacity, "%s/vars.sh", packageWorkingTopDIR);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    ret = generate_shell_vars_file(varsFilePath, packageName, formula, installOptions, sysinfo, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, recursiveDependentPackageNamesString);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    const bool isCrossBuild = !((strcmp(sysinfo->type, targetPlatform->name) == 0) && (strcmp(sysinfo->arch, targetPlatform->arch) == 0));
+
+    if (isCrossBuild) {
+        if (formula->do12345 != NULL) {
+            ret = ppkg_build_for_native(installOptions, formula, packageName, packageNameLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingTopDIR, packageWorkingTopDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, packageInstalledSHA, varsFilePath, installOptions->verbose_net);
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+    ///                        below is for target                             ///
     //////////////////////////////////////////////////////////////////////////////
 
     size_t packageWorkingSrcDIRCapacity = packageWorkingTopDIRCapacity + 5U;
@@ -3795,258 +4695,59 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (chdir(packageWorkingTopDIR) != 0) {
-        perror(packageWorkingTopDIR);
-        return PPKG_ERROR;
-    }
+    if (formula->src_url == NULL) {
+        const char * remoteRef;
 
-    //////////////////////////////////////////////////////////////////////////////
+        if (formula->git_sha == NULL) {
+            remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
+        } else {
+            remoteRef = formula->git_sha;
+        }
 
-    // these packages are not relocatable, we should build them from source locally.
-    bool requestToBuildRuby     = false;
-    bool requestToBuildPerl     = false;
-    bool requestToBuildPython3  = false;
-    bool requestToBuildLibtool  = false;
-    bool requestToBuildAutomake = false;
-    bool requestToBuildAutoconf = false;
-    bool requestToBuildTexinfo  = false;
-    bool requestToBuildHelp2man = false;
-    bool requestToBuildIntltool = false;
-    bool requestToBuildSwig     = false;
+        ret = ppkg_git_sync(packageWorkingSrcDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master", formula->git_nth);
 
-    size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    } else {
+        if (formula->src_is_dir) {
+            char * srcDIR = &formula->src_url[6];
+            size_t srcDIRLength = strlen(srcDIR);
 
-#if defined (__APPLE__)
-    const bool isNativeOSDarwin = true;
-#else
-    const bool isNativeOSDarwin = false;
-#endif
+            size_t cmdCapacity = srcDIRLength + packageWorkingSrcDIRCapacity + 10U;
+            char   cmd[cmdCapacity];
 
-#if defined (__linux__)
-    const bool isNativeOSLinux = true;
-#else
-    const bool isNativeOSLinux = false;
-#endif
+            ret = snprintf(cmd, cmdCapacity, "cp -r %s/. %s", srcDIR, packageWorkingSrcDIR);
 
-    size_t uppmPackageNamesCapacity = depPackageNamesLength + 100U;
-    char   uppmPackageNames[uppmPackageNamesCapacity];
-
-    ret = snprintf(uppmPackageNames, 75U, "bash coreutils findutils gsed gawk grep tree %s%s%s", (isNativeOSLinux || isNativeOSDarwin) ? "pkg-config" : "pkgconf", isNativeOSDarwin ? "" : " patchelf", installOptions->enableCcache ? " ccache" : "");
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    size_t uppmPackageNamesLength = ret;
-
-    bool requestToInstallCmake = false;
-    bool requestToInstallGmake = false;
-    bool requestToInstallGm4   = false;
-
-    if (formula->dep_upp != NULL) {
-        size_t  depPackageNamesCopyCapacity = depPackageNamesLength + 1U;
-        char    depPackageNamesCopy[depPackageNamesCopyCapacity];
-        strncpy(depPackageNamesCopy, formula->dep_upp, depPackageNamesCopyCapacity);
-
-        char * depPackageName = strtok(depPackageNamesCopy, " ");
-
-        while (depPackageName != NULL) {
-            if (strcmp(depPackageName, "ruby") == 0) {
-                requestToBuildRuby = true;
-                requestToInstallGmake = true;
-            } else if (strcmp(depPackageName, "perl") == 0) {
-                requestToBuildPerl = true;
-                requestToInstallGmake = true;
-            } else if (strcmp(depPackageName, "python3") == 0) {
-                requestToBuildPython3 = true;
-                requestToInstallGmake = true;
-                requestToInstallCmake = true;
-            } else if (strcmp(depPackageName, "texinfo") == 0) {
-                requestToBuildTexinfo = true;
-                requestToInstallGmake = true;
-            } else if (strcmp(depPackageName, "help2man") == 0) {
-                requestToBuildHelp2man = true;
-                requestToInstallGmake = true;
-            } else if (strcmp(depPackageName, "intltool") == 0) {
-                requestToBuildIntltool = true;
-                requestToInstallGmake = true;
-                requestToInstallCmake = true;
-            } else if (strcmp(depPackageName, "libtool") == 0) {
-                requestToBuildLibtool = true;
-                requestToInstallGmake = true;
-                requestToInstallGm4   = true;
-            } else if (strcmp(depPackageName, "autoconf") == 0) {
-                requestToBuildAutoconf = true;
-                requestToInstallGmake = true;
-                requestToInstallGm4   = true;
-            } else if (strcmp(depPackageName, "automake") == 0) {
-                requestToBuildAutomake = true;
-                requestToInstallGmake = true;
-                requestToInstallGm4   = true;
-            } else if (strcmp(depPackageName, "cmake") == 0) {
-                requestToInstallCmake = true;
-            } else if (strcmp(depPackageName, "gmake") == 0) {
-                requestToInstallGmake = true;
-            } else if (strcmp(depPackageName, "swig") == 0) {
-                requestToBuildSwig    = true;
-                requestToInstallGmake = true;
-                requestToInstallCmake = true;
-            } else {
-                int len = snprintf(uppmPackageNames + uppmPackageNamesLength, strlen(depPackageName) + 2U, " %s", depPackageName);
-
-                if (len < 0) {
-                    perror(NULL);
-                    return PPKG_ERROR;
-                }
-
-                uppmPackageNamesLength += len;
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
             }
 
-            depPackageName = strtok(NULL, " ");
-        }
+            ret = run_cmd(cmd, STDOUT_FILENO);
 
-#ifndef __NetBSD__
-        if (requestToInstallCmake) {
-            strncpy(uppmPackageNames + uppmPackageNamesLength, " cmake", 6U);
-            uppmPackageNamesLength += 6U;
-        }
-#endif
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+        } else {
+            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingSrcDIR, packageWorkingSrcDIRCapacity, installOptions->verbose_net);
 
-        if (requestToInstallGmake) {
-            strncpy(uppmPackageNames + uppmPackageNamesLength, " gmake", 6U);
-            uppmPackageNamesLength += 6U;
-        }
-
-        if (requestToInstallGm4) {
-            strncpy(uppmPackageNames + uppmPackageNamesLength, " gm4", 4U);
-            uppmPackageNamesLength += 4U;
-        }
-
-        uppmPackageNames[uppmPackageNamesLength] = '\0';
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreDIR, ppkgCoreDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, requestToInstallCmake);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    char   m4Path[PATH_MAX];
-    size_t m4PathLength = 0U;
-
-    ret = exe_where("m4", m4Path, PATH_MAX, &m4PathLength);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (m4PathLength > 0U) {
-        if (setenv("M4", m4Path, 1) != 0) {
-            perror("M4");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    int nativePackageIDArray[22] = {0};
-    int nativePackageIDArraySize = 0;
-
-    if (requestToBuildPerl) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PERL;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildLibtool) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_LIBTOOL;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildAutoconf) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOCONF;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildAutomake) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_AUTOMAKE;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildTexinfo) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_TEXINFO;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildHelp2man) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_HELP2MAN;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildPython3) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PYTHON3;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildRuby) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_RUBY;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildIntltool) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_INTLTOOL;
-        nativePackageIDArraySize++;
-    }
-
-    if (requestToBuildSwig) {
-        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_SWIG;
-        nativePackageIDArraySize++;
-    }
-
-    size_t nativePackageInstallingRootDIRCapacity = packageWorkingTopDIRCapacity + 8U;
-    char   nativePackageInstallingRootDIR[nativePackageInstallingRootDIRCapacity];
-
-    ret = snprintf(nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, "%s/native", packageWorkingTopDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    size_t nativePackageInstalledRootDIRCapacity = ppkgHomeDIRLength + 8U;
-    char   nativePackageInstalledRootDIR[nativePackageInstalledRootDIRCapacity];
-
-    ret = snprintf(nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, "%s/native", ppkgHomeDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    for (int i = 0; i < nativePackageIDArraySize; i++) {
-        for (int i = 0; i < 8; i++) {
-            const char * name  = flagsForNativeBuild[i].name;
-            const char * value = flagsForNativeBuild[i].value;
-
-            if (value == NULL) {
-                if (unsetenv(name) != 0) {
-                    perror(name);
-                    return PPKG_ERROR;
-                }
-            } else {
-                if (setenv(name, value, 1) != 0) {
-                    perror(name);
-                    return PPKG_ERROR;
-                }
+            if (ret != PPKG_OK) {
+                return ret;
             }
         }
+    }
 
-        ret = install_native_package(nativePackageIDArray[i], ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, nativePackageInstallingRootDIR, nativePackageInstallingRootDIRCapacity, nativePackageInstalledRootDIR, nativePackageInstalledRootDIRCapacity, njobs, installOptions);
+    if (formula->fix_url != NULL) {
+        ret = download_via_http(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingFixDIR, packageWorkingFixDIRCapacity, installOptions->verbose_net);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+    }
+
+    if (formula->res_url != NULL) {
+        ret = download_via_http(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingResDIR, packageWorkingResDIRCapacity, installOptions->verbose_net);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -4055,91 +4756,17 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (formula->dep_pym != NULL) {
-        size_t pipUpgradeCmdCapacity = nativePackageInstalledRootDIRCapacity + 57U;
-        char   pipUpgradeCmd[pipUpgradeCmdCapacity];
-
-        ret = snprintf(pipUpgradeCmd, pipUpgradeCmdCapacity, "%s/python3/bin/pip3 install --upgrade pip setuptools wheel", nativePackageInstalledRootDIR);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        ret = run_cmd(pipUpgradeCmd, STDOUT_FILENO);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        /////////////////////////////////////////////
-
-        size_t pipInstallCmdCapacity = nativePackageInstalledRootDIRCapacity + strlen(formula->dep_pym) + 37U;
-        char   pipInstallCmd[pipInstallCmdCapacity];
-
-        ret = snprintf(pipInstallCmd, pipInstallCmdCapacity, "%s/python3/bin/pip3 install --upgrade %s", nativePackageInstalledRootDIR, formula->dep_pym);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        ret = run_cmd(pipInstallCmd, STDOUT_FILENO);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->dep_plm != NULL) {
-        size_t cpanInstallCmdLength = ppkgHomeDIRLength + strlen(formula->dep_plm) + 24U;
-        char   cpanInstallCmd[cpanInstallCmdLength];
-
-        ret = snprintf(cpanInstallCmd, cpanInstallCmdLength, "%s/native/perl/bin/cpan %s", ppkgHomeDIR, formula->dep_plm);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        ret = run_cmd(cpanInstallCmd, STDOUT_FILENO);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->useBuildSystemCargo) {
-        ret = setup_rust_toolchain(installOptions, sessionDIR, sessionDIRLength);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-    ///                        below is for target                             ///
-    //////////////////////////////////////////////////////////////////////////////
-
-    const bool isCrossBuild = !((strcmp(sysinfo->type, targetPlatform->name) == 0) && (strcmp(sysinfo->arch, targetPlatform->arch) == 0));
+    struct stat st;
 
     bool isTargetOSFreeBSD = false;
-    bool isTargetOSOpenBSD = false;
-    bool isTargetOSNetBSD  = false;
 
     if (isCrossBuild) {
         if (strcmp(targetPlatform->name, "freebsd") == 0) {
             isTargetOSFreeBSD = true;
             ret = setup_sysroot_for_freebsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
         } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
-            isTargetOSOpenBSD = true;
             ret = setup_sysroot_for_openbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
         } else if (strcmp(targetPlatform->name,  "netbsd") == 0) {
-            isTargetOSNetBSD = true;
             ret = setup_sysroot_for__netbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
         }
 
@@ -4149,7 +4776,7 @@ static int ppkg_install_package(
 
         ///////////////////////////////////////////
 
-        if (chdir(packageWorkingTopDIR) == -1) {
+        if (chdir (packageWorkingTopDIR) == -1) {
             perror(packageWorkingTopDIR);
             return PPKG_ERROR;
         }
@@ -4212,7 +4839,7 @@ static int ppkg_install_package(
             size_t wrapperFilePathCapacity = ppkgCoreDIRCapacity + 23U;
             char   wrapperFilePath[wrapperFilePathCapacity];
 
-            int ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-target-%s", ppkgCoreDIR, compilerName);
+            ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-target-%s", ppkgCoreDIR, compilerName);
 
             if (ret < 0) {
                 perror(NULL);
@@ -4260,11 +4887,6 @@ static int ppkg_install_package(
 
                 if (setenv("AS", wrapperFilePath, 1) != 0) {
                     perror("AS");
-                    return PPKG_ERROR;
-                }
-
-                if (setenv("LD", wrapperFilePath, 1) != 0) {
-                    perror("LD");
                     return PPKG_ERROR;
                 }
             } else {
@@ -4862,17 +5484,17 @@ static int ppkg_install_package(
 
         /////////////////////////////////////////
 
-        KV envsForTarget[5] = {
+        KV envsForTargetBuild[5] = {
             { "TARGET_CC",       getenv("CC") },
-            { "TARGET_CFLAGS",   CFLAGSForTarget },
             { "TARGET_CXX",      getenv("CXX") },
-            { "TARGET_CXXFLAGS", CXXFLAGSForTarget },
-            { "TARGET_AR",       getenv("AR") }
+            { "TARGET_AR",       getenv("AR") },
+            { "TARGET_CFLAGS",   CFLAGSForTarget },
+            { "TARGET_CXXFLAGS", CXXFLAGSForTarget }
         };
 
         for (int i = 0; i < 5; i++) {
-            if (setenv(envsForTarget[i].name, envsForTarget[i].value, 1) != 0) {
-                perror(envsForTarget[i].name);
+            if (setenv(envsForTargetBuild[i].name, envsForTargetBuild[i].value, 1) != 0) {
+                perror(envsForTargetBuild[i].name);
                 return PPKG_ERROR;
             }
         }
@@ -4915,17 +5537,17 @@ static int ppkg_install_package(
 
         /////////////////////////////////////////
 
-        KV envsForNative[5] = {
+        KV envsForNativeBuild[5] = {
             { "HOST_CC",         toolchainForNativeBuild->cc },
-            { "HOST_CFLAGS",     CFLAGSForNative },
             { "HOST_CXX",        toolchainForNativeBuild->cxx },
-            { "HOST_CXXFLAGS",   CXXFLAGSForNative },
             { "HOST_AR",         toolchainForNativeBuild->ar },
+            { "HOST_CFLAGS",     CFLAGSForNative },
+            { "HOST_CXXFLAGS",   CXXFLAGSForNative },
         };
 
         for (int i = 0; i < 5; i++) {
-            if (setenv(envsForNative[i].name, envsForNative[i].value, 1) != 0) {
-                perror(envsForNative[i].name);
+            if (setenv(envsForNativeBuild[i].name, envsForNativeBuild[i].value, 1) != 0) {
+                perror(envsForNativeBuild[i].name);
                 return PPKG_ERROR;
             }
         }
@@ -4933,25 +5555,14 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    time_t ts = time(NULL);
-
-    size_t strBufSize = packageNameLength + 50U;
-    char   strBuf[strBufSize];
-
-    ret = snprintf(strBuf, strBufSize, "%s:%zu:%u", packageName, ts, getpid());
-
-    if (ret < 0) {
-        perror(NULL);
+    // override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    // because we only want to use our own
+    if (setenv("PKG_CONFIG_LIBDIR", packageWorkingLibDIR, 1) != 0) {
+        perror("PKG_CONFIG_LIBDIR");
         return PPKG_ERROR;
     }
 
-    char packageInstalledSHA[65] = {0};
-
-    ret = sha256sum_of_string(packageInstalledSHA, strBuf);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
+    //////////////////////////////////////////////////////////////////////////////
 
     size_t packageInstalledDIRCapacity = packageInstalledRootDIRCapacity + 66U;
     char   packageInstalledDIR[packageInstalledDIRCapacity];
@@ -4962,6 +5573,8 @@ static int ppkg_install_package(
         perror(NULL);
         return PPKG_ERROR;
     }
+
+    //////////////////////////////////////////////////////////////////////////////
 
     size_t packageMetaInfoDIRCapacity = packageInstalledDIRCapacity + 6U;
     char   packageMetaInfoDIR[packageMetaInfoDIRCapacity];
@@ -4975,90 +5588,20 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t installShellScriptFilePathCapacity = packageWorkingBinDIRCapacity + 12U;
-    char   installShellScriptFilePath[installShellScriptFilePathCapacity];
+    size_t installshFilePathCapacity = packageWorkingBinDIRCapacity + 12U;
+    char   installshFilePath[installshFilePathCapacity];
 
-    ret = snprintf(installShellScriptFilePath, installShellScriptFilePathCapacity, "%s/install.sh", packageWorkingBinDIR);
+    ret = snprintf(installshFilePath, installshFilePathCapacity, "%s/install.sh", packageWorkingBinDIR);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    ret = generate_install_shell_script_file(installShellScriptFilePath, packageName, formula, targetPlatform, installOptions, sysinfo, isCrossBuild, isTargetOSDarwin, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
+    ret = generate_install_shell_script_file(installshFilePath, varsFilePath, packageName, formula, targetPlatform, installOptions, isCrossBuild, isTargetOSDarwin, ppkgCoreDIR,  packageWorkingTopDIR, packageWorkingSrcDIR, packageWorkingFixDIR, packageWorkingResDIR, packageWorkingBinDIR, packageWorkingLibDIR, packageWorkingIncDIR, packageWorkingTmpDIR, packageInstalledRootDIR, packageInstalledRootDIRCapacity, nativePackageInstalledRootDIR, packageInstalledDIR, packageMetaInfoDIR, recursiveDependentPackageNamesString, recursiveDependentPackageNamesStringSize);
 
     if (ret != PPKG_OK) {
         return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->src_url == NULL) {
-        const char * remoteRef;
-
-        if (formula->git_sha == NULL) {
-            remoteRef = (formula->git_ref == NULL) ? "HEAD" : formula->git_ref;
-        } else {
-            remoteRef = formula->git_sha;
-        }
-
-        ret = ppkg_git_sync(packageWorkingSrcDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master", formula->git_nth);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    } else {
-        if (formula->src_is_dir) {
-            char * srcDIR = &formula->src_url[6];
-            size_t srcDIRLength = strlen(srcDIR);
-
-            size_t cmdCapacity = srcDIRLength + packageWorkingSrcDIRCapacity + 10U;
-            char   cmd[cmdCapacity];
-
-            ret = snprintf(cmd, cmdCapacity, "cp -r %s/. %s", srcDIR, packageWorkingSrcDIR);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            ret = run_cmd(cmd, STDOUT_FILENO);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-        } else {
-            ret = download_via_http(formula->src_url, formula->src_uri, formula->src_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingSrcDIR, packageWorkingSrcDIRCapacity, installOptions->verbose_net);
-
-            if (ret != PPKG_OK) {
-                return ret;
-            }
-        }
-    }
-
-    if (formula->fix_url != NULL) {
-        ret = download_via_http(formula->fix_url, formula->fix_uri, formula->fix_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingFixDIR, packageWorkingFixDIRCapacity, installOptions->verbose_net);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    if (formula->res_url != NULL) {
-        ret = download_via_http(formula->res_url, formula->res_uri, formula->res_sha, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, packageWorkingResDIR, packageWorkingResDIRCapacity, installOptions->verbose_net);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    // override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    // because we only want to use our own
-    if (setenv("PKG_CONFIG_LIBDIR", packageWorkingLibDIR, 1) != 0) {
-        perror("PKG_CONFIG_LIBDIR");
-        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -5115,10 +5658,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t bashCmdCapacity = installShellScriptFilePathCapacity + 10U;
+    size_t bashCmdCapacity = installshFilePathCapacity + 10U;
     char   bashCmd[bashCmdCapacity];
 
-    ret = snprintf(bashCmd, bashCmdCapacity, "/bin/sh %s", installShellScriptFilePath);
+    ret = snprintf(bashCmd, bashCmdCapacity, "/bin/sh %s", installshFilePath);
 
     if (ret < 0) {
         perror(NULL);
@@ -5163,7 +5706,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (mkdir(packageMetaInfoDIR, S_IRWXU) != 0) {
+    if (mkdir (packageMetaInfoDIR, S_IRWXU) != 0) {
         perror(packageMetaInfoDIR);
         return PPKG_ERROR;
     }
@@ -5333,7 +5876,7 @@ static int ppkg_install_package(
         return ret;
     }
 
-    if (chdir(packageInstalledRootDIR) != 0) {
+    if (chdir (packageInstalledRootDIR) != 0) {
         perror(packageInstalledRootDIR);
         return PPKG_ERROR;
     }
@@ -6074,75 +6617,6 @@ int ppkg_setup_toolchain_for_native_build(
         toolchainForNativeBuild->ldflags = ldflags;
     }
 
-    //////////////////////////////////////////////////////////////////////
-
-    const KV envs[17] = {
-        { "CC", toolchainForNativeBuild->cc },
-        { "OBJC", toolchainForNativeBuild->objc },
-        { "CXX", toolchainForNativeBuild->cxx },
-        { "CPP", toolchainForNativeBuild->cpp },
-        { "AS", toolchainForNativeBuild->as },
-        { "AR", toolchainForNativeBuild->ar },
-        { "RANLIB", toolchainForNativeBuild->ranlib },
-        { "LD", toolchainForNativeBuild->ld },
-        { "NM", toolchainForNativeBuild->nm },
-        { "SIZE", toolchainForNativeBuild->size },
-        { "STRIP", toolchainForNativeBuild->strip },
-        { "STRINGS", toolchainForNativeBuild->strings },
-        { "OBJCOPY", toolchainForNativeBuild->objcopy },
-        { "OBJDUMP", toolchainForNativeBuild->objdump },
-        { "READELF", toolchainForNativeBuild->readelf },
-        { "ADDR2LINE", toolchainForNativeBuild->addr2line },
-        { "SYSROOT", toolchainForNativeBuild->sysroot }
-    };
-
-    for (int i = 0; i < 17; i++) {
-        const char * name  = envs[i].name;
-        const char * value = envs[i].value;
-
-        if (value == NULL) {
-            if (unsetenv(name) != 0) {
-                perror(name);
-                return PPKG_ERROR;
-            }
-
-            size_t name2Length = strlen(name) + 11U;
-            char   name2[name2Length];
-
-            ret = snprintf(name2, name2Length, "%s_FOR_BUILD", name);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            if (unsetenv(name2) != 0) {
-                perror(name2);
-                return PPKG_ERROR;
-            }
-        } else {
-            if (setenv(name, value, 1) != 0) {
-                perror(name);
-                return PPKG_ERROR;
-            }
-
-            size_t name2Length = strlen(name) + 11U;
-            char   name2[name2Length];
-
-            ret = snprintf(name2, name2Length, "%s_FOR_BUILD", name);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            if (setenv(name2, value, 1) != 0) {
-                perror(name2);
-                return PPKG_ERROR;
-            }
-        }
-    }
-
     //////////////////////////////////////////////////////////////////////////////
 
 #if defined (__APPLE__)
@@ -6225,9 +6699,9 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char * unsetenvs[13] = { "LIBS", "TARGET_ARCH", "AUTOCONF", "AUTOHEADER", "AUTOM4TE", "AUTOMAKE", "AUTOPOINT", "ACLOCAL", "GTKDOCIZE", "INTLTOOLIZE", "LIBTOOLIZE", "M4", "MAKE" };
+    const char * unsetenvs[12] = { "TARGET_ARCH", "AUTOCONF", "AUTOHEADER", "AUTOM4TE", "AUTOMAKE", "AUTOPOINT", "ACLOCAL", "GTKDOCIZE", "INTLTOOLIZE", "LIBTOOLIZE", "M4", "MAKE" };
 
-    for (int i = 0; i < 13; i++) {
+    for (int i = 0; i < 12; i++) {
         if (unsetenv(unsetenvs[i]) != 0) {
             perror(unsetenvs[i]);
             return PPKG_ERROR;
@@ -6428,7 +6902,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
         //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
 
-        ret = ppkg_install_package(packageName, targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+        ret = ppkg_install_package(packageName, strlen(packageName), targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, time(NULL), uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
 
         free(recursiveDependentPackageNamesStringBuffer);
         recursiveDependentPackageNamesStringBuffer = NULL;
@@ -6456,6 +6930,12 @@ finalize:
 
     free(packageSet);
     packageSet = NULL;
+
+    if (ret == PPKG_OK) {
+        if (!installOptions->keepSessionDIR) {
+            ret = ppkg_rm_r(sessionDIR, false);
+        }
+    }
 
     return ret;
 }

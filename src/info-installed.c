@@ -373,6 +373,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         json_object_set_new(root, "parallel", json_boolean(receipt->parallel));
         json_object_set_new(root, "symlink", json_boolean(receipt->symlink));
 
+        json_object_set_new(root, "do12345", json_string(receipt->do12345));
         json_object_set_new(root, "dopatch", json_string(receipt->dopatch));
         json_object_set_new(root, "install", json_string(receipt->install));
 
@@ -496,6 +497,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
     } else if (strcmp(key, "ldflags") == 0) {
         if (receipt->ldflags != NULL) {
             printf("%s\n", receipt->ldflags);
+        }
+    } else if (strcmp(key, "do12345") == 0) {
+        if (receipt->do12345 != NULL) {
+            printf("%s\n", receipt->do12345);
         }
     } else if (strcmp(key, "dopatch") == 0) {
         if (receipt->dopatch != NULL) {

@@ -61,6 +61,7 @@ typedef enum {
     FORMULA_KEY_CODE_bscript,
     FORMULA_KEY_CODE_binbstd,
 
+    FORMULA_KEY_CODE_do12345,
     FORMULA_KEY_CODE_dopatch,
     FORMULA_KEY_CODE_install,
     FORMULA_KEY_CODE_symlink,
@@ -113,6 +114,7 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("binbstd: %d\n", formula->binbstd);
     printf("parallel: %d\n", formula->parallel);
 
+    printf("do12345: %s\n", formula->do12345);
     printf("dopatch: %s\n", formula->dopatch);
     printf("install: %s\n", formula->install);
     printf("symlink: %d\n", formula->symlink);
@@ -275,6 +277,11 @@ void ppkg_formula_free(PPKGFormula * formula) {
 
     ///////////////////////////////
 
+    if (formula->do12345 != NULL) {
+        free(formula->do12345);
+        formula->do12345 = NULL;
+    }
+
     if (formula->dopatch != NULL) {
         free(formula->dopatch);
         formula->dopatch = NULL;
@@ -346,6 +353,8 @@ static PPKGFormulaKeyCode ppkg_formula_key_code_from_key_name(char * key) {
         return FORMULA_KEY_CODE_xxflags;
     } else if (strcmp(key, "ldflags") == 0) {
         return FORMULA_KEY_CODE_ldflags;
+    } else if (strcmp(key, "do12345") == 0) {
+        return FORMULA_KEY_CODE_do12345;
     } else if (strcmp(key, "dopatch") == 0) {
         return FORMULA_KEY_CODE_dopatch;
     } else if (strcmp(key, "install") == 0) {
@@ -420,6 +429,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_xxflags: if (formula->xxflags != NULL) free(formula->xxflags); formula->xxflags = strdup(value); break;
         case FORMULA_KEY_CODE_ldflags: if (formula->ldflags != NULL) free(formula->ldflags); formula->ldflags = strdup(value); break;
 
+        case FORMULA_KEY_CODE_do12345: if (formula->do12345 != NULL) free(formula->do12345); formula->do12345 = strdup(value); break;
         case FORMULA_KEY_CODE_dopatch: if (formula->dopatch != NULL) free(formula->dopatch); formula->dopatch = strdup(value); break;
         case FORMULA_KEY_CODE_install: if (formula->install != NULL) free(formula->install); formula->install = strdup(value); break;
 

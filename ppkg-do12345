@@ -1,0 +1,855 @@
+# Copyright (c) 2021-2023 刘富频
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# https://github.com/leleliu008/ppkg
+
+# If IFS is not set, the default value will be <space><tab><newline>
+# https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+unset IFS
+
+
+COLOR_RED='\033[0;31m'          # Red
+COLOR_GREEN='\033[0;32m'        # Green
+COLOR_YELLOW='\033[0;33m'       # Yellow
+COLOR_BLUE='\033[0;94m'         # Blue
+COLOR_PURPLE='\033[0;35m'       # Purple
+COLOR_OFF='\033[0m'             # Reset
+
+print() {
+    printf '%b' "$*"
+}
+
+echo() {
+    printf '%b\n' "$*"
+}
+
+note() {
+    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
+}
+
+warn() {
+    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+}
+
+success() {
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
+}
+
+error() {
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+}
+
+abort() {
+    EXIT_STATUS_CODE="$1"
+    shift
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    exit "$EXIT_STATUS_CODE"
+}
+
+run() {
+    if [ "$RUN_SILENT" != 1 ] ; then
+        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    fi
+
+    eval "$@"
+}
+
+sed_in_place() {
+    if [ "$RUN_SILENT" = 1 ] ; then
+        sed -i "$@"
+    else
+        if [ -z "$SED" ] ; then
+            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
+        fi
+
+        export SED
+
+        "$PPKG" util sed-in-place "$@"
+    fi
+}
+
+is_integer() {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
+wfetch() {
+    "$PPKG" util wfetch "$@"
+}
+
+# }}}
+##############################################################################
+# {{{ install_xx
+
+# install_incs [:sub-dir] <FILE>...
+install_incs() {
+    unset X
+
+    case $1 in
+        :*) X="${1#:}"; shift
+    esac
+
+    while [ -n "$1" ]
+    do
+        install -v -d          "$PACKAGE_INSTALL_DIR/include/$X/"
+        install -v -m 644 "$1" "$PACKAGE_INSTALL_DIR/include/$X/"
+        shift
+    done
+}
+
+install_libs() {
+    install -v -d "$PACKAGE_INSTALL_DIR/lib"
+    for item in "$@"
+    do
+        case $item in
+            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib/" ;;
+            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib/" ;;
+        esac
+    done
+}
+
+install_pcfs() {
+    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig/" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig/"
+}
+
+install_bins() {
+    install -v -d          "$PACKAGE_INSTALL_DIR/bin/" &&
+    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin/"
+}
+
+install_etcs() {
+    install -v -d          "$PACKAGE_INSTALL_DIR/etc/" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc/"
+}
+
+install_mans() {
+    for item in "$@"
+    do
+        unset NUMBER
+        NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
+        case $NUMBER in
+            [1-8]);;
+            *)    abort 1 "$item: not a manpage."
+        esac
+        install -v -d             "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
+    done
+}
+
+# install_completion <fish|bash|zsh> <COMMAND> <FILE-PATH>
+  install_completion() {
+    case $1 in
+        bash)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/bash/completions" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/bash/completions/$2"
+            ;;
+        fish)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d/$2.fish"
+            ;;
+        zsh)
+            install -v -d          "$PACKAGE_INSTALL_DIR/share/zsh/site-functions" &&
+            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/zsh/site-functions/_$2"
+            ;;
+        *)  abort 1 "install_completion unsupported shell: $1"
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ gow
+
+gow() {
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        if command -v bat > /dev/null ; then
+            run "go env | bat --language=bash --paging=never --style=plain"
+        else
+            run "go env"
+        fi
+
+        printf '\n'
+    fi
+
+    # /Users/runner/go/pkg/mod/golang.org/x/sys@v0.0.0-20191028164358-195ce5e7f934/unix/syscall_darwin.1_13.go:25:3: //go:linkname must refer to declared function or variable
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        GOMOD="$PACKAGE_BSCRIPT_DIR/go.mod"
+
+        if [ -f "$GOMOD" ] && go mod graph | grep -q 'golang\.org/x/sys' ; then
+            run go get -u golang.org/x/sys
+
+            if [ -d "$PACKAGE_BSCRIPT_DIR/vendor" ] ; then
+                unset GO_VERSION_MAJOR
+                unset GO_VERSION_MINOR
+
+                GO_VERSION_MAJOR=$(go env GOVERSION | cut -c3- | cut -d. -f1)
+                GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
+
+                sed_in_place "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+
+                run go mod tidy
+                run go mod vendor
+            fi
+        fi
+    fi
+
+    # https://pkg.go.dev/cmd/go
+    # https://pkg.go.dev/cmd/link
+
+    unset GO_BUILD_ARGS
+    unset GO_BUILD_ARGV_V
+    unset GO_BUILD_ARGV_X
+    unset GO_BUILD_ARGV_O
+    unset GO_BUILD_ARGV_MOD
+    unset GO_BUILD_ARGV_TAGS
+    unset GO_BUILD_ARGV_LDFLAGS
+
+    unset GO_BUILD_ARGS_EXTRA
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -v) shift ; GO_BUILD_ARGV_V='-v' ;;
+            -x) shift ; GO_BUILD_ARGV_X='-x' ;;
+            -o) shift ; GO_BUILD_ARGV_O="$1" ; shift ;;
+            -X) shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="-X $1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -X $1"
+                fi
+                shift
+                ;;
+            -ldflags)
+                shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="$1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$1 $GO_BUILD_ARGV_LDFLAGS"
+                fi
+                shift
+                ;;
+            *)  GO_BUILD_ARGS_EXTRA="$GO_BUILD_ARGS_EXTRA $1" ; shift
+        esac
+    done
+
+    GO_BUILD_ARGS='-trimpath'
+
+    if [ -z "$GO_BUILD_ARGV_V" ] ; then
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+    fi
+
+    if [ -z "$GO_BUILD_ARGV_X" ] ; then
+        if [ "$LOG_LEVEL" -ge 2 ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+    fi
+
+    if [ "$BUILD_TYPE" = release ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
+    fi
+
+    if [ "$LINK_TYPE" = static-full ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
+
+    if [ -z "$GO_BUILD_ARGV_O" ] ; then
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/"
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/$GO_BUILD_ARGV_O"
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
+
+    # shellcheck disable=SC2086
+    run go build $GO_BUILD_ARGS
+
+    for item in $(ls "$PACKAGE_BCACHED_DIR")
+    do
+        case $item in
+            *.a)  run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *.so) run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
+            *)    run install_bins "$PACKAGE_BCACHED_DIR/$item" ;;
+        esac
+    done
+}
+
+# }}}
+##############################################################################
+# {{{ cargow
+
+cargow() {
+    # https://github.com/rust-lang/rust/issues/89626
+    if [ "$RUST_TARGET" = 'aarch64-unknown-linux-musl' ] ; then
+        CFLAGS="$CFLAGS -mno-outline-atomics"
+    fi
+
+    for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+    do
+        case $item in
+            openssl)
+                # https://docs.rs/openssl/0.10.35/openssl/
+                export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                ;;
+            openssl@1.1)
+                # https://docs.rs/openssl/0.10.35/openssl/
+                export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
+                ;;
+        esac
+    done
+
+    env | grep CARGO_
+    env | grep RUST
+
+    run rustup target add "$RUST_TARGET"
+
+    case $1 in
+        build)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-build.html
+
+            unset CARGO_BUILD_ARGS
+            unset CARGO_BUILD_ARG_VV
+            unset CARGO_BUILD_ARG_TARGET
+            unset CARGO_BUILD_ARG_RELEASE
+
+            for arg in "$@"
+            do
+                case $arg in
+                    --vv)      CARGO_BUILD_ARG_VV='set'      ;;
+                    --target)  CARGO_BUILD_ARG_TARGET='set'  ;;
+                    --release) CARGO_BUILD_ARG_RELEASE='set' ;;
+                esac
+            done
+
+            CARGO_BUILD_ARGS="$*"
+
+            if [ -z "$CARGO_BUILD_ARG_VV" ] && [ "$LOG_LEVEL" -ge 2 ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
+            fi
+
+            if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
+            fi
+
+            # shellcheck disable=SC2086
+            run cargo clean && run cargo $CARGO_BUILD_ARGS
+            ;;
+        install)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-install.html
+
+            unset CARGO_INSTALL_ARGS
+            unset CARGO_INSTALL_ARG_TARGET
+            unset CARGO_INSTALL_ARG_PATH
+            unset CARGO_INSTALL_ARG_ROOT
+            unset CARGO_INSTALL_ARG_VV
+
+            for arg in "$@"
+            do
+                case $arg in
+                    --target) CARGO_INSTALL_ARG_TARGET='set' ;;
+                    --path)   CARGO_INSTALL_ARG_PATH='set'   ;;
+                    --root)   CARGO_INSTALL_ARG_ROOT='set'   ;;
+                    --vv)     CARGO_INSTALL_ARG_VV='set'     ;;
+                esac
+            done
+
+            CARGO_INSTALL_ARGS="$*"
+
+            if [ -z "$CARGO_INSTALL_ARG_VV" ] && [ "$LOG_LEVEL" -ge 2 ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $RUST_TARGET"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_BSCRIPT_DIR"
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$PACKAGE_INSTALL_DIR"
+            fi
+
+            # shellcheck disable=SC2086
+            run cargo clean && run cargo $CARGO_INSTALL_ARGS
+            ;;
+        cbuild|cinstall)
+            unset CARGO_CINSTALL_ARGS
+            unset CARGO_CINSTALL_ARG_Q
+            unset CARGO_CINSTALL_ARG_V
+            unset CARGO_CINSTALL_ARG_VV
+            unset CARGO_CINSTALL_ARG_DEBUG
+            unset CARGO_CINSTALL_ARG_RELEASE
+            unset CARGO_CINSTALL_ARG_TARGET
+            unset CARGO_CINSTALL_ARG_PREFIX
+
+            for arg in "$@"
+            do
+                case $arg in
+                    -q|--quiet)   CARGO_CINSTALL_ARG_Q='set'       ;;
+                    -v|--verbose) CARGO_CINSTALL_ARG_V='set'       ;;
+                    -vv)          CARGO_CINSTALL_ARG_VV='set'      ;;
+                    --debug)      CARGO_CINSTALL_ARG_DEBUG='set'   ;;
+                    --release)    CARGO_CINSTALL_ARG_RELEASE='set' ;;
+                    --target)     CARGO_CINSTALL_ARG_TARGET='set'  ;;
+                    --prefix)     CARGO_CINSTALL_ARG_PREFIX='set'  ;;
+                esac
+            done
+
+            CARGO_CINSTALL_ARGS="$*"
+
+            if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
+                if [ "$LOG_LEVEL" -ge 2 ] ; then
+                    CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+                fi
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --release"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_TARGET" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --target $RUST_TARGET"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_PREFIX" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $PACKAGE_INSTALL_DIR"
+            fi
+
+            # shellcheck disable=SC2086
+            run cargo $CARGO_CINSTALL_ARGS
+            ;;
+        *) cargo "$@"
+    esac
+}
+
+# }}}
+##############################################################################
+# {{{ configure
+
+configure_only() {
+    export FORCE_UNSAFE_CONFIGURE=1
+
+    export ac_cv_func_malloc_0_nonnull=yes
+    export ac_cv_func_calloc_0_nonnull=yes
+    export ac_cv_func_realloc_0_nonnull=yes
+
+    CONFIGURE_ARGS="--prefix=$PACKAGE_INSTALL_DIR"
+
+    if [ "$BUILD_TYPE" = release ] ; then
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
+    else
+        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
+    fi
+
+    case $INSTALL_LIB in
+        static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --disable-shared" ;;
+        shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared --disable-static" ;;
+        both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
+        no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
+    esac
+
+    CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
+
+    if [ -n "$PPKG_XTRACE" ] ; then
+        sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
+    fi
+
+    if run "$PACKAGE_BSCRIPT_DIR/configure" "$CONFIGURE_ARGS" "$@" ; then
+        printf '\n'
+    else
+        if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BCACHED_DIR/config.log"
+        elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+            run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+        fi
+
+        return 1
+    fi
+
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
+        do
+            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
+            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+        done
+
+        unset Makefile
+    fi
+}
+
+configure() {
+    configure_only "$@"
+    gmakew clean
+    gmakew V=1
+    gmakew install
+}
+
+# }}}
+##############################################################################
+# {{{ gmakew
+
+gmakew() {
+    GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake"
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        run "$GMAKE" "-j$BUILD_NJOBS" --debug "$@"
+    else
+        run "$GMAKE" "-j$BUILD_NJOBS" "$@"
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ cmakew
+
+# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+# https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
+# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+#
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_IGNORE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_MODULE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PROGRAM_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_LIBRARY_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+#
+# run in a subshell
+cmakew() {
+    case $BUILD_TYPE in
+        debug)   CMAKE_BUILD_TYPE=Debug   ;;
+        release) CMAKE_BUILD_TYPE=Release ;;
+    esac
+
+    case $INSTALL_LIB in
+        static)  BUILD_SHARED_LIBS=OFF ;;
+        *)       BUILD_SHARED_LIBS=ON
+    esac
+
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        CMAKE_VERBOSE_MAKEFILE=ON
+        CMAKE_COLOR_MAKEFILE=ON
+    else
+        CMAKE_VERBOSE_MAKEFILE=OFF
+        CMAKE_COLOR_MAKEFILE=OFF
+    fi
+
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        CMAKE_FIND_DEBUG_MODE=ON
+    else
+        CMAKE_FIND_DEBUG_MODE=OFF
+    fi
+
+    ##############################################################################
+
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
+
+    CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
+
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
+
+    if [ "$NATIVE_OS_TYPE" = macos ] ; then
+        case $LINK_TYPE in
+            static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")\n'      > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+        esac
+    else
+        case $LINK_TYPE in
+            static-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-full) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+        esac
+    fi
+
+    if [ "$LOG_LEVEL" -gt 0 ] ; then
+        run cat "$CMAKE_PROJECT_INCLUDE"
+    fi
+
+    ##############################################################################
+
+    CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
+
+    printf '%s\n' "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+
+    cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
+message(STATUS "CMake command: \${CMAKE_COMMAND}")
+message(STATUS "CMake version: \${CMAKE_VERSION}")
+
+message(STATUS "CMAKE_HOST_SYSTEM_NAME: \${CMAKE_HOST_SYSTEM_NAME}")
+message(STATUS "     CMAKE_SYSTEM_NAME: \${CMAKE_SYSTEM_NAME}")
+
+if ("\${BUILD_SHARED_LIBS}" STREQUAL "")
+    set(BUILD_SHARED_LIBS $BUILD_SHARED_LIBS)
+endif()
+
+set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
+
+set(CMAKE_C_COMPILER "$CC")
+set(CMAKE_C_FLAGS "$CPPFLAGS $CFLAGS")
+
+set(CMAKE_CXX_COMPILER "$CXX")
+set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
+
+set(CMAKE_ASM_COMPILER "$CC")
+
+set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
+
+set(CMAKE_C_COMPILER_AR     "$AR")
+set(CMAKE_C_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_CXX_COMPILER_AR     "$AR")
+set(CMAKE_CXX_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_AR      "$AR")
+set(CMAKE_RANLIB  "$RANLIB")
+
+set(CMAKE_LINKER  "$LD")
+
+set(CMAKE_NM      "$NM")
+set(CMAKE_READELF "$READELF")
+
+set(CMAKE_OBJCOPY "$OBJCOPY")
+set(CMAKE_OBJDUMP "$OBJDUMP")
+
+set(CMAKE_STRIP   "$STRIP")
+
+set(CMAKE_ADDR2LINE "$ADDR2LINE")
+
+if ("\${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
+    set(CMAKE_SKIP_INSTALL_RPATH ON)
+endif()
+
+set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
+EOF
+
+    if [ "$LOG_LEVEL" -ge 2 ] ; then
+        if command -v bat > /dev/null ; then
+            run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+        else
+            run cat "$CMAKE_TOOLCHAIN_FILE"
+        fi
+    fi
+
+    env | sed -n '/^CMAKE_/p'
+
+    ##############################################################################
+
+    CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
+
+    run "$CMAKE" \
+        -Wno-dev \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
+        -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+        -DCMAKE_PROJECT_INCLUDE="$CMAKE_PROJECT_INCLUDE" \
+        -DCMAKE_VERBOSE_MAKEFILE="$CMAKE_VERBOSE_MAKEFILE" \
+        -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
+        -DBUILD_TESTING=OFF \
+        -S "$PACKAGE_BSCRIPT_DIR" \
+        -B "$PACKAGE_BCACHED_DIR" "$@" &&
+    run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
+    run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
+}
+
+# }}}
+##############################################################################
+# {{{ xmakew
+
+# https://github.com/xmake-io/xmake/issues/2003
+# run in a subshell
+xmakew() {
+    XMAKE_CONFIG_OPTIONS="$*"
+
+    XMAKE_CONFIG_OPTION_CLEAN=
+    XMAKE_CONFIG_OPTION_MODE=
+    XMAKE_CONFIG_OPTION_vD=
+
+    for arg in "$@"
+    do
+        case $arg in
+            -c|--clean)  XMAKE_CONFIG_OPTION_CLEAN='set' ;;
+            -m|--mode=*) XMAKE_CONFIG_OPTION_MODE='set'  ;;
+            -vD)         XMAKE_CONFIG_OPTION_vD='set' ;;
+        esac
+    done
+
+    if [ "$LOG_LEVEL" -ge 3 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_CLEAN" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --clean"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_MODE" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
+    fi
+
+    XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+
+    # error: Running xmake as root is extremely dangerous and no longer supported.
+    # As xmake does not drop privileges on installation you would be giving all
+    # build scripts full access to your system.
+    # Or you can add `--root` option or XMAKE_ROOT=y to allow run as root temporarily.
+    export XMAKE_ROOT=y
+
+    run "$XMAKE" --version
+    run "$XMAKE" config "$XMAKE_CONFIG_OPTIONS" "--project=$PACKAGE_BSCRIPT_DIR" "--buildir=$PACKAGE_BCACHED_DIR" &&
+    run "$XMAKE" "--jobs=$BUILD_NJOBS" &&
+    run "$XMAKE" install -o "$PACKAGE_INSTALL_DIR"
+}
+
+# }}}
+##############################################################################
+# {{{ mesonw
+
+# https://mesonbuild.com/Native-environments.html
+mesonw() {
+    MESON_NATIVE_FILE="$PACKAGE_WORKING_DIR/native-file.ini"
+
+    cat > "$MESON_NATIVE_FILE" <<EOF
+[binaries]
+c = '$CC'
+cpp = '$CXX'
+ar = '$AR'
+strip = '$STRIP'
+
+[built-in options]
+c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
+c_link_args = $(to_meson_array $LDFLAGS)
+cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
+cpp_link_args = $(to_meson_array $LDFLAGS)
+EOF
+
+    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$BUILD_TYPE --backend=ninja --pkg-config-path='$PKG_CONFIG_PATH' --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
+
+    case $INSTALL_LIB in
+        static|shared|both) MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=$INSTALL_LIB"
+    esac
+
+    case $LINK_TYPE in
+        static-full|static-most) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+    esac
+
+    MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
+    MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
+
+    if [ "$LOG_LEVEL" -ge 3 ] ; then
+        MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
+    fi
+
+    MESON=$(command -v meson) || abort 1 "command not found: meson"
+
+    run "$MESON" setup   "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+    run "$MESON" compile "$MESON_COMPILE_ARGS" &&
+    run "$MESON" install "$MESON_INSTALL_ARGS"
+}
+
+to_meson_array() {
+    RESULT=
+
+    for item in "$@"
+    do
+        if [ -z "$RESULT" ] ; then
+            RESULT="'$item'"
+        else
+            RESULT="$RESULT, '$item'"
+        fi
+    done
+
+    printf '[%s]\n' "$RESULT"
+}
+
+# }}}
+##############################################################################
+# {{{ main
+
+run export -p
+
+run cd "$PACKAGE_BSCRIPT_DIR"
+
+if [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ; then
+    if [ -f configure ] ; then
+        CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+        if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+            run NOCONFIGURE=yes ./autogen.sh
+        elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+            run NOCONFIGURE=yes ./autogen.sh
+        fi
+    else
+        run NOCONFIGURE=yes ./autogen.sh
+    fi
+elif [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ; then
+    if [ -f configure ] ; then
+        CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+        if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+            run autoreconf -ivf
+        elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+            run autoreconf -ivf
+        fi
+    else
+        run autoreconf -ivf
+    fi
+fi
+
+if [ "$PACKAGE_BINBSTD" = 1 ] ; then
+    run cd "$PACKAGE_BSCRIPT_DIR"
+else
+    run install -d "$PACKAGE_BCACHED_DIR"
+    run cd "$PACKAGE_BCACHED_DIR"
+fi
+
+if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+    abort 1 "$PACKAGE_INSTALL_DIR directory already exists."
+fi
+
+do12345
+
+# }}}
+##############################################################################
+# {{{ vim operation
+
+# last line mode :set foldmethod=marker
+# command mode zM  fold close all
+# command mode zR  fold open all

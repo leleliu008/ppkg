@@ -120,6 +120,14 @@ int ppkg_setup(bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
+    ret = ppkg_http_fetch_to_file("https://raw.githubusercontent.com/leleliu008/ppkg/c/ppkg-do12345", "ppkg-do12345", verbose, verbose);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
     const char* items[8] = { "wrapper-native-c++.c", "wrapper-native-objc.c", "wrapper-target-cc.c", "wrapper-target-clang.c", "wrapper-native-cc.c", "wrapper-target-c++.c", "wrapper-target-clang++.c", "wrapper-target-objc.c" };
 
     for (int i = 0; i < 8; i++) {

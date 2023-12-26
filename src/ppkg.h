@@ -110,6 +110,7 @@ typedef struct {
     char * xxflags;
     char * ldflags;
 
+    char * do12345;
     char * dopatch;
     char * install;
 
@@ -244,6 +245,7 @@ typedef struct {
     char * xxflags;
     char * ldflags;
 
+    char * do12345;
     char * dopatch;
     char * install;
 

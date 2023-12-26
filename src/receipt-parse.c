@@ -45,6 +45,7 @@ typedef enum {
     PPKGReceiptKeyCode_bscript,
     PPKGReceiptKeyCode_binbstd,
 
+    PPKGReceiptKeyCode_do12345,
     PPKGReceiptKeyCode_dopatch,
     PPKGReceiptKeyCode_install,
     PPKGReceiptKeyCode_symlink,
@@ -99,6 +100,7 @@ void ppkg_receipt_dump(PPKGReceipt * receipt) {
     printf("binbstd: %d\n", receipt->binbstd);
     printf("parallel: %d\n", receipt->parallel);
 
+    printf("do12345: %s\n", receipt->dopatch);
     printf("dopatch: %s\n", receipt->dopatch);
     printf("install: %s\n", receipt->install);
 
@@ -262,6 +264,11 @@ void ppkg_receipt_free(PPKGReceipt * receipt) {
 
     ///////////////////////////////
 
+    if (receipt->do12345 != NULL) {
+        free(receipt->do12345);
+        receipt->do12345 = NULL;
+    }
+
     if (receipt->dopatch != NULL) {
         free(receipt->dopatch);
         receipt->dopatch = NULL;
@@ -350,6 +357,8 @@ static PPKGReceiptKeyCode ppkg_receipt_key_code_from_key_name(char * key) {
         return PPKGReceiptKeyCode_xxflags;
     } else if (strcmp(key, "ldflags") == 0) {
         return PPKGReceiptKeyCode_ldflags;
+    } else if (strcmp(key, "do12345") == 0) {
+        return PPKGReceiptKeyCode_do12345;
     } else if (strcmp(key, "dopatch") == 0) {
         return PPKGReceiptKeyCode_dopatch;
     } else if (strcmp(key, "install") == 0) {
@@ -428,6 +437,7 @@ static void ppkg_receipt_set_value(PPKGReceiptKeyCode keyCode, char * value, PPK
         case PPKGReceiptKeyCode_xxflags: if (receipt->xxflags != NULL) free(receipt->xxflags); receipt->xxflags = strdup(value); break;
         case PPKGReceiptKeyCode_ldflags: if (receipt->ldflags != NULL) free(receipt->ldflags); receipt->ldflags = strdup(value); break;
 
+        case PPKGReceiptKeyCode_do12345: if (receipt->do12345 != NULL) free(receipt->do12345); receipt->do12345 = strdup(value); break;
         case PPKGReceiptKeyCode_dopatch: if (receipt->dopatch != NULL) free(receipt->dopatch); receipt->dopatch = strdup(value); break;
         case PPKGReceiptKeyCode_install: if (receipt->install != NULL) free(receipt->install); receipt->install = strdup(value); break;
 
