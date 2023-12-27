@@ -480,91 +480,6 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
     }
 }
 
-static inline int ppkg_formula_check_bsystem_match(PPKGFormula * formula, const char * buf, size_t bufLength) {
-    if (bufLength == 0U) {
-        return PPKG_ERROR_NOT_MATCH;
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*configure[[:space:]]*") == 0) {
-        formula->bsystem = strdup("configure");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*cmakew[[:space:]]*") == 0) {
-        formula->bsystem = strdup("cmake");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*xmakew[[:space:]]*") == 0) {
-        formula->bsystem = strdup("xmake");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*gmakew[[:space:]]*") == 0) {
-        formula->bsystem = strdup("gmake");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*mesonw[[:space:]]*") == 0) {
-        formula->bsystem = strdup("meson");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*cargow[[:space:]]*") == 0) {
-        formula->bsystem = strdup("cargo");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    if (regex_matched(buf, "^[[:space:]]*gow?[[:space:]]*") == 0) {
-        formula->bsystem = strdup("go");
-        formula->bsystem_is_calculated = true;
-        return PPKG_OK;
-    } else {
-        if (errno != 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-    }
-
-    return PPKG_ERROR_NOT_MATCH;
-}
-
 static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
     if (formula->bsystem != NULL) {
         return PPKG_OK;
@@ -575,68 +490,97 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
         return PPKG_ERROR_FORMULA_SCHEME;
     }
 
-    const char * installString = formula->install;
-
-    char   buf[11] = {0};
-    size_t bufLength = 0U;
-
-    size_t i = 0U;
-
-    char c;
-
-    int ret;
+    char * p = formula->install;
 
     for (;;) {
-        c = installString[i];
-
-        if (c == '\0') {
-            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
-
-            if (ret == PPKG_OK) {
+        for (;;) {
+            if (p[0] == '\0') {
                 return PPKG_OK;
-            } else if (ret == PPKG_ERROR_NOT_MATCH) {
-                return PPKG_OK;
+            }
+
+            if (p[0] <= 32) {
+                p++;
             } else {
-                return ret;
+                break;
             }
         }
 
-        if (c == '\n') {
-            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
+        for (int i = 0; ;i++) {
+            char c = p[i];
 
-            if (ret == PPKG_OK) {
-                return PPKG_OK;
-            } else if (ret == PPKG_ERROR_NOT_MATCH) {
-                bufLength = 0;
-                i++;
-                continue;
-            } else {
-                return ret;
+            if (c <= 32) {
+                p[i] = '\0';
+
+                if (strcmp(p, "configure") == 0) {
+                    formula->bsystem = strdup("configure");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "cmakew") == 0) {
+                    formula->bsystem = strdup("cmake");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "xmakew") == 0) {
+                    formula->bsystem = strdup("xmake");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "gmakew") == 0) {
+                    formula->bsystem = strdup("gmake");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "mesonw") == 0) {
+                    formula->bsystem = strdup("meson");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "cargow") == 0) {
+                    formula->bsystem = strdup("cargo");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                if (strcmp(p, "gow") == 0) {
+                    formula->bsystem = strdup("go");
+                    formula->bsystem_is_calculated = true;
+                    p[i] = c;
+                    return PPKG_OK;
+                }
+
+                p += i + 1;
+
+                break;
             }
         }
 
-        if (bufLength == 10) {
-            ret = ppkg_formula_check_bsystem_match(formula, buf, bufLength);
-
-            if (ret == PPKG_OK) {
+        for (;;) {
+            if (p[0] == '\0') {
                 return PPKG_OK;
-            } else if (ret == PPKG_ERROR_NOT_MATCH) {
-                i++;
-                continue;
+            }
+
+            if (p[0] == '\n') {
+                p++;
+                break;
             } else {
-                return ret;
+                p++;
             }
         }
-
-        if (bufLength == 0) {
-            memset(buf, 0, 11);
-        }
-
-        buf[bufLength] = c;
-        bufLength++;
-
-        i++;
     }
+
+    return PPKG_OK;
 }
 
 static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePath) {
