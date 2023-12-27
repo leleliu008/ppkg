@@ -124,6 +124,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         json_object_set_new(root, "bsystem", json_string(formula->bscript));
         json_object_set_new(root, "bscript", json_string(formula->bscript));
         json_object_set_new(root, "binbstd", json_boolean(formula->binbstd));
+        json_object_set_new(root, "sfslink", json_boolean(formula->sfslink));
         json_object_set_new(root, "parallel", json_boolean(formula->parallel));
         json_object_set_new(root, "symlink", json_boolean(formula->symlink));
 
@@ -595,6 +596,18 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         }
 
         printf("%d\n", formula->binbstd);
+
+        ppkg_formula_free(formula);
+    } else if (strcmp(key, "sfslink") == 0) {
+        PPKGFormula * formula = NULL;
+
+        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        printf("%d\n", formula->sfslink);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "symlink") == 0) {

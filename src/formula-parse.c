@@ -442,7 +442,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_binbstd:
             if (strcmp(value, "1") == 0) {
                 formula->binbstd = true;
-            } else if (strcmp(value, "no") == 0) {
+            } else if (strcmp(value, "0") == 0) {
                 formula->binbstd = false;
             } else {
                 //TODO
@@ -451,7 +451,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_symlink:
             if (strcmp(value, "1") == 0) {
                 formula->symlink = true;
-            } else if (strcmp(value, "no") == 0) {
+            } else if (strcmp(value, "0") == 0) {
                 formula->symlink = false;
             } else {
                 //TODO
@@ -460,7 +460,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_sfslink:
             if (strcmp(value, "1") == 0) {
                 formula->sfslink = true;
-            } else if (strcmp(value, "no") == 0) {
+            } else if (strcmp(value, "0") == 0) {
                 formula->sfslink = false;
             } else {
                 //TODO
@@ -469,7 +469,7 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
         case FORMULA_KEY_CODE_parallel:
             if (strcmp(value, "1") == 0) {
                 formula->parallel = true;
-            } else if (strcmp(value, "no") == 0) {
+            } else if (strcmp(value, "0") == 0) {
                 formula->parallel = false;
             } else {
                 //TODO
