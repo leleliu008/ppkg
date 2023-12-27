@@ -6642,11 +6642,11 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     if (installOptions->linkType == PPKGLinkType_static_full) {
         if (strcmp(targetPlatform->name, "macos") == 0) {
             fprintf(stderr, "--link-type=static-full option is not supported for macos, because there is no static standard C library for macos. please use --link-type=static-most instead.\n");
+            return PPKG_ERROR;
         } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
             fprintf(stderr, "--link-type=static-full option is not supported for openbsd. please use --link-type=static-most instead.\n");
+            return PPKG_ERROR;
         }
-
-        return PPKG_ERROR;
     }
 
     // redirect all stdout and stderr to /dev/null
