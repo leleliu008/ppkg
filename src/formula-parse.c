@@ -560,6 +560,8 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
                     return PPKG_OK;
                 }
 
+                p[i] = c;
+
                 p += i + 1;
 
                 break;
