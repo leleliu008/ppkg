@@ -490,94 +490,78 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
         return PPKG_ERROR_FORMULA_SCHEME;
     }
 
-    char * p = formula->install;
+    const char * p = formula->install;
 
     for (;;) {
-        for (;;) {
-            if (p[0] == '\0') {
-                return PPKG_OK;
-            }
+        if (p[0] == '\0') {
+            return PPKG_OK;
+        }
 
-            if (p[0] <= 32) {
-                p++;
-            } else {
-                break;
-            }
+        if (p[0] <= 32) {
+            p++;
+            continue;
         }
 
         for (int i = 0; ;i++) {
-            char c = p[i];
-
-            if (c <= 32) {
-                p[i] = '\0';
-
-                if (strcmp(p, "configure") == 0) {
+            if (p[i] <= 32) {
+                if (strncmp(p, "configure", i) == 0) {
                     formula->bsystem = strdup("configure");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "cmakew") == 0) {
+                if (strncmp(p, "cmakew", i) == 0) {
                     formula->bsystem = strdup("cmake");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "xmakew") == 0) {
+                if (strncmp(p, "xmakew", i) == 0) {
                     formula->bsystem = strdup("xmake");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "gmakew") == 0) {
+                if (strncmp(p, "gmakew", i) == 0) {
                     formula->bsystem = strdup("gmake");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "mesonw") == 0) {
+                if (strncmp(p, "mesonw", i) == 0) {
                     formula->bsystem = strdup("meson");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "cargow") == 0) {
+                if (strncmp(p, "cargow", i) == 0) {
                     formula->bsystem = strdup("cargo");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                if (strcmp(p, "gow") == 0) {
+                if (strncmp(p, "gow", i) == 0) {
                     formula->bsystem = strdup("go");
                     formula->bsystem_is_calculated = true;
-                    p[i] = c;
                     return PPKG_OK;
                 }
 
-                p[i] = c;
+                p += i;
 
-                p += i + 1;
+                for (;;) {
+                    if (p[0] == '\0') {
+                        return PPKG_OK;
+                    }
+
+                    if (p[0] == '\n') {
+                        p++;
+                        break;
+                    } else {
+                        p++;
+                    }
+                }
 
                 break;
-            }
-        }
-
-        for (;;) {
-            if (p[0] == '\0') {
-                return PPKG_OK;
-            }
-
-            if (p[0] == '\n') {
-                p++;
-                break;
-            } else {
-                p++;
             }
         }
     }
