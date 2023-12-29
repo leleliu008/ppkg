@@ -5,7 +5,7 @@
 
 #include "base16.h"
 
-int base16_encode(char * outputBuf, const unsigned char * inputBuf, size_t inputBufSizeInBytes, bool isToUpper) {
+int base16_encode(char * outputBuf, const unsigned char * inputBuf, size_t inputBufSizeInBytes, const bool isToUpper) {
     if (outputBuf == NULL) {
         errno = EINVAL;
         return -1;

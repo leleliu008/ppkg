@@ -12,7 +12,7 @@
 
 #include "ppkg.h"
 
-int ppkg_upgrade_self(bool verbose) {
+int ppkg_upgrade_self(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 

@@ -15,7 +15,7 @@
 
 #include "ppkg.h"
 
-int ppkg_uncompress(const char * filePath, const char * unpackDIR, size_t stripComponentsNumber, bool verbose) {
+int ppkg_uncompress(const char * filePath, const char * unpackDIR, const size_t stripComponentsNumber, const bool verbose) {
     if (filePath == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }

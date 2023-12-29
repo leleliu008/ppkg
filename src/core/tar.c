@@ -8,7 +8,7 @@
 
 #include "tar.h"
 
-int tar_list(const char * inputFilePath, int flags) {
+int tar_list(const char * inputFilePath, const int flags) {
 	if ((inputFilePath != NULL) && (strcmp(inputFilePath, "-") == 0)) {
 		inputFilePath = NULL;
     }
@@ -57,7 +57,7 @@ finalize:
     return ret;
 }
 
-int tar_extract(const char * outputDir, const char * inputFilePath, int flags, bool verbose, size_t stripComponentsNumber) {
+int tar_extract(const char * outputDir, const char * inputFilePath, const int flags, const bool verbose, const size_t stripComponentsNumber) {
     if ((inputFilePath != NULL) && (strcmp(inputFilePath, "-") == 0)) {
 		inputFilePath = NULL;
     }
@@ -225,7 +225,7 @@ typedef struct {
     size_t  capcity;
 } StringArrayList;
 
-int list_files(const char * dirPath, bool verbose, StringArrayList * stringArrayList) {
+int list_files(const char * dirPath, const bool verbose, StringArrayList * stringArrayList) {
     if ((dirPath == NULL) || (dirPath[0] == '\0')) {
         return -1;
     }
@@ -331,7 +331,7 @@ int list_files(const char * dirPath, bool verbose, StringArrayList * stringArray
     }
 }
 
-int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType type, bool verbose) {
+int tar_create(const char * inputDir, const char * outputFilePath, const ArchiveType type, const bool verbose) {
     StringArrayList stringArrayList = {0};
 
     int ret = list_files(inputDir, verbose, &stringArrayList);

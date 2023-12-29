@@ -15,10 +15,10 @@ typedef enum {
     ArchiveType_zip,
 } ArchiveType;
 
-int tar_list(const char * inputFilePath, int flags);
+int tar_list(const char * inputFilePath, const int flags);
 
-int tar_create(const char * inputDir, const char * outputFilePath, ArchiveType type, bool verbose);
+int tar_create(const char * inputDir, const char * outputFilePath, const ArchiveType type, const bool verbose);
 
-int tar_extract(const char * outputDir, const char * inputFilePath, int flags, bool verbose, size_t stripComponentsNumber);
+int tar_extract(const char * outputDir, const char * inputFilePath, const int flags, const bool verbose, const size_t stripComponentsNumber);
 
 #endif

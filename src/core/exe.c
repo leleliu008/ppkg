@@ -8,7 +8,7 @@
 
 #include "exe.h"
 
-int exe_search(const char * commandName, char *** listP, size_t * listSize, bool findAll) {
+int exe_search(const char * commandName, char *** listP, size_t * listSize, const bool findAll) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;

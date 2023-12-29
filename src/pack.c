@@ -9,7 +9,7 @@
 
 #include "ppkg.h"
 
-int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, bool verbose) {
+int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose) {
     if (targetPlatform == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }

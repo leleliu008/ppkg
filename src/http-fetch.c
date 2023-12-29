@@ -6,7 +6,7 @@
 
 #include "ppkg.h"
 
-int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress) {
+int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, const bool verbose, const bool showProgress) {
     const char * urlTransform = getenv("PPKG_URL_TRANSFORM");
 
     if (urlTransform == NULL || urlTransform[0] == '\0') {
@@ -62,7 +62,7 @@ int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool 
     }
 }
 
-int ppkg_http_fetch_to_stream(const char * url, FILE * stream, bool verbose, bool showProgress) {
+int ppkg_http_fetch_to_stream(const char * url, FILE * stream, const bool verbose, const bool showProgress) {
     const char * urlTransform = getenv("PPKG_URL_TRANSFORM");
 
     if (urlTransform == NULL || urlTransform[0] == '\0') {

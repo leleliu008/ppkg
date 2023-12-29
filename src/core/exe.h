@@ -12,7 +12,7 @@
  *  On PATH is not set, -2 is returned.
  *  On PATH is set a empty string, -3 is returned.
  */
-int exe_search(const char * commandName, char *** listP, size_t * listSize, bool findAll);
+int exe_search(const char * commandName, char *** listP, size_t * listSize, const bool findAll);
 
 /** lookup the given command name in the PATH.
  *

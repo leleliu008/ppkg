@@ -10,7 +10,7 @@
  * inputBufLengthInBytes   要编码的字节的长度
  * isToUpper            是否编码为大写字母
  */
-int base16_encode(char * outputBuf, const unsigned char * inputBuf, size_t inputBufSizeInBytes, bool isToUpper);
+int base16_encode(char * outputBuf, const unsigned char * inputBuf, size_t inputBufSizeInBytes, const bool isToUpper);
 
 /* base16解码
  * inputBuf base16编码的字符串

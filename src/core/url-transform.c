@@ -43,7 +43,7 @@ static int url_transform_read(int inputFD, char outputBuffer[], size_t outputBuf
     }
 }
 
-int url_transform(const char * urlTransformCommandPath, const char * inUrl, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes, bool verbose) {
+int url_transform(const char * urlTransformCommandPath, const char * inUrl, char outputBuffer[], size_t outputBufferSizeInBytes, size_t * writtenSizeInBytes, const bool verbose) {
     struct stat st;
 
     if (stat(urlTransformCommandPath, &st) == 0) {

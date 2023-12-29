@@ -48,7 +48,7 @@ static int ppkg_fetch_git(const char * packageName, PPKGFormula * formula, const
     return ppkg_git_sync(gitRepositoryDIR, formula->git_url, remoteRef, "refs/remotes/origin/master", "master", formula->git_nth);
 }
 
-static int ppkg_fetch_file(const char * url, const char * uri, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, size_t ppkgDownloadsDIRLength, bool verbose) {
+static int ppkg_fetch_file(const char * url, const char * uri, const char * expectedSHA256SUM, const char * ppkgDownloadsDIR, const size_t ppkgDownloadsDIRLength, const bool verbose) {
     char fileNameExtension[21] = {0};
 
     int ret = ppkg_examine_filetype_from_url(url, fileNameExtension, 20);
@@ -124,7 +124,7 @@ static int ppkg_fetch_file(const char * url, const char * uri, const char * expe
     }
 }
 
-int ppkg_fetch(const char * packageName, const char * targetPlatformName, bool verbose) {
+int ppkg_fetch(const char * packageName, const char * targetPlatformName, const bool verbose) {
     PPKGFormula * formula = NULL;
 
     int ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);

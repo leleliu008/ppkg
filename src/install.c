@@ -186,7 +186,7 @@ static int write_to_file(const char * fp, const char * str) {
     //}
 //}
 
-static int download_via_http(const char * url, const char * uri, const char * expectedSHA256SUM, const char * downloadDIR, size_t downloadDIRLength, const char * unpackDIR, size_t unpackDIRLength, bool verbose) {
+static int download_via_http(const char * url, const char * uri, const char * expectedSHA256SUM, const char * downloadDIR, size_t downloadDIRLength, const char * unpackDIR, size_t unpackDIRLength, const bool verbose) {
     char fileNameExtension[21] = {0};
 
     int ret = ppkg_examine_filetype_from_url(url, fileNameExtension, 20);
@@ -331,7 +331,7 @@ static int download_via_http(const char * url, const char * uri, const char * ex
     return PPKG_OK;
 }
 
-static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, const bool verbose) {
     size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
     char   sysrootParentDIR[sysrootParentDIRCapacity];
 
@@ -547,7 +547,7 @@ static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, 
     return PPKG_OK;
 }
 
-static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, const bool verbose) {
     size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
     char   sysrootParentDIR[sysrootParentDIRCapacity];
 
@@ -840,7 +840,7 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
     return PPKG_OK;
 }
 
-static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, bool verbose) {
+static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, const char * ppkgHomeDIR, const size_t ppkgHomeDIRLength, const bool verbose) {
     size_t sysrootParentDIRCapacity = ppkgHomeDIRLength + 10U;
     char   sysrootParentDIR[sysrootParentDIRCapacity];
 
@@ -1091,8 +1091,8 @@ static int setup_rust_toolchain(const PPKGInstallOptions * installOptions, const
 
     struct stat st;
 
-    bool  cargoExist = (stat( cargoCommandPath, &st) == 0) && S_ISREG(st.st_mode);
-    bool rustupExist = (stat(rustupCommandPath, &st) == 0) && S_ISREG(st.st_mode);
+    const bool  cargoExist = (stat( cargoCommandPath, &st) == 0) && S_ISREG(st.st_mode);
+    const bool rustupExist = (stat(rustupCommandPath, &st) == 0) && S_ISREG(st.st_mode);
 
     if (!(cargoExist && rustupExist)) {
         LOG_INFO("rustup and cargo commands are required, but they are not found on this machine, ppkg will install them via running shell script.");
@@ -1330,8 +1330,8 @@ static int setenv_PATH(const char * packageInstalledDIR, const size_t packageIns
         return PPKG_ERROR;
     }
 
-    bool  binDIRExists = stat( binDIR, &st) == 0 && S_ISDIR(st.st_mode);
-    bool sbinDIRExists = stat(sbinDIR, &st) == 0 && S_ISDIR(st.st_mode);
+    const bool  binDIRExists = stat( binDIR, &st) == 0 && S_ISDIR(st.st_mode);
+    const bool sbinDIRExists = stat(sbinDIR, &st) == 0 && S_ISDIR(st.st_mode);
 
     if (binDIRExists || sbinDIRExists) {
         const char * const PATH = getenv("PATH");
@@ -5074,7 +5074,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    bool isTargetOSDarwin = strcmp(targetPlatform->name, "macos") == 0;
+    const bool isTargetOSDarwin = strcmp(targetPlatform->name, "macos") == 0;
 
     const char * libSuffix;
 

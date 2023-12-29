@@ -137,7 +137,7 @@ int  ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out);
 int  ppkg_formula_lookup(const char * packageName, const char * targetPlatformName, PPKGFormula * * formula);
 int  ppkg_formula_locate(const char * packageName, const char * targetPlatformName, char * * out);
 int  ppkg_formula_edit(const char * packageName, const char * targetPlatformName, const char * editor);
-int  ppkg_formula_view(const char * packageName, const char * targetPlatformName, bool raw);
+int  ppkg_formula_view(const char * packageName, const char * targetPlatformName, const bool raw);
 int  ppkg_formula_cat (const char * packageName, const char * targetPlatformName);
 int  ppkg_formula_bat (const char * packageName, const char * targetPlatformName);
 
@@ -308,7 +308,7 @@ int ppkg_sysinfo();
 
 int ppkg_buildinfo();
 
-int ppkg_env(bool verbose);
+int ppkg_env(const bool verbose);
 
 int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
 
@@ -324,7 +324,7 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
 
 int ppkg_logs(const char * packageName, const PPKGTargetPlatform * targetPlatform);
 
-int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, bool verbose);
+int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose);
 
 typedef enum {
     PPKGDependsOutputType_DOT,
@@ -335,7 +335,7 @@ typedef enum {
 
 int ppkg_depends(const char * packageName, const char * targetPlatformName, PPKGDependsOutputType outputType, const char * outputPath);
 
-int ppkg_fetch(const char * packageName, const char * targetPlatformName, bool verbose);
+int ppkg_fetch(const char * packageName, const char * targetPlatformName, const bool verbose);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -387,17 +387,17 @@ int ppkg_upgrade  (const char * packageName, const PPKGTargetPlatform * targetPl
 
 int ppkg_reinstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * options);
 
-int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, bool verbose);
+int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, const bool verbose);
 
-int ppkg_upgrade_self(bool verbose);
+int ppkg_upgrade_self(const bool verbose);
 
-int ppkg_integrate_zsh_completion (const char * outputDIR, bool verbose);
-int ppkg_integrate_bash_completion(const char * outputDIR, bool verbose);
-int ppkg_integrate_fish_completion(const char * outputDIR, bool verbose);
+int ppkg_integrate_zsh_completion (const char * outputDIR, const bool verbose);
+int ppkg_integrate_bash_completion(const char * outputDIR, const bool verbose);
+int ppkg_integrate_fish_completion(const char * outputDIR, const bool verbose);
 
-int ppkg_setup(bool verbose);
+int ppkg_setup(const bool verbose);
 
-int ppkg_cleanup(bool verbose);
+int ppkg_cleanup(const bool verbose);
 
 int ppkg_check_if_the_given_argument_matches_package_name_pattern(const char * arg);
 
@@ -405,7 +405,7 @@ int ppkg_check_if_the_given_package_is_available(const char * packageName, const
 int ppkg_check_if_the_given_package_is_installed(const char * packageName, const PPKGTargetPlatform * targetPlatform);
 int ppkg_check_if_the_given_package_is_outdated (const char * packageName, const PPKGTargetPlatform * targetPlatform);
 
-typedef int (*PPKGPackageNameFilter)(const char * packageName, const char * targetPlatformName, const bool verbose, size_t index, const void * payload);
+typedef int (*PPKGPackageNameFilter)(const char * packageName, const char * targetPlatformName, const bool verbose, const size_t index, const void * payload);
 
 int ppkg_show_the_available_packages(const char * targetPlatformName, const bool verbose);
 
@@ -421,21 +421,21 @@ int ppkg_examine_filetype_from_url(const char * url, char buf[], size_t bufSize)
 
 int ppkg_examine_filename_from_url(const char * url, char buf[], size_t bufSize);
 
-int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress);
+int ppkg_http_fetch_to_file(const char * url, const char * outputFilePath, const bool verbose, const bool showProgress);
 
-int ppkg_http_fetch_to_stream(const char * url, FILE * stream, bool verbose, bool showProgress);
+int ppkg_http_fetch_to_stream(const char * url, FILE * stream, const bool verbose, const bool showProgress);
 
-int ppkg_download(const char * url, const char * uri, const char * expectedSHA256SUM, const char * outputPath, bool verbose);
+int ppkg_download(const char * url, const char * uri, const char * expectedSHA256SUM, const char * outputPath, const bool verbose);
 
-int ppkg_uncompress(const char * filePath, const char * unpackDIR, size_t stripComponentsNumber, bool verbose);
+int ppkg_uncompress(const char * filePath, const char * unpackDIR, const size_t stripComponentsNumber, const bool verbose);
 
 int ppkg_rename_or_copy_file(const char * fromFilePath, const char * toFilePath);
 
 int ppkg_copy_file(const char * fromFilePath, const char * toFilePath);
 
-int ppkg_mkdir_p(const char * dirPath, bool verbose);
+int ppkg_mkdir_p(const char * dirPath, const bool verbose);
 
-int ppkg_rm_r(const char * dirPath, bool verbose);
+int ppkg_rm_r(const char * dirPath, const bool verbose);
 
 int ppkg_setenv_SSL_CERT_FILE();
 

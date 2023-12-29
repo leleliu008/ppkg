@@ -8,7 +8,7 @@
 
 #include "ppkg.h"
 
-int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
+int ppkg_integrate_zsh_completion(const char * outputDIR, const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
@@ -175,13 +175,13 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, bool verbose) {
     return PPKG_OK;
 }
 
-int ppkg_integrate_bash_completion(const char * outputDIR, bool verbose) {
+int ppkg_integrate_bash_completion(const char * outputDIR, const bool verbose) {
     (void)outputDIR;
     (void)verbose;
     return PPKG_OK;
 }
 
-int ppkg_integrate_fish_completion(const char * outputDIR, bool verbose) {
+int ppkg_integrate_fish_completion(const char * outputDIR, const bool verbose) {
     (void)outputDIR;
     (void)verbose;
     return PPKG_OK;

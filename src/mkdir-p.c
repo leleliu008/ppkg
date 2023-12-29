@@ -6,7 +6,7 @@
 
 #include "ppkg.h"
 
-int ppkg_mkdir_p(const char * dir, bool verbose) {
+int ppkg_mkdir_p(const char * dir, const bool verbose) {
     if (dir == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }

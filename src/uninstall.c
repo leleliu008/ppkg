@@ -7,7 +7,7 @@
 
 #include "ppkg.h"
 
-int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, bool verbose) {
+int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPlatform, const bool verbose) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {

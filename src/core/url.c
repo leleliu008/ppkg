@@ -5,7 +5,7 @@
 
 #include "url.h"
 
-int url_encode(char outputBuf[], size_t * writtenSizeInBytes, unsigned char inputBuf[], size_t inputBufSizeInBytes, bool isToUpper) {
+int url_encode(char outputBuf[], size_t * writtenSizeInBytes, unsigned char inputBuf[], size_t inputBufSizeInBytes, const bool isToUpper) {
     const char * const table = isToUpper ? "0123456789ABCDEF" : "0123456789abcdef";
 
     size_t outputLength = 0U;

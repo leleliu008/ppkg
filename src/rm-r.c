@@ -8,7 +8,7 @@
 
 #include "ppkg.h"
 
-int ppkg_rm_r(const char * dirPath, bool verbose) {
+int ppkg_rm_r(const char * dirPath, const bool verbose) {
     if (dirPath == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }

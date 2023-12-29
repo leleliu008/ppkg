@@ -11,7 +11,7 @@
 
 #include "http.h"
 
-int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool showProgress) {
+int http_fetch_to_stream(const char * url, FILE * outputFile, const bool verbose, const bool showProgress) {
     if (url == NULL || url[0] == '\0') {
         errno = EINVAL;
         return -1;
@@ -130,7 +130,7 @@ int http_fetch_to_stream(const char * url, FILE * outputFile, bool verbose, bool
     return curlcode;
 }
 
-int http_fetch_to_file(const char * url, const char * outputFilePath, bool verbose, bool showProgress) {
+int http_fetch_to_file(const char * url, const char * outputFilePath, const bool verbose, const bool showProgress) {
     FILE * file = fopen(outputFilePath, "wb");
 
     if (file == NULL) {

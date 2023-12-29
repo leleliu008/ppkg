@@ -14,7 +14,7 @@
 
 #include "ppkg.h"
 
-int ppkg_setup(bool verbose) {
+int ppkg_setup(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 

@@ -15,7 +15,7 @@
 
 #include "ppkg.h"
 
-int ppkg_download(const char * url, const char * uri, const char * expectedSHA256SUM, const char * outputPath, bool verbose) {
+int ppkg_download(const char * url, const char * uri, const char * expectedSHA256SUM, const char * outputPath, const bool verbose) {
     if (url == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
