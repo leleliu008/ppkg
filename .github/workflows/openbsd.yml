@@ -20,7 +20,7 @@ jobs:
           restore-keys: |
             vagrant-generic-openbsd-7
 
-      - uses: leleliu008/github-actions-vagrant@v1
+      - uses: leleliu008/github-actions-vagrant@main
         with:
           ncpu: 1
           mem: 1024

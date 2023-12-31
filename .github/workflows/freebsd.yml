@@ -25,7 +25,7 @@ jobs:
           restore-keys: |
             vagrant-generic-freebsd-${{ matrix.version }}
 
-      - uses: leleliu008/github-actions-vagrant@v1
+      - uses: leleliu008/github-actions-vagrant@main
         with:
           ncpu: 1
           mem: 1024
