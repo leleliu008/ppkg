@@ -121,7 +121,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         json_object_set_new(root, "xxflags", json_string(formula->xxflags));
         json_object_set_new(root, "ldfalgs", json_string(formula->ldflags));
 
-        json_object_set_new(root, "bsystem", json_string(formula->bscript));
+        json_object_set_new(root, "bsystem", json_string(formula->bsystem));
         json_object_set_new(root, "bscript", json_string(formula->bscript));
         json_object_set_new(root, "binbstd", json_boolean(formula->binbstd));
         json_object_set_new(root, "sfslink", json_boolean(formula->sfslink));

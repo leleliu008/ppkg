@@ -27,7 +27,8 @@ jobs:
 
       - uses: leleliu008/github-actions-vagrant@v1
         with:
-          mem: 2048
+          ncpu: 1
+          mem: 1024
           box: generic/freebsd${{ matrix.version }}
           run: |
             run pkg install -y cmake ninja gcc pkgconf curl openssl libgit2 libarchive libyaml jansson sqlite3

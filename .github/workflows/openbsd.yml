@@ -22,7 +22,8 @@ jobs:
 
       - uses: leleliu008/github-actions-vagrant@v1
         with:
-          mem: 2048
+          ncpu: 1
+          mem: 1024
           box: generic/openbsd7
           run: |
             run sudo pkg_add cmake ninja llvm pkgconf curl libgit2 libarchive libyaml jansson sqlite

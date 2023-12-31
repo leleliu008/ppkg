@@ -27,7 +27,8 @@ jobs:
 
       - uses: leleliu008/github-actions-vagrant@v1
         with:
-          mem: 2048
+          ncpu: 1
+          mem: 1024
           box: generic/netbsd${{ matrix.version }}
           run: |
             run sudo pkgin -y install cmake ninja-build pkg-config clang curl libgit2 libarchive libyaml jansson sqlite
