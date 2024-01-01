@@ -2572,6 +2572,7 @@ static int generate_shell_vars_file(
         const PPKGFormula * formula,
         const PPKGInstallOptions * installOptions,
         const SysInfo * sysinfo,
+        const char * uppmPackageInstalledRootDIR,
         const char * ppkgExeFilePath,
         const time_t ts,
         const size_t njobs,
@@ -2635,6 +2636,7 @@ static int generate_shell_vars_file(
         {"PPKG_HOME", ppkgHomeDIR},
         {"PPKG_CORE_DIR", ppkgCoreDIR},
         {"PPKG_DOWNLOADS_DIR", ppkgDownloadsDIR},
+        {"UPPM_PACKAGE_INSTALL_ROOT_DIR", uppmPackageInstalledRootDIR},
         {"SESSION_DIR", sessionDIR},
         {"RECURSIVE_DEPENDENT_PACKAGE_NAMES", recursiveDependentPackageNamesString},
         {"PACKAGE_FORMULA_FILEPATH", formula->path},
@@ -4097,23 +4099,23 @@ static int ppkg_install_package(
     //////////////////////////////////////////////////////////////////////
 
     const KV toolsForNativeBuild[17] = {
-        { "CC", toolchainForNativeBuild->cc },
-        { "OBJC", toolchainForNativeBuild->objc },
-        { "CXX", toolchainForNativeBuild->cxx },
-        { "CPP", toolchainForNativeBuild->cpp },
-        { "AS", toolchainForNativeBuild->as },
-        { "AR", toolchainForNativeBuild->ar },
-        { "RANLIB", toolchainForNativeBuild->ranlib },
-        { "LD", toolchainForNativeBuild->ld },
-        { "NM", toolchainForNativeBuild->nm },
-        { "SIZE", toolchainForNativeBuild->size },
-        { "STRIP", toolchainForNativeBuild->strip },
-        { "STRINGS", toolchainForNativeBuild->strings },
-        { "OBJCOPY", toolchainForNativeBuild->objcopy },
-        { "OBJDUMP", toolchainForNativeBuild->objdump },
-        { "READELF", toolchainForNativeBuild->readelf },
+        { "CC",        toolchainForNativeBuild->cc },
+        { "OBJC",      toolchainForNativeBuild->objc },
+        { "CXX",       toolchainForNativeBuild->cxx },
+        { "CPP",       toolchainForNativeBuild->cpp },
+        { "AS",        toolchainForNativeBuild->as },
+        { "AR",        toolchainForNativeBuild->ar },
+        { "RANLIB",    toolchainForNativeBuild->ranlib },
+        { "LD",        toolchainForNativeBuild->ld },
+        { "NM",        toolchainForNativeBuild->nm },
+        { "SIZE",      toolchainForNativeBuild->size },
+        { "STRIP",     toolchainForNativeBuild->strip },
+        { "STRINGS",   toolchainForNativeBuild->strings },
+        { "OBJCOPY",   toolchainForNativeBuild->objcopy },
+        { "OBJDUMP",   toolchainForNativeBuild->objdump },
+        { "READELF",   toolchainForNativeBuild->readelf },
         { "ADDR2LINE", toolchainForNativeBuild->addr2line },
-        { "SYSROOT", toolchainForNativeBuild->sysroot }
+        { "SYSROOT",   toolchainForNativeBuild->sysroot }
     };
 
     for (int i = 0; i < 17; i++) {
@@ -4552,7 +4554,7 @@ static int ppkg_install_package(
         return PPKG_ERROR;
     }
 
-    ret = generate_shell_vars_file(varsFilePath, packageName, formula, installOptions, sysinfo, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, recursiveDependentPackageNamesString);
+    ret = generate_shell_vars_file(varsFilePath, packageName, formula, installOptions, sysinfo, uppmPackageInstalledRootDIR, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, recursiveDependentPackageNamesString);
 
     if (ret != PPKG_OK) {
         return ret;

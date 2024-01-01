@@ -156,8 +156,10 @@ int ppkg_setup(const bool verbose) {
 
     char buf[30];
 
+    puts("=======0");
     ret = ppkg_http_fetch_to_file("https://api.github.com/repos/leleliu008/uppm/releases/latest", "uppm.json", verbose, verbose);
 
+    puts("=======1");
     if (ret == PPKG_OK) {
         FILE * file = fopen("uppm.json", "r");
 
@@ -223,6 +225,7 @@ int ppkg_setup(const bool verbose) {
         latestReleaseVersion[i] = latestReleaseName[i];
     }
 
+    puts("=======2");
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     char osType[31] = {0};
