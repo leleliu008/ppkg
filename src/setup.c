@@ -14,6 +14,67 @@
 
 #include "ppkg.h"
 
+static int get_uppm_latest_version(const char ** uppmLatestReleaseName, const bool verbose) {
+    int ret = ppkg_http_fetch_to_file("https://api.github.com/repos/leleliu008/uppm/releases/latest", "uppm.json", verbose, verbose);
+
+    if (ret == PPKG_OK) {
+        FILE * file = fopen("uppm.json", "r");
+
+        if (file == NULL) {
+            perror("uppm.json");
+            return PPKG_ERROR;
+        }
+
+        size_t j = 0;
+
+        char buf[30];
+
+        for (;;) {
+            if (fgets(buf, 30, file) == NULL) {
+                if (ferror(file)) {
+                    perror("uppm.json");
+                    fclose(file);
+                    return PPKG_ERROR;
+                } else {
+                    fclose(file);
+                    return PPKG_OK;
+                }
+            }
+
+            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"") == 0) {
+                size_t length = strlen(buf);
+
+                for (size_t i = 10; i < length; i++) {
+                    if (j == 0) {
+                        if (buf[i] >= '0' && buf[i] <= '9') {
+                            j = i;
+                        }
+                    } else {
+                        if (buf[i] == '"') {
+                            buf[i] = '\0';
+                            const char * p = strdup(&buf[j]);
+
+                            if (p == NULL) {
+                                return PPKG_ERROR_MEMORY_ALLOCATE;
+                            } else {
+                                (*uppmLatestReleaseName) = p;
+                                return PPKG_OK;
+                            }
+                        }
+                    }
+                }
+                break;
+            } else {
+                if (errno != 0) {
+                    perror(NULL);
+                    fclose(file);
+                    return PPKG_ERROR;
+                }
+            }
+        }
+    }
+}
+
 int ppkg_setup(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
@@ -152,80 +213,20 @@ int ppkg_setup(const bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    char * latestReleaseName = NULL;
+    const char * uppmLatestReleaseName = "0.15.0+b5148c3e8fdbadc64120a0d88aae095cd5324a57";
 
-    char buf[30];
-
-    puts("=======0");
-    ret = ppkg_http_fetch_to_file("https://api.github.com/repos/leleliu008/uppm/releases/latest", "uppm.json", verbose, verbose);
-
-    puts("=======1");
-    if (ret == PPKG_OK) {
-        FILE * file = fopen("uppm.json", "r");
-
-        if (file == NULL) {
-            perror("uppm.json");
-            return PPKG_ERROR;
-        }
-
-        size_t j = 0;
-
-        for (;;) {
-            if (fgets(buf, 30, file) == NULL) {
-                if (ferror(file)) {
-                    perror("uppm.json");
-                    fclose(file);
-                    return PPKG_ERROR;
-                } else {
-                    break;
-                }
-            }
-
-            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"") == 0) {
-                size_t length = strlen(buf);
-                for (size_t i = 10; i < length; i++) {
-                    if (j == 0) {
-                        if (buf[i] >= '0' && buf[i] <= '9') {
-                            j = i;
-                        }
-                    } else {
-                        if (buf[i] == '"') {
-                            buf[i] = '\0';
-                            latestReleaseName = &buf[j];
-                            break;
-                        }
-                    }
-                }
-                break;
-            } else {
-                if (errno != 0) {
-                    perror(NULL);
-                    fclose(file);
-                    return PPKG_ERROR;
-                }
-            }
-        }
-
-        fclose(file);
-    }
-
-    if (latestReleaseName == NULL) {
-        latestReleaseName = (char*)"0.15.0+b5148c3e8fdbadc64120a0d88aae095cd5324a57";
-    }
-
-    char latestReleaseVersion[10] = {0};
+    char uppmLatestReleaseVersion[10] = {0};
 
     for (int i = 0; i < 10; i++) {
-        char c = latestReleaseName[i];
+        char c = uppmLatestReleaseName[i];
 
         if (c == '+') {
             break;
         }
 
-        latestReleaseVersion[i] = latestReleaseName[i];
+        uppmLatestReleaseVersion[i] = uppmLatestReleaseName[i];
     }
 
-    puts("=======2");
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     char osType[31] = {0};
@@ -240,7 +241,7 @@ int ppkg_setup(const bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t tarballFileNameCapacity = strlen(latestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
+    size_t tarballFileNameCapacity = strlen(uppmLatestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
     char   tarballFileName[tarballFileNameCapacity];
 
     if (strcmp(osType, "macos") == 0) {
@@ -277,9 +278,9 @@ int ppkg_setup(const bool verbose) {
             x = "13.0";
         }
 
-        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s%s-%s.tar.xz", latestReleaseVersion, osType, x, osArch);
+        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s%s-%s.tar.xz", uppmLatestReleaseVersion, osType, x, osArch);
     } else {
-        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s-%s.tar.xz", latestReleaseVersion, osType, osArch);
+        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s-%s.tar.xz", uppmLatestReleaseVersion, osType, osArch);
     }
 
     if (ret < 0) {
@@ -287,10 +288,10 @@ int ppkg_setup(const bool verbose) {
         return PPKG_ERROR;
     }
 
-    size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(latestReleaseName) + 55U;
+    size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(uppmLatestReleaseName) + 55U;
     char   tarballUrl[tarballUrlCapacity];
 
-    ret = snprintf(tarballUrl, tarballUrlCapacity, "https://github.com/leleliu008/uppm/releases/download/%s/%s", latestReleaseName, tarballFileName);
+    ret = snprintf(tarballUrl, tarballUrlCapacity, "https://github.com/leleliu008/uppm/releases/download/%s/%s", uppmLatestReleaseName, tarballFileName);
 
     if (ret < 0) {
         perror(NULL);
