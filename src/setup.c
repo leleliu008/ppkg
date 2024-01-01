@@ -194,7 +194,7 @@ int ppkg_setup(const bool verbose) {
     for (int i = 0; i < 8; i++) {
         const char * item = items[i];
 
-        size_t urlCapacity = sessionDIRCapacity + strlen(item) + 53U;
+        size_t urlCapacity = strlen(item) + 53U;
         char   url[urlCapacity];
 
         ret = snprintf(url, urlCapacity, "https://raw.githubusercontent.com/leleliu008/ppkg/c/%s", item);

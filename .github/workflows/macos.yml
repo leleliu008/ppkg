@@ -51,10 +51,13 @@ jobs:
       - run: ./output/bin/ppkg --version
       - run: ./output/bin/ppkg -V
 
-      - run: ./output/bin/ppkg setup -v
-
       - run: ./output/bin/ppkg env
       - run: ./output/bin/ppkg env -v
+
+      - run: ./output/bin/ppkg buildinfo
+      - run: ./output/bin/ppkg sysinfo
+
+      - run: ./output/bin/ppkg setup -v
 
       - run: ./output/bin/ppkg integrate zsh
       - run: ./output/bin/ppkg integrate zsh -v
