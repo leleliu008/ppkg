@@ -19,7 +19,7 @@ jobs:
       - run: sed -i s/alpha.de.repo.voidlinux.org/repo-default.voidlinux.org/g /usr/share/xbps.d/*
 
       - run: xbps-install -Syu xbps
-        #- run: xbps-install -Suy ca-certificates
+      - run: xbps-install -Suy ca-certificates
       - run: xbps-install -Suy cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel jansson-devel sqlite-devel
 
       # https://github.com/actions/checkout/issues/334

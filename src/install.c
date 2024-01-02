@@ -6434,20 +6434,38 @@ int ppkg_setup_toolchain_for_native_build(
                 return PPKG_ERROR;
             }
 
-            size_t cmdLength = ccLength + outputFilePathCapacity + ppkgCoreDIRLength + 27U;
-            char   cmd[cmdLength];
+            if (toolchainForNativeBuild->sysroot == NULL) {
+                size_t cmdLength = ccLength + outputFilePathCapacity + ppkgCoreDIRLength + 27U;
+                char   cmd[cmdLength];
 
-            ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
+                ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
 
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
 
-            int ret = run_cmd(cmd, STDOUT_FILENO);
+                ret = run_cmd(cmd, STDOUT_FILENO);
 
-            if (ret != PPKG_OK) {
-                return ret;
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
+            } else {
+                size_t cmdLength = ccLength + strlen(toolchainForNativeBuild->sysroot) + outputFilePathCapacity + ppkgCoreDIRLength + 38U;
+                char   cmd[cmdLength];
+
+                ret = snprintf(cmd, cmdLength, "%s --sysroot=%s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, toolchainForNativeBuild->sysroot, outputFilePath, ppkgCoreDIR, compilerName);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                ret = run_cmd(cmd, STDOUT_FILENO);
+
+                if (ret != PPKG_OK) {
+                    return ret;
+                }
             }
 
             if (rename(outputFilePath, wrapperFilePath) != 0) {
