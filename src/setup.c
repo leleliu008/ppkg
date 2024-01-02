@@ -251,17 +251,15 @@ int ppkg_setup(const bool verbose) {
             return PPKG_ERROR;
         }
 
-        int i = 0;
-
-        for (;;) {
+        for (int i = 0; i < 31; i++) {
             char c = osVersion[i];
 
-            if (c == '.') {
-                osVersion[i] = '\0';
+            if (c == '\0') {
                 break;
             }
 
-            if (c == '\0') {
+            if (c == '.') {
+                osVersion[i] = '\0';
                 break;
             }
         }

@@ -73,9 +73,9 @@ static int xcrun_show_sdk_path(char ** outP) {
             exit(254);
         }
 
-        execl("xcrun", "xcrun", "--sdk", "macosx", "--show-sdk-path", NULL);
+        execl("/usr/bin/xcrun", "/usr/bin/xcrun", "--sdk", "macosx", "--show-sdk-path", NULL);
 
-        perror("xcrun");
+        perror("/usr/bin/xcrun");
 
         exit(255);
     } else {
@@ -100,11 +100,11 @@ static int xcrun_show_sdk_path(char ** outP) {
         }
 
         if (WIFEXITED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --show-sdk-path' exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --show-sdk-path' exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
         } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --show-sdk-path' killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --show-sdk-path' killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
         } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --show-sdk-path' stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --show-sdk-path' stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
         }
 
         return PPKG_ERROR;
@@ -137,9 +137,9 @@ static int xcrun_find(const char * what, char ** outP) {
             exit(254);
         }
 
-        execl("xcrun", "xcrun", "--sdk", "macosx", "--find", what, NULL);
+        execl("/usr/bin/xcrun", "/usr/bin/xcrun", "--sdk", "macosx", "--find", what, NULL);
 
-        perror("xcrun");
+        perror("/usr/bin/xcrun");
 
         exit(255);
     } else {
@@ -164,11 +164,11 @@ static int xcrun_find(const char * what, char ** outP) {
         }
 
         if (WIFEXITED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --find %s' exit with status code: %d\n", what, WEXITSTATUS(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --find %s' exit with status code: %d\n", what, WEXITSTATUS(childProcessExitStatusCode));
         } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --find %s' killed by signal: %d\n", what, WTERMSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --find %s' killed by signal: %d\n", what, WTERMSIG(childProcessExitStatusCode));
         } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-            fprintf(stderr, "running command 'xcrun --sdk macosx --find %s' stopped by signal: %d\n", what, WSTOPSIG(childProcessExitStatusCode));
+            fprintf(stderr, "running command '/usr/bin/xcrun --sdk macosx --find %s' stopped by signal: %d\n", what, WSTOPSIG(childProcessExitStatusCode));
         }
 
         return PPKG_ERROR;

@@ -1,4 +1,4 @@
-name: voidlinux
+name: voidlinux-musl
 
 on:
   push:
