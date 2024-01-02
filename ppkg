@@ -4978,11 +4978,12 @@ $DOT_CONTENT
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         SYSROOT="$SYSROOT_FOR_BUILD"
+
         PPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
-        CCFLAGS="-isysroot $SYSROOT -Qunused-arguments $CCFLAGS"
-        OCFLAGS="-isysroot $SYSROOT -Qunused-arguments $OCFLAGS"
-        XXFLAGS="-isysroot $SYSROOT -Qunused-arguments $XXFLAGS"
-        LDFLAGS="-isysroot $SYSROOT -Wl,-search_paths_first"
+        CCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments $CCFLAGS"
+        OCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments $OCFLAGS"
+        XXFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments $XXFLAGS"
+        LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Wl,-search_paths_first"
     else
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
         LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
@@ -4994,28 +4995,28 @@ $DOT_CONTENT
             XXFLAGS="--sysroot=$SYSROOT $XXFLAGS"
             LDFLAGS="--sysroot=$SYSROOT $LDFLAGS"
         fi
-    fi
 
-    if [ "$CROSS_COMPILING" = 1 ] ; then
-        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
-            CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
-        else
-            CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
-        fi
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+                CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
+            else
+                CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+            fi
 
-        PPFLAGS="--target=$CLANG_TARGET $PPFLAGS"
-        CCFLAGS="--target=$CLANG_TARGET $CCFLAGS"
-        OCFLAGS="--target=$CLANG_TARGET $OCFLAGS"
-        XXFLAGS="--target=$CLANG_TARGET $XXFLAGS"
-        LDFLAGS="--target=$CLANG_TARGET $LDFLAGS"
+            PPFLAGS="--target=$CLANG_TARGET $PPFLAGS"
+            CCFLAGS="--target=$CLANG_TARGET $CCFLAGS"
+            OCFLAGS="--target=$CLANG_TARGET $OCFLAGS"
+            XXFLAGS="--target=$CLANG_TARGET $XXFLAGS"
+            LDFLAGS="--target=$CLANG_TARGET $LDFLAGS"
 
-        PPFLAGS="$PPFLAGS -I$SYSROOT/usr/include/c++/v1"
-        XXFLAGS="$XXFLAGS -I$SYSROOT/usr/include/c++/v1"
+            PPFLAGS="$PPFLAGS -I$SYSROOT/usr/include/c++/v1"
+            XXFLAGS="$XXFLAGS -I$SYSROOT/usr/include/c++/v1"
 
-        if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
-            # https://github.com/llvm/llvm-project/issues/74917
-            # https://github.com/madler/zlib/issues/856
-            LDFLAGS="$LDFLAGS -fuse-ld=lld -Wl,--undefined-version"
+            if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
+                # https://github.com/llvm/llvm-project/issues/74917
+                # https://github.com/madler/zlib/issues/856
+                LDFLAGS="$LDFLAGS -fuse-ld=lld -Wl,--undefined-version"
+            fi
         fi
     fi
 
@@ -8248,7 +8249,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.19
+    PPKG_VERSION=0.3.20
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
