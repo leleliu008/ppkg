@@ -4758,174 +4758,14 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    struct stat st;
+    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 14U;
+    char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
 
-    bool isTargetOSFreeBSD = false;
+    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
 
-    if (isCrossBuild) {
-        if (strcmp(targetPlatform->name, "freebsd") == 0) {
-            isTargetOSFreeBSD = true;
-            ret = setup_sysroot_for_freebsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
-        } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
-            ret = setup_sysroot_for_openbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
-        } else if (strcmp(targetPlatform->name,  "netbsd") == 0) {
-            ret = setup_sysroot_for__netbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
-        }
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        ///////////////////////////////////////////
-
-        if (chdir (packageWorkingTopDIR) == -1) {
-            perror(packageWorkingTopDIR);
-            return PPKG_ERROR;
-        }
-
-        ///////////////////////////////////////////
-
-        char   clangPath[PATH_MAX];
-        size_t clangPathLength = 0U;
-
-        ret = exe_where("clang", clangPath, PATH_MAX, &clangPathLength);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (clangPathLength == 0U) {
-            fprintf(stderr, "clang command was not found.\n");
-            return PPKG_ERROR;
-        }
-
-        ///////////////////////////////////////////
-
-        char   clangxxPath[PATH_MAX];
-        size_t clangxxPathLength = 0U;
-
-        ret = exe_where("clang++", clangxxPath, PATH_MAX, &clangxxPathLength);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (clangxxPathLength == 0U) {
-            fprintf(stderr, "clang++ command was not found.\n");
-            return PPKG_ERROR;
-        }
-
-        ///////////////////////////////////////////
-
-        if (setenv("PROXIED_CC", clangPath, 1) != 0) {
-            perror("PROXIED_CC");
-            return PPKG_ERROR;
-        }
-
-        if (setenv("PROXIED_CXX", clangxxPath, 1) != 0) {
-            perror("PROXIED_CXX");
-            return PPKG_ERROR;
-        }
-
-        ///////////////////////////////////////////
-
-        const size_t ccLength = strlen(toolchainForNativeBuild->cc);
-
-        const char * compilerNames[2] = { "clang", "clang++" };
-
-        for (int i = 0; i < 2; i++) {
-            const char * compilerName = compilerNames[i];
-
-            size_t wrapperFilePathCapacity = ppkgCoreDIRCapacity + 23U;
-            char   wrapperFilePath[wrapperFilePathCapacity];
-
-            ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-target-%s", ppkgCoreDIR, compilerName);
-
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            if (stat(wrapperFilePath, &st) != 0) {
-                size_t outputFilePathCapacity = sessionDIRLength + 23U;
-                char   outputFilePath[outputFilePathCapacity];
-
-                ret = snprintf(outputFilePath, outputFilePathCapacity, "%s/wrapper-target-%s", sessionDIR, compilerName);
-
-                if (ret < 0) {
-                    perror(NULL);
-                    return PPKG_ERROR;
-                }
-
-                size_t cmdLength = ccLength + outputFilePathCapacity + ppkgCoreDIRCapacity + 29U;
-                char   cmd[cmdLength];
-
-                ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-target-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
-
-                if (ret < 0) {
-                    perror(NULL);
-                    return PPKG_ERROR;
-                }
-
-                ret = run_cmd(cmd, STDOUT_FILENO);
-
-                if (ret != PPKG_OK) {
-                    return ret;
-                }
-
-                if (rename(outputFilePath, wrapperFilePath) != 0) {
-                    perror(wrapperFilePath);
-                    return PPKG_ERROR;
-                }
-            }
-
-            if (strcmp(compilerName, "clang") == 0) {
-                if (setenv("CC", wrapperFilePath, 1) != 0) {
-                    perror("CC");
-                    return PPKG_ERROR;
-                }
-
-                if (setenv("AS", wrapperFilePath, 1) != 0) {
-                    perror("AS");
-                    return PPKG_ERROR;
-                }
-            } else {
-                if (setenv("CXX", wrapperFilePath, 1) != 0) {
-                    perror("CXX");
-                    return PPKG_ERROR;
-                }
-            }
-        }
-
-        ///////////////////////////////////////////
-
-        char clangTarget[64] = {0};
-
-        if (strcmp(targetPlatform->name, "linux") == 0) {
-            const char * flavor;
-
-            if (strcmp(targetPlatform->vers, "glibc") == 0) {
-                flavor = "gnu";
-            } else {
-                flavor = targetPlatform->vers;
-            }
-
-            ret = snprintf(clangTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
-        } else {
-            ret = snprintf(clangTarget, 64, "%s-unknown-%s", targetPlatform->arch, targetPlatform->name);
-        }
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("CLANG_TARGET", clangTarget, 1) != 0) {
-            perror("CLANG_TARGET");
-            return PPKG_ERROR;
-        }
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -4949,134 +4789,442 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    if (formula->ccflags == NULL) {
-        if (setenv("CFLAGS", toolchainForTargetBuild->ccflags, 1) != 0) {
-            perror("CFLAGS");
-            return PPKG_ERROR;
-        }
-    } else {
-        size_t ccflagsCapacity = strlen(toolchainForTargetBuild->ccflags) + strlen(formula->ccflags) + 2U;
-        char   ccflags[ccflagsCapacity];
-
-        ret = snprintf(ccflags, ccflagsCapacity, "%s %s", toolchainForTargetBuild->ccflags, formula->ccflags);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("CFLAGS", ccflags, 1) != 0) {
-            perror("CFLAGS");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->xxflags == NULL) {
-        if (setenv("CXXFLAGS", toolchainForTargetBuild->cxxflags, 1) != 0) {
-            perror("CXXFLAGS");
-            return PPKG_ERROR;
-        }
-    } else {
-        size_t cxxflagsCapacity = strlen(toolchainForTargetBuild->cxxflags) + strlen(formula->xxflags) + 2U;
-        char   cxxflags[cxxflagsCapacity];
-
-        ret = snprintf(cxxflags, cxxflagsCapacity, "%s %s", toolchainForTargetBuild->cxxflags, formula->xxflags);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("CXXFLAGS", cxxflags, 1) != 0) {
-            perror("CXXFLAGS");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    if (formula->ppflags == NULL) {
-        size_t cppflagsCapacity = packageWorkingIncDIRCapacity + 3U;
-        char   cppflags[cppflagsCapacity];
-
-        ret = snprintf(cppflags, cppflagsCapacity, "-I%s", packageWorkingIncDIR);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("CPPFLAGS", cppflags, 1) != 0) {
-            perror("CPPFLAGS");
-            return PPKG_ERROR;
-        }
-    } else {
-        size_t cppflagsCapacity = packageWorkingIncDIRCapacity + strlen(formula->ppflags) + 4U;
-        char   cppflags[cppflagsCapacity];
-
-        ret = snprintf(cppflags, cppflagsCapacity, "-I%s %s", packageWorkingIncDIR, formula->ppflags);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (setenv("CPPFLAGS", cppflags, 1) != 0) {
-            perror("CPPFLAGS");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t packageInstalledRootDIRCapacity = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + 14U;
-    char   packageInstalledRootDIR[packageInstalledRootDIRCapacity];
-
-    ret = snprintf(packageInstalledRootDIR, packageInstalledRootDIRCapacity, "%s/installed/%s-%s-%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    bool needAddStaticFlag = false;
-
-    if (installOptions->linkType == PPKGLinkType_static_full) {
-        if (formula->sfslink) {
-            needAddStaticFlag = true;
-        } else {
-            fprintf(stderr, "user request to create fully statically linked executable, but package '%s' DO NOT support it, so we will downgrade to mostly statically linked executable.\n", packageName);
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
-    size_t ldflagsCapacity = strlen(toolchainForTargetBuild->ldflags) + packageWorkingLibDIRCapacity + packageInstalledRootDIRCapacity + packageNameLength + (formula->ldflags == NULL ? 0U : strlen(formula->ldflags)) + 80U;
-    char   ldflags[ldflagsCapacity];
-
-    // both --static and -static flag should be given.
-    //  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
-    // --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
-
-    ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s -L%s -Wl,-rpath,%s/%s/lib %s", needAddStaticFlag ? "--static -static " : "", isTargetOSFreeBSD ? "-fuse-ld=lld -Wl,--undefined-version " : "", toolchainForTargetBuild->ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags == NULL ? "" : formula->ldflags);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (setenv("LDFLAGS", ldflags, 1) != 0) {
-        perror("LDFLAGS");
-        return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
     const bool isTargetOSDarwin = strcmp(targetPlatform->name, "macos") == 0;
+
+    if (isTargetOSDarwin) {
+        size_t commonflagsCapacity = strlen(toolchainForTargetBuild->sysroot) + targetPlatform->versLen + targetPlatform->archLen + 40U;
+        char   commonflags[commonflagsCapacity];
+
+        ret = snprintf(commonflags, commonflagsCapacity, "-isysroot %s -mmacosx-version-min=%s -arch %s", toolchainForTargetBuild->sysroot, targetPlatform->vers, targetPlatform->arch);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->ccflags == NULL) {
+            size_t ccflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->ccflags) + 20U;
+            char   ccflags[ccflagsCapacity];
+
+            ret = snprintf(ccflags, ccflagsCapacity, "%s -Qunused-arguments %s", commonflags, toolchainForTargetBuild->ccflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CFLAGS", ccflags, 1) != 0) {
+                perror("CFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t ccflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->ccflags) + strlen(formula->ccflags) + 21U;
+            char   ccflags[ccflagsCapacity];
+
+            ret = snprintf(ccflags, ccflagsCapacity, "%s -Qunused-arguments %s %s", commonflags, toolchainForTargetBuild->ccflags, formula->ccflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CFLAGS", ccflags, 1) != 0) {
+                perror("CFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->xxflags == NULL) {
+            size_t cxxflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->cxxflags) + 20U;
+            char   cxxflags[cxxflagsCapacity];
+
+            ret = snprintf(cxxflags, cxxflagsCapacity, "%s -Qunused-arguments %s", commonflags, toolchainForTargetBuild->cxxflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CXXFLAGS", cxxflags, 1) != 0) {
+                perror("CXXFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t cxxflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->cxxflags) + strlen(formula->xxflags) + 21U;
+            char   cxxflags[cxxflagsCapacity];
+
+            ret = snprintf(cxxflags, cxxflagsCapacity, "%s -Qunused-arguments %s %s", commonflags, toolchainForTargetBuild->cxxflags, formula->xxflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CXXFLAGS", cxxflags, 1) != 0) {
+                perror("CXXFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->ppflags == NULL) {
+            size_t cppflagsCapacity = packageWorkingIncDIRCapacity + 21U;
+            char   cppflags[cppflagsCapacity];
+
+            ret = snprintf(cppflags, cppflagsCapacity, "-Qunused-arguments -I%s", packageWorkingIncDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+                perror("CPPFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t cppflagsCapacity = packageWorkingIncDIRCapacity + strlen(formula->ppflags) + 22U;
+            char   cppflags[cppflagsCapacity];
+
+            ret = snprintf(cppflags, cppflagsCapacity, "-Qunused-arguments -I%s %s", packageWorkingIncDIR, formula->ppflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+                perror("CPPFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->ldflags == NULL) {
+            size_t ldflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->ldflags) + packageWorkingLibDIRCapacity + packageInstalledRootDIRCapacity + packageNameLength + 50U;
+            char   ldflags[ldflagsCapacity];
+
+            ret = snprintf(ldflags, ldflagsCapacity, "%s -Wl,-search_paths_first %s -L%s -Wl,-rpath,%s/%s/lib", commonflags, toolchainForTargetBuild->ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("LDFLAGS", ldflags, 1) != 0) {
+                perror("LDFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t ldflagsCapacity = commonflagsCapacity + strlen(toolchainForTargetBuild->ldflags) + packageWorkingLibDIRCapacity + packageInstalledRootDIRCapacity + packageNameLength + strlen(formula->ldflags) + 50U;
+            char   ldflags[ldflagsCapacity];
+
+            ret = snprintf(ldflags, ldflagsCapacity, "%s -Wl,-search_paths_first %s -L%s -Wl,-rpath,%s/%s/lib %s", commonflags, toolchainForTargetBuild->ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("LDFLAGS", ldflags, 1) != 0) {
+                perror("LDFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+    } else {
+        bool isTargetOSFreeBSD = false;
+
+        if (isCrossBuild) {
+            if (strcmp(targetPlatform->name, "freebsd") == 0) {
+                isTargetOSFreeBSD = true;
+                ret = setup_sysroot_for_freebsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+            } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
+                ret = setup_sysroot_for_openbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+            } else if (strcmp(targetPlatform->name,  "netbsd") == 0) {
+                ret = setup_sysroot_for__netbsd(targetPlatform, ppkgHomeDIR, ppkgHomeDIRLength, installOptions->logLevel >= PPKGLogLevel_verbose);
+            }
+
+            if (ret != PPKG_OK) {
+                return ret;
+            }
+
+            ///////////////////////////////////////////
+
+            if (chdir (packageWorkingTopDIR) == -1) {
+                perror(packageWorkingTopDIR);
+                return PPKG_ERROR;
+            }
+
+            ///////////////////////////////////////////
+
+            char   clangPath[PATH_MAX];
+            size_t clangPathLength = 0U;
+
+            ret = exe_where("clang", clangPath, PATH_MAX, &clangPathLength);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (clangPathLength == 0U) {
+                fprintf(stderr, "clang command was not found.\n");
+                return PPKG_ERROR;
+            }
+
+            ///////////////////////////////////////////
+
+            char   clangxxPath[PATH_MAX];
+            size_t clangxxPathLength = 0U;
+
+            ret = exe_where("clang++", clangxxPath, PATH_MAX, &clangxxPathLength);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (clangxxPathLength == 0U) {
+                fprintf(stderr, "clang++ command was not found.\n");
+                return PPKG_ERROR;
+            }
+
+            ///////////////////////////////////////////
+
+            if (setenv("PROXIED_CC", clangPath, 1) != 0) {
+                perror("PROXIED_CC");
+                return PPKG_ERROR;
+            }
+
+            if (setenv("PROXIED_CXX", clangxxPath, 1) != 0) {
+                perror("PROXIED_CXX");
+                return PPKG_ERROR;
+            }
+
+            ///////////////////////////////////////////
+
+            const size_t ccLength = strlen(toolchainForNativeBuild->cc);
+
+            const char * compilerNames[2] = { "clang", "clang++" };
+
+            for (int i = 0; i < 2; i++) {
+                const char * compilerName = compilerNames[i];
+
+                size_t wrapperFilePathCapacity = ppkgCoreDIRCapacity + 23U;
+                char   wrapperFilePath[wrapperFilePathCapacity];
+
+                ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-target-%s", ppkgCoreDIR, compilerName);
+
+                if (ret < 0) {
+                    perror(NULL);
+                    return PPKG_ERROR;
+                }
+
+                struct stat st;
+
+                if (stat(wrapperFilePath, &st) != 0) {
+                    size_t outputFilePathCapacity = sessionDIRLength + 23U;
+                    char   outputFilePath[outputFilePathCapacity];
+
+                    ret = snprintf(outputFilePath, outputFilePathCapacity, "%s/wrapper-target-%s", sessionDIR, compilerName);
+
+                    if (ret < 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+
+                    size_t cmdLength = ccLength + outputFilePathCapacity + ppkgCoreDIRCapacity + 29U;
+                    char   cmd[cmdLength];
+
+                    ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-target-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
+
+                    if (ret < 0) {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+
+                    ret = run_cmd(cmd, STDOUT_FILENO);
+
+                    if (ret != PPKG_OK) {
+                        return ret;
+                    }
+
+                    if (rename(outputFilePath, wrapperFilePath) != 0) {
+                        perror(wrapperFilePath);
+                        return PPKG_ERROR;
+                    }
+                }
+
+                if (strcmp(compilerName, "clang") == 0) {
+                    if (setenv("CC", wrapperFilePath, 1) != 0) {
+                        perror("CC");
+                        return PPKG_ERROR;
+                    }
+
+                    if (setenv("AS", wrapperFilePath, 1) != 0) {
+                        perror("AS");
+                        return PPKG_ERROR;
+                    }
+                } else {
+                    if (setenv("CXX", wrapperFilePath, 1) != 0) {
+                        perror("CXX");
+                        return PPKG_ERROR;
+                    }
+                }
+            }
+
+            ///////////////////////////////////////////
+
+            char clangTarget[64] = {0};
+
+            if (strcmp(targetPlatform->name, "linux") == 0) {
+                const char * flavor;
+
+                if (strcmp(targetPlatform->vers, "glibc") == 0) {
+                    flavor = "gnu";
+                } else {
+                    flavor = targetPlatform->vers;
+                }
+
+                ret = snprintf(clangTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
+            } else {
+                ret = snprintf(clangTarget, 64, "%s-unknown-%s", targetPlatform->arch, targetPlatform->name);
+            }
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CLANG_TARGET", clangTarget, 1) != 0) {
+                perror("CLANG_TARGET");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->ccflags == NULL) {
+            if (setenv("CFLAGS", toolchainForTargetBuild->ccflags, 1) != 0) {
+                perror("CFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t ccflagsCapacity = strlen(toolchainForTargetBuild->ccflags) + strlen(formula->ccflags) + 2U;
+            char   ccflags[ccflagsCapacity];
+
+            ret = snprintf(ccflags, ccflagsCapacity, "%s %s", toolchainForTargetBuild->ccflags, formula->ccflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CFLAGS", ccflags, 1) != 0) {
+                perror("CFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->xxflags == NULL) {
+            if (setenv("CXXFLAGS", toolchainForTargetBuild->cxxflags, 1) != 0) {
+                perror("CXXFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t cxxflagsCapacity = strlen(toolchainForTargetBuild->cxxflags) + strlen(formula->xxflags) + 2U;
+            char   cxxflags[cxxflagsCapacity];
+
+            ret = snprintf(cxxflags, cxxflagsCapacity, "%s %s", toolchainForTargetBuild->cxxflags, formula->xxflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CXXFLAGS", cxxflags, 1) != 0) {
+                perror("CXXFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        if (formula->ppflags == NULL) {
+            size_t cppflagsCapacity = packageWorkingIncDIRCapacity + 3U;
+            char   cppflags[cppflagsCapacity];
+
+            ret = snprintf(cppflags, cppflagsCapacity, "-I%s", packageWorkingIncDIR);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+                perror("CPPFLAGS");
+                return PPKG_ERROR;
+            }
+        } else {
+            size_t cppflagsCapacity = packageWorkingIncDIRCapacity + strlen(formula->ppflags) + 4U;
+            char   cppflags[cppflagsCapacity];
+
+            ret = snprintf(cppflags, cppflagsCapacity, "-I%s %s", packageWorkingIncDIR, formula->ppflags);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            if (setenv("CPPFLAGS", cppflags, 1) != 0) {
+                perror("CPPFLAGS");
+                return PPKG_ERROR;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        bool needAddStaticFlag = false;
+
+        if (installOptions->linkType == PPKGLinkType_static_full) {
+            if (formula->sfslink) {
+                needAddStaticFlag = true;
+            } else {
+                fprintf(stderr, "user request to create fully statically linked executable, but package '%s' DO NOT support it, so we will downgrade to mostly statically linked executable.\n", packageName);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+
+        size_t ldflagsCapacity = strlen(toolchainForTargetBuild->ldflags) + packageWorkingLibDIRCapacity + packageInstalledRootDIRCapacity + packageNameLength + (formula->ldflags == NULL ? 0U : strlen(formula->ldflags)) + 80U;
+        char   ldflags[ldflagsCapacity];
+
+        // both --static and -static flag should be given.
+        //  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
+        // --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
+
+        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s -L%s -Wl,-rpath,%s/%s/lib %s", needAddStaticFlag ? "--static -static " : "", isTargetOSFreeBSD ? "-fuse-ld=lld -Wl,--undefined-version " : "", toolchainForTargetBuild->ldflags, packageWorkingLibDIR, packageInstalledRootDIR, packageName, formula->ldflags == NULL ? "" : formula->ldflags);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("LDFLAGS", ldflags, 1) != 0) {
+            perror("LDFLAGS");
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
 
     const char * libSuffix;
 
@@ -5324,6 +5472,16 @@ static int ppkg_install_package(
             }
 
             ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
+        } else if (isTargetOSDarwin) {
+            const char * arch;
+
+            if (strcmp(targetPlatform->arch, "arm64") == 0) {
+                arch = "aarch64";
+            } else {
+                arch = targetPlatform->arch;
+            }
+
+            ret = snprintf(rustTarget, 64, "%s-apple-darwin", arch);
         } else {
             const char * arch;
 
@@ -5677,6 +5835,8 @@ static int ppkg_install_package(
     }
 
     //////////////////////////////////////////////////////////////////////////////
+
+    struct stat st;
 
     if (stat(packageInstalledDIR, &st) != 0 || !S_ISDIR(st.st_mode)) {
         fprintf(stderr, "nothing is installed.\n");
