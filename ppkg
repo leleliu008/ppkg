@@ -2633,33 +2633,33 @@ gmakew() {
 #
 # run in a subshell
 cmakew() {
-        echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+    echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
 
-        cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
+    cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
 message(STATUS "CMake command: \${CMAKE_COMMAND}")
 message(STATUS "CMake version: \${CMAKE_VERSION}")
 EOF
 
-        if [ "$CROSS_COMPILING" = 1 ] ; then
-            case $TARGET_PLATFORM_NAME in
-                linux)    CMAKE_SYSTEM_NAME=Linux   ;;
-                macos)    CMAKE_SYSTEM_NAME=Darwin  ;;
-                freebsd)  CMAKE_SYSTEM_NAME=FreeBSD ;;
-                openbsd)  CMAKE_SYSTEM_NAME=OpenBSD ;;
-                netbsd)   CMAKE_SYSTEM_NAME=NetBSD  ;;
-                dragonflybsd)
-                          CMAKE_SYSTEM_NAME=FreeBSD ;;
-                *)        CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
-            esac
+    if [ "$CROSS_COMPILING" = 1 ] ; then
+        case $TARGET_PLATFORM_NAME in
+            linux)    CMAKE_SYSTEM_NAME=Linux   ;;
+            macos)    CMAKE_SYSTEM_NAME=Darwin  ;;
+            freebsd)  CMAKE_SYSTEM_NAME=FreeBSD ;;
+            openbsd)  CMAKE_SYSTEM_NAME=OpenBSD ;;
+            netbsd)   CMAKE_SYSTEM_NAME=NetBSD  ;;
+            dragonflybsd)
+                      CMAKE_SYSTEM_NAME=FreeBSD ;;
+            *)        CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
+        esac
 
-            cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+        cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
 set(CMAKE_SYSTEM_NAME      $CMAKE_SYSTEM_NAME)
 set(CMAKE_SYSTEM_VERSION   $TARGET_PLATFORM_VERS)
 set(CMAKE_SYSTEM_PROCESSOR $TARGET_PLATFORM_ARCH)
 EOF
-        fi
+    fi
 
-        cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+    cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
 
 message(STATUS "CMAKE_HOST_SYSTEM_NAME: \${CMAKE_HOST_SYSTEM_NAME}")
 message(STATUS "     CMAKE_SYSTEM_NAME: \${CMAKE_SYSTEM_NAME}")
@@ -4156,9 +4156,9 @@ __install_the_given_package() {
     #########################################################################################
 
     if [ "$NATIVE_OS_KIND" = linux ] ; then
-        NATIVE_OS_SPEC="$NATIVE_OS_KIND-$NATIVE_OS_LIBC-$NATIVE_OS_ARCH"
+        NATIVE_OS_SPEC="$NATIVE_OS_TYPE-$NATIVE_OS_LIBC-$NATIVE_OS_ARCH"
     else
-        NATIVE_OS_SPEC="$NATIVE_OS_KIND-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+        NATIVE_OS_SPEC="$NATIVE_OS_TYPE-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
     fi
 
     if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_OS_SPEC" ] ; then
@@ -8248,7 +8248,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.18
+    PPKG_VERSION=0.3.19
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
