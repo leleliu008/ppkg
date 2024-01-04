@@ -4783,7 +4783,7 @@ $DOT_CONTENT
         printf "%21s = %s\n" "${TOOL}" "$(eval echo "\$${TOOL}")"
     done
 
-    for TOOL in AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
+    for TOOL in AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE SYSROOT
     do
         eval export "${TOOL}=\"\$${TOOL}_FOR_BUILD\""
         printf "%21s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo "\$${TOOL}_FOR_BUILD")"
@@ -4983,8 +4983,6 @@ $DOT_CONTENT
     LDFLAGS=
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-        SYSROOT="$SYSROOT_FOR_BUILD"
-
         PPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
         CCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments $CCFLAGS"
         OCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments $OCFLAGS"
@@ -8255,7 +8253,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.21
+    PPKG_VERSION=0.3.22
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
