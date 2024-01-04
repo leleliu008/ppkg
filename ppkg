@@ -3585,11 +3585,6 @@ __inspect_install_arguments() {
         printf "%21s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$"${TOOL}_FOR_BUILD")"
     done
 
-    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
-    do
-        eval export "${TOOL}=\"\$${TOOL}_FOR_BUILD\""
-    done
-
     #########################################################################################
 
     # DO NOT use these environment variables
@@ -3621,8 +3616,6 @@ __inspect_install_arguments() {
     # https://keith.github.io/xcode-man-pages/xcrun.1.html
     # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
     unset SDKROOT
-
-    unset SYSROOT
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
 
@@ -4763,24 +4756,37 @@ $DOT_CONTENT
 
     step "locate C/C++ toolchain for target build"
 
-    if [ "$CROSS_COMPILING" = 1 ] ; then
-        PROXIED_CC="$(command -v clang)"    || abort 1 "command not found: clang"
-        PROXIED_OBJC="$(command -v clang)"  || abort 1 "command not found: clang"
-        PROXIED_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
-    else
-        PROXIED_CC="$PROXIED_CC_FOR_BUILD"
-        PROXIED_OBJC="$PROXIED_OBJC_FOR_BUILD"
-        PROXIED_CXX="$PROXIED_CXX_FOR_BUILD"
-    fi
-
      CC="$PPKG_CORE_DIR/wrapper-target-cc"
+    OBJC="$PPKG_CORE_DIR/wrapper-target-cc"
     CXX="$PPKG_CORE_DIR/wrapper-target-c++"
     CPP="$CC -E"
 
-    for TOOL in PROXIED_CC PROXIED_CXX CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        PROXIED_CC="$PROXIED_CC_FOR_BUILD"
+        PROXIED_OBJC="$PROXIED_OBJC_FOR_BUILD"
+        PROXIED_CXX="$PROXIED_CXX_FOR_BUILD"
+    else
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            PROXIED_CC="$(command -v clang)"    || abort 1 "command not found: clang"
+            PROXIED_OBJC="$(command -v clang)"  || abort 1 "command not found: clang"
+            PROXIED_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
+        else
+            PROXIED_CC="$PROXIED_CC_FOR_BUILD"
+            PROXIED_OBJC="$PROXIED_OBJC_FOR_BUILD"
+            PROXIED_CXX="$PROXIED_CXX_FOR_BUILD"
+        fi
+    fi
+
+    for TOOL in PROXIED_CC PROXIED_OBJC PROXIED_CXX CC OBJC CXX CPP
     do
-        export "$TOOL"
-        printf "%11s = %s\n" "$TOOL" "$(eval echo \$"$TOOL")"
+        eval export "${TOOL}=\"\$${TOOL}\""
+        printf "%21s = %s\n" "${TOOL}" "$(eval echo "\$${TOOL}")"
+    done
+
+    for TOOL in AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF ADDR2LINE
+    do
+        eval export "${TOOL}=\"\$${TOOL}_FOR_BUILD\""
+        printf "%21s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo "\$${TOOL}_FOR_BUILD")"
     done
 
     #########################################################################################
@@ -8249,7 +8255,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.20
+    PPKG_VERSION=0.3.21
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
