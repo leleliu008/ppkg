@@ -176,476 +176,111 @@ static int xcrun_find(const char * what, char ** outP) {
 }
 
 static int ppkg_toolchain_find(PPKGToolChain * toolchain) {
-    char * cc = NULL;
+    const char * a[13] = { "cc", "c++", "as", "ar", "ld", "nm", "size", "strip", "ranlib", "strings", "objdump", "objcopy", "readelf" };
 
-    int ret = exe_lookup("cc", &cc, NULL);
+    char * p = NULL;
 
-    if (ret == PPKG_OK) {
-        if (cc == NULL) {
-            fprintf(stderr, "C Compiler Not Found.\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->cc = cc;
+    for (int i = 0; i < 13; i++) {
+        int ret = exe_lookup(a[i], &p);
+
+        switch (ret) {
+            case -3:
+                ppkg_toolchain_free(toolchain);
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -2:
+                ppkg_toolchain_free(toolchain);
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -1:
+                perror(NULL);
+                ppkg_toolchain_free(toolchain);
+                return PPKG_ERROR;
+            case 0:
+                fprintf(stderr, "command not found: %s\n", a[i]);
+                ppkg_toolchain_free(toolchain);
+                return PPKG_ERROR;
         }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
+
+        switch (i) {
+            case 0: toolchain->cc = p; break;
+            case 1: toolchain->cxx = p; break;
+            case 2: toolchain->as = p; break;
+            case 3: toolchain->ar = p; break;
+            case 4: toolchain->ld = p; break;
+            case 5: toolchain->nm = p; break;
+            case 6: toolchain->size = p; break;
+            case 7: toolchain->strip = p; break;
+            case 8: toolchain->ranlib = p; break;
+            case 9: toolchain->strings = p; break;
+            case 10: toolchain->objdump = p; break;
+            case 11: toolchain->objcopy = p; break;
+            case 12: toolchain->readelf = p; break;
+        }
     }
 
-    //////////////////////////////////////////////
+    p = strdup("-fPIC -fno-common");
 
-    char * cxx = NULL;
-
-    ret = exe_lookup("c++", &cxx, NULL);
-
-    if (ret == PPKG_OK) {
-        if (cc == NULL) {
-            fprintf(stderr, "C++ Compiler Not Found.\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->cxx = cxx;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * as = NULL;
-
-    ret = exe_lookup("as", &as, NULL);
-
-    if (ret == PPKG_OK) {
-        if (as == NULL) {
-            fprintf(stderr, "command not found: as\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->as = as;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ar = NULL;
-
-    ret = exe_lookup("ar", &ar, NULL);
-
-    if (ret == PPKG_OK) {
-        if (ar == NULL) {
-            fprintf(stderr, "command not found: ar\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ar = ar;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ranlib = NULL;
-
-    ret = exe_lookup("ranlib", &ranlib, NULL);
-
-    if (ret == PPKG_OK) {
-        if (ranlib == NULL) {
-            fprintf(stderr, "command not found: ranlib\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ranlib = ranlib;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ld = NULL;
-
-    ret = exe_lookup("ld", &ld, NULL);
-
-    if (ret == PPKG_OK) {
-        if (ld == NULL) {
-            fprintf(stderr, "command not found: ld\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ld = ld;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * nm = NULL;
-
-    ret = exe_lookup("nm", &nm, NULL);
-
-    if (ret == PPKG_OK) {
-        if (nm == NULL) {
-            fprintf(stderr, "command not found: nm\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->nm = nm;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * size = NULL;
-
-    ret = exe_lookup("size", &size, NULL);
-
-    if (ret == PPKG_OK) {
-        if (size == NULL) {
-            fprintf(stderr, "command not found: size\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->size = size;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * strip = NULL;
-
-    ret = exe_lookup("strip", &strip, NULL);
-
-    if (ret == PPKG_OK) {
-        if (strip == NULL) {
-            fprintf(stderr, "command not found: strip\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->strip = strip;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * strings = NULL;
-
-    ret = exe_lookup("strings", &strings, NULL);
-
-    if (ret == PPKG_OK) {
-        if (strings == NULL) {
-            fprintf(stderr, "command not found: strings\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->strings = strings;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * objcopy = NULL;
-
-    ret = exe_lookup("objcopy", &objcopy, NULL);
-
-    if (ret == PPKG_OK) {
-        if (objcopy == NULL) {
-            fprintf(stderr, "command not found: objcopy\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->objcopy = objcopy;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * objdump = NULL;
-
-    ret = exe_lookup("objdump", &objdump, NULL);
-
-    if (ret == PPKG_OK) {
-        if (objdump == NULL) {
-            fprintf(stderr, "command not found: objdump\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->objdump = objdump;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * readelf = NULL;
-
-    ret = exe_lookup("readelf", &readelf, NULL);
-
-    if (ret == PPKG_OK) {
-        if (readelf == NULL) {
-            fprintf(stderr, "command not found: readelf\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->readelf = readelf;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * addr2line = NULL;
-
-    ret = exe_lookup("addr2line", &addr2line, NULL);
-
-    if (ret == PPKG_OK) {
-        if (addr2line == NULL) {
-            fprintf(stderr, "command not found: addr2line\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->addr2line = addr2line;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    toolchain->cxxflags = strdup("-fPIC -fno-common");
-
-    if (toolchain->cxxflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+    if (p == NULL) {
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
+    } else {
+        toolchain->cxxflags = p;
     }
 
-    toolchain->ccflags = strdup("-fPIC -fno-common");
+    p = strdup("-fPIC -fno-common");
 
-    if (toolchain->ccflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+    if (p == NULL) {
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
+    } else {
+        toolchain->ccflags = p;
     }
 
     // https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-    toolchain->ldflags = strdup("-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition");
+    p = strdup("-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition");
 
-    if (toolchain->ldflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+    if (p == NULL) {
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
+    } else {
+        toolchain->ldflags = p;
     }
 
     return PPKG_OK;
 }
 
 static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
-    char * cc = NULL;
+    const char * a[11] = { "clang", "clang++", "as", "ar", "ld", "nm", "size", "strip", "ranlib", "strings", "objdump" };
 
-    int ret = xcrun_find("clang", &cc);
+    char * p = NULL;
 
-    if (ret == PPKG_OK) {
-        if (cc == NULL) {
-            fprintf(stderr, "C Compiler Not Found.\n");
-            return PPKG_ERROR;
+    int ret;
+
+    for (int i = 0; i < 11; i++) {
+        ret = xcrun_find(a[i], &p);
+
+        if (ret == PPKG_OK) {
+            if (p == NULL) {
+                fprintf(stderr, "command not found: %s\n", a[i]);
+                return PPKG_ERROR;
+            } else {
+                switch (i) {
+                    case 0: toolchain->cc = p; break;
+                    case 1: toolchain->cxx = p; break;
+                    case 2: toolchain->as = p; break;
+                    case 3: toolchain->ar = p; break;
+                    case 4: toolchain->ld = p; break;
+                    case 5: toolchain->nm = p; break;
+                    case 6: toolchain->size = p; break;
+                    case 7: toolchain->strip = p; break;
+                    case 8: toolchain->ranlib = p; break;
+                    case 9: toolchain->strings = p; break;
+                    case 10: toolchain->objdump = p; break;
+                }
+            }
         } else {
-            toolchain->cc = cc;
+            ppkg_toolchain_free(toolchain);
+            return ret;
         }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * cxx = NULL;
-
-    ret = xcrun_find("clang++", &cxx);
-
-    if (ret == PPKG_OK) {
-        if (cc == NULL) {
-            fprintf(stderr, "C++ Compiler Not Found.\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->cxx = cxx;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * as = NULL;
-
-    ret = xcrun_find("as", &as);
-
-    if (ret == PPKG_OK) {
-        if (as == NULL) {
-            fprintf(stderr, "command not found: as\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->as = as;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ar = NULL;
-
-    ret = xcrun_find("ar", &ar);
-
-    if (ret == PPKG_OK) {
-        if (ar == NULL) {
-            fprintf(stderr, "command not found: ar\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ar = ar;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ranlib = NULL;
-
-    ret = xcrun_find("ranlib", &ranlib);
-
-    if (ret == PPKG_OK) {
-        if (ranlib == NULL) {
-            fprintf(stderr, "command not found: ranlib\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ranlib = ranlib;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * ld = NULL;
-
-    ret = xcrun_find("ld", &ld);
-
-    if (ret == PPKG_OK) {
-        if (ld == NULL) {
-            fprintf(stderr, "command not found: ld\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->ld = ld;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * nm = NULL;
-
-    ret = xcrun_find("nm", &nm);
-
-    if (ret == PPKG_OK) {
-        if (nm == NULL) {
-            fprintf(stderr, "command not found: nm\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->nm = nm;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * size = NULL;
-
-    ret = xcrun_find("size", &size);
-
-    if (ret == PPKG_OK) {
-        if (size == NULL) {
-            fprintf(stderr, "command not found: size\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->size = size;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * strip = NULL;
-
-    ret = xcrun_find("strip", &strip);
-
-    if (ret == PPKG_OK) {
-        if (strip == NULL) {
-            fprintf(stderr, "command not found: strip\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->strip = strip;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * strings = NULL;
-
-    ret = xcrun_find("strings", &strings);
-
-    if (ret == PPKG_OK) {
-        if (strings == NULL) {
-            fprintf(stderr, "command not found: strings\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->strings = strings;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
-    }
-
-    //////////////////////////////////////////////
-
-    char * objdump = NULL;
-
-    ret = xcrun_find("objdump", &objdump);
-
-    if (ret == PPKG_OK) {
-        if (objdump == NULL) {
-            fprintf(stderr, "command not found: objdump\n");
-            return PPKG_ERROR;
-        } else {
-            toolchain->objdump = objdump;
-        }
-    } else {
-        ppkg_toolchain_free(*toolchain);
-        return ret;
     }
 
     //////////////////////////////////////////////
@@ -662,7 +297,7 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
             toolchain->sysroot = sysroot;
         }
     } else {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return ret;
     }
 
@@ -674,7 +309,7 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     ret = snprintf(cppflags, cppflagsCapacity, "-isysroot %s -Qunused-arguments", sysroot);
 
     if (ret < 0) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR;
     }
 
@@ -684,7 +319,7 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     ret = snprintf(cxxflags, cxxflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
 
     if (ret < 0) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR;
     }
 
@@ -694,7 +329,7 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     ret = snprintf(ccflags, ccflagsCapacity, "-isysroot %s -Qunused-arguments -fPIC -fno-common", sysroot);
 
     if (ret < 0) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR;
     }
 
@@ -704,35 +339,35 @@ static int ppkg_toolchain_macos(PPKGToolChain * toolchain) {
     ret = snprintf(ldflags, ldflagsCapacity, "-isysroot %s -Wl,-search_paths_first", sysroot);
 
     if (ret < 0) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR;
     }
 
     toolchain->cppflags = strdup(cppflags);
 
     if (toolchain->cppflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
     toolchain->cxxflags = strdup(cxxflags);
 
     if (toolchain->cxxflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
     toolchain->ccflags = strdup(ccflags);
 
     if (toolchain->ccflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
     toolchain->ldflags = strdup(ldflags);
 
     if (toolchain->ldflags == NULL) {
-        ppkg_toolchain_free(*toolchain);
+        ppkg_toolchain_free(toolchain);
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
@@ -747,139 +382,147 @@ int ppkg_toolchain_locate(PPKGToolChain * toolchain) {
 #endif
 }
 
-void ppkg_toolchain_dump(PPKGToolChain toolchain) {
-    printf("cc:        %s\n", toolchain.cc);
-    printf("objc:      %s\n", toolchain.objc);
-    printf("cxx:       %s\n", toolchain.cxx);
-    printf("cpp:       %s\n", toolchain.cpp);
-    printf("as:        %s\n", toolchain.as);
-    printf("ar:        %s\n", toolchain.ar);
-    printf("ranlib:    %s\n", toolchain.ranlib);
-    printf("ld:        %s\n", toolchain.ld);
-    printf("nm:        %s\n", toolchain.nm);
-    printf("size:      %s\n", toolchain.size);
-    printf("strip:     %s\n", toolchain.strip);
-    printf("strings:   %s\n", toolchain.strings);
-    printf("objcopy:   %s\n", toolchain.objcopy);
-    printf("objdump:   %s\n", toolchain.objdump);
-    printf("readelf:   %s\n", toolchain.readelf);
-    printf("dlltool:   %s\n", toolchain.dlltool);
-    printf("addr2line: %s\n", toolchain.addr2line);
-    printf("sysroot:   %s\n", toolchain.sysroot);
-    printf("ccflags:   %s\n", toolchain.ccflags);
-    printf("cxxflags:  %s\n", toolchain.cxxflags);
-    printf("cppflags:  %s\n", toolchain.cppflags);
-    printf("ldflags:   %s\n", toolchain.ldflags);
+void ppkg_toolchain_dump(PPKGToolChain * toolchain) {
+    if (toolchain == NULL) {
+        return;
+    }
+
+    printf("cc:        %s\n", toolchain->cc);
+    printf("objc:      %s\n", toolchain->objc);
+    printf("cxx:       %s\n", toolchain->cxx);
+    printf("cpp:       %s\n", toolchain->cpp);
+    printf("as:        %s\n", toolchain->as);
+    printf("ar:        %s\n", toolchain->ar);
+    printf("ranlib:    %s\n", toolchain->ranlib);
+    printf("ld:        %s\n", toolchain->ld);
+    printf("nm:        %s\n", toolchain->nm);
+    printf("size:      %s\n", toolchain->size);
+    printf("strip:     %s\n", toolchain->strip);
+    printf("strings:   %s\n", toolchain->strings);
+    printf("objcopy:   %s\n", toolchain->objcopy);
+    printf("objdump:   %s\n", toolchain->objdump);
+    printf("readelf:   %s\n", toolchain->readelf);
+    printf("dlltool:   %s\n", toolchain->dlltool);
+    printf("addr2line: %s\n", toolchain->addr2line);
+    printf("sysroot:   %s\n", toolchain->sysroot);
+    printf("ccflags:   %s\n", toolchain->ccflags);
+    printf("cxxflags:  %s\n", toolchain->cxxflags);
+    printf("cppflags:  %s\n", toolchain->cppflags);
+    printf("ldflags:   %s\n", toolchain->ldflags);
 }
 
-void ppkg_toolchain_free(PPKGToolChain toolchain) {
-    if (toolchain.cc != NULL) {
-        free(toolchain.cc);
-        toolchain.cc = NULL;
+void ppkg_toolchain_free(PPKGToolChain * toolchain) {
+    if (toolchain == NULL) {
+        return;
     }
 
-    if (toolchain.cxx != NULL) {
-        free(toolchain.cxx);
-        toolchain.cxx = NULL;
+    if (toolchain->cc != NULL) {
+        free(toolchain->cc);
+        toolchain->cc = NULL;
     }
 
-    if (toolchain.objc != NULL) {
-        free(toolchain.objc);
-        toolchain.objc = NULL;
+    if (toolchain->cxx != NULL) {
+        free(toolchain->cxx);
+        toolchain->cxx = NULL;
     }
 
-    if (toolchain.cpp != NULL) {
-        free(toolchain.cpp);
-        toolchain.cpp = NULL;
+    if (toolchain->objc != NULL) {
+        free(toolchain->objc);
+        toolchain->objc = NULL;
     }
 
-    if (toolchain.as != NULL) {
-        free(toolchain.as);
-        toolchain.as = NULL;
+    if (toolchain->cpp != NULL) {
+        free(toolchain->cpp);
+        toolchain->cpp = NULL;
     }
 
-    if (toolchain.ar != NULL) {
-        free(toolchain.ar);
-        toolchain.ar = NULL;
+    if (toolchain->as != NULL) {
+        free(toolchain->as);
+        toolchain->as = NULL;
     }
 
-    if (toolchain.ranlib != NULL) {
-        free(toolchain.ranlib);
-        toolchain.ranlib = NULL;
+    if (toolchain->ar != NULL) {
+        free(toolchain->ar);
+        toolchain->ar = NULL;
     }
 
-    if (toolchain.ld != NULL) {
-        free(toolchain.ld);
-        toolchain.ld = NULL;
+    if (toolchain->ranlib != NULL) {
+        free(toolchain->ranlib);
+        toolchain->ranlib = NULL;
     }
 
-    if (toolchain.nm != NULL) {
-        free(toolchain.nm);
-        toolchain.nm = NULL;
+    if (toolchain->ld != NULL) {
+        free(toolchain->ld);
+        toolchain->ld = NULL;
     }
 
-    if (toolchain.size != NULL) {
-        free(toolchain.size);
-        toolchain.size = NULL;
+    if (toolchain->nm != NULL) {
+        free(toolchain->nm);
+        toolchain->nm = NULL;
     }
 
-    if (toolchain.strip != NULL) {
-        free(toolchain.strip);
-        toolchain.strip = NULL;
+    if (toolchain->size != NULL) {
+        free(toolchain->size);
+        toolchain->size = NULL;
     }
 
-    if (toolchain.strings != NULL) {
-        free(toolchain.strings);
-        toolchain.strings = NULL;
+    if (toolchain->strip != NULL) {
+        free(toolchain->strip);
+        toolchain->strip = NULL;
     }
 
-    if (toolchain.objcopy != NULL) {
-        free(toolchain.objcopy);
-        toolchain.objcopy = NULL;
+    if (toolchain->strings != NULL) {
+        free(toolchain->strings);
+        toolchain->strings = NULL;
     }
 
-    if (toolchain.objdump != NULL) {
-        free(toolchain.objdump);
-        toolchain.objdump = NULL;
+    if (toolchain->objcopy != NULL) {
+        free(toolchain->objcopy);
+        toolchain->objcopy = NULL;
     }
 
-    if (toolchain.readelf != NULL) {
-        free(toolchain.readelf);
-        toolchain.readelf = NULL;
+    if (toolchain->objdump != NULL) {
+        free(toolchain->objdump);
+        toolchain->objdump = NULL;
     }
 
-    if (toolchain.dlltool != NULL) {
-        free(toolchain.dlltool);
-        toolchain.dlltool = NULL;
+    if (toolchain->readelf != NULL) {
+        free(toolchain->readelf);
+        toolchain->readelf = NULL;
     }
 
-    if (toolchain.addr2line != NULL) {
-        free(toolchain.addr2line);
-        toolchain.addr2line = NULL;
+    if (toolchain->dlltool != NULL) {
+        free(toolchain->dlltool);
+        toolchain->dlltool = NULL;
     }
 
-    if (toolchain.sysroot != NULL) {
-        free(toolchain.sysroot);
-        toolchain.sysroot = NULL;
+    if (toolchain->addr2line != NULL) {
+        free(toolchain->addr2line);
+        toolchain->addr2line = NULL;
     }
 
-    if (toolchain.ccflags != NULL) {
-        free(toolchain.ccflags);
-        toolchain.ccflags = NULL;
+    if (toolchain->sysroot != NULL) {
+        free(toolchain->sysroot);
+        toolchain->sysroot = NULL;
     }
 
-    if (toolchain.cxxflags != NULL) {
-        free(toolchain.cxxflags);
-        toolchain.cxxflags = NULL;
+    if (toolchain->ccflags != NULL) {
+        free(toolchain->ccflags);
+        toolchain->ccflags = NULL;
     }
 
-    if (toolchain.cppflags != NULL) {
-        free(toolchain.cppflags);
-        toolchain.cppflags = NULL;
+    if (toolchain->cxxflags != NULL) {
+        free(toolchain->cxxflags);
+        toolchain->cxxflags = NULL;
     }
 
-    if (toolchain.ldflags != NULL) {
-        free(toolchain.ldflags);
-        toolchain.ldflags = NULL;
+    if (toolchain->cppflags != NULL) {
+        free(toolchain->cppflags);
+        toolchain->cppflags = NULL;
+    }
+
+    if (toolchain->ldflags != NULL) {
+        free(toolchain->ldflags);
+        toolchain->ldflags = NULL;
     }
 }

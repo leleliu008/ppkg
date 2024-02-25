@@ -8,7 +8,7 @@
 
 #include "exe.h"
 
-int exe_search(const char * commandName, char *** listP, size_t * listSize, const bool findAll) {
+int exe_search(const char * commandName, char *** listP, const bool findAll) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;
@@ -24,11 +24,6 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, cons
         return -1;
     }
 
-    if (listSize == NULL) {
-        errno = EINVAL;
-        return -1;
-    }
-
     const char * const PATH = getenv("PATH");
 
     if (PATH == NULL) {
@@ -39,9 +34,9 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, cons
         return -3;
     }
 
-    size_t  PATH2Length = strlen(PATH) + 1U;
-    char    PATH2[PATH2Length];
-    strncpy(PATH2, PATH, PATH2Length);
+    size_t  PATH2Capacity = strlen(PATH) + 1U;
+    char    PATH2[PATH2Capacity];
+    strncpy(PATH2, PATH, PATH2Capacity);
 
     struct stat st;
 
@@ -111,13 +106,12 @@ int exe_search(const char * commandName, char *** listP, size_t * listSize, cons
         PATHItem = strtok(NULL, ":");
     }
 
-    (*listP)    = stringArrayList;
-    (*listSize) = stringArrayListSize;
+    (*listP) = stringArrayList;
 
-    return 0;
+    return stringArrayListSize;
 }
 
-int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
+int exe_lookup(const char * commandName, char ** pathP) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;
@@ -143,9 +137,9 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
         return -3;
     }
 
-    size_t  PATH2Length = strlen(PATH) + 1U;
-    char    PATH2[PATH2Length];
-    strncpy(PATH2, PATH, PATH2Length);
+    size_t  PATH2Capacity = strlen(PATH) + 1U;
+    char    PATH2[PATH2Capacity];
+    strncpy(PATH2, PATH, PATH2Capacity);
 
     struct stat st;
 
@@ -165,35 +159,27 @@ int exe_lookup(const char * commandName, char ** pathP, size_t * pathLength) {
             }
 
             if (access(fullPath, X_OK) == 0) {
-                char * fullPathDup = strdup(fullPath);
+                char * p = strdup(fullPath);
 
-                if (fullPathDup == NULL) {
+                if (p == NULL) {
                     errno = ENOMEM;
                     return -1;
                 }
 
-                (*pathP) = fullPathDup;
+                (*pathP) = p;
 
-                if (pathLength != NULL) {
-                    (*pathLength) = ret;
-                }
-
-                return 0;
+                return ret;
             }
         }
 
         PATHItem = strtok(NULL, ":");
     }
 
-    if (pathLength != NULL) {
-        (*pathLength) = 0;
-    }
-
     (*pathP) = NULL;
     return 0;
 }
 
-int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * writtenSize) {
+int exe_where(const char * commandName, char buf[], size_t bufSize) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;
@@ -224,9 +210,9 @@ int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * wri
         return -3;
     }
 
-    size_t  PATH2Length = strlen(PATH) + 1U;
-    char    PATH2[PATH2Length];
-    strncpy(PATH2, PATH, PATH2Length);
+    size_t  PATH2Capacity = strlen(PATH) + 1U;
+    char    PATH2[PATH2Capacity];
+    strncpy(PATH2, PATH, PATH2Capacity);
 
     struct stat st;
 
@@ -256,19 +242,11 @@ int exe_where(const char * commandName, char buf[], size_t bufSize, size_t * wri
 
                 buf[n] = '\0';
 
-                if (writtenSize != NULL) {
-                    (*writtenSize) = n;
-                }
-
-                return 0;
+                return n;
             }
         }
 
         PATHItem = strtok(NULL, ":");
-    }
-
-    if (writtenSize != NULL) {
-        (*writtenSize) = 0;
     }
 
     return 0;

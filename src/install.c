@@ -2012,20 +2012,24 @@ static int install_native_package(
     //////////////////////////////////////////////////////////////////////////////
 
     if (buildSystemType == BUILD_SYSTEM_TYPE_CMAKE) {
-        char   cmakePath[PATH_MAX];
-        size_t cmakePathLength = 0U;
+        char cmakePath[PATH_MAX];
 
-        ret = exe_where("cmake", cmakePath, PATH_MAX, &cmakePathLength);
+        ret = exe_where("cmake", cmakePath, PATH_MAX);
 
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
+        switch (ret) {
+            case -3:
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -2:
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -1:
+                perror(NULL);
+                return PPKG_ERROR;
+            case 0:
+                fprintf(stderr, "cmake command was not found.\n");
+                return PPKG_ERROR;
         }
 
-        if (cmakePathLength == 0U) {
-            fprintf(stderr, "cmake command was not found.\n");
-            return PPKG_ERROR;
-        }
+        size_t cmakePathLength = ret;
 
         size_t configurePhaseCmdLength = cmakePathLength + packageInstalledDIRCapacity + strlen(buildConfigureArgs) + 124U;
         char   configurePhaseCmd[configurePhaseCmdLength];
@@ -2175,20 +2179,24 @@ static int install_native_package(
                 return ret;
             }
         } else if (nativePackageID == NATIVE_PACKAGE_ID_PERL_XML_PARSER) {
-            char   perlPath[PATH_MAX];
-            size_t perlPathLength = 0U;
+            char perlPath[PATH_MAX];
 
-            ret = exe_where("perl", perlPath, PATH_MAX, &perlPathLength);
+            ret = exe_where("perl", perlPath, PATH_MAX);
 
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
+            switch (ret) {
+                case -3:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -2:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -1:
+                    perror(NULL);
+                    return PPKG_ERROR;
+                case 0:
+                    fprintf(stderr, "perl command was not found.\n");
+                    return PPKG_ERROR;
             }
 
-            if (perlPathLength == 0U) {
-                fprintf(stderr, "perl command was not found.\n");
-                return PPKG_ERROR;
-            }
+            size_t perlPathLength = ret;
 
             size_t configurePhaseCmdLength = perlPathLength + (packageInstalledDIRCapacity << 1) + 52U;
             char   configurePhaseCmd[configurePhaseCmdLength];
@@ -2280,25 +2288,37 @@ static int install_native_package(
         char   gmakePath[PATH_MAX];
         size_t gmakePathLength = 0U;
 
-        ret = exe_where("gmake", gmakePath, PATH_MAX, &gmakePathLength);
+        ret = exe_where("gmake", gmakePath, PATH_MAX);
 
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (gmakePathLength == 0U) {
-            ret = exe_where("make", gmakePath, PATH_MAX, &gmakePathLength);
-
-            if (ret < 0) {
+        switch (ret) {
+            case -3:
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -2:
+                return PPKG_ERROR_ENV_PATH_NOT_SET;
+            case -1:
                 perror(NULL);
                 return PPKG_ERROR;
-            }
+            case 0:
+                ret = exe_where("make", gmakePath, PATH_MAX);
 
-            if (gmakePathLength == 0U) {
-                fprintf(stderr, "neither gmake nor make command was found.\n");
-                return PPKG_ERROR;
-            }
+                switch (ret) {
+                    case -3:
+                        return PPKG_ERROR_ENV_PATH_NOT_SET;
+                    case -2:
+                        return PPKG_ERROR_ENV_PATH_NOT_SET;
+                    case -1:
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    case 0:
+                        fprintf(stderr, "neither gmake nor make command was found.\n");
+                        return PPKG_ERROR;
+                    default:
+                        gmakePathLength = ret;
+                }
+
+                break;
+            default:
+                gmakePathLength = ret;
         }
 
         //////////////////////////////////////////////////////////////////////////////
@@ -4100,7 +4120,7 @@ static int ppkg_install_package(
 
     const KV toolsForNativeBuild[17] = {
         { "CC",        toolchainForNativeBuild->cc },
-        { "OBJC",      toolchainForNativeBuild->objc },
+        { "OBJC",      toolchainForNativeBuild->objc == NULL ? toolchainForNativeBuild->cc : toolchainForNativeBuild->objc },
         { "CXX",       toolchainForNativeBuild->cxx },
         { "CPP",       toolchainForNativeBuild->cpp },
         { "AS",        toolchainForNativeBuild->as },
@@ -4363,17 +4383,21 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   m4Path[PATH_MAX];
-    size_t m4PathLength = 0U;
+    char m4Path[PATH_MAX];
 
-    ret = exe_where("m4", m4Path, PATH_MAX, &m4PathLength);
+    ret = exe_where("m4", m4Path, PATH_MAX);
 
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
+    switch (ret) {
+        case -3:
+            return PPKG_ERROR_ENV_PATH_NOT_SET;
+        case -2:
+            return PPKG_ERROR_ENV_PATH_NOT_SET;
+        case -1:
+            perror(NULL);
+            return PPKG_ERROR;
     }
 
-    if (m4PathLength > 0U) {
+    if (ret > 0) {
         if (setenv("M4", m4Path, 1) != 0) {
             perror("M4");
             return PPKG_ERROR;
@@ -4963,36 +4987,40 @@ static int ppkg_install_package(
 
             ///////////////////////////////////////////
 
-            char   clangPath[PATH_MAX];
-            size_t clangPathLength = 0U;
+            char clangPath[PATH_MAX];
 
-            ret = exe_where("clang", clangPath, PATH_MAX, &clangPathLength);
+            ret = exe_where("clang", clangPath, PATH_MAX);
 
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            if (clangPathLength == 0U) {
-                fprintf(stderr, "clang command was not found.\n");
-                return PPKG_ERROR;
+            switch (ret) {
+                case -3:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -2:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -1:
+                    perror(NULL);
+                    return PPKG_ERROR;
+                case 0:
+                    fprintf(stderr, "clang command was not found.\n");
+                    return PPKG_ERROR;
             }
 
             ///////////////////////////////////////////
 
-            char   clangxxPath[PATH_MAX];
-            size_t clangxxPathLength = 0U;
+            char clangxxPath[PATH_MAX];
 
-            ret = exe_where("clang++", clangxxPath, PATH_MAX, &clangxxPathLength);
+            ret = exe_where("clang++", clangxxPath, PATH_MAX);
 
-            if (ret < 0) {
-                perror(NULL);
-                return PPKG_ERROR;
-            }
-
-            if (clangxxPathLength == 0U) {
-                fprintf(stderr, "clang++ command was not found.\n");
-                return PPKG_ERROR;
+            switch (ret) {
+                case -3:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -2:
+                    return PPKG_ERROR_ENV_PATH_NOT_SET;
+                case -1:
+                    perror(NULL);
+                    return PPKG_ERROR;
+                case 0:
+                    fprintf(stderr, "clang++ command was not found.\n");
+                    return PPKG_ERROR;
             }
 
             ///////////////////////////////////////////
@@ -7002,7 +7030,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     ret = ppkg_setup_toolchain_for_native_build(&toolchainForNativeBuild, sessionDIR, sessionDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, installOptions);
 
     if (ret != PPKG_OK) {
-        ppkg_toolchain_free(toolchainForNativeBuild);
+        ppkg_toolchain_free(&toolchainForNativeBuild);
         return PPKG_ERROR;
     }
 
@@ -7021,8 +7049,8 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     char * ppkgExeFilePath = self_realpath();
 
     if (ppkgExeFilePath == NULL) {
-        sysinfo_free(sysinfo);
-        ppkg_toolchain_free(toolchainForNativeBuild);
+        sysinfo_free(&sysinfo);
+        ppkg_toolchain_free(&toolchainForNativeBuild);
         return PPKG_ERROR;
     }
 
@@ -7093,8 +7121,8 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     }
 
 finalize:
-    sysinfo_free(sysinfo);
-    ppkg_toolchain_free(toolchainForNativeBuild);
+    sysinfo_free(&sysinfo);
+    ppkg_toolchain_free(&toolchainForNativeBuild);
     free(ppkgExeFilePath);
 
     for (size_t i = 0; i < packageSetSize; i++) {

@@ -6,12 +6,10 @@ int ppkg_sysinfo() {
 
     int ret = sysinfo_make(&sysinfo);
 
-    if (ret != PPKG_OK) {
-        return ret;
+    if (ret == PPKG_OK) {
+        sysinfo_dump(&sysinfo);
+        sysinfo_free(&sysinfo);
     }
 
-    sysinfo_dump(sysinfo);
-    sysinfo_free(sysinfo);
-   
-    return PPKG_OK;
+    return ret;
 }

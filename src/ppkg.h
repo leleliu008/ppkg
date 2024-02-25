@@ -293,8 +293,8 @@ typedef struct {
 } PPKGToolChain;
 
 int  ppkg_toolchain_locate(PPKGToolChain * toolchain);
-void ppkg_toolchain_free(PPKGToolChain toolchain);
-void ppkg_toolchain_dump(PPKGToolChain toolchain);
+void ppkg_toolchain_free  (PPKGToolChain * toolchain);
+void ppkg_toolchain_dump  (PPKGToolChain * toolchain);
 
 //////////////////////////////////////////////////////////////////////
 

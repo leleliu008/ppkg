@@ -434,12 +434,11 @@ int ppkg_util(int argc, char* argv[]) {
         }
 
         char ** pathList = NULL;
-        size_t  pathListSize = 0;
 
-        int ret = exe_search(argv[3], &pathList, &pathListSize, findAll);
+        int ret = exe_search(argv[3], &pathList, findAll);
 
-        if (ret == 0) {
-            for (size_t i = 0; i < pathListSize; i++) {
+        if (ret > 0) {
+            for (int i = 0; i < ret; i++) {
                 printf("%s\n", pathList[i]);
 
                 free(pathList[i]);
