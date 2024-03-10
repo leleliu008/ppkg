@@ -7924,19 +7924,46 @@ __setup_uppm() {
     UPPM_LATEST_RELEASE_TAGNAME="$(cat uppm-latest-release)"
     UPPM_LATEST_RELEASE_VERSION="$(printf '%s\n' "$UPPM_LATEST_RELEASE_TAGNAME" | cut -d+ -f1)"
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        case $(sw_vers -productVersion | cut -d. -f1) in
-            10) X='10.15' ;;
-            11) X='11.0'  ;;
-            12) X='12.0'  ;;
-            13) X='13.0'  ;;
-            *)  X='13.0'  ;;
-        esac
+    case $NATIVE_OS_KIND in
+        darwin)
+            case $(sw_vers -productVersion | cut -d. -f1) in
+                10) X='10.15' ;;
+                11) X='11.0'  ;;
+                12) X='12.0'  ;;
+                13) X='13.0'  ;;
+                *)  X='14.0'  ;;
+            esac
 
-        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-macos${X}-${NATIVE_OS_ARCH}.tar.xz"
-    else
-        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
-    fi
+            UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-macos-${X}-${NATIVE_OS_ARCH}.tar.xz"
+            ;;
+        freebsd)
+            case $(freebsd-version) in
+                13.0) X='13.0' ;;
+                13.1) X='13.1' ;;
+                *)    X='13.2' ;;
+            esac
+
+            UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${X}-${NATIVE_OS_ARCH}.tar.xz"
+            ;;
+        openbsd)
+            case $(uname -r) in
+                7.3) X='7.3' ;;
+                *)   X='7.4' ;;
+            esac
+
+            UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${X}-${NATIVE_OS_ARCH}.tar.xz"
+            ;;
+        netbsd)
+            case $(uname -r) in
+                9.1) X='9.1' ;;
+                9.2) X='9.2' ;;
+                *)   X='9.3' ;;
+            esac
+
+            UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${X}-${NATIVE_OS_ARCH}.tar.xz"
+            ;;
+        *)  UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
+    esac
 
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --no-buffer
 
@@ -8253,7 +8280,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.22
+    PPKG_VERSION=0.3.23
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
