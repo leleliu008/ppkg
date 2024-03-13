@@ -12,12 +12,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-11, macos-12]
+        os: [macos-14, macos-13, macos-12]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@4
 
       - run:  brew update
       - run:  brew install --overwrite python@3.10 python@3.11
@@ -132,7 +132,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [macos-11, macos-12]
+        version: [macos-14, macos-13, macos-12]
 
     runs-on: ${{ matrix.version }}
 
@@ -140,9 +140,9 @@ jobs:
       - run:  brew update
       - run:  brew install cmake ninja pkg-config
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
@@ -250,7 +250,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [macos-11, macos-12]
+        version: [macos-14, macos-13, macos-12, macos-11]
 
     runs-on: ${{ matrix.version }}
 
@@ -259,9 +259,9 @@ jobs:
       - run:  brew install --overwrite python@3.10 python@3.11
       - run:  brew install cmake ninja llvm pkg-config
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
@@ -371,12 +371,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-11, macos-12]
+        os: [macos-14, macos-13, macos-12, macos-11]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@4
 
       - run:  brew update
       - run:  brew install --overwrite python@3.10 python@3.11

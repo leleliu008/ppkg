@@ -6513,21 +6513,20 @@ static int try_compile(const char * compilerFilePath, const char * compilerOptio
     }
 }
 
-static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, const size_t sessionDIRLength, const char * compiler, const bool iscc, const char * ccflags, const char * ldflags) {
+static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, const size_t sessionDIRLength, const char * compiler, const bool iscxx, const char * ccflags, const char * ldflags) {
     size_t testCFilePathCapacity = sessionDIRLength + 10U;
     char   testCFilePath[testCFilePathCapacity];
 
-    int ret;
-
-    if (iscc) {
-        ret = snprintf(testCFilePath, testCFilePathCapacity, "%s/test.c",  sessionDIR);
-    } else {
-        ret = snprintf(testCFilePath, testCFilePathCapacity, "%s/test.cc", sessionDIR);
-    }
+    int ret = snprintf(testCFilePath, testCFilePathCapacity, "%s/test.c",  sessionDIR);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
+    }
+
+    if (iscxx) {
+        testCFilePath[ret]     = 'c';
+        testCFilePath[ret + 1] = '\0';
     }
 
     int fd = open(testCFilePath, O_CREAT | O_TRUNC | O_WRONLY, 0666);
@@ -6556,17 +6555,17 @@ static int check_if_compiler_support_Wno_error_unused_command_line_argument(cons
         return PPKG_ERROR;
     }
 
-    size_t compilerOptionCapacity = strlen(ccflags) + strlen(ldflags) + 42U;
-    char   compilerOption[compilerOptionCapacity];
+    size_t cmdCapacity = strlen(compiler) + strlen(ccflags) + strlen(ldflags) + testCFilePathCapacity + 45U;
+    char   cmd[cmdCapacity];
 
-    ret = snprintf(compilerOption, compilerOptionCapacity, "-Wno-error=unused-command-line-argument %s %s" , ccflags, ldflags);
+    ret = snprintf(cmd, cmdCapacity, "%s -Wno-error=unused-command-line-argument %s %s %s", compiler, ccflags, ldflags, testCFilePath);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    return try_compile(compiler, compilerOption, testCFilePath);
+    return run_cmd(cmd, STDOUT_FILENO);
 }
 
 int ppkg_setup_toolchain_for_native_build(
@@ -6660,8 +6659,8 @@ int ppkg_setup_toolchain_for_native_build(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cc,  true, toolchainForNativeBuild->ccflags,  toolchainForNativeBuild->ldflags);
-    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cxx, true, toolchainForNativeBuild->cxxflags, toolchainForNativeBuild->ldflags);
+    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cc,  false, toolchainForNativeBuild->ccflags,  toolchainForNativeBuild->ldflags);
+    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cxx, true,  toolchainForNativeBuild->cxxflags, toolchainForNativeBuild->ldflags);
 
     //////////////////////////////////////////////////////////////////////////////
 
