@@ -6964,7 +6964,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     ret = ppkg_toolchain_locate(&toolchainForNativeBuild);
 
     if (ret != PPKG_OK) {
-        return PPKG_ERROR;
+        return ret;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -6973,7 +6973,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     if (ret != PPKG_OK) {
         ppkg_toolchain_free(&toolchainForNativeBuild);
-        return PPKG_ERROR;
+        return ret;
     }
 
     //////////////////////////////////////////////////////////////////////////////
