@@ -607,25 +607,38 @@ int uppm_install(const char * packageName, const bool verbose, const bool force)
 
         printf("run shell code:\n%s\n", shellCode);
 
-        int childProcessExitStatusCode = system(shellCode);
+        pid_t pid = fork();
 
-        if (childProcessExitStatusCode == -1) {
+        if (pid == -1) {
             perror(NULL);
-            uppm_formula_free(formula);
             return PPKG_ERROR;
         }
 
-        if (childProcessExitStatusCode != 0) {
-            if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running shell code exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
-            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running shell code killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
-            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running shell code stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
+        if (pid == 0) {
+            execl("/bin/sh", "/bin/sh", "-c", shellCode);
+            perror("/bin/sh");
+            exit(255);
+        } else {
+            int childProcessExitStatusCode;
+
+            if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
+                perror(NULL);
+                uppm_formula_free(formula);
+                return PPKG_ERROR;
             }
 
-            uppm_formula_free(formula);
-            return PPKG_ERROR;
+            if (childProcessExitStatusCode != 0) {
+                if (WIFEXITED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running shell code exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
+                } else if (WIFSIGNALED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running shell code killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
+                } else if (WIFSTOPPED(childProcessExitStatusCode)) {
+                    fprintf(stderr, "running shell code stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
+                }
+
+                uppm_formula_free(formula);
+                return PPKG_ERROR;
+            }
         }
     }
 
