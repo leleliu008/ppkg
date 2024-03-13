@@ -91,6 +91,8 @@ static int uppm_formula_repo_sync_official_core_internal(const char * formulaRep
         return ret;
     }
 
+    fprintf(stderr, "updating uppm formula repository from %s\n", formulaRepoUrl);
+
     ret = ppkg_git_sync(formulaRepoDIR, formulaRepoUrl, "refs/heads/master", "refs/remote/heads/master", "master", 0);
 
     if (ret != PPKG_OK) {
