@@ -6513,7 +6513,7 @@ static int try_compile(const char * compilerFilePath, const char * compilerOptio
     }
 }
 
-static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, const size_t sessionDIRLength, const char * compiler, const bool iscc) {
+static int check_if_compiler_support_Wno_error_unused_command_line_argument(const char * sessionDIR, const size_t sessionDIRLength, const char * compiler, const bool iscc, const char * ccflags, const char * ldflags) {
     size_t testCFilePathCapacity = sessionDIRLength + 10U;
     char   testCFilePath[testCFilePathCapacity];
 
@@ -6556,7 +6556,17 @@ static int check_if_compiler_support_Wno_error_unused_command_line_argument(cons
         return PPKG_ERROR;
     }
 
-    return try_compile(compiler, "-Wno-error=unused-command-line-argument", testCFilePath);
+    size_t compilerOptionCapacity = strlen(ccflags) + strlen(ldflags) + 42U;
+    char   compilerOption[compilerOptionCapacity];
+
+    ret = snprintf(compilerOption, compilerOptionCapacity, "-Wno-error=unused-command-line-argument %s %s" , ccflags, ldflags);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    return try_compile(compiler, compilerOption, testCFilePath);
 }
 
 int ppkg_setup_toolchain_for_native_build(
@@ -6650,8 +6660,8 @@ int ppkg_setup_toolchain_for_native_build(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cc,  true);
-    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cxx, true);
+    int ret1 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cc,  true, toolchainForNativeBuild->ccflags,  toolchainForNativeBuild->ldflags);
+    int ret2 = check_if_compiler_support_Wno_error_unused_command_line_argument(sessionDIR, sessionDIRLength, toolchainForNativeBuild->cxx, true, toolchainForNativeBuild->cxxflags, toolchainForNativeBuild->ldflags);
 
     //////////////////////////////////////////////////////////////////////////////
 
@@ -6661,7 +6671,7 @@ int ppkg_setup_toolchain_for_native_build(
 
     //////////////////////////////////////////////////////////////////////
 
-    char * fields[3] = {NULL};
+    char* fields[3] = {NULL};
 
     for (int i = 0; i < 3; i++) {
         size_t capacity = ppkgCoreDIRLength + 21U;
