@@ -91,7 +91,7 @@ int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPl
                             return PPKG_ERROR;
                         }
 
-                        return ppkg_rm_r(packageInstalledRealDIR, verbose);
+                        return ppkg_rm_rf(packageInstalledRealDIR, false, verbose);
                     } else {
                         // package is broken by other tools?
                         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;

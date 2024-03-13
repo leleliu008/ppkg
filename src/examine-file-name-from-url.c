@@ -2,7 +2,7 @@
 
 #include "ppkg.h"
 
-int ppkg_examine_filename_from_url(const char * url, char buf[], size_t bufSize) {
+int ppkg_examine_filename_from_url(const char * url, char buf[], const size_t bufSize) {
     if (url == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }

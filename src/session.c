@@ -71,7 +71,7 @@ int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize) {
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
-            ret = ppkg_rm_r(sessionDIR, false);
+            ret = ppkg_rm_rf(sessionDIR, false, false);
 
             if (ret != PPKG_OK) {
                 return ret;

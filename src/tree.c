@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "ppkg.h"
+#include "uppm.h"
 
 int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatform, size_t argc, char* argv[]) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
@@ -58,29 +59,35 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char treeCommandPath[PATH_MAX];
+    size_t treeCommandPathCapacity = ppkgHomeDIRLength + 30U;
+    char   treeCommandPath[treeCommandPathCapacity];
 
-    const char * const uppmHomeDIR = getenv("UPPM_HOME");
-
-    if (uppmHomeDIR == NULL || uppmHomeDIR[0] == '\0') {
-        const char * const userHomeDIR = getenv("HOME");
-
-        if (userHomeDIR == NULL) {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        if (userHomeDIR[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        ret = snprintf(treeCommandPath, PATH_MAX, "%s/.uppm/installed/tree/bin/tree", userHomeDIR);
-    } else {
-        ret = snprintf(treeCommandPath, PATH_MAX, "%s/installed/tree/bin/tree", uppmHomeDIR);
-    }
+    ret = snprintf(treeCommandPath, treeCommandPathCapacity, "%s/uppm/installed/tree/bin/tree", ppkgHomeDIR);
 
     if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    if (stat(treeCommandPath, &st) == 0) {
+        if (!S_ISREG(st.st_mode)) {
+            fprintf(stderr, "%s was expected to be a regular file, but it was not.\n", treeCommandPath);
+            return PPKG_ERROR;
+        }
+    } else {
+        ret = uppm_formula_repo_sync_official_core();
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        ret = uppm_install("tree", false, false);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////

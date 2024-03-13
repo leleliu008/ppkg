@@ -58,7 +58,7 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
     }
 
     if (stat(formulaRepoConfigFilePath, &st) == 0 && S_ISREG(st.st_mode)) {
-        return ppkg_rm_r(formulaRepoPath, false);
+        return ppkg_rm_rf(formulaRepoPath, false, false);
     } else {
         fprintf(stderr, "formula repo is broken: %s\n", formulaRepoName);
         return PPKG_ERROR;

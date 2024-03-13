@@ -72,7 +72,7 @@ int ppkg_generate_url_transform_sample() {
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
-            ret = ppkg_rm_r(sessionDIR, false);
+            ret = ppkg_rm_rf(sessionDIR, false, false);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -189,5 +189,5 @@ int ppkg_generate_url_transform_sample() {
 
     fprintf(stderr, "%sYou can rename url-transform.sample to url-transform then edit it to meet your needs.\n\nTo apply this, you should run 'export PPKG_URL_TRANSFORM=%s' in your terminal.\n%s", COLOR_GREEN, outFilePath, COLOR_OFF);
 
-    return ppkg_rm_r(sessionDIR, false);
+    return ppkg_rm_rf(sessionDIR, false, false);
 }

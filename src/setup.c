@@ -14,67 +14,6 @@
 
 #include "ppkg.h"
 
-static int get_uppm_latest_version(const char ** uppmLatestReleaseName, const bool verbose) {
-    int ret = ppkg_http_fetch_to_file("https://api.github.com/repos/leleliu008/uppm/releases/latest", "uppm.json", verbose, verbose);
-
-    if (ret == PPKG_OK) {
-        FILE * file = fopen("uppm.json", "r");
-
-        if (file == NULL) {
-            perror("uppm.json");
-            return PPKG_ERROR;
-        }
-
-        size_t j = 0;
-
-        char buf[30];
-
-        for (;;) {
-            if (fgets(buf, 30, file) == NULL) {
-                if (ferror(file)) {
-                    perror("uppm.json");
-                    fclose(file);
-                    return PPKG_ERROR;
-                } else {
-                    fclose(file);
-                    return PPKG_OK;
-                }
-            }
-
-            if (regex_matched(buf, "^[[:space:]]*\"tag_name\"") == 0) {
-                size_t length = strlen(buf);
-
-                for (size_t i = 10; i < length; i++) {
-                    if (j == 0) {
-                        if (buf[i] >= '0' && buf[i] <= '9') {
-                            j = i;
-                        }
-                    } else {
-                        if (buf[i] == '"') {
-                            buf[i] = '\0';
-                            const char * p = strdup(&buf[j]);
-
-                            if (p == NULL) {
-                                return PPKG_ERROR_MEMORY_ALLOCATE;
-                            } else {
-                                (*uppmLatestReleaseName) = p;
-                                return PPKG_OK;
-                            }
-                        }
-                    }
-                }
-                break;
-            } else {
-                if (errno != 0) {
-                    perror(NULL);
-                    fclose(file);
-                    return PPKG_ERROR;
-                }
-            }
-        }
-    }
-}
-
 int ppkg_setup(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
@@ -136,7 +75,7 @@ int ppkg_setup(const bool verbose) {
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
-            ret = ppkg_rm_r(sessionDIR, verbose);
+            ret = ppkg_rm_rf(sessionDIR, false, verbose);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -213,180 +152,6 @@ int ppkg_setup(const bool verbose) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    const char * uppmLatestReleaseName = "0.15.0+b5148c3e8fdbadc64120a0d88aae095cd5324a57";
-
-    char uppmLatestReleaseVersion[10] = {0};
-
-    for (int i = 0; i < 10; i++) {
-        char c = uppmLatestReleaseName[i];
-
-        if (c == '+') {
-            break;
-        }
-
-        uppmLatestReleaseVersion[i] = uppmLatestReleaseName[i];
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////
-
-    char osType[31] = {0};
-
-    if (sysinfo_type(osType, 30) != 0) {
-        return PPKG_ERROR;
-    }
-
-    char osArch[31] = {0};
-
-    if (sysinfo_arch(osArch, 30) != 0) {
-        return PPKG_ERROR;
-    }
-
-    size_t tarballFileNameCapacity = strlen(uppmLatestReleaseVersion) + strlen(osType) + strlen(osArch) + 15U + 5U;
-    char   tarballFileName[tarballFileNameCapacity];
-
-    if (strcmp(osType, "macos") == 0) {
-        char osVersion[31] = {0};
-
-        if (sysinfo_vers(osVersion, 30) != 0) {
-            return PPKG_ERROR;
-        }
-
-        for (int i = 0; i < 31; i++) {
-            char c = osVersion[i];
-
-            if (c == '\0') {
-                break;
-            }
-
-            if (c == '.') {
-                osVersion[i] = '\0';
-                break;
-            }
-        }
-
-        const char * x;
-
-        if (strcmp(osVersion, "10") == 0) {
-            x = "10.15";
-        } else if (strcmp(osVersion, "11") == 0) {
-            x = "11.0";
-        } else if (strcmp(osVersion, "12") == 0) {
-            x = "12.0";
-        } else {
-            x = "13.0";
-        }
-
-        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s%s-%s.tar.xz", uppmLatestReleaseVersion, osType, x, osArch);
-    } else {
-        ret = snprintf(tarballFileName, tarballFileNameCapacity, "uppm-%s-%s-%s.tar.xz", uppmLatestReleaseVersion, osType, osArch);
-    }
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(uppmLatestReleaseName) + 55U;
-    char   tarballUrl[tarballUrlCapacity];
-
-    ret = snprintf(tarballUrl, tarballUrlCapacity, "https://github.com/leleliu008/uppm/releases/download/%s/%s", uppmLatestReleaseName, tarballFileName);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = ppkg_http_fetch_to_file(tarballUrl, tarballFileName, verbose, verbose);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-
-    ret = tar_extract(sessionDIR, tarballFileName, 0, verbose, 1);
-
-    if (ret != ARCHIVE_OK) {
-        return abs(ret) + PPKG_ERROR_ARCHIVE_BASE;
-    }
-
-    if (rename("bin/uppm", "uppm") == -1) {
-        perror("bin/uppm");
-        return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-
-    ret = ppkg_http_fetch_to_file("https://curl.se/ca/cacert.pem", "cacert.pem", verbose, verbose);
-
-    if (ret != PPKG_OK) {
-        return ret;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-
-    size_t cacertPemFilePathCapacity = sessionDIRCapacity + 12U;
-    char   cacertPemFilePath[cacertPemFilePathCapacity];
-
-    ret = snprintf(cacertPemFilePath, cacertPemFilePathCapacity, "%s/cacert.pem", sessionDIR);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (setenv("SSL_CERT_FILE", cacertPemFilePath, 1) != 0) {
-        perror("SSL_CERT_FILE");
-        return PPKG_ERROR;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-
-    const char * PPKG_URL_TRANSFORM = getenv("PPKG_URL_TRANSFORM");
-
-    if (PPKG_URL_TRANSFORM != NULL && PPKG_URL_TRANSFORM[0] != '\0') {
-        if (setenv("UPPM_URL_TRANSFORM", PPKG_URL_TRANSFORM, 1) != 0) {
-            perror("UPPM_URL_TRANSFORM");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (pid == 0) {
-        execl ("./uppm", "./uppm", "update", NULL);
-        perror("./uppm");
-        exit(255);
-    } else {
-        int childProcessExitStatusCode;
-
-        if (waitpid(pid, &childProcessExitStatusCode, 0) < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (childProcessExitStatusCode != 0) {
-            if (WIFEXITED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command './uppm update' exit with status code: %d\n", WEXITSTATUS(childProcessExitStatusCode));
-            } else if (WIFSIGNALED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command './uppm update' killed by signal: %d\n", WTERMSIG(childProcessExitStatusCode));
-            } else if (WIFSTOPPED(childProcessExitStatusCode)) {
-                fprintf(stderr, "running command './uppm update' stopped by signal: %d\n", WSTOPSIG(childProcessExitStatusCode));
-            }
-
-            return PPKG_ERROR;
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////
-
     if (chdir(ppkgRunDIR) != 0) {
         perror(ppkgRunDIR);
         return PPKG_ERROR;
@@ -411,7 +176,7 @@ int ppkg_setup(const bool verbose) {
             if (errno == ENOTEMPTY || errno == EEXIST) {
                 if (lstat(ppkgCoreDIR, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(ppkgCoreDIR, verbose);
+                        ret = ppkg_rm_rf(ppkgCoreDIR, false, verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;

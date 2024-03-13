@@ -179,5 +179,5 @@ int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatfor
         return PPKG_ERROR;
     }
 
-    return ppkg_rm_r(sessionDIR, verbose);
+    return ppkg_rm_rf(sessionDIR, false, verbose);
 }

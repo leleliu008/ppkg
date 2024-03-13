@@ -12,6 +12,116 @@
 
 #include "ppkg.h"
 
+static int ppkg_upgrade_tar_filename(char buf[], const size_t bufSize, const char * latestVersion) {
+    char osType[31] = {0};
+
+    if (sysinfo_type(osType, 30) != 0) {
+        return PPKG_ERROR;
+    }
+
+    char osArch[31] = {0};
+
+    if (sysinfo_arch(osArch, 30) != 0) {
+        return PPKG_ERROR;
+    }
+
+    char osVers[31] = {0};
+
+    if (sysinfo_vers(osVers, 30) != 0) {
+        return PPKG_ERROR;
+    }
+
+    int ret;
+
+#if defined (__APPLE__)
+    int osVersMajor = 0;
+
+    for (int i = 0; i < 31; i++) {
+        if (osVers[i] == '\0') {
+            break;
+        }
+
+        if (osVers[i] == '.') {
+            osVers[i] = '\0';
+            osVersMajor = atoi(osVers);
+            break;
+        }
+    }
+
+    if (osVersMajor < 10) {
+        fprintf(stderr, "MacOSX %d.x is not supported.\n", osVersMajor);
+        return PPKG_ERROR;
+    }
+
+    if (osVersMajor > 14) {
+        osVersMajor = 14;
+    }
+
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s.0-%s.tar.xz", latestVersion, osType, osVersMajor, osArch);
+#elif defined (__DragonFly__)
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
+#elif defined (__FreeBSD__)
+    double v = atof(osVers * 10);
+
+    if (v < 130) {
+        osVers[0] = '1';
+        osVers[1] = '3';
+        osVers[2] = '.';
+        osVers[3] = '0';
+        osVers[4] = '\0';
+    } else if (v > 132) {
+        osVers[0] = '1';
+        osVers[1] = '3';
+        osVers[2] = '.';
+        osVers[3] = '2';
+        osVers[4] = '\0';
+    }
+
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
+#elif defined (__OpenBSD__)
+    double v = atof(osVers * 10);
+
+    if (v < 73) {
+        osVers[0] = '7';
+        osVers[1] = '.';
+        osVers[2] = '3';
+        osVers[3] = '\0';
+    } else if (v > 74) {
+        osVers[0] = '7';
+        osVers[1] = '.';
+        osVers[2] = '4';
+        osVers[3] = '\0';
+    }
+
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
+#elif defined (__NetBSD__)
+    double v = atof(osVers * 10);
+
+    if (v < 92) {
+        osVers[0] = '9';
+        osVers[1] = '.';
+        osVers[2] = '2';
+        osVers[3] = '\0';
+    } else if (v > 93) {
+        osVers[0] = '9';
+        osVers[1] = '.';
+        osVers[2] = '3';
+        osVers[3] = '\0';
+    }
+
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
+#else
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+#endif
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    } else {
+        return PPKG_OK;
+    }
+}
+
 int ppkg_upgrade_self(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
@@ -26,8 +136,8 @@ int ppkg_upgrade_self(const bool verbose) {
 
     struct stat st;
 
-    size_t   ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
-    char     ppkgRunDIR[ppkgRunDIRCapacity];
+    size_t ppkgRunDIRCapacity = ppkgHomeDIRLength + 5U;
+    char   ppkgRunDIR[ppkgRunDIRCapacity];
 
     ret = snprintf(ppkgRunDIR, ppkgRunDIRCapacity, "%s/run", ppkgHomeDIR);
 
@@ -73,7 +183,7 @@ int ppkg_upgrade_self(const bool verbose) {
 
     if (lstat(sessionDIR, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
-            ret = ppkg_rm_r(sessionDIR, verbose);
+            ret = ppkg_rm_rf(sessionDIR, false, verbose);
 
             if (ret != PPKG_OK) {
                 return ret;
@@ -261,28 +371,13 @@ finalize:
 
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    char osType[31] = {0};
-
-    if (sysinfo_type(osType, 30) < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    char osArch[31] = {0};
-
-    if (sysinfo_arch(osArch, 30) < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    size_t tarballFileNameCapacity = latestVersionLength + strlen(osType) + strlen(osArch) + 26U;
+    size_t tarballFileNameCapacity = 64U;
     char   tarballFileName[tarballFileNameCapacity];
 
-    ret = snprintf(tarballFileName, tarballFileNameCapacity, "ppkg-%s-%s-%s.tar.xz", latestVersion, osType, osArch);
+    ret = ppkg_upgrade_tar_filename(tarballFileName, tarballFileNameCapacity, latestVersion);
 
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
+    if (ret != PPKG_OK) {
+        return ret;
     }
 
     size_t tarballUrlCapacity = tarballFileNameCapacity + strlen(latestReleaseTagName) + 66U;

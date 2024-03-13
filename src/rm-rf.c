@@ -8,7 +8,7 @@
 
 #include "ppkg.h"
 
-int ppkg_rm_r(const char * dirPath, const bool verbose) {
+static int ppkg_rm_rf_internal(const char * dirPath, const bool isRoot, const bool preserveRoot, const bool verbose) {
     if (dirPath == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
@@ -21,20 +21,7 @@ int ppkg_rm_r(const char * dirPath, const bool verbose) {
 
     struct stat st;
 
-    if (lstat(dirPath, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
-            if (verbose) {
-                printf("rm %s\n", dirPath);
-            }
-
-            if (unlink(dirPath) == 0) {
-                return PPKG_OK;
-            } else {
-                perror(dirPath);
-                return PPKG_ERROR;
-            }
-        }
-    } else {
+    if (lstat(dirPath, &st) != 0) {
         // why does this happened?
         // Suppose you have following directory structure:
         // bin
@@ -54,6 +41,23 @@ int ppkg_rm_r(const char * dirPath, const bool verbose) {
         }
     }
 
+    if (!S_ISDIR(st.st_mode)) {
+        if (isRoot && preserveRoot) {
+            return PPKG_OK;
+        } else {
+            if (verbose) {
+                printf("rm %s\n", dirPath);
+            }
+
+            if (unlink(dirPath) == 0) {
+                return PPKG_OK;
+            } else {
+                perror(dirPath);
+                return PPKG_ERROR;
+            }
+        }
+    }
+
     DIR * dir = opendir(dirPath);
 
     if (dir == NULL) {
@@ -70,15 +74,19 @@ int ppkg_rm_r(const char * dirPath, const bool verbose) {
             if (errno == 0) {
                 closedir(dir);
 
-                if (verbose) {
-                    printf("rm %s\n", dirPath);
-                }
-
-                if (rmdir(dirPath) == 0) {
+                if (isRoot && preserveRoot) {
                     return PPKG_OK;
                 } else {
-                    perror(dirPath);
-                    return PPKG_ERROR;
+                    if (verbose) {
+                        printf("rm %s\n", dirPath);
+                    }
+
+                    if (rmdir(dirPath) == 0) {
+                        return PPKG_OK;
+                    } else {
+                        perror(dirPath);
+                        return PPKG_ERROR;
+                    }
                 }
             } else {
                 perror(dirPath);
@@ -103,7 +111,7 @@ int ppkg_rm_r(const char * dirPath, const bool verbose) {
 
         if (lstat(filePath, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
-                int ret = ppkg_rm_r(filePath, verbose);
+                int ret = ppkg_rm_rf_internal(filePath, false, false, verbose);
 
                 if (ret != PPKG_OK) {
                     return ret;
@@ -138,4 +146,8 @@ int ppkg_rm_r(const char * dirPath, const bool verbose) {
             }
         }
     }
+}
+
+int ppkg_rm_rf(const char * dirPath, const bool preserveRoot, const bool verbose) {
+    return ppkg_rm_rf_internal(dirPath, true, preserveRoot, verbose);
 }

@@ -22,6 +22,7 @@
 
 #include "sha256sum.h"
 #include "ppkg.h"
+#include "uppm.h"
 
 typedef struct {
     const char * name;
@@ -2387,7 +2388,7 @@ static int install_native_package(
             if (errno == EEXIST) {
                 if (lstat(packageName, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(packageName, installOptions->logLevel >= PPKGLogLevel_verbose);
+                        ret = ppkg_rm_rf(packageName, false, installOptions->logLevel >= PPKGLogLevel_verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;
@@ -2422,17 +2423,14 @@ static int install_native_package(
 static int install_dependent_packages_via_uppm(
         const char * uppmPackageNames,
         const size_t uppmPackageNamesLength,
-        const char * ppkgCoreDIR,
-        const size_t ppkgCoreDIRCapacity,
         const char * uppmPackageInstalledRootDIR,
-        const size_t uppmPackageInstalledRootDIRLength,
+        const size_t uppmPackageInstalledRootDIRCapacity,
         const bool   needToInstallCmake) {
+    int ret;
 
 #if defined (__NetBSD__)
     if (needToInstallCmake) {
         char cmd[28];
-
-        int ret;
 
         if (geteuid() == 0) {
             ret = snprintf(cmd, 28, "pkgin -y install cmake");
@@ -2455,37 +2453,7 @@ static int install_dependent_packages_via_uppm(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    int ret;
-
-    if (true) {
-        size_t uppmUpdateCmdLength = ppkgCoreDIRCapacity + 13U;
-        char   uppmUpdateCmd[uppmUpdateCmdLength];
-
-        ret = snprintf(uppmUpdateCmd, uppmUpdateCmdLength, "%s/uppm update", ppkgCoreDIR);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        ret = run_cmd(uppmUpdateCmd, STDOUT_FILENO);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-    }
-
-    size_t uppmInstallCmdLength = ppkgCoreDIRCapacity + uppmPackageNamesLength + 15U;
-    char   uppmInstallCmd[uppmInstallCmdLength];
-
-    ret = snprintf(uppmInstallCmd, uppmInstallCmdLength, "%s/uppm install %s", ppkgCoreDIR, uppmPackageNames);
-
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    ret = run_cmd(uppmInstallCmd, STDOUT_FILENO);
+    ret = uppm_formula_repo_sync_official_core();
 
     if (ret != PPKG_OK) {
         return ret;
@@ -2501,7 +2469,13 @@ static int install_dependent_packages_via_uppm(
     char * uppmPackageName = strtok(uppmPackageNamesCopy, " ");
 
     while (uppmPackageName != NULL) {
-        size_t uppmPackageInstalledDIRCapacity = uppmPackageInstalledRootDIRLength + strlen(uppmPackageName) + 2U;
+        ret = uppm_install(uppmPackageName, true, false);
+
+        if (ret != PPKG_OK) {
+            return ret;
+        }
+
+        size_t uppmPackageInstalledDIRCapacity = uppmPackageInstalledRootDIRCapacity + strlen(uppmPackageName) + 2U;
         char   uppmPackageInstalledDIR[uppmPackageInstalledDIRCapacity];
 
         ret = snprintf(uppmPackageInstalledDIR, uppmPackageInstalledDIRCapacity, "%s/%s", uppmPackageInstalledRootDIR, uppmPackageName);
@@ -3981,7 +3955,7 @@ static int ppkg_build_for_native(
             if (errno == EEXIST) {
                 if (lstat(packageName, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(packageName, verbose);
+                        ret = ppkg_rm_rf(packageName, false, verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;
@@ -4034,7 +4008,7 @@ static int ppkg_install_package(
         const SysInfo * sysinfo,
         const time_t ts,
         const char * uppmPackageInstalledRootDIR,
-        const size_t uppmPackageInstalledRootDIRLength,
+        const size_t uppmPackageInstalledRootDIRCapacity,
         const char * ppkgExeFilePath,
         const char * ppkgHomeDIR,
         const size_t ppkgHomeDIRLength,
@@ -4375,7 +4349,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, ppkgCoreDIR, ppkgCoreDIRCapacity, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, needToInstallCmake);
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, needToInstallCmake);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -6050,7 +6024,7 @@ static int ppkg_install_package(
         return ret;
     }
 
-    size_t treeCmdCapacity = uppmPackageInstalledRootDIRLength + packageInstalledDIRCapacity + 30U;
+    size_t treeCmdCapacity = uppmPackageInstalledRootDIRCapacity + packageInstalledDIRCapacity + 30U;
     char   treeCmd[treeCmdCapacity];
 
     ret = snprintf(treeCmd, treeCmdCapacity, "%s/tree/bin/tree -a --dirsfirst %s", uppmPackageInstalledRootDIR, packageInstalledDIR);
@@ -6079,7 +6053,7 @@ static int ppkg_install_package(
             if (errno == EEXIST) {
                 if (lstat(packageName, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
-                        ret = ppkg_rm_r(packageName, installOptions->logLevel >= PPKGLogLevel_verbose);
+                        ret = ppkg_rm_rf(packageName, false, installOptions->logLevel >= PPKGLogLevel_verbose);
 
                         if (ret != PPKG_OK) {
                             return ret;
@@ -6101,7 +6075,7 @@ static int ppkg_install_package(
     if (installOptions->keepSessionDIR) {
         return PPKG_OK;
     } else {
-        return ppkg_rm_r(packageWorkingTopDIR, installOptions->logLevel >= PPKGLogLevel_verbose);
+        return ppkg_rm_rf(packageWorkingTopDIR, false, installOptions->logLevel >= PPKGLogLevel_verbose);
     }
 }
 
@@ -6887,17 +6861,6 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char * PPKG_URL_TRANSFORM = getenv("PPKG_URL_TRANSFORM");
-
-    if (PPKG_URL_TRANSFORM != NULL && PPKG_URL_TRANSFORM[0] != '\0') {
-        if (setenv("UPPM_URL_TRANSFORM", PPKG_URL_TRANSFORM, 1) != 0) {
-            perror("UPPM_URL_TRANSFORM");
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-
     // https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
     // Would you like to configure as much as possible automatically?
     if (setenv("PERL_MM_USE_DEFAULT", "1", 1) != 0) {
@@ -6989,28 +6952,12 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char   uppmPackageInstalledRootDIR[PATH_MAX];
-    size_t uppmPackageInstalledRootDIRLength;
+    size_t uppmPackageInstalledRootDIRCapacity = ppkgHomeDIRLength + 16U;
+    char   uppmPackageInstalledRootDIR[uppmPackageInstalledRootDIRCapacity];
 
-    const char * const uppmHomeDIR = getenv("UPPM_HOME");
+    ret = snprintf(uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, "%s/uppm/installed", ppkgHomeDIR);
 
-    if (uppmHomeDIR == NULL || uppmHomeDIR[0] == '\0') {
-        const char * const userHomeDIR = getenv("HOME");
-
-        if (userHomeDIR == NULL) {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        if (userHomeDIR[0] == '\0') {
-            return PPKG_ERROR_ENV_HOME_NOT_SET;
-        }
-
-        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/.uppm/installed", userHomeDIR);
-    } else {
-        uppmPackageInstalledRootDIRLength = snprintf(uppmPackageInstalledRootDIR, PATH_MAX, "%s/installed", uppmHomeDIR);
-    }
-
-    if (uppmPackageInstalledRootDIRLength < 0) {
+    if (ret < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }
@@ -7110,7 +7057,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
         //printf("%s:%zu:%s\n", packageName, recursiveDependentPackageNamesStringBufferSize, recursiveDependentPackageNamesStringBuffer);
 
-        ret = ppkg_install_package(packageName, strlen(packageName), targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, time(NULL), uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRLength, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
+        ret = ppkg_install_package(packageName, strlen(packageName), targetPlatform, package->formula, installOptions, &toolchainForNativeBuild, &toolchainForNativeBuild, &sysinfo, time(NULL), uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, ppkgExeFilePath, ppkgHomeDIR, ppkgHomeDIRLength, ppkgCoreDIR, ppkgCoreDIRCapacity, ppkgDownloadsDIR, ppkgDownloadsDIRCapacity, sessionDIR, sessionDIRLength, (const char *)recursiveDependentPackageNamesStringBuffer, recursiveDependentPackageNamesStringBufferSize);
 
         free(recursiveDependentPackageNamesStringBuffer);
         recursiveDependentPackageNamesStringBuffer = NULL;
@@ -7141,7 +7088,7 @@ finalize:
 
     if (ret == PPKG_OK) {
         if (!installOptions->keepSessionDIR) {
-            ret = ppkg_rm_r(sessionDIR, false);
+            ret = ppkg_rm_rf(sessionDIR, false, false);
         }
     }
 
