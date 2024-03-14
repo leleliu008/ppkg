@@ -150,6 +150,14 @@ int ppkg_setup(const bool verbose) {
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+
+    ret = ppkg_http_fetch_to_file("https://curl.se/ca/cacert.pem", "cacert.pem", verbose, verbose);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     if (chdir(ppkgRunDIR) != 0) {
