@@ -21,7 +21,7 @@ This software provides two implementations:
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 
-## Manually build packages using this software via GitHub Actions
+## Using ppkg via GitHub Actions
 
 In this way, you will be liberated from the rut of setting up the build environmemt.
 
@@ -45,7 +45,7 @@ chmod a+x ppkg
 ./ppkg setup
 ```
 
-## Build from C source dependencies
+## Build from C source locally dependencies
 
 |dependency|required?|purpose|
 |----|---------|-------|
@@ -62,19 +62,19 @@ chmod a+x ppkg
 |[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
-### Build from C source via [ppkg](https://github.com/leleliu008/ppkg)
+### Build from C source locally via [ppkg](https://github.com/leleliu008/ppkg)
 
 ```bash
 ppkg install ppkg
 ```
 
-### Build from C source via [xcpkg](https://github.com/leleliu008/xcpkg)
+### Build from C source locally via [xcpkg](https://github.com/leleliu008/xcpkg)
 
 ```bash
 xcpkg install ppkg
 ```
 
-### Build from C source using [vcpkg](https://github.com/microsoft/vcpkg)
+### Build from C source locally using [vcpkg](https://github.com/microsoft/vcpkg)
 
 ```bash
 # install g++ curl zip unzip tar git
@@ -95,7 +95,7 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-## Build from C source using your system's default package manager
+## Build from C source locally using your system's default package manager
 
 **[Ubuntu](https://ubuntu.com/)**
 

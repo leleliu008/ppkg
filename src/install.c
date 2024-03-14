@@ -289,7 +289,9 @@ static int download_via_http(const char * url, const char * uri, const char * ex
 
         if (strcmp(actualSHA256SUM, expectedSHA256SUM) == 0) {
             if (rename(tmpFilePath, filePath) == 0) {
-                printf("%s\n", filePath);
+                if (verbose) {
+                    printf("%s\n", filePath);
+                }
             } else {
                 perror(filePath);
                 return PPKG_ERROR;
@@ -1783,7 +1785,7 @@ static int install_native_package(
         buildConfigureArgs = "";
     }
 
-    printf("install native package : %s\n", packageName);
+    printf("native package '%s' is being installed.\n", packageName);
 
     //////////////////////////////////////////////////////////////////////////////
 

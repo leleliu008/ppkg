@@ -202,7 +202,7 @@ int uppm_install(const char * packageName, const bool verbose, const bool force)
     //////////////////////////////////////////////////////////////////////////
 
     if (verbose) {
-        fprintf(stderr, "prepare to install package [%s].\n", packageName);
+        fprintf(stderr, "uppm package '%s' is being installed.\n", packageName);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -369,7 +369,9 @@ int uppm_install(const char * packageName, const bool verbose, const bool force)
             return PPKG_ERROR_SHA256_MISMATCH;
         }
     } else {
-        fprintf(stderr, "%s already have been fetched.\n", binFilePath);
+        if (verbose) {
+            fprintf(stderr, "%s already have been fetched.\n", binFilePath);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -748,7 +750,7 @@ int uppm_install(const char * packageName, const bool verbose, const bool force)
 
     for (;;) {
         if (symlink(sessionID, packageName) == 0) {
-            fprintf(stderr, "%s package was successfully installed.\n", packageName);
+            fprintf(stderr, "uppm package '%s' was successfully installed.\n", packageName);
             return PPKG_OK;
         } else {
             if (errno == EEXIST) {
