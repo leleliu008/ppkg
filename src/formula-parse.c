@@ -569,6 +569,213 @@ static int ppkg_formula_check_bsystem(PPKGFormula * formula) {
     return PPKG_OK;
 }
 
+static int ppkg_extract_version_from_url(PPKGFormula * formula, const char * formulaFilePath) {
+    char c;
+
+    size_t i = 0U;
+    size_t j = 0U;
+
+    for (;;) {
+        c = formula->src_url[i];
+
+        if (c == '\0') {
+            break;
+        }
+
+        if (c == '/') {
+            j = i;
+        }
+
+        i++;
+    }
+
+    if (j == 0U) {
+        fprintf(stderr, "scheme error in formula file: %s : invalid src-url: %s\n", formulaFilePath, formula->src_url);
+        return PPKG_ERROR_FORMULA_SCHEME;
+    }
+
+    size_t srcFileNameLength = i - j - 1U;
+
+    char   srcFileName[srcFileNameLength + 1U];
+
+    strncpy(srcFileName, formula->src_url + j + 1U, srcFileNameLength + 1U);
+
+    for (i = 0U; ; i++) {
+        c = srcFileName[i];
+
+        if (c == '\0') {
+            break;
+        }
+
+        if (c == '_' || c == '@') {
+            srcFileName[i] = '-';
+        }
+    }
+
+    if (srcFileNameLength > 8) {
+               if (strcmp(&srcFileName[srcFileNameLength - 8], ".tar.bz2") == 0) {
+            srcFileName[srcFileNameLength - 8] = '\0';
+            srcFileNameLength -= 8;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.gz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.xz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.lz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 6], ".crate") == 0) {
+            srcFileName[srcFileNameLength - 6] = '\0';
+            srcFileNameLength -= 6;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 5], ".tbz2") == 0) {
+            srcFileName[srcFileNameLength - 5] = '\0';
+            srcFileNameLength -= 5;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tgz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".txz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tlz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".zip") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else {
+            fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
+            return PPKG_ERROR_FORMULA_SCHEME;
+        }
+    } else if (srcFileNameLength > 7) {
+               if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.gz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.xz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.lz") == 0) {
+            srcFileName[srcFileNameLength - 7] = '\0';
+            srcFileNameLength -= 7;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 6], ".crate") == 0) {
+            srcFileName[srcFileNameLength - 6] = '\0';
+            srcFileNameLength -= 6;
+        } else {
+            fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
+            return PPKG_ERROR_FORMULA_SCHEME;
+        }
+    } else if (srcFileNameLength > 6) {
+        if (strcmp(&srcFileName[srcFileNameLength - 6], ".crate") == 0) {
+            srcFileName[srcFileNameLength - 6] = '\0';
+            srcFileNameLength -= 6;
+        } else {
+            fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
+            return PPKG_ERROR_FORMULA_SCHEME;
+        }
+    } else if (srcFileNameLength > 5) {
+        if (strcmp(&srcFileName[srcFileNameLength - 5], ".tbz2") == 0) {
+            srcFileName[srcFileNameLength - 5] = '\0';
+            srcFileNameLength -= 5;
+        } else {
+            fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
+            return PPKG_ERROR_FORMULA_SCHEME;
+        }
+    } else if (srcFileNameLength > 4) {
+               if (strcmp(&srcFileName[srcFileNameLength - 4], ".tgz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".txz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tlz") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".zip") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        } else {
+            fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
+            return PPKG_ERROR_FORMULA_SCHEME;
+        }
+    }
+
+    //printf("----------------srcFileName = %s\n", srcFileName);
+
+    if (srcFileNameLength > 5) {
+               if (strcmp(&srcFileName[srcFileNameLength - 5], ".orig") == 0) {
+            srcFileName[srcFileNameLength - 5] = '\0';
+            srcFileNameLength -= 5;
+        } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".src") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        }
+    } else if (srcFileNameLength > 4) {
+               if (strcmp(&srcFileName[srcFileNameLength - 4], ".src") == 0) {
+            srcFileName[srcFileNameLength - 4] = '\0';
+            srcFileNameLength -= 4;
+        }
+    }
+
+    //printf("----------------srcFileName = %s\n", srcFileName);
+
+    char * splitStr = strtok(srcFileName, "-");
+
+    while (splitStr != NULL) {
+        if (regex_matched(splitStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
+            formula->version = strdup(splitStr);
+            formula->version_is_calculated = true;
+            break;
+        } else {
+            if (errno != 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+        }
+
+        if (regex_matched(splitStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
+            formula->version = strdup(&splitStr[1]);
+            formula->version_is_calculated = true;
+            break;
+        } else {
+            if (errno != 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+        }
+
+        if (regex_matched(splitStr, "^[0-9]{3,8}$") == 0) {
+            formula->version = strdup(splitStr);
+            formula->version_is_calculated = true;
+            break;
+        } else {
+            if (errno != 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+        }
+
+        if (regex_matched(splitStr, "^[vrR][0-9]{2,8}$") == 0) {
+            formula->version = strdup(&splitStr[1]);
+            formula->version_is_calculated = true;
+            break;
+        } else {
+            if (errno != 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+        }
+
+        splitStr = strtok(NULL, "-");
+    }
+
+    if (formula->version == NULL) {
+        fprintf(stderr, "scheme error in formula file: %s : version mapping not found.\n", formulaFilePath);
+        return PPKG_ERROR_FORMULA_SCHEME;
+    }
+
+    return PPKG_OK;
+}
+
 static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePath) {
     if (formula->summary == NULL) {
         fprintf(stderr, "scheme error in formula file: %s : summary mapping not found.\n", formulaFilePath);
@@ -673,195 +880,10 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
 
     if (formula->version == NULL) {
         if ((formula->src_url != NULL) && (!formula->src_is_dir)) {
-            char c;
+            int ret = ppkg_extract_version_from_url(formula, formulaFilePath);
 
-            size_t i = 0U;
-            size_t j = 0U;
-
-            for (;;) {
-                c = formula->src_url[i];
-
-                if (c == '\0') {
-                    break;
-                }
-
-                if (c == '/') {
-                    j = i;
-                }
-
-                i++;
-            }
-
-            if (j == 0U) {
-                fprintf(stderr, "scheme error in formula file: %s : invalid src-url: %s\n", formulaFilePath, formula->src_url);
-                return PPKG_ERROR_FORMULA_SCHEME;
-            }
-
-            size_t srcFileNameLength = i - j - 1U;
-
-            char   srcFileName[srcFileNameLength + 1U];
-
-            strncpy(srcFileName, formula->src_url + j + 1U, srcFileNameLength + 1U);
-
-            for (i = 0U;;) {
-                c = srcFileName[i];
-
-                if (c == '\0') {
-                    break;
-                }
-
-                if (c == '_' || c == '@') {
-                    srcFileName[i] = '-';
-                }
-
-                i++;
-            }
-
-            if (srcFileNameLength > 8) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 8], ".tar.bz2") == 0) {
-                    srcFileName[srcFileNameLength - 8] = '\0';
-                    srcFileNameLength -= 8;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.gz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.xz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.lz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 5], ".tbz2") == 0) {
-                    srcFileName[srcFileNameLength - 5] = '\0';
-                    srcFileNameLength -= 5;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tgz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".txz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tlz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".zip") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else {
-                    fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
-                    return PPKG_ERROR_FORMULA_SCHEME;
-                }
-            } else if (srcFileNameLength > 7) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.gz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.xz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 7], ".tar.lz") == 0) {
-                    srcFileName[srcFileNameLength - 7] = '\0';
-                    srcFileNameLength -= 7;
-                } else {
-                    fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
-                    return PPKG_ERROR_FORMULA_SCHEME;
-                }
-            } else if (srcFileNameLength > 5) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 5], ".tbz2") == 0) {
-                    srcFileName[srcFileNameLength - 5] = '\0';
-                    srcFileNameLength -= 5;
-                } else {
-                    fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
-                    return PPKG_ERROR_FORMULA_SCHEME;
-                }
-            } else if (srcFileNameLength > 4) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 4], ".tgz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".txz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".tlz") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".zip") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                } else {
-                    fprintf(stderr, "scheme error in formula file: %s : unsupported filename extension.\n", formulaFilePath);
-                    return PPKG_ERROR_FORMULA_SCHEME;
-                }
-            }
-
-            //printf("----------------srcFileName = %s\n", srcFileName);
-
-            if (srcFileNameLength > 5) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 5], ".orig") == 0) {
-                    srcFileName[srcFileNameLength - 5] = '\0';
-                    srcFileNameLength -= 5;
-                } else if (strcmp(&srcFileName[srcFileNameLength - 4], ".src") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                }
-            } else if (srcFileNameLength > 4) {
-                       if (strcmp(&srcFileName[srcFileNameLength - 4], ".src") == 0) {
-                    srcFileName[srcFileNameLength - 4] = '\0';
-                    srcFileNameLength -= 4;
-                }
-            }
-
-            //printf("----------------srcFileName = %s\n", srcFileName);
-
-            char * splitStr = strtok(srcFileName, "-");
-
-            while (splitStr != NULL) {
-                if (regex_matched(splitStr, "^[0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
-                    formula->version = strdup(splitStr);
-                    formula->version_is_calculated = true;
-                    break;
-                } else {
-                    if (errno != 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-                }
-
-                if (regex_matched(splitStr, "^[vV][0-9]+(\\.[0-9]+)+[a-z]?$") == 0) {
-                    formula->version = strdup(&splitStr[1]);
-                    formula->version_is_calculated = true;
-                    break;
-                } else {
-                    if (errno != 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-                }
-
-                if (regex_matched(splitStr, "^[0-9]{3,8}$") == 0) {
-                    formula->version = strdup(splitStr);
-                    formula->version_is_calculated = true;
-                    break;
-                } else {
-                    if (errno != 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-                }
-
-                if (regex_matched(splitStr, "^[vrR][0-9]{2,8}$") == 0) {
-                    formula->version = strdup(&splitStr[1]);
-                    formula->version_is_calculated = true;
-                    break;
-                } else {
-                    if (errno != 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-                }
-
-                splitStr = strtok(NULL, "-");
-            }
-
-            if (formula->version == NULL) {
-                fprintf(stderr, "scheme error in formula file: %s : version mapping not found.\n", formulaFilePath);
-                return PPKG_ERROR_FORMULA_SCHEME;
+            if (ret != PPKG_OK) {
+                return ret;
             }
         } else {
             time_t tt = time(NULL);

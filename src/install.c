@@ -306,7 +306,8 @@ static int download_via_http(const char * url, const char * uri, const char * ex
         strcmp(fileNameExtension, ".tgz") == 0 ||
         strcmp(fileNameExtension, ".txz") == 0 ||
         strcmp(fileNameExtension, ".tlz") == 0 ||
-        strcmp(fileNameExtension, ".tbz2") == 0) {
+        strcmp(fileNameExtension, ".tbz2") == 0 ||
+        strcmp(fileNameExtension, ".crate") == 0) {
 
         ret = tar_extract(unpackDIR, filePath, ARCHIVE_EXTRACT_TIME, verbose, 1);
 
