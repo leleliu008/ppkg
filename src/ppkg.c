@@ -588,6 +588,9 @@ int ppkg_main(int argc, char* argv[]) {
                     fprintf(stderr, "--target=<TARGET-PLATFORM-SPEC>, <TARGET-PLATFORM-SPEC> should be a non-empty string.\n");
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
+            } else if (argv[i][0] == '-') {
+                LOG_ERROR2("unrecognized argument: ", argv[i]);
+                return PPKG_ERROR_ARG_IS_INVALID;
             } else {
                 packageIndexArray[packageIndexArraySize] = i;
                 packageIndexArraySize++;
@@ -676,6 +679,9 @@ int ppkg_main(int argc, char* argv[]) {
                     fprintf(stderr, "--target=<TARGET-PLATFORM-SPEC>, <TARGET-PLATFORM-SPEC> should be a non-empty string.\n");
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
+            } else if (argv[i][0] == '-') {
+                LOG_ERROR2("unrecognized argument: ", argv[i]);
+                return PPKG_ERROR_ARG_IS_INVALID;
             } else {
                 packageIndexArray[packageIndexArraySize] = i;
                 packageIndexArraySize++;
@@ -764,6 +770,9 @@ int ppkg_main(int argc, char* argv[]) {
                     fprintf(stderr, "--target=<TARGET-PLATFORM-SPEC>, <TARGET-PLATFORM-SPEC> should be a non-empty string.\n");
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
+            } else if (argv[i][0] == '-') {
+                LOG_ERROR2("unrecognized argument: ", argv[i]);
+                return PPKG_ERROR_ARG_IS_INVALID;
             } else {
                 packageIndexArray[packageIndexArraySize] = i;
                 packageIndexArraySize++;

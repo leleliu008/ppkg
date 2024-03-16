@@ -1158,6 +1158,43 @@ static int setup_rust_toolchain(const PPKGInstallOptions * installOptions, const
     return PPKG_OK;
 }
 
+/**
+ * On success, length of the rust target is returned.
+ * On failure, -1 is returned and errno is set to indicate the error.
+ */
+static int get_rust_target(char buf[64], const char * targetPlatformName, const char * targetPlatformArch, const char * targetPlatformVers) {
+    if (strcmp(targetPlatformName, "linux") == 0) {
+        const char * flavor;
+
+        if (strcmp(targetPlatformVers, "glibc") == 0) {
+            flavor = "gnu";
+        } else {
+            flavor = targetPlatformVers;
+        }
+
+        return snprintf(buf, 64, "%s-unknown-linux-%s", targetPlatformArch, flavor);
+    } else if (strcmp(targetPlatformName, "macos") == 0) {
+        const char * arch;
+
+        if (strcmp(targetPlatformArch, "arm64") == 0) {
+            arch = "aarch64";
+        } else {
+            arch = targetPlatformArch;
+        }
+
+        return snprintf(buf, 64, "%s-apple-darwin", arch);
+    } else {
+        const char * arch;
+
+        if (strcmp(targetPlatformArch, "amd64") == 0) {
+            arch = "x86_64";
+        } else {
+            arch = targetPlatformArch;
+        }
+
+        return snprintf(buf, 64, "%s-unknown-%s", arch, targetPlatformArch);
+    }
+}
 
 typedef int (*setenv_fn)(const char * packageInstalledDIR, const size_t packageInstalledDIRCapacity);
 
@@ -5465,39 +5502,9 @@ static int ppkg_install_package(
 
         /////////////////////////////////////////
 
-        char rustTarget[64] = {0};
+        char rustTarget[64];
 
-        if (strcmp(targetPlatform->name, "linux") == 0) {
-            const char * flavor;
-
-            if (strcmp(targetPlatform->vers, "glibc") == 0) {
-                flavor = "gnu";
-            } else {
-                flavor = targetPlatform->vers;
-            }
-
-            ret = snprintf(rustTarget, 64, "%s-unknown-linux-%s", sysinfo->arch, flavor);
-        } else if (isTargetOSDarwin) {
-            const char * arch;
-
-            if (strcmp(targetPlatform->arch, "arm64") == 0) {
-                arch = "aarch64";
-            } else {
-                arch = targetPlatform->arch;
-            }
-
-            ret = snprintf(rustTarget, 64, "%s-apple-darwin", arch);
-        } else {
-            const char * arch;
-
-            if (strcmp(targetPlatform->arch, "amd64") == 0) {
-                arch = "x86_64";
-            } else {
-                arch = targetPlatform->arch;
-            }
-
-            ret = snprintf(rustTarget, 64, "%s-unknown-%s", arch, targetPlatform->name);
-        }
+        ret = get_rust_target(rustTarget, targetPlatform->name, targetPlatform->arch, targetPlatform->vers);
 
         if (ret < 0) {
             perror(NULL);
@@ -5529,20 +5536,20 @@ static int ppkg_install_package(
             i++;
         }
 
+        size_t envNameLinkerLength = i + 21U;
+        char   envNameLinker[envNameLinkerLength];
+
         // https://doc.rust-lang.org/cargo/reference/environment-variables.html
         // https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker
-        size_t linkerLength = i + 21U;
-        char   linker[linkerLength];
-
-        ret = snprintf(linker, linkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
+        ret = snprintf(envNameLinker, envNameLinkerLength, "CARGO_TARGET_%s_LINKER", rustTarget);
 
         if (ret < 0) {
             perror(NULL);
             return PPKG_ERROR;
         }
 
-        if (setenv(linker, getenv("CC"), 1) != 0) {
-            perror(linker);
+        if (setenv(envNameLinker, getenv("CC"), 1) != 0) {
+            perror(envNameLinker);
             return PPKG_ERROR;
         }
 
@@ -5666,54 +5673,71 @@ static int ppkg_install_package(
 
         /////////////////////////////////////////
 
-        const char *    cflagsForNative = getenv("CFLAGS_FOR_BUILD");
-        const char *  cxxflagsForNative = getenv("CXXFLAGS_FOR_BUILD");
-        const char *  cppflagsForNative = getenv("CPPFLAGS_FOR_BUILD");
+        if (isCrossBuild) {
+            const char *    cflagsForNative = getenv("CFLAGS_FOR_BUILD");
+            const char *  cxxflagsForNative = getenv("CXXFLAGS_FOR_BUILD");
+            const char *  cppflagsForNative = getenv("CPPFLAGS_FOR_BUILD");
 
-        if (cppflagsForNative == NULL) {
-            cppflagsForNative = "";
-        }
+            if (cppflagsForNative == NULL) {
+                cppflagsForNative = "";
+            }
 
-        const size_t cppflagsForNativeLength = strlen(cppflagsForNative);
+            const size_t cppflagsForNativeLength = strlen(cppflagsForNative);
 
-        /////////////////////////////////////////
+            /////////////////////////////////////////
 
-        size_t CFLAGSForNativeCapacity = strlen(cflagsForNative) + cppflagsForNativeLength + 2U;
-        char   CFLAGSForNative[CFLAGSForNativeCapacity];
+            size_t CFLAGSForNativeCapacity = strlen(cflagsForNative) + cppflagsForNativeLength + 2U;
+            char   CFLAGSForNative[CFLAGSForNativeCapacity];
 
-        ret = snprintf(CFLAGSForNative, CFLAGSForNativeCapacity, "%s %s", cflagsForNative, cppflagsForNative);
+            ret = snprintf(CFLAGSForNative, CFLAGSForNativeCapacity, "%s %s", cflagsForNative, cppflagsForNative);
 
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        /////////////////////////////////////////
-
-        size_t CXXFLAGSForNativeCapacity = strlen(cxxflagsForNative) + cppflagsForNativeLength + 2U;
-        char   CXXFLAGSForNative[CXXFLAGSForTargetCapacity];
-
-        ret = snprintf(CXXFLAGSForNative, CXXFLAGSForNativeCapacity, "%s %s", cxxflagsForNative, cppflagsForNative);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        /////////////////////////////////////////
-
-        KV envsForNativeBuild[5] = {
-            { "HOST_CC",         toolchainForNativeBuild->cc },
-            { "HOST_CXX",        toolchainForNativeBuild->cxx },
-            { "HOST_AR",         toolchainForNativeBuild->ar },
-            { "HOST_CFLAGS",     CFLAGSForNative },
-            { "HOST_CXXFLAGS",   CXXFLAGSForNative },
-        };
-
-        for (int i = 0; i < 5; i++) {
-            if (setenv(envsForNativeBuild[i].name, envsForNativeBuild[i].value, 1) != 0) {
-                perror(envsForNativeBuild[i].name);
+            if (ret < 0) {
+                perror(NULL);
                 return PPKG_ERROR;
+            }
+
+            /////////////////////////////////////////
+
+            size_t CXXFLAGSForNativeCapacity = strlen(cxxflagsForNative) + cppflagsForNativeLength + 2U;
+            char   CXXFLAGSForNative[CXXFLAGSForTargetCapacity];
+
+            ret = snprintf(CXXFLAGSForNative, CXXFLAGSForNativeCapacity, "%s %s", cxxflagsForNative, cppflagsForNative);
+
+            if (ret < 0) {
+                perror(NULL);
+                return PPKG_ERROR;
+            }
+
+            /////////////////////////////////////////
+
+            KV envsForNativeBuild[5] = {
+                { "HOST_CC",         toolchainForNativeBuild->cc },
+                { "HOST_CXX",        toolchainForNativeBuild->cxx },
+                { "HOST_AR",         toolchainForNativeBuild->ar },
+                { "HOST_CFLAGS",     CFLAGSForNative },
+                { "HOST_CXXFLAGS",   CXXFLAGSForNative },
+            };
+
+            for (int i = 0; i < 5; i++) {
+                if (setenv(envsForNativeBuild[i].name, envsForNativeBuild[i].value, 1) != 0) {
+                    perror(envsForNativeBuild[i].name);
+                    return PPKG_ERROR;
+                }
+            }
+        } else {
+            KV envsForNativeBuild[5] = {
+                { "HOST_CC",         getenv("TARGET_CC") },
+                { "HOST_CXX",        getenv("TARGET_CXX") },
+                { "HOST_AR",         getenv("TARGET_AR") },
+                { "HOST_CFLAGS",     getenv("TARGET_CFLAGS") },
+                { "HOST_CXXFLAGS",   getenv("TARGET_CXXFLAGS") },
+            };
+
+            for (int i = 0; i < 5; i++) {
+                if (setenv(envsForNativeBuild[i].name, envsForNativeBuild[i].value, 1) != 0) {
+                    perror(envsForNativeBuild[i].name);
+                    return PPKG_ERROR;
+                }
             }
         }
     }
