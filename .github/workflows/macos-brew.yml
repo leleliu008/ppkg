@@ -16,6 +16,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+
     steps:
       - name: create a local tap for homebrew
         run: |
