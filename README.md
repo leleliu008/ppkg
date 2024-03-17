@@ -49,6 +49,7 @@ chmod a+x ppkg
 
 |dependency|required?|purpose|
 |----|---------|-------|
+|[GCC](https://gcc.gnu.org/) or [LLVM+clang](https://llvm.org/)|required |for compiling C/C++/Objc source code|
 |[cmake](https://cmake.org/)|required |for generating `build.ninja`|
 |[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
 |[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
@@ -62,19 +63,19 @@ chmod a+x ppkg
 |[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
-### Build from C source locally via [ppkg](https://github.com/leleliu008/ppkg)
+## Build from C source locally via [ppkg](https://github.com/leleliu008/ppkg)
 
 ```bash
 ppkg install ppkg
 ```
 
-### Build from C source locally via [xcpkg](https://github.com/leleliu008/xcpkg)
+## Build from C source locally via [xcpkg](https://github.com/leleliu008/xcpkg)
 
 ```bash
 xcpkg install ppkg
 ```
 
-### Build from C source locally using [vcpkg](https://github.com/microsoft/vcpkg)
+## Build from C source locally using [vcpkg](https://github.com/microsoft/vcpkg)
 
 ```bash
 # install g++ curl zip unzip tar git
@@ -93,6 +94,13 @@ cd ppkg
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
 cmake --build   build.d
 cmake --install build.d
+```
+
+## Build from C source locally via [HomeBrew](https://brew.sh/)
+
+```bash
+brew tap leleliu008/fpliu
+brew install ppkg --head
 ```
 
 ## Build from C source locally using your system's default package manager
@@ -189,41 +197,6 @@ git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
 cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
-cmake --build   build.d
-cmake --install build.d
-```
-
-**[macOS](https://www.apple.com/macos/)**
-
-```bash
-brew update
-brew install git cmake ninja pkg-config curl jansson libyaml libgit2 libarchive
-
-git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
-cd ppkg
-
-HOMEBREW_PREFIX="$(brew --prefix)"
-
-export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig"
-export CMAKE_EXE_LINKER_FLAGS="-L$HOMEBREW_PREFIX/lib -lssl -liconv -framework CoreFoundation -framework Security"
-export CMAKE_FIND_ROOT_PATH="$HOMEBREW_PREFIX"
-
-for PKG in curl libarchive sqlite
-do
-    PKG_INSTALLED_DIR="$(brew --prefix "$PKG")"
-    PKG_CONFIG_PATH="$PKG_CONFIG_PATH $PKG_INSTALLED_DIR/lib/pkgconfig"
-    CMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS -L$PKG_INSTALLED_DIR/lib"
-    CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH $PKG_INSTALLED_DIR"
-done
-
-cmake \
-    -S . \
-    -B build.d \
-    -G Ninja \
-    -DCMAKE_INSTALL_PREFIX=./output \
-    -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
-    -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH"
-
 cmake --build   build.d
 cmake --install build.d
 ```
