@@ -197,15 +197,24 @@ cmake --install build.d
 
 ```bash
 brew update
-brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive zlib
+brew install git cmake ninja pkg-config curl jansson libyaml libgit2 libarchive
 
 git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
 
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
+HOMEBREW_PREFIX="$(brew --prefix)"
 
-CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
-CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
+export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig"
+export CMAKE_EXE_LINKER_FLAGS="-L$HOMEBREW_PREFIX/lib -lssl -liconv -framework CoreFoundation -framework Security"
+export CMAKE_FIND_ROOT_PATH="$HOMEBREW_PREFIX"
+
+for PKG in curl libarchive sqlite
+do
+    PKG_INSTALLED_DIR="$(brew --prefix "$PKG")"
+    PKG_CONFIG_PATH="$PKG_CONFIG_PATH $PKG_INSTALLED_DIR/lib/pkgconfig"
+    CMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS -L$PKG_INSTALLED_DIR/lib"
+    CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH $PKG_INSTALLED_DIR"
+done
 
 cmake \
     -S . \

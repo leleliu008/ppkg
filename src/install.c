@@ -4827,6 +4827,17 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    const char* unsetenvs2[] = { "ZLIB_CFLAGS", "ZLIB_LIBS", "BZIP2_CFLAGS", "BZIP2_LIBS", "LIBLZMA_CFLAGS", "LIBLZMA_LIBS", "LIBSQLITE3_CFLAGS", "LIBSQLITE3_LIBS", "GDBM_CFLAGS", "GDBM_LIBS", "LIBS", "PKG_CONFIG_PATH", NULL };
+
+    for (int i = 0; unsetenvs2[i] != NULL; i++) {
+        if (unsetenv(unsetenvs2[i]) != 0) {
+            perror(unsetenvs2[i]);
+            return PPKG_ERROR;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
     const bool isTargetOSDarwin = strcmp(targetPlatform->name, "macos") == 0;
 
     if (isTargetOSDarwin) {
