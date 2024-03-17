@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: create a local tap for homebrew
-      - run: |
+        run: |
           MY_FORMULA_DIR="$(brew --repository)/Library/Taps/leleliu008/homebrew-tmp/Formula"
           install -d "$MY_FORMULA_DIR"
           cat > "$MY_FORMULA_DIR/ppkg.rb" <<EOF
