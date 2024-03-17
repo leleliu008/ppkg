@@ -1,0 +1,248 @@
+name: build on macOS using vcpkg
+
+on:
+  push:
+    branches: [ c ]
+  pull_request:
+    branches: [ c ]
+
+jobs:
+  vcpkg:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [macos-14, macos-13, macos-12]
+
+    runs-on: ${{ matrix.version }}
+
+    steps:
+      - run:  brew update
+      - run:  brew install cmake ninja pkg-config
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - run:  cd vcpkg && ./bootstrap-vcpkg.sh
+
+      - run:  cd vcpkg && ./vcpkg install curl openssl libgit2 libarchive libyaml jansson sqlite3
+
+      - run:  |
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/ppkg
+
+      - run: ./output/bin/ppkg --help
+      - run: ./output/bin/ppkg -h
+
+      - run: ./output/bin/ppkg --version
+      - run: ./output/bin/ppkg -V
+
+      - run: ./output/bin/ppkg setup -v
+
+      - run: ./output/bin/ppkg env
+      - run: ./output/bin/ppkg env -v
+
+      - run: ./output/bin/ppkg integrate zsh
+      - run: ./output/bin/ppkg integrate zsh -v
+
+      - run: ./output/bin/ppkg update
+
+      - run: ./output/bin/ppkg search lib
+      - run: ./output/bin/ppkg search zip
+
+      - run: ./output/bin/ppkg info-available libzip
+      - run: ./output/bin/ppkg info-available libzip --yaml
+      - run: ./output/bin/ppkg info-available libzip --json
+      - run: ./output/bin/ppkg info-available libzip summary
+      - run: ./output/bin/ppkg info-available libzip version
+      - run: ./output/bin/ppkg info-available libzip license
+      - run: ./output/bin/ppkg info-available libzip web-url
+      - run: ./output/bin/ppkg info-available libzip src-url
+      - run: ./output/bin/ppkg info-available libzip src-sha
+
+      - run: ./output/bin/ppkg depends libzip
+      - run: ./output/bin/ppkg depends libzip -t dot
+      - run: ./output/bin/ppkg depends libzip -t box
+
+      - run: ./output/bin/ppkg fetch gzip
+      - run: ./output/bin/ppkg fetch gsed -v
+
+      - run: ./output/bin/ppkg install libzip
+
+      - run: ./output/bin/ppkg tree libzip
+
+      - run:  ./output/bin/ppkg info-installed libzip --prefix
+      - run:  ./output/bin/ppkg info-installed libzip --files
+      - run:  ./output/bin/ppkg info-available libzip --json
+      - run:  ./output/bin/ppkg info-available libzip --yaml
+      - run:  ./output/bin/ppkg info-installed libzip builtat
+      - run:  ./output/bin/ppkg info-installed libzip builtat-iso-8601
+      - run:  ./output/bin/ppkg info-installed libzip builtat-rfc-3339
+      - run:  ./output/bin/ppkg info-available libzip version
+
+      - run: ./output/bin/ppkg pack libzip
+      - run: ./output/bin/ppkg pack libzip -t tar.gz
+      - run: ./output/bin/ppkg pack libzip -t tar.lz
+      - run: ./output/bin/ppkg pack libzip -t tar.xz
+      - run: ./output/bin/ppkg pack libzip -t tar.bz2
+      - run: ./output/bin/ppkg pack libzip -t zip
+
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
+
+      - run: ./output/bin/ppkg ls-available
+      - run: ./output/bin/ppkg ls-installed
+      - run: ./output/bin/ppkg ls-outdated
+
+      - run: ./output/bin/ppkg is-available libzip
+      - run: ./output/bin/ppkg is-installed libzip
+      - run: ./output/bin/ppkg is-outdated  libzip
+
+      - run: ./output/bin/ppkg upgrade   libzip
+      - run: ./output/bin/ppkg reinstall libzip
+      - run: ./output/bin/ppkg uninstall libzip
+
+      - run: ./output/bin/ppkg formula-repo-list
+      - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
+      - run: ./output/bin/ppkg formula-repo-del my_repo
+
+      - run: ./output/bin/ppkg cleanup
+
+        #- run: ./output/bin/ppkg upgrade-self
+
+  vcpkg-sanitizer:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [macos-14, macos-13, macos-12, macos-11]
+
+    runs-on: ${{ matrix.version }}
+
+    steps:
+      - run:  brew update
+      - run:  brew install --overwrite python@3.10 python@3.11
+      - run:  brew install cmake ninja llvm pkg-config
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - run:  cd vcpkg && ./bootstrap-vcpkg.sh
+
+      - run:  cd vcpkg && ./vcpkg install curl openssl libgit2 libarchive libyaml jansson sqlite3
+
+      - run:  |
+          cmake \
+              -S . \
+              -B build.d \
+              -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DCMAKE_INSTALL_PREFIX=./output \
+              -DCMAKE_VERBOSE_MAKEFILE=ON \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_C_FLAGS="-fsanitize=undefined -fsanitize=address -fsanitize=leak"
+
+      - run:  cmake --build   build.d
+      - run:  cmake --install build.d
+
+
+      - run: ./output/bin/ppkg
+
+      - run: ./output/bin/ppkg --help
+      - run: ./output/bin/ppkg -h
+
+      - run: ./output/bin/ppkg --version
+      - run: ./output/bin/ppkg -V
+
+      - run: ./output/bin/ppkg setup -v
+
+      - run: ./output/bin/ppkg env
+      - run: ./output/bin/ppkg env -v
+
+      - run: ./output/bin/ppkg integrate zsh
+      - run: ./output/bin/ppkg integrate zsh -v
+
+      - run: ./output/bin/ppkg update
+
+      - run: ./output/bin/ppkg search lib
+      - run: ./output/bin/ppkg search zip
+
+      - run: ./output/bin/ppkg info-available libzip
+      - run: ./output/bin/ppkg info-available libzip --yaml
+      - run: ./output/bin/ppkg info-available libzip --json
+      - run: ./output/bin/ppkg info-available libzip summary
+      - run: ./output/bin/ppkg info-available libzip version
+      - run: ./output/bin/ppkg info-available libzip license
+      - run: ./output/bin/ppkg info-available libzip web-url
+      - run: ./output/bin/ppkg info-available libzip src-url
+      - run: ./output/bin/ppkg info-available libzip src-sha
+
+      - run: ./output/bin/ppkg depends libzip
+      - run: ./output/bin/ppkg depends libzip -t dot
+      - run: ./output/bin/ppkg depends libzip -t box
+
+      - run: ./output/bin/ppkg fetch gzip
+      - run: ./output/bin/ppkg fetch gsed -v
+
+      - run: ./output/bin/ppkg install libzip
+
+      - run: ./output/bin/ppkg tree libzip
+
+      - run:  ./output/bin/ppkg info-installed libzip --prefix
+      - run:  ./output/bin/ppkg info-installed libzip --files
+      - run:  ./output/bin/ppkg info-available libzip --json
+      - run:  ./output/bin/ppkg info-available libzip --yaml
+      - run:  ./output/bin/ppkg info-installed libzip builtat
+      - run:  ./output/bin/ppkg info-installed libzip builtat-iso-8601
+      - run:  ./output/bin/ppkg info-installed libzip builtat-rfc-3339
+      - run:  ./output/bin/ppkg info-available libzip version
+
+      - run: ./output/bin/ppkg pack libzip
+      - run: ./output/bin/ppkg pack libzip -t tar.gz
+      - run: ./output/bin/ppkg pack libzip -t tar.lz
+      - run: ./output/bin/ppkg pack libzip -t tar.xz
+      - run: ./output/bin/ppkg pack libzip -t tar.bz2
+      - run: ./output/bin/ppkg pack libzip -t zip
+
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
+
+      - run: ./output/bin/ppkg ls-available
+      - run: ./output/bin/ppkg ls-installed
+      - run: ./output/bin/ppkg ls-outdated
+
+      - run: ./output/bin/ppkg is-available libzip
+      - run: ./output/bin/ppkg is-installed libzip
+      - run: ./output/bin/ppkg is-outdated  libzip
+
+      - run: ./output/bin/ppkg upgrade   libzip
+      - run: ./output/bin/ppkg reinstall libzip
+      - run: ./output/bin/ppkg uninstall libzip
+
+      - run: ./output/bin/ppkg formula-repo-list
+      - run: ./output/bin/ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
+      - run: ./output/bin/ppkg formula-repo-del my_repo
+
+      - run: ./output/bin/ppkg cleanup
+
+        #- run: ./output/bin/ppkg upgrade-self

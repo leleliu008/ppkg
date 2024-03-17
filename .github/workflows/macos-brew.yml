@@ -1,0 +1,140 @@
+name: build on macOS via HomeBrew
+
+on:
+  push:
+    branches: [ c ]
+  pull_request:
+    branches: [ c ]
+
+jobs:
+
+  brew:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-13, macos-12]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: create a local tap for homebrew
+      - run: |
+          MY_FORMULA_DIR="$(brew --repository)/Library/Taps/leleliu008/homebrew-tmp/Formula"
+          install -d "$MY_FORMULA_DIR"
+          cat > "$MY_FORMULA_DIR/ppkg.rb" <<EOF
+          class Ppkg < Formula
+            desc     "A portable package manager for Unix-like system"
+            homepage "https://github.com/leleliu008/ppkg"
+            head     "https://github.com/leleliu008/ppkg.git", branch: "c"
+            url      "https://github.com/leleliu008/ppkg.git", revision: "${{ github.sha }}"
+            version  "0.1000.2"
+            license  "Apache-2.0"
+
+            depends_on "cmake" => :build
+            depends_on "ninja" => :build
+            depends_on "pkg-config" => :build
+
+            depends_on "curl"
+            depends_on "jansson"
+            depends_on "libyaml"
+            depends_on "libgit2"
+            depends_on "libarchive"
+
+            def install
+              system "cmake", "-S", ".", "-B", "build", *std_cmake_args
+              system "cmake", "--build",   "build"
+              system "cmake", "--install", "build"
+            end
+
+            test do
+              system "#{bin}/ppkg", "--help"
+            end
+          end
+          EOF
+
+      - run: brew info    ppkg
+      - run: brew install ppkg
+
+      - run: ppkg
+
+      - run: ppkg --help
+      - run: ppkg -h
+
+      - run: ppkg --version
+      - run: ppkg -V
+
+      - run: ppkg env
+      - run: ppkg env -v
+
+      - run: ppkg buildinfo
+      - run: ppkg sysinfo
+
+      - run: ppkg setup -v
+
+      - run: ppkg integrate zsh
+      - run: ppkg integrate zsh -v
+
+      - run: ppkg update
+
+      - run: ppkg search lib
+      - run: ppkg search zip
+
+      - run: ppkg info-available libzip
+      - run: ppkg info-available libzip --yaml
+      - run: ppkg info-available libzip --json
+      - run: ppkg info-available libzip summary
+      - run: ppkg info-available libzip version
+      - run: ppkg info-available libzip license
+      - run: ppkg info-available libzip web-url
+      - run: ppkg info-available libzip src-url
+      - run: ppkg info-available libzip src-sha
+
+      - run: ppkg depends libzip
+      - run: ppkg depends libzip -t dot
+      - run: ppkg depends libzip -t box
+
+      - run: ppkg fetch gzip
+      - run: ppkg fetch gsed -v
+
+      - run: ppkg install libzip
+
+      - run: ppkg tree libzip
+
+      - run: ppkg info-installed libzip --prefix
+      - run: ppkg info-installed libzip --files
+      - run: ppkg info-installed libzip --json
+      - run: ppkg info-installed libzip --yaml
+      - run: ppkg info-installed libzip builtat
+      - run: ppkg info-installed libzip builtat-iso-8601
+      - run: ppkg info-installed libzip builtat-rfc-3339
+      - run: ppkg info-installed libzip version
+
+      - run: ppkg pack libzip
+      - run: ppkg pack libzip -t tar.gz
+      - run: ppkg pack libzip -t tar.lz
+      - run: ppkg pack libzip -t tar.xz
+      - run: ppkg pack libzip -t tar.bz2
+      - run: ppkg pack libzip -t zip
+
+      - run: |
+          printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
+
+      - run: ppkg ls-available
+      - run: ppkg ls-installed
+      - run: ppkg ls-outdated
+
+      - run: ppkg is-available libzip
+      - run: ppkg is-installed libzip
+      - run: ppkg is-outdated  libzip
+
+      - run: ppkg upgrade   libzip
+      - run: ppkg reinstall libzip
+      - run: ppkg uninstall libzip
+
+      - run: ppkg formula-repo-list
+      - run: ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-official-core
+      - run: ppkg formula-repo-del my_repo
+
+      - run: ppkg cleanup
+
+        #- run: ppkg upgrade-self
