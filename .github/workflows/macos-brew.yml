@@ -181,7 +181,7 @@ jobs:
             def install
               cc = Formula["llvm"].opt_bin/"clang"
 
-              system "cmake", "-S", ".", "-B", "build", "-DCMAKE_C_COMPILER=#{cc}", "-DCMAKE_C_FLAGS='-fsanitize=undefined -fsanitize=address -fsanitize=leak'", *std_cmake_args
+              system "cmake", "-S", ".", "-B", "build", *std_cmake_args, "-DCMAKE_C_COMPILER=#{cc}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_C_FLAGS='-fsanitize=undefined -fsanitize=address -fsanitize=leak'"
               system "cmake", "--build",   "build"
               system "cmake", "--install", "build"
             end

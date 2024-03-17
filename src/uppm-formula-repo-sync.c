@@ -46,7 +46,7 @@ static int uppm_formula_repo_url_of_official_core(char buf[], const size_t bufSi
         }
 
         if (osVers[i] == '.') {
-            osVers[i] == '\0';
+            osVers[i] = '\0';
             osVersMajor = atoi(osVers);
             break;
         }

@@ -57,7 +57,7 @@ static int ppkg_upgrade_tar_filename(char buf[], const size_t bufSize, const cha
         osVersMajor = 14;
     }
 
-    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s.0-%s.tar.xz", latestVersion, osType, osVersMajor, osArch);
+    ret = snprintf(buf, bufSize, "ppkg-%s-%s-%d.0-%s.tar.xz", latestVersion, osType, osVersMajor, osArch);
 #elif defined (__DragonFly__)
     ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
 #elif defined (__FreeBSD__)
