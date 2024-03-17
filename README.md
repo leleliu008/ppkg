@@ -99,8 +99,7 @@ cmake --install build.d
 ## Build from C source locally via [HomeBrew](https://brew.sh/)
 
 ```bash
-brew tap leleliu008/fpliu
-brew install ppkg --head
+brew install --HEAD leleliu008/fpliu/ppkg
 ```
 
 ## Build from C source locally using your system's default package manager
