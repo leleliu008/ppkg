@@ -55,6 +55,9 @@ jobs:
           end
           EOF
 
+      - if: matrix.os == 'macos-13'
+        run: brew install --overwrite python@3.12
+
       - run: brew info    ppkg
       - run: brew install ppkg -v
 
