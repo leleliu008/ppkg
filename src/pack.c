@@ -169,7 +169,11 @@ int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatfor
     off_t nBytes = st.st_size;
 
     if (nBytes < 1024) {
-        printf("%s %ld Byte\n", outputFilePath, nBytes);
+        if (sizeof(off_t) == sizeof(long long)) {
+            printf("%s %lld Byte\n", outputFilePath, (long long)nBytes);
+        } else {
+            printf("%s %ld Byte\n", outputFilePath, (long int)nBytes);
+        }
     } else if (nBytes < 1024 * 1024) {
         printf("%s %.2f KB\n", outputFilePath, nBytes / 1024.0);
     } else if (nBytes < 1024 * 1024 * 1024) {
