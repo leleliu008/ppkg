@@ -19,7 +19,7 @@ typedef struct {
 } ProgressPayload;
 
 // https://libgit2.org/libgit2/#HEAD/group/callback/git_transport_message_cb
-int git_transport_message_callback(const char *str, int len, void *payload) {
+static int git_transport_message_callback(const char * str, int len, void * payload) {
     (void)payload; /* unused */
 	printf("remote: %.*s", len, str);
 	fflush(stdout);
@@ -27,14 +27,14 @@ int git_transport_message_callback(const char *str, int len, void *payload) {
 }
 
 // https://libgit2.org/libgit2/#HEAD/group/callback/git_indexer_progress_cb
-int git_indexer_progress_callback(const git_indexer_progress *stats, void *payload) {
+static int git_indexer_progress_callback(const git_indexer_progress * stats, void * payload) {
     ProgressPayload * progressPayload = (ProgressPayload*)payload;
     progressPayload->indexerProgress = *stats;
     return 0;
 }
 
 // https://libgit2.org/libgit2/#HEAD/group/callback/git_checkout_progress_cb
-void git_checkout_progress_callback(const char *path, size_t completed_steps, size_t total_steps, void *payload) {
+static void git_checkout_progress_callback(const char * path, size_t completed_steps, size_t total_steps, void * payload) {
     if (completed_steps == total_steps) {
         ProgressPayload * progressPayload = (ProgressPayload*)payload;
         git_indexer_progress indexerProgress = progressPayload->indexerProgress;
@@ -51,7 +51,7 @@ void git_checkout_progress_callback(const char *path, size_t completed_steps, si
 
 // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_new
 // https://libgit2.org/libgit2/#HEAD/group/callback/git_credential_acquire_cb
-int git_credential_acquire_callback(git_credential **credential, const char *url, const char *username_from_url, unsigned int allowed_types, void *payload) {
+static int git_credential_acquire_callback(git_credential ** credential, const char * url, const char * username_from_url, unsigned int allowed_types, void * payload) {
     const char * const userHomeDIR = getenv("HOME");
 
     if (userHomeDIR == NULL) {
@@ -94,7 +94,13 @@ int git_credential_acquire_callback(git_credential **credential, const char *url
     return 1;
 }
 
-void print_git_oid(const git_oid oid, const char * prefix) {
+static int git_submodule_foreach_callback(git_submodule * submodule, const char * name, void * payload) {
+    // git submodule update --init
+    // https://libgit2.org/libgit2/#HEAD/group/submodule/git_submodule_update
+    return git_submodule_update(submodule, true, NULL);
+}
+
+static void print_git_oid(const git_oid oid, const char * prefix) {
     char sha1sum[41] = {0};
 
     for (int i = 0; i < 20; i++) {
@@ -105,7 +111,7 @@ void print_git_oid(const git_oid oid, const char * prefix) {
     printf("%s=%s\n", prefix, sha1sum);
 }
 
-int check_if_is_a_empty_dir(const char * dirpath, bool * value) {
+static int check_if_is_a_empty_dir(const char * dirpath, bool * value) {
     DIR * dir = opendir(dirpath);
 
     if (dir == NULL) {
@@ -207,14 +213,14 @@ int ppkg_git_sync(const char * repositoryDIR, const char * remoteUrl, const char
         fprintf(stderr, "\nyou have set PPKG_URL_TRANSFORM=%s\n", urlTransformCommandPath);
         fprintf(stderr, "transform from: %s\n", remoteUrl);
 
-        size_t writtenSize = 0;
+        size_t writtenSize = 0U;
 
         if (url_transform(urlTransformCommandPath, remoteUrl, transformedUrl, 1024, &writtenSize, true) != 0) {
             perror(urlTransformCommandPath);
             return PPKG_ERROR;
         }
 
-        if (writtenSize == 0) {
+        if (writtenSize == 0U) {
             fprintf(stderr, "a new url was expected to be output, but it was not.\n");
             return PPKG_ERROR;
         }
@@ -356,7 +362,11 @@ int ppkg_git_sync(const char * repositoryDIR, const char * remoteUrl, const char
 
     git_fetch_options gitFetchOptions = GIT_FETCH_OPTIONS_INIT;
     gitFetchOptions.callbacks = gitRemoteCallbacks;
-    //gitFetchOptions.depth = (int)fetchDepth;
+
+    // this feature was introduced in libgit2-1.7.0
+#if ((LIBGIT2_VER_MAJOR == 1) && (LIBGIT2_VER_MINOR >= 7)) || (LIBGIT2_VER_MAJOR > 1)
+    gitFetchOptions.depth = (int)fetchDepth;
+#endif
 
     git_checkout_options gitCheckoutOptions = GIT_CHECKOUT_OPTIONS_INIT;
     gitCheckoutOptions.checkout_strategy    = GIT_CHECKOUT_FORCE;
@@ -484,6 +494,16 @@ int ppkg_git_sync(const char * repositoryDIR, const char * remoteUrl, const char
     }
 
     ret = git_repository_set_head(gitRepo, checkoutToBranchRefPath);
+
+    if (ret != GIT_OK) {
+        gitError = git_error_last();
+        goto finalize;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    // https://libgit2.org/libgit2/#HEAD/group/submodule/git_submodule_foreach
+    ret = git_submodule_foreach(gitRepo, git_submodule_foreach_callback, gitRepo);
 
     if (ret != GIT_OK) {
         gitError = git_error_last();

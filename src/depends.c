@@ -58,7 +58,11 @@ static int get_output_file_path(char outputFilePath[PATH_MAX], const char * pack
     } else {
         size_t outputPathLength = strlen(outputPath);
 
-        if (outputPath[outputPathLength - 1] == '/') {
+        if (strcmp(outputPath, ".") == 0) {
+           ret = snprintf(outputFilePath, strlen(packageName) + 20U, "%s-dependencies.%s", packageName, outputFileNameSuffix);
+        } else if (strcmp(outputPath, "..") == 0) {
+           ret = snprintf(outputFilePath, strlen(packageName) + 23U, "../%s-dependencies.%s", packageName, outputFileNameSuffix);
+        } else if (outputPath[outputPathLength - 1] == '/') {
            ret = snprintf(outputFilePath, strlen(outputPath) + strlen(packageName) + 20U, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
         } else {
             size_t n = strlen(outputPath);
