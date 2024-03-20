@@ -2048,6 +2048,21 @@ static int install_native_package(
         if (ret != PPKG_OK) {
             return ret;
         }
+    } else if (nativePackageID == NATIVE_PACKAGE_ID_INTLTOOL) {
+        size_t perl5LibDIRCapacity = nativePackageInstalledRootDIRCapacity + 27U;
+        char   perl5LibDIR[perl5LibDIRCapacity];
+
+        ret = snprintf(perl5LibDIR, perl5LibDIRCapacity, "%s/perl-XML-Parser/lib/perl5", nativePackageInstalledRootDIR);
+
+        if (ret < 0) {
+            perror(NULL);
+            return PPKG_ERROR;
+        }
+
+        if (setenv("PERL5LIB", perl5LibDIR, 1) != 0) {
+            perror("PERL5LIB");
+            return PPKG_ERROR;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -2239,10 +2254,10 @@ static int install_native_package(
 
             size_t perlPathLength = ret;
 
-            size_t configurePhaseCmdLength = perlPathLength + (packageInstalledDIRCapacity << 1) + 52U;
+            size_t configurePhaseCmdLength = perlPathLength + (nativePackageInstalledRootDIRCapacity << 1) + packageInstalledDIRCapacity + 78U;
             char   configurePhaseCmd[configurePhaseCmdLength];
 
-            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s Makefile.PL EXPATLIBPATH=%s/lib EXPATINCPATH=%s/include", perlPath, packageInstalledDIR, packageInstalledDIR);
+            ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s Makefile.PL EXPATLIBPATH=%s/expat/lib EXPATINCPATH=%s/expat/include INSTALL_BASE=%s", perlPath, nativePackageInstalledRootDIR, nativePackageInstalledRootDIR, packageInstalledDIR);
 
             if (ret < 0) {
                 perror(NULL);
@@ -4232,15 +4247,16 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char* unsetenvs[5] = {
+    const char* unsetenvs[6] = {
         "LIBS",
         "PKG_CONFIG_LIBDIR",
         "PKG_CONFIG_PATH",
         "ACLOCAL_PATH",
-        "XDG_DATA_DIRS"
+        "XDG_DATA_DIRS",
+        "PERL5LIB"
     };
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         if (unsetenv(unsetenvs[i]) != 0) {
             perror(unsetenvs[i]);
             return PPKG_ERROR;
@@ -4827,7 +4843,22 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    const char* unsetenvs2[] = { "ZLIB_CFLAGS", "ZLIB_LIBS", "BZIP2_CFLAGS", "BZIP2_LIBS", "LIBLZMA_CFLAGS", "LIBLZMA_LIBS", "LIBSQLITE3_CFLAGS", "LIBSQLITE3_LIBS", "GDBM_CFLAGS", "GDBM_LIBS", "LIBS", "PKG_CONFIG_PATH", NULL };
+    const char* unsetenvs2[] = {
+        "ZLIB_CFLAGS",
+        "ZLIB_LIBS",
+        "BZIP2_CFLAGS",
+        "BZIP2_LIBS",
+        "LIBLZMA_CFLAGS",
+        "LIBLZMA_LIBS",
+        "LIBSQLITE3_CFLAGS",
+        "LIBSQLITE3_LIBS",
+        "GDBM_CFLAGS",
+        "GDBM_LIBS",
+        "LIBS",
+        "PKG_CONFIG_PATH",
+        "PERL5LIB",
+        NULL
+    };
 
     for (int i = 0; unsetenvs2[i] != NULL; i++) {
         if (unsetenv(unsetenvs2[i]) != 0) {

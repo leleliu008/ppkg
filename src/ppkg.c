@@ -672,6 +672,54 @@ int ppkg_main(int argc, char* argv[]) {
             } else if (strcmp(argv[i], "-v:ld") == 0) {
                 installOptions.logLevel = PPKGLogLevel_verbose;
                 installOptions.verbose_ld = true;
+            } else if (strcmp(argv[i], "--dry-run") == 0) {
+                installOptions.dryrun = true;
+            } else if (strcmp(argv[i], "--keep-session-dir") == 0) {
+                installOptions.keepSessionDIR = true;
+            } else if (strcmp(argv[i], "--export-compile-commands-json") == 0) {
+                installOptions.exportCompileCommandsJson = true;
+            } else if (strcmp(argv[i], "--enable-ccache") == 0) {
+                installOptions.enableCcache = true;
+            } else if (strcmp(argv[i], "--enable-bear") == 0) {
+                installOptions.enableBear = true;
+            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
+                installOptions.buildType = PPKGBuildType_debug;
+            } else if (strcmp(argv[i], "--build-type=release") == 0) {
+                installOptions.buildType = PPKGBuildType_release;
+            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
+                installOptions.linkType = PPKGLinkType_static_full;
+            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
+                installOptions.linkType = PPKGLinkType_shared_full;
+            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
+                installOptions.linkType = PPKGLinkType_static_most;
+            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
+                installOptions.linkType = PPKGLinkType_shared_most;
+            } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
+                char * jobsStr = &argv[i][7];
+
+                if (jobsStr[0] == '\0') {
+                    LOG_ERROR1("--jobs=<N> , <N> should be a non-empty string");
+                    return PPKG_ERROR;
+                } else {
+                    int j = 0;
+
+                    for (;;) {
+                        char c = jobsStr[j];
+
+                        if (c == '\0') {
+                            break;
+                        }
+
+                        if ((c >= '0') && (c <= '9')) {
+                            j++;
+                        } else {
+                            LOG_ERROR1("--jobs=<N> , <N> should be a integer.");
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+
+                installOptions.parallelJobsCount = atoi(jobsStr);
             } else if (strncmp(argv[i], "--target=", 9) == 0) {
                 targetPlatformSpec = &argv[i][9];
 
@@ -763,6 +811,54 @@ int ppkg_main(int argc, char* argv[]) {
             } else if (strcmp(argv[i], "-v:ld") == 0) {
                 installOptions.logLevel = PPKGLogLevel_verbose;
                 installOptions.verbose_ld = true;
+            } else if (strcmp(argv[i], "--dry-run") == 0) {
+                installOptions.dryrun = true;
+            } else if (strcmp(argv[i], "--keep-session-dir") == 0) {
+                installOptions.keepSessionDIR = true;
+            } else if (strcmp(argv[i], "--export-compile-commands-json") == 0) {
+                installOptions.exportCompileCommandsJson = true;
+            } else if (strcmp(argv[i], "--enable-ccache") == 0) {
+                installOptions.enableCcache = true;
+            } else if (strcmp(argv[i], "--enable-bear") == 0) {
+                installOptions.enableBear = true;
+            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
+                installOptions.buildType = PPKGBuildType_debug;
+            } else if (strcmp(argv[i], "--build-type=release") == 0) {
+                installOptions.buildType = PPKGBuildType_release;
+            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
+                installOptions.linkType = PPKGLinkType_static_full;
+            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
+                installOptions.linkType = PPKGLinkType_shared_full;
+            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
+                installOptions.linkType = PPKGLinkType_static_most;
+            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
+                installOptions.linkType = PPKGLinkType_shared_most;
+            } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
+                char * jobsStr = &argv[i][7];
+
+                if (jobsStr[0] == '\0') {
+                    LOG_ERROR1("--jobs=<N> , <N> should be a non-empty string");
+                    return PPKG_ERROR;
+                } else {
+                    int j = 0;
+
+                    for (;;) {
+                        char c = jobsStr[j];
+
+                        if (c == '\0') {
+                            break;
+                        }
+
+                        if ((c >= '0') && (c <= '9')) {
+                            j++;
+                        } else {
+                            LOG_ERROR1("--jobs=<N> , <N> should be a integer.");
+                            return PPKG_ERROR;
+                        }
+                    }
+                }
+
+                installOptions.parallelJobsCount = atoi(jobsStr);
             } else if (strncmp(argv[i], "--target=", 9) == 0) {
                 targetPlatformSpec = &argv[i][9];
 
