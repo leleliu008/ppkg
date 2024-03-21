@@ -153,8 +153,8 @@ static int generate_install_shell_script_file(
     const char * str =
         "for item in $PKG_DEP_PKG\n"
         "do\n"
-        "if [ -d \"$PPKG_HOME/installed/$item/bin\" ] ; then\n"
-        "PATH=\"$PPKG_HOME/installed/$item/bin:$PATH\"\n"
+        "if [ -d \"$UPPM_HOME/installed/$item/bin\" ] ; then\n"
+        "PATH=\"$UPPM_HOME/installed/$item/bin:$PATH\"\n"
         "fi\n"
         "done\n\n"
         "pwd\n";

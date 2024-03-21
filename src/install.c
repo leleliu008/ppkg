@@ -4290,6 +4290,7 @@ static int ppkg_install_package(
     bool needToBuildHelp2man = false;
     bool needToBuildIntltool = false;
     bool needToBuildSwig     = false;
+    bool needToBuildPerlXMLParser = false;
 
     size_t depPackageNamesLength = (formula->dep_upp == NULL) ? 0U : strlen(formula->dep_upp);
 
@@ -4367,6 +4368,10 @@ static int ppkg_install_package(
                 needToInstallGmake = true;
             } else if (strcmp(depPackageName, "swig") == 0) {
                 needToBuildSwig    = true;
+                needToInstallGmake = true;
+                needToInstallCmake = true;
+            } else if (strcmp(depPackageName, "perl-XML-Parser") == 0) {
+                needToBuildPerlXMLParser = true;
                 needToInstallGmake = true;
                 needToInstallCmake = true;
             } else {
@@ -4486,6 +4491,11 @@ static int ppkg_install_package(
 
     if (needToBuildSwig) {
         nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_SWIG;
+        nativePackageIDArraySize++;
+    }
+
+    if (needToBuildPerlXMLParser) {
+        nativePackageIDArray[nativePackageIDArraySize] = NATIVE_PACKAGE_ID_PERL_XML_PARSER;
         nativePackageIDArraySize++;
     }
 
