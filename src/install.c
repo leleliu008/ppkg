@@ -175,17 +175,20 @@ static int write_to_file(const char * fp, const char * str) {
     }
 }
 
-//static void export_p() {
-    //for (int i = 0; ; i++) {
-    //    const char * p = __environ[i];
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
+extern char ** environ;
 
-    //    if (p == NULL) {
-    //        break;
-    //    }
+static void printenv() {
+    for (int i = 0; ; i++) {
+        const char * p = environ[i];
 
-    //    puts(p);
-    //}
-//}
+        if (p == NULL) {
+            break;
+        }
+
+        puts(p);
+    }
+}
 
 static int download_via_http(const char * url, const char * uri, const char * expectedSHA256SUM, const char * downloadDIR, size_t downloadDIRLength, const char * unpackDIR, size_t unpackDIRLength, const bool verbose) {
     char fileNameExtension[21] = {0};
@@ -2081,16 +2084,16 @@ static int install_native_package(
                 perror(NULL);
                 return PPKG_ERROR;
             case 0:
-                fprintf(stderr, "cmake command was not found.\n");
+                fprintf(stderr, "cmake command was not found in PATH : %s\n", getenv("PATH"));
                 return PPKG_ERROR;
         }
 
         size_t cmakePathLength = ret;
 
-        size_t configurePhaseCmdLength = cmakePathLength + packageInstalledDIRCapacity + strlen(buildConfigureArgs) + 124U;
+        size_t configurePhaseCmdLength = cmakePathLength + packageInstalledDIRCapacity + strlen(buildConfigureArgs) + 134U;
         char   configurePhaseCmd[configurePhaseCmdLength];
 
-        ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=%s -DEXPAT_SHARED_LIBS=OFF -DCMAKE_VERBOSE_MAKEFILE=%s %s -S . -B build.d", cmakePath, packageInstalledDIR, (installOptions->logLevel >= PPKGLogLevel_verbose) ? "ON" : "OFF", buildConfigureArgs);
+        ret = snprintf(configurePhaseCmd, configurePhaseCmdLength, "%s -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=%s -DEXPAT_SHARED_LIBS=OFF -DCMAKE_VERBOSE_MAKEFILE=%s %s -G Ninja -S . -B build.d", cmakePath, packageInstalledDIR, (installOptions->logLevel >= PPKGLogLevel_verbose) ? "ON" : "OFF", buildConfigureArgs);
 
         if (ret < 0) {
             perror(NULL);
@@ -2248,7 +2251,7 @@ static int install_native_package(
                     perror(NULL);
                     return PPKG_ERROR;
                 case 0:
-                    fprintf(stderr, "perl command was not found.\n");
+                    fprintf(stderr, "perl command was not found in PATH : %s\n", getenv("PATH"));
                     return PPKG_ERROR;
             }
 
@@ -2622,6 +2625,7 @@ static int generate_shell_vars_file(
         const PPKGInstallOptions * installOptions,
         const SysInfo * sysinfo,
         const char * uppmPackageInstalledRootDIR,
+        const char * nativePackageInstalledRootDIR,
         const char * ppkgExeFilePath,
         const time_t ts,
         const size_t njobs,
@@ -2685,7 +2689,8 @@ static int generate_shell_vars_file(
         {"PPKG_HOME", ppkgHomeDIR},
         {"PPKG_CORE_DIR", ppkgCoreDIR},
         {"PPKG_DOWNLOADS_DIR", ppkgDownloadsDIR},
-        {"UPPM_PACKAGE_INSTALL_ROOT_DIR", uppmPackageInstalledRootDIR},
+        {"UPPM_PACKAGE_INSTALLED_ROOT", uppmPackageInstalledRootDIR},
+        {"NATIVE_PACKAGE_INSTALLED_ROOT", nativePackageInstalledRootDIR},
         {"SESSION_DIR", sessionDIR},
         {"RECURSIVE_DEPENDENT_PACKAGE_NAMES", recursiveDependentPackageNamesString},
         {"PACKAGE_FORMULA_FILEPATH", formula->path},
@@ -4320,6 +4325,7 @@ static int ppkg_install_package(
 
     bool needToInstallCmake = false;
     bool needToInstallGmake = false;
+    bool needToInstallNinja = false;
     bool needToInstallGm4   = false;
 
     if (formula->dep_upp != NULL) {
@@ -4338,8 +4344,9 @@ static int ppkg_install_package(
                 needToInstallGmake = true;
             } else if (strcmp(depPackageName, "python3") == 0) {
                 needToBuildPython3 = true;
-                needToInstallGmake = true;
                 needToInstallCmake = true;
+                needToInstallGmake = true;
+                needToInstallNinja = true;
             } else if (strcmp(depPackageName, "texinfo") == 0) {
                 needToBuildTexinfo = true;
                 needToInstallGmake = true;
@@ -4348,8 +4355,9 @@ static int ppkg_install_package(
                 needToInstallGmake = true;
             } else if (strcmp(depPackageName, "intltool") == 0) {
                 needToBuildIntltool = true;
-                needToInstallGmake = true;
                 needToInstallCmake = true;
+                needToInstallGmake = true;
+                needToInstallNinja = true;
             } else if (strcmp(depPackageName, "libtool") == 0) {
                 needToBuildLibtool = true;
                 needToInstallGmake = true;
@@ -4366,14 +4374,18 @@ static int ppkg_install_package(
                 needToInstallCmake = true;
             } else if (strcmp(depPackageName, "gmake") == 0) {
                 needToInstallGmake = true;
+            } else if (strcmp(depPackageName, "ninja") == 0) {
+                needToInstallNinja = true;
             } else if (strcmp(depPackageName, "swig") == 0) {
                 needToBuildSwig    = true;
-                needToInstallGmake = true;
                 needToInstallCmake = true;
+                needToInstallGmake = true;
+                needToInstallNinja = true;
             } else if (strcmp(depPackageName, "perl-XML-Parser") == 0) {
                 needToBuildPerlXMLParser = true;
-                needToInstallGmake = true;
                 needToInstallCmake = true;
+                needToInstallGmake = true;
+                needToInstallNinja = true;
             } else {
                 int len = snprintf(uppmPackageNames + uppmPackageNamesLength, strlen(depPackageName) + 2U, " %s", depPackageName);
 
@@ -4397,6 +4409,11 @@ static int ppkg_install_package(
 
         if (needToInstallGmake) {
             strncpy(uppmPackageNames + uppmPackageNamesLength, " gmake", 6U);
+            uppmPackageNamesLength += 6U;
+        }
+
+        if (needToInstallNinja) {
+            strncpy(uppmPackageNames + uppmPackageNamesLength, " ninja", 6U);
             uppmPackageNamesLength += 6U;
         }
 
@@ -4618,7 +4635,7 @@ static int ppkg_install_package(
         return PPKG_ERROR;
     }
 
-    ret = generate_shell_vars_file(varsFilePath, packageName, formula, installOptions, sysinfo, uppmPackageInstalledRootDIR, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, recursiveDependentPackageNamesString);
+    ret = generate_shell_vars_file(varsFilePath, packageName, formula, installOptions, sysinfo, uppmPackageInstalledRootDIR, nativePackageInstalledRootDIR, ppkgExeFilePath, ts, njobs, ppkgHomeDIR, ppkgCoreDIR, ppkgDownloadsDIR, sessionDIR, recursiveDependentPackageNamesString);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -5066,7 +5083,7 @@ static int ppkg_install_package(
                     perror(NULL);
                     return PPKG_ERROR;
                 case 0:
-                    fprintf(stderr, "clang command was not found.\n");
+                    fprintf(stderr, "clang command was not found in PATH : %s\n", getenv("PATH"));
                     return PPKG_ERROR;
             }
 
@@ -5085,7 +5102,7 @@ static int ppkg_install_package(
                     perror(NULL);
                     return PPKG_ERROR;
                 case 0:
-                    fprintf(stderr, "clang++ command was not found.\n");
+                    fprintf(stderr, "clang++ command was not found in PATH : %s\n", getenv("PATH"));
                     return PPKG_ERROR;
             }
 
