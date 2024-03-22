@@ -4427,6 +4427,8 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
+    fprintf(stderr, "install uppm packages in order: %s\n", uppmPackageNames);
+
     ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, needToInstallCmake);
 
     if (ret != PPKG_OK) {
