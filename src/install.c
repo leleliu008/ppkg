@@ -2483,7 +2483,8 @@ static int install_dependent_packages_via_uppm(
         const size_t uppmPackageNamesLength,
         const char * uppmPackageInstalledRootDIR,
         const size_t uppmPackageInstalledRootDIRCapacity,
-        const bool   needToInstallCmake) {
+        const bool   needToInstallCmake,
+        const bool   verbose) {
     int ret;
 
 #if defined (__NetBSD__)
@@ -2519,15 +2520,17 @@ static int install_dependent_packages_via_uppm(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char    uppmPackageNamesCopy[uppmPackageNamesLength + 1U];
-    strncpy(uppmPackageNamesCopy, uppmPackageNames, uppmPackageNamesLength);
+    size_t  uppmPackageNamesCapacity = uppmPackageNamesLength + 1U;
+    char    uppmPackageNamesCopy[uppmPackageNamesCapacity];
+    strncpy(uppmPackageNamesCopy, uppmPackageNames, uppmPackageNamesCapacity);
 
-    uppmPackageNamesCopy[uppmPackageNamesLength] = '\0';
+    fprintf(stderr, "uppm packages to be installed in order: %s\n", uppmPackageNames);
 
-    char * uppmPackageName = strtok(uppmPackageNamesCopy, " ");
+    char * q;
+    char * uppmPackageName = strtok_r(uppmPackageNamesCopy, " ", &q);
 
     while (uppmPackageName != NULL) {
-        ret = uppm_install(uppmPackageName, true, false);
+        ret = uppm_install(uppmPackageName, verbose, false);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -2612,7 +2615,7 @@ static int install_dependent_packages_via_uppm(
             }
         }
 
-        uppmPackageName = strtok(NULL, " ");
+        uppmPackageName = strtok_r(NULL, " ", &q);
     }
 
     return PPKG_OK;
@@ -4427,9 +4430,7 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    fprintf(stderr, "install uppm packages in order: %s\n", uppmPackageNames);
-
-    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, needToInstallCmake);
+    ret = install_dependent_packages_via_uppm(uppmPackageNames, uppmPackageNamesLength, uppmPackageInstalledRootDIR, uppmPackageInstalledRootDIRCapacity, needToInstallCmake, installOptions->verbose_net);
 
     if (ret != PPKG_OK) {
         return ret;
