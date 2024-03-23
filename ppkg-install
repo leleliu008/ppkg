@@ -1143,7 +1143,7 @@ cd "$PACKAGE_INSTALL_DIR"
 
 if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
     #__adjust_la_files
-    find "$PACKAGE_INSTALL_DIR/lib" -type f -name '*.la' -exec rm {} \;
+    find "$PACKAGE_INSTALL_DIR/lib" \( -type f -or -type l \) -name '*.la' -exec rm '{}' \;
     __adjust_pc_files
 fi
 
