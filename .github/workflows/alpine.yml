@@ -38,19 +38,19 @@ jobs:
       - run: ./ppkg search libzip
 
 
-      - run: ./ppkg info @all
-      - run: ./ppkg info libzip
-      - run: ./ppkg info libzip --yaml
-      - run: ./ppkg info libzip --json
-      - run: ./ppkg info libzip version
-      - run: ./ppkg info libzip license
-      - run: ./ppkg info libzip summary
-      - run: ./ppkg info libzip web-url
-      - run: ./ppkg info libzip git-url
-      - run: ./ppkg info libzip git-sha
-      - run: ./ppkg info libzip git-ref
-      - run: ./ppkg info libzip src-url
-      - run: ./ppkg info libzip src-sha
+      - run: ./ppkg info-available @all
+      - run: ./ppkg info-available libzip
+      - run: ./ppkg info-available libzip --yaml
+      - run: ./ppkg info-available libzip --json
+      - run: ./ppkg info-available libzip version
+      - run: ./ppkg info-available libzip license
+      - run: ./ppkg info-available libzip summary
+      - run: ./ppkg info-available libzip web-url
+      - run: ./ppkg info-available libzip git-url
+      - run: ./ppkg info-available libzip git-sha
+      - run: ./ppkg info-available libzip git-ref
+      - run: ./ppkg info-available libzip src-url
+      - run: ./ppkg info-available libzip src-sha
 
 
 
@@ -64,14 +64,14 @@ jobs:
 
 
 
-      - run: ./ppkg info libzip installed-dir
-      - run: ./ppkg info libzip installed-files
-      - run: ./ppkg info libzip installed-version
-      - run: ./ppkg info libzip installed-timestamp-unix
-      - run: ./ppkg info libzip installed-timestamp-iso-8601
-      - run: ./ppkg info libzip installed-timestamp-rfc-3339
-      - run: ./ppkg info libzip installed-timestamp-iso-8601-utc
-      - run: ./ppkg info libzip installed-timestamp-rfc-3339-utc
+      - run: ./ppkg info-installed libzip installed-dir
+      - run: ./ppkg info-installed libzip installed-files
+      - run: ./ppkg info-available libzip version
+      - run: ./ppkg info-installed libzip builtat-iso-8601-utc
+      - run: ./ppkg info-installed libzip builtat-iso-8601
+      - run: ./ppkg info-installed libzip builtat-rfc-3339
+      - run: ./ppkg info-installed libzip builtat-iso-8601-utc
+      - run: ./ppkg info-installed libzip builtat-rfc-3339-utc
 
 
       - run: ./ppkg pack libzip

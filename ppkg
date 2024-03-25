@@ -941,8 +941,9 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_DOPATCH_ACTIONS
-    unset PACKAGE_DOBUILD_ACTIONS
+    unset PACKAGE_ACTIONS_DO12345
+    unset PACKAGE_ACTIONS_DOPATCH
+    unset PACKAGE_ACTIONS_DOBUILD
 
     unset PACKAGE_SYMLINK
 
@@ -1008,13 +1009,14 @@ filetype_from_url() {
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_DOPATCH_ACTIONS="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOBUILD_ACTIONS="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD_ACTIONS" ] ; then
-        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_ACTIONS_DOBUILD" ] ; then
+        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
         do
             case "$FirstWordOfLineInInstallActions" in
                 configure)    PACKAGE_BSYSTEM=configure ; break ;;
@@ -1204,18 +1206,18 @@ filetype_from_url() {
 
     #########################################################################################
 
-    [ -z "$PACKAGE_DOBUILD_ACTIONS" ] && {
+    [ -z "$PACKAGE_ACTIONS_DOBUILD" ] && {
         case $PACKAGE_BSYSTEM in
-            autogen)   PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            autotools) PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            configure) PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            cmake*)    PACKAGE_DOBUILD_ACTIONS='cmakew' ;;
-            xmake)     PACKAGE_DOBUILD_ACTIONS='xmakew' ;;
-            meson)     PACKAGE_DOBUILD_ACTIONS='mesonw' ;;
-            ninja)     PACKAGE_DOBUILD_ACTIONS='ninjaw clean && ninjaw && ninjaw install' ;;
-            gmake)     PACKAGE_DOBUILD_ACTIONS='gmakew clean && gmakew && gmakew install' ;;
-            cargo)     PACKAGE_DOBUILD_ACTIONS='cargow install' ;;
-            go)        PACKAGE_DOBUILD_ACTIONS='gow' ;;
+            autogen)   PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            autotools) PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            configure) PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            cmake*)    PACKAGE_ACTIONS_DOBUILD='cmakew' ;;
+            xmake)     PACKAGE_ACTIONS_DOBUILD='xmakew' ;;
+            meson)     PACKAGE_ACTIONS_DOBUILD='mesonw' ;;
+            ninja)     PACKAGE_ACTIONS_DOBUILD='ninjaw clean && ninjaw && ninjaw install' ;;
+            gmake)     PACKAGE_ACTIONS_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
+            cargo)     PACKAGE_ACTIONS_DOBUILD='cargow install' ;;
+            go)        PACKAGE_ACTIONS_DOBUILD='gow' ;;
             *)         abort 1 "install mapping not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     }
@@ -1518,8 +1520,8 @@ __info_all_available_packages_as_shell() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
-        --arg dopatch "$PACKAGE_DOPATCH_ACTIONS" \
-        --arg install "$PACKAGE_DOBUILD_ACTIONS" \
+        --arg dopatch "$PACKAGE_ACTIONS_DOPATCH" \
+        --arg install "$PACKAGE_ACTIONS_DOBUILD" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
@@ -1684,12 +1686,6 @@ EOF
 # __info_the_given_available_package curl version
 # __info_the_given_available_package curl web-url
   __info_the_given_available_package() {
-    if [ "$1" = @all ] ; then
-        shift
-        __info_all_available_packages "$@"
-        return 0
-    fi
-
     case $2 in
         '') __info_the_given_available_package_as_yaml "$1"
             ;;
@@ -1699,54 +1695,13 @@ EOF
         --json)
             __info_the_given_available_package_as_json "$1"
             ;;
-        installed-dir)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-            if is_package_installed "$PACKAGE_SPEC" ; then
-                PACKAGE_INSTALLED_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                printf '%s\n' "$PACKAGE_INSTALLED_DIR"
-            else
-                abort 1 "package '$PACKAGE_SPEC' is not installed."
-            fi
-            ;;
-        installed-files)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-            if is_package_installed "$PACKAGE_SPEC" ; then
-                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ppkg/MANIFEST.txt"
-            else
-                abort 1 "package '$PACKAGE_SPEC' is not installed."
-            fi
-            ;;
-        builtat)
-            __load_receipt_of_the_given_package "$1"
-            printf '%s\n' "$RECEIPT_PACKAGE_BUILTAT"
-            ;;
-        builtat-rfc-3339)
-            __load_receipt_of_the_given_package "$1"
-            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
-            ;;
-        builtat-iso-8601)
-            __load_receipt_of_the_given_package "$1"
-            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%S%:z'
-            ;;
-        builtat-rfc-3339-utc)
-            __load_receipt_of_the_given_package "$1"
-            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
-            ;;
-        builtat-iso-8601-utc)
-            __load_receipt_of_the_given_package "$1"
-            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%SZ'
-            ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOPATCH_ACTIONS"
+            printf '%s\n' "$PACKAGE_ACTIONS_DOPATCH"
             ;;
         install)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS"
+            printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD"
             ;;
         developer)
             __load_formula_of_the_given_package "$1"
@@ -2171,85 +2126,73 @@ __fetch_resources_of_the_given_package() {
         abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
     fi
 
-    if [ "$1" = '@all' ] ; then
-        shift
+    __load_formula_of_the_given_package "$1"
 
-        unset STEP_NUM
+    if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
+        note "$PACKAGE_SRC_URL is local path, no need to fetch."
+        return 0
+    fi
 
-        for PKG in $(__list_available_packages)
-        do
-            step "fetching resources for package : $PKG"
-            __fetch_resources_of_the_given_package "$PKG"
-        done
-    else
-        __load_formula_of_the_given_package "$1"
+    SESSION_DIR="$PPKG_HOME/run/$$"
 
-        if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            return 0
-        fi
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        unset GIT_FETCH_URL
 
-        SESSION_DIR="$PPKG_HOME/run/$$/$1"
-
-        if [ -z "$PACKAGE_SRC_URL" ] ; then
-            unset GIT_FETCH_URL
-
-            if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-                GIT_FETCH_URL="$PACKAGE_GIT_URL"
-            else
-                GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-            fi
-
-            if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                if [ -z "$PACKAGE_GIT_REF" ] ; then
-                    GIT_BRANCH_NAME=master
-                    GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-                else
-                    GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                    GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
-                fi
-            else
-                GIT_BRANCH_NAME=master
-                GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-            fi
-
-            if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                PACKAGE_GIT_NTH=1
-            fi
-
-            if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                    GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                else
-                    GIT_FETCH_EXTRA_OPTIONS=
-                fi
-            else
-                GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-            fi
-
-            run rm -rf     "$SESSION_DIR"
-            run install -d "$SESSION_DIR"
-            run cd         "$SESSION_DIR"
-            run git -c init.defaultBranch=master init
-            run git remote add origin "$GIT_FETCH_URL"
-            run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-            run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-            run git submodule update --init
+        if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+            GIT_FETCH_URL="$PACKAGE_GIT_URL"
         else
-            wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+            GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
         fi
 
-        if [ -n    "$PACKAGE_FIX_URL" ] ; then
-            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+        if [ -z "$PACKAGE_GIT_SHA" ] ; then
+            if [ -z "$PACKAGE_GIT_REF" ] ; then
+                GIT_BRANCH_NAME=master
+                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+            else
+                GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+            fi
+        else
+            GIT_BRANCH_NAME=master
+            GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
         fi
 
-        if [ -n    "$PACKAGE_RES_URL" ] ; then
-            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        if [ -z "$PACKAGE_GIT_NTH" ] ; then
+            PACKAGE_GIT_NTH=1
         fi
 
-        if [    -d "$SESSION_DIR" ] ; then
-            rm -rf "$SESSION_DIR"
+        if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+            if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+            else
+                GIT_FETCH_EXTRA_OPTIONS=
+            fi
+        else
+            GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
         fi
+
+        run rm -rf     "$SESSION_DIR"
+        run install -d "$SESSION_DIR"
+        run cd         "$SESSION_DIR"
+        run git -c init.defaultBranch=master init
+        run git remote add origin "$GIT_FETCH_URL"
+        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+        run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+        run git submodule update --init
+    else
+        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+    fi
+
+    if [    -d "$SESSION_DIR" ] ; then
+        rm -rf "$SESSION_DIR"
     fi
 }
 
@@ -5712,10 +5655,10 @@ EOF
         run cd "$PACKAGE_BSCRIPT_DIR"
     fi
 
-    if [ -n "$PACKAGE_DOPATCH_ACTIONS" ] ; then
+    if [ -n "$PACKAGE_ACTIONS_DOPATCH" ] ; then
         eval "
 dopatch() {
-$PACKAGE_DOPATCH_ACTIONS
+$PACKAGE_ACTIONS_DOPATCH
 }"
         dopatch "$1"
     else
@@ -5793,7 +5736,7 @@ $PACKAGE_DOPATCH_ACTIONS
 
     eval "
 dobuild() {
-$PACKAGE_DOBUILD_ACTIONS
+$PACKAGE_ACTIONS_DOBUILD
 }"
 
     dobuild "$1"
@@ -8111,13 +8054,10 @@ ${COLOR_GREEN}ppkg search <REGULAR-EXPRESSION-PARTTEN>${COLOR_OFF}
     search all available packages whose name matches the given regular expression partten.
 
 
-${COLOR_GREEN}ppkg info @all [--yaml | --json | <KEY>]${COLOR_OFF}
-    show information of all the available packages.
-
-${COLOR_GREEN}ppkg info <PACKAGE-NAME> [--yaml | --json | <KEY>]${COLOR_OFF}
+${COLOR_GREEN}ppkg info-available <PACKAGE-NAME> [--json | --yaml | <KEY>]${COLOR_OFF}
     show information of the given available package.
 
-${COLOR_GREEN}ppkg info <PACKAGE-SPEC> [--yaml | --json | <KEY>]${COLOR_OFF}
+${COLOR_GREEN}ppkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLOR_OFF}
     show information of the given installed package.
 
 
@@ -8141,9 +8081,6 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]$
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.
-
-${COLOR_GREEN}ppkg fetch @all${COLOR_OFF}
-    download all the resources of all the available packages to the local cache.
 
 
 ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
@@ -8280,7 +8217,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.24
+    PPKG_VERSION=0.3.25
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8419,6 +8356,17 @@ EOF
             sysinfo
             return 0
             ;;
+
+        info-available)
+            shift
+            __info_the_given_available_package "$@"
+            ;;
+
+        info-installed)
+            shift
+            __info_the_given_installed_package "$@"
+            ;;
+
         ls-available) shift; __list_available_packages ;;
         ls-installed) shift; __list_installed_packages ;;
         ls-symlinked) shift; __list_symlinked_packages ;;
@@ -8504,18 +8452,6 @@ EOF
         logs) shift; __logs_the_given_installed_package "$@" ;;
         pack) shift; __pack_the_given_installed_package "$@" ;;
         tree) shift; __tree_the_given_installed_package "$@" ;;
-
-        info)
-            shift
-            case $1 in
-                '') abort 1 "_0 info <PACKAGE-NAME|PACKAGE-SPEC> [--yaml | --json | <KEY>], <PACKAGE-NAME|PACKAGE-SPEC> is unspecified."
-                    ;;
-                */*)
-                    __info_the_given_installed_package "$@"
-                    ;;
-                *)  __info_the_given_available_package "$@"
-            esac
-            ;;
 
         *)  abort 1 "unrecognized argument: $1"
     esac

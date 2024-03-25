@@ -44,10 +44,10 @@ jobs:
       - run: ./ppkg search lib
       - run: ./ppkg search libzip
 
-      - run: ./ppkg info libzip
-      - run: ./ppkg info libzip version
-      - run: ./ppkg info libzip web-url
-      - run: ./ppkg info libzip src-url
+      - run: ./ppkg info-available libzip
+      - run: ./ppkg info-available libzip version
+      - run: ./ppkg info-available libzip web-url
+      - run: ./ppkg info-available libzip src-url
 
       - run: ./ppkg depends libzip
 

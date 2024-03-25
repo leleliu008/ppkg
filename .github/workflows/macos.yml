@@ -36,10 +36,10 @@ jobs:
       - run: ./ppkg search lib
       - run: ./ppkg search libzip
 
-      - run: ./ppkg info libzip
-      - run: ./ppkg info libzip summary
-      - run: ./ppkg info libzip web-url
-      - run: ./ppkg info libzip version
+      - run: ./ppkg info-available libzip
+      - run: ./ppkg info-available libzip summary
+      - run: ./ppkg info-available libzip web-url
+      - run: ./ppkg info-available libzip version
 
       - run: ./ppkg depends libzip
 
@@ -64,14 +64,13 @@ jobs:
       - run: ./ppkg is-symlinked libzip || echo "not symlinked"
       - run: ./ppkg is-outdated  libzip || echo "not outdated"
 
-      - run: ./ppkg info libzip installed-dir
-      - run: ./ppkg info libzip installed-files
-      - run: ./ppkg info libzip installed-manifest
-      - run: ./ppkg info libzip installed-receipt
-      - run: ./ppkg info libzip installed-timestamp-unix
-      - run: ./ppkg info libzip installed-timestamp-rfc-3339
-      - run: ./ppkg info libzip installed-timestamp-iso-8601
-      - run: ./ppkg info libzip symlinked-files
+      - run: ./ppkg info-installed libzip installed-dir
+      - run: ./ppkg info-installed libzip installed-files
+      - run: ./ppkg info-installed libzip builtat
+      - run: ./ppkg info-installed libzip builtat-rfc-3339-utc
+      - run: ./ppkg info-installed libzip builtat-iso-8601-utc
+      - run: ./ppkg info-installed libzip builtat-rfc-3339
+      - run: ./ppkg info-installed libzip builtat-iso-8601
 
       - run: ./ppkg uninstall libzip
 
