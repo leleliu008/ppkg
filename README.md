@@ -21,9 +21,9 @@ This software provides two implementations:
 
 In theroy, these two implementations should have the same behaver except for have bugs.
 
-## Manually build packages using this software via GitHub Actions
+## Using ppkg via GitHub Actions
 
-In this way, you will be liberated from the rut of setting up the build environment.
+In this way, you will be liberated from the rut of setting up the build environmemt.
 
 In this way, all you need to do is just clicking the buttons and waiting for finishing. After finishing, a url refers to a zip archive will be provided to download.
 
@@ -45,10 +45,11 @@ chmod a+x ppkg
 ./ppkg setup
 ```
 
-## Build from C source dependencies
+## Build from C source locally dependencies
 
 |dependency|required?|purpose|
 |----|---------|-------|
+|[GCC](https://gcc.gnu.org/) or [LLVM+clang](https://llvm.org/)|required |for compiling C source code|
 |[cmake](https://cmake.org/)|required |for generating `build.ninja`|
 |[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
 |[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
@@ -62,19 +63,19 @@ chmod a+x ppkg
 |[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
-### Build from C source via [ppkg](https://github.com/leleliu008/ppkg)
+## Build from C source locally via [ppkg](https://github.com/leleliu008/ppkg)
 
 ```bash
 ppkg install ppkg
 ```
 
-### Build from C source via [xcpkg](https://github.com/leleliu008/xcpkg)
+## Build from C source locally via [xcpkg](https://github.com/leleliu008/xcpkg)
 
 ```bash
 xcpkg install ppkg
 ```
 
-### Build from C source using [vcpkg](https://github.com/microsoft/vcpkg)
+## Build from C source locally using [vcpkg](https://github.com/microsoft/vcpkg)
 
 ```bash
 # install g++ curl zip unzip tar git
@@ -95,7 +96,13 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-## Build from C source using your system's default package manager
+## Build from C source locally via [HomeBrew](https://brew.sh/)
+
+```bash
+brew install --HEAD leleliu008/fpliu/ppkg
+```
+
+## Build from C source locally using your system's default package manager
 
 **[Ubuntu](https://ubuntu.com/)**
 
@@ -193,32 +200,6 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-**[macOS](https://www.apple.com/macos/)**
-
-```bash
-brew update
-brew install git cmake pkg-config ninja curl jansson libyaml libgit2 libarchive zlib
-
-git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
-cd ppkg
-
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/opt/openssl@1.1/lib/pkgconfig:/usr/local/opt/curl/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig"
-
-CMAKE_EXE_LINKER_FLAGS='-L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -lssl -liconv -framework CoreFoundation -framework Security'
-CMAKE_FIND_ROOT_PATH="$(brew --prefix openssl@1.1);$(brew --prefix curl);$(brew --prefix libarchive)"
-
-cmake \
-    -S . \
-    -B build.d \
-    -G Ninja \
-    -DCMAKE_INSTALL_PREFIX=./output \
-    -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS" \
-    -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH"
-
-cmake --build   build.d
-cmake --install build.d
-```
-
 **[FreeBSD](https://www.freebsd.org/)** and **[DragonFlyBSD](https://www.dragonflybsd.org/)**
 
 ```bash
@@ -310,16 +291,22 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
 
-- **show basic information about your current running operation system**
-
-    ```bash
-    ppkg sysinfo
-    ```
-
 - **show basic information about this software**
 
     ```bash
     ppkg env
+    ```
+
+- **show build information about this software**
+
+    ```bash
+    ppkg buildinfo
+    ```
+
+- **show basic information about your current running operation system**
+
+    ```bash
+    ppkg sysinfo
     ```
 
 - **integrate `zsh-completion` script**
@@ -338,130 +325,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg update
-    ```
-
-- **search all available packages whose name matches the given regular expression partten**
-
-    ```bash
-    ppkg search curl
-    ppkg search lib
-    ```
-
-- **show information of all available packages**
-
-    ```bash
-    ppkg info @all
-    ```
-
-- **show information of the given available package**
-
-    ```bash
-    ppkg info curl
-    ppkg info curl --yaml
-    ppkg info curl --json
-    ppkg info curl version
-    ppkg info curl license
-    ppkg info curl summary
-    ppkg info curl web-url
-    ppkg info curl git-url
-    ppkg info curl git-sha
-    ppkg info curl git-ref
-    ppkg info curl src-url
-    ppkg info curl src-sha
-    ```
-
-- **show information of the given installed package**
-
-    ```bash
-    ppkg info freebsd-13.2-amd64/curl
-    ppkg info freebsd-13.2-amd64/curl --yaml
-    ppkg info freebsd-13.2-amd64/curl --json
-    ppkg info freebsd-13.2-amd64/curl --path
-    ppkg info freebsd-13.2-amd64/curl version
-    ppkg info freebsd-13.2-amd64/curl license
-    ppkg info freebsd-13.2-amd64/curl summary
-    ppkg info freebsd-13.2-amd64/curl web-url
-    ppkg info freebsd-13.2-amd64/curl git-url
-    ppkg info freebsd-13.2-amd64/curl git-sha
-    ppkg info freebsd-13.2-amd64/curl git-ref
-    ppkg info freebsd-13.2-amd64/curl src-url
-    ppkg info freebsd-13.2-amd64/curl src-sha
-    ppkg info freebsd-13.2-amd64/curl builtat
-    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601
-    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339
-    ppkg info freebsd-13.2-amd64/curl builtat-iso-8601-utc
-    ppkg info freebsd-13.2-amd64/curl builtat-rfc-3339-utc
-    ppkg info freebsd-13.2-amd64/curl installed-dir
-    ppkg info freebsd-13.2-amd64/curl installed-files
-    ```
-
-- **show packages that are depended by the given package**
-
-    ```bash
-    ppkg depends curl
-
-    ppkg depends curl -t dot
-    ppkg depends curl -t box
-    ppkg depends curl -t png
-    ppkg depends curl -t svg
-
-    ppkg depends curl -o curl-dependencies.dot
-    ppkg depends curl -o curl-dependencies.txt
-    ppkg depends curl -o curl-dependencies.png
-    ppkg depends curl -o curl-dependencies.svg
-
-    ppkg depends curl -t dot -o dependencies/
-    ppkg depends curl -t box -o dependencies/
-    ppkg depends curl -t png -o dependencies/
-    ppkg depends curl -t svg -o dependencies/
-    ```
-
-- **download resources of the given package to the local cache**
-
-    ```bash
-    ppkg fetch curl
-    ppkg fetch @all
-
-    ppkg fetch curl -v
-    ppkg fetch @all -v
-    ```
-
-- **install packages**
-
-    ```bash
-    ppkg install curl
-    ppkg install curl bzip2 -v
-    ```
-
-    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this command.
-
-- **reinstall packages**
-
-    ```bash
-    ppkg reinstall curl
-    ppkg reinstall curl bzip2 -v
-    ```
-
-- **uninstall packages**
-
-    ```bash
-    ppkg uninstall curl
-    ppkg uninstall curl bzip2 -v
-    ```
-
-- **upgrade the outdated packages**
-
-    ```bash
-    ppkg upgrade
-    ppkg upgrade curl
-    ppkg upgrade curl bzip2 -v
-    ```
-
-- **upgrade this software**
-
-    ```bash
-    ppkg upgrade-self
-    ppkg upgrade-self -v
     ```
 
 - **list all available formula repositories**
@@ -519,10 +382,125 @@ all relevant directories and files are located under `~/.ppkg` directory.
     uppm formula-repo-conf my_repo --disable
     ```
 
+- **search all available packages whose name matches the given regular expression partten**
+
+    ```bash
+    ppkg search curl
+    ppkg search curl -v
+    ppkg search curl -p macos
+    ```
+
+- **show information of the given available package**
+
+    ```bash
+    ppkg info-available curl
+    ppkg info-available curl --yaml
+    ppkg info-available curl --json
+    ppkg info-available curl version
+    ppkg info-available curl license
+    ppkg info-available curl summary
+    ppkg info-available curl web-url
+    ppkg info-available curl git-url
+    ppkg info-available curl git-sha
+    ppkg info-available curl git-ref
+    ppkg info-available curl src-url
+    ppkg info-available curl src-sha
+    ```
+
+- **show information of the given installed package**
+
+    ```bash
+    ppkg info-installed freebsd-13.2-amd64/curl
+    ppkg info-installed freebsd-13.2-amd64/curl --prefix
+    ppkg info-installed freebsd-13.2-amd64/curl --files
+    ppkg info-installed freebsd-13.2-amd64/curl --yaml
+    ppkg info-installed freebsd-13.2-amd64/curl --json
+    ppkg info-installed freebsd-13.2-amd64/curl version
+    ppkg info-installed freebsd-13.2-amd64/curl license
+    ppkg info-installed freebsd-13.2-amd64/curl summary
+    ppkg info-installed freebsd-13.2-amd64/curl web-url
+    ppkg info-installed freebsd-13.2-amd64/curl git-url
+    ppkg info-installed freebsd-13.2-amd64/curl git-sha
+    ppkg info-installed freebsd-13.2-amd64/curl git-ref
+    ppkg info-installed freebsd-13.2-amd64/curl src-url
+    ppkg info-installed freebsd-13.2-amd64/curl src-sha
+    ppkg info-installed freebsd-13.2-amd64/curl builtat
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339-utc
+    ```
+
+- **show packages that are depended by the given package**
+
+    ```bash
+    ppkg depends curl
+
+    ppkg depends curl -t dot
+    ppkg depends curl -t box
+    ppkg depends curl -t png
+    ppkg depends curl -t svg
+
+    ppkg depends curl -o curl-dependencies.dot
+    ppkg depends curl -o curl-dependencies.txt
+    ppkg depends curl -o curl-dependencies.png
+    ppkg depends curl -o curl-dependencies.svg
+
+    ppkg depends curl -t dot -o dependencies/
+    ppkg depends curl -t box -o dependencies/
+    ppkg depends curl -t png -o dependencies/
+    ppkg depends curl -t svg -o dependencies/
+    ```
+
+- **download resources of the given package to the local cache**
+
+    ```bash
+    ppkg fetch curl
+    ppkg fetch curl -v
+    ```
+
+- **install the given packages**
+
+    ```bash
+    ppkg install curl
+    ppkg install curl bzip2 -v
+    ```
+
+    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this command.
+
+- **reinstall the given packages**
+
+    ```bash
+    ppkg reinstall curl
+    ppkg reinstall curl bzip2 -v
+    ```
+
+- **uninstall the given packages**
+
+    ```bash
+    ppkg uninstall curl
+    ppkg uninstall curl bzip2 -v
+    ```
+
+- **upgrade the outdated packages**
+
+    ```bash
+    ppkg upgrade
+    ppkg upgrade curl
+    ppkg upgrade curl bzip2 -v
+    ```
+
+- **upgrade this software**
+
+    ```bash
+    ppkg upgrade-self
+    ppkg upgrade-self -v
+    ```
+
 - **check if the given package is available**
 
     ```bash
-    ppkg is-available curl
+    ppkg is-available curl -p macos
     ```
 
 - **check if the given package is installed**
@@ -541,18 +519,24 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     ```bash
     ppkg ls-available
+    ppkg ls-available -v
+    ppkg ls-available -p macos
     ```
 
 - **list all installed packages**
 
     ```bash
     ppkg ls-installed
+    ppkg ls-installed -v
+    ppkg ls-installed --target=linux-musl-x86_64
     ```
 
 - **list all outdated packages**
 
     ```bash
     ppkg ls-outdated
+    ppkg ls-outdated -v
+    ppkg ls-outdated --target=linux-musl-x86_64
     ```
 
 - **list installed files of the given installed package in a tree-like format**
@@ -721,7 +705,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
 |`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
-|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
+|`wfetch`|`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-path=PATH`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] --output-name=NAME`|
 
 **commands that can be used out of the box in `install` block only:**
 
