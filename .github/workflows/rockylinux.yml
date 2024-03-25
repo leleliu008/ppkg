@@ -24,7 +24,7 @@ jobs:
           command -v curl > /dev/null || dnf -y install curl
           #https://bugs.launchpad.net/tripleo/+bug/1953156
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
 
       - run: ./ppkg
@@ -48,7 +48,6 @@ jobs:
       - run: ./ppkg search lib
       - run: ./ppkg search zip
 
-      - run: ./ppkg info-available @all
       - run: ./ppkg info-available libzip
       - run: ./ppkg info-available libzip --yaml
       - run: ./ppkg info-available libzip --json

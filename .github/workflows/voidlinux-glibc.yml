@@ -21,7 +21,7 @@ jobs:
       - run: xbps-install -S
       - run: xbps-install -Syu curl xz gcc
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: ./ppkg --help
       - run: ./ppkg --version

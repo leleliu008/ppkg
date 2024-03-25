@@ -16,7 +16,7 @@ jobs:
       - run: pacman -Syy --noconfirm
       - run: pacman -S   --noconfirm curl gcc
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: ./ppkg --help
       - run: ./ppkg --version
