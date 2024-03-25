@@ -623,11 +623,23 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 - **PPKG_DEFAULT_TARGET**
 
-    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrieve your current running os's information.
+    Some ACTIONs of ppkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
 
-    `<TARGET>` has the form `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+    **PACKAGE-SPEC** : a formatted string that has form: `<TARGET-PLATFORM>/<PACKAGE-NAME>`, represents an installed package.
 
-    examples:
+    **PACKAGE-NAME** : should match the regular expression pattern `^[A-Za-z0-9+-_.@]{1,50}$`
+
+    **TARGET-PLATFORM** : a formatted string that has form: `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+
+    **TARGET-PLATFORM-ARCH** : indicates which cpu arch was built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`
+
+    **TARGET-PLATFORM-NAME** : indicates which platform name was built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`
+
+    **TARGET-PLATFORM-VERSION** : indicates which platform version was built with.
+
+    To simplify the usage, you are allowed to omit `<TARGET-PLATFORM>/`. If `<TARGET-PLATFORM>/` is omitted, environment variable `PPKG_DEFAULT_TARGET` would be checked, if this environment variable is not set, then your current running os target will be used as the default.
+
+    **Example**:
 
     ```bash
     export PPKG_DEFAULT_TARGET=linux-glibc-x86_64
