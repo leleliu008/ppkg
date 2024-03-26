@@ -7959,6 +7959,7 @@ export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 if [ -d "\$HOME/.uppm/installed/git/libexec/git-core" ] ; then
     export GIT_EXEC_PATH="\$HOME/.uppm/installed/git/libexec/git-core"
     export GIT_TEMPLATE_DIR="\$HOME/.uppm/installed/git/share/git-core/templates"
+    export GIT_CONFIG_NOSYSTEM=1
 fi
 EOF
 }
@@ -8217,7 +8218,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.25
+    PPKG_VERSION=0.3.26
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8249,6 +8250,8 @@ main() {
     if [ -f "$PPKG_CORE_DIR/cacert.pem" ] ; then
         export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
     fi
+
+    unset UPPM_HOME
 
     #########################################################################################
 
