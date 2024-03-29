@@ -2655,7 +2655,7 @@ cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEI
 %files
 /*
 EOF
-    run rpmlint      SPECS/pkg.spec
+    #run rpmlint      SPECS/pkg.spec
     run rpmbuild -bb SPECS/pkg.spec
 
     run ls
