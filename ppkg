@@ -2656,7 +2656,7 @@ cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEI
 /*
 EOF
     #run rpmlint      SPECS/pkg.spec
-    run rpmbuild -bb SPECS/pkg.spec
+    run rpmbuild --define "_topdir $PWD" -bb SPECS/pkg.spec
 
     run ls
 
@@ -2740,14 +2740,16 @@ check() {
 }
 
 package() {
-    install -d "\$pkgdir"
-    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\$pkgdir"
+    install -d "\$pkgdir/usr"
+    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\$pkgdir/usr/"
 }
 EOF
 
     run abuild -F
 
     TEPPUT_FILEPATH="$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
+
+    run bsdtar tf "$TEPPUT_FILEPATH"
 }
 
 # }}}
