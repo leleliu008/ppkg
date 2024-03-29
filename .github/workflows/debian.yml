@@ -55,7 +55,10 @@ jobs:
 
       - run: ./ppkg tree libzip
 
+      - run: ./ppkg pack libzip -t tar.gz
       - run: ./ppkg pack libzip -t tar.xz
+      - run: ./ppkg pack libzip -t tar.bz2
+      - run: ./ppkg pack libzip -t zip
 
       - run: ./ppkg export.deb libzip
       - run: ./ppkg export.deb libzip -o ~/
