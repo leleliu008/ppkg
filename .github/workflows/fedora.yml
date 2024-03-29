@@ -48,7 +48,13 @@ jobs:
 
       - run: ./ppkg tree libzip
 
+      - run: ./ppkg pack libzip
+      - run: ./ppkg pack libzip -t tar.gz
+      - run: ./ppkg pack libzip -t tar.lz
       - run: ./ppkg pack libzip -t tar.xz
+      - run: ./ppkg pack libzip -t tar.bz2
+      - run: ./ppkg pack libzip -t zip
+
 
       - run: dnf -y install rpmdevtools rpmlint
 

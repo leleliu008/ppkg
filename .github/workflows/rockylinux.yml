@@ -62,8 +62,6 @@ jobs:
       - run: ./ppkg info-available libzip src-sha
 
 
-
-
       - run: ./ppkg depends libzip
       - run: ./ppkg depends libzip -t dot
       - run: ./ppkg depends libzip -t box
@@ -82,8 +80,6 @@ jobs:
       - run: ./ppkg tree libzip
 
 
-
-
       - run: ./ppkg info-installed libzip installed-dir
       - run: ./ppkg info-installed libzip installed-files
       - run: ./ppkg info-available libzip version
@@ -100,6 +96,15 @@ jobs:
       - run: ./ppkg pack libzip -t tar.xz
       - run: ./ppkg pack libzip -t tar.bz2
       - run: ./ppkg pack libzip -t zip
+
+
+      - run: dnf -y install rpmdevtools rpmlint
+
+      - run: ./ppkg export.rpm libzip -o ~/
+      - run: ./ppkg export.rpm libzip -o a/b.rpm
+
+      - run: rpm -i a/b.rpm
+      - run: rpm -ql libzip
 
 
       - run: |

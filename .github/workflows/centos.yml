@@ -57,8 +57,19 @@ jobs:
 
       - run: ./ppkg install libzip
 
+
       - run: ./ppkg tree libzip
+
       - run: ./ppkg pack libzip -t tar.xz
+
+      - run: dnf -y install rpmdevtools rpmlint
+
+      - run: ./ppkg export.rpm libzip -o ~/
+      - run: ./ppkg export.rpm libzip -o a/b.rpm
+
+      - run: rpm -i a/b.rpm
+      - run: rpm -ql libzip
+
 
       - run: ./ppkg formula-repo-list
 
