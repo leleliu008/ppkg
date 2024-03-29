@@ -62,6 +62,7 @@ jobs:
       - run: ./ppkg export.deb libzip -o a/b.deb
 
       - run: dpkg -i a/b.deb
+      - run: dpkg -L libzip
 
       - run: ./ppkg formula-repo-list
 
