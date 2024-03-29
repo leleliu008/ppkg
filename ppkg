@@ -2621,6 +2621,7 @@ EOF
 }
 
 __export_the_given_installed_package_as_rpm() {
+    # https://www.redhat.com/sysadmin/create-rpm-package
     run install -d BUILD
     run install -d BUILDROOT
     run install -d RPMS
