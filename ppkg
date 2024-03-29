@@ -2629,6 +2629,9 @@ __export_the_given_installed_package_as_rpm() {
     run install -d SPECS
     run install -d SRPMS
 
+    run touch main.c
+    run bsdtar cvaf SOURCES/src.tar.gz main.c
+
     run tee SPECS/pkg.spec <<EOF
 Name:           $RECEIPT_PACKAGE_PKGNAME
 Version:        $RECEIPT_PACKAGE_VERSION
@@ -2714,6 +2717,7 @@ __export_the_given_installed_package_as_apk() {
     run install -d aports/community/pkg
     run cd         aports/community/pkg
     run tee APKBUILD <<EOF
+# Maintainer: leleliu008 <leleliu008@gmail.com>
 pkgname=$RECEIPT_PACKAGE_PKGNAME
 pkgver=$RECEIPT_PACKAGE_VERSION
 pkgrel=0
@@ -2744,7 +2748,9 @@ EOF
 
     run cd -
 
-    TEPPUT_FILEPATH='packages/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk'
+    run ls
+
+    TEPPUT_FILEPATH="packages/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
 }
 
 # }}}
