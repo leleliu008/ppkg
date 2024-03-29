@@ -2700,8 +2700,8 @@ __export_the_given_installed_package_as_apk() {
     # https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package
     # https://wiki.alpinelinux.org/wiki/APKBUILD_Reference
 
-    run install aports/community/pkg
-    run tee     aports/community/pkg/APKBUILD <<EOF
+    run install -d aports/community/pkg
+    run tee        aports/community/pkg/APKBUILD <<EOF
 pkgname=$RECEIPT_PACKAGE_PKGNAME
 pkgver=$RECEIPT_PACKAGE_VERSION
 pkgrel=0

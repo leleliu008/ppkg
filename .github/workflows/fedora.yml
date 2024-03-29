@@ -50,6 +50,8 @@ jobs:
 
       - run: ./ppkg pack libzip -t tar.xz
 
+      - run: dnf install rpmdevtools
+
       - run: ./ppkg export.rpm libzip -o ~/
       - run: ./ppkg export.rpm libzip -o a/b.rpm
 
