@@ -62,7 +62,11 @@ jobs:
 
       - run: ./ppkg pack libzip -t tar.xz
 
+      - run: yum -y install rpmdevtools rpmlint
+        if: ${{ matrix.tag == 7 }}
+
       - run: dnf -y install rpmdevtools rpmlint
+        if: ${{ matrix.tag == 8 }}
 
       - run: ./ppkg export.rpm libzip -o ~/
       - run: ./ppkg export.rpm libzip -o a/b.rpm

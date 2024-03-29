@@ -51,7 +51,7 @@ jobs:
 
       - run: ./ppkg pack libzip -t tar.xz
 
-      - run: dnf -y install rpmdevtools rpmlint
+      - run: zypper install -y rpmdevtools rpmlint
 
       - run: ./ppkg export.rpm libzip -o ~/
       - run: ./ppkg export.rpm libzip -o a/b.rpm

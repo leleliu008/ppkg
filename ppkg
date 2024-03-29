@@ -2622,6 +2622,7 @@ EOF
 
 __export_the_given_installed_package_as_rpm() {
     # https://www.redhat.com/sysadmin/create-rpm-package
+    # https://rpm-packaging-guide.github.io/
     run install -d BUILD
     run install -d BUILDROOT
     run install -d RPMS
@@ -2650,11 +2651,11 @@ $RECEIPT_PACKAGE_SUMMARY
 %build
 
 %install
-install -d %{buildroot}/usr
-cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* %{buildroot}/usr/
+install -d %{buildroot}/usr/local
+cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* %{buildroot}/usr/local/
 
 %files
-/*
+/usr/local/*
 EOF
     #run rpmlint      SPECS/pkg.spec
     run rpmbuild --define "'_topdir $PWD'" -bb SPECS/pkg.spec
