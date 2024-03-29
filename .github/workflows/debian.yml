@@ -57,6 +57,10 @@ jobs:
 
       - run: ./ppkg pack libzip -t tar.xz
 
+      - run: ./ppkg export.deb libzip
+      - run: ./ppkg export.deb libzip -o ~/
+      - run: ./ppkg export.deb libzip -o a/b.deb
+
       - run: ./ppkg formula-repo-list
 
       - run: ./ppkg ls-available

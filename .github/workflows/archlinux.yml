@@ -42,7 +42,12 @@ jobs:
       - run: ./ppkg install libzip
 
       - run: ./ppkg tree libzip
+
       - run: ./ppkg pack libzip -t tar.xz
+
+      - run: ./ppkg export.pkg libzip
+      - run: ./ppkg export.pkg libzip -o ~/
+      - run: ./ppkg export.pkg libzip -o a/b.pkg
 
       - run: ./ppkg formula-repo-list
 

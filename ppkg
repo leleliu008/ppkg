@@ -2467,6 +2467,276 @@ __fetch_resources_of_the_given_package() {
 
 # }}}
 ##############################################################################
+# {{{ ppkg export.<TYPE>
+
+# examples:
+# __export_the_given_installed_package <CMD> <PACKAGE-NAME> [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __export_the_given_installed_package          autoconf
+  __export_the_given_installed_package() {
+    unset OUTPUT_PATH
+    unset OUTPUT_TYPE
+
+    case $1 in
+        export.deb)
+            OUTPUT_TYPE=deb
+            ;;
+        export.rpm)
+            OUTPUT_TYPE=rpm
+            ;;
+        export.pkg)
+            OUTPUT_TYPE=pkg
+            ;;
+        export.apk)
+            OUTPUT_TYPE=apk
+            ;;
+        '') abort 1 "$_0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , export.<OUTPUT-TYPE> is unspecified." ;;
+        *)  abort 1 "$_0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , unsupported type: $1, <OUTPUT-TYPE> must be any one of deb|rpm|pkg|apk"
+    esac
+
+    __load_receipt_of_the_given_package "$2"
+
+    if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" != linux ] ; then
+        abort 1 "package $PACKAGE_SPEC was not built for Linux."
+    fi
+
+    shift 2
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --keep-session-dir)
+                KEEP_SESSION_DIR=1
+                ;;
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "$_0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
+                else
+                    OUTPUT_PATH="$1"
+                fi
+                ;;
+            *)  abort 1 "$_0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+        esac
+        shift
+    done
+
+    ###########################################################################################
+
+    case $OUTPUT_PATH in
+        '')
+            OUTPUT_DIR="$PWD"
+            OUTPUT_PATH="$OUTPUT_DIR/"
+            ;;
+        .|./)
+            OUTPUT_DIR="$PWD"
+            OUTPUT_PATH="$OUTPUT_DIR/"
+            ;;
+        ..|../)
+            OUTPUT_DIR="$PWD/.."
+            OUTPUT_PATH="$OUTPUT_DIR/"
+            ;;
+        /*/)
+            OUTPUT_DIR="$OUTPUT_PATH"
+            ;;
+        */) OUTPUT_PATH="$PWD/$OUTPUT_PATH"
+            OUTPUT_DIR="$OUTPUT_PATH"
+            ;;
+        /*) OUTPUT_DIR="$(dirname "$OUTPUT_PATH")"
+            ;;
+        *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
+            OUTPUT_PATH="$PWD/$OUTPUT_PATH"
+    esac
+
+    ###########################################################################################
+
+    SESSION_DIR="$PPKG_HOME/run/$$"
+
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    unset TEPPUT_FILEPATH
+
+    eval "__export_the_given_installed_package_as_$OUTPUT_TYPE"
+
+    run du -sh "$TEPPUT_FILEPATH"
+
+    if [ !          -d "$OUTPUT_DIR" ] ; then
+        run install -d "$OUTPUT_DIR"
+    fi
+
+    run mv "$TEPPUT_FILEPATH" "$OUTPUT_PATH"
+
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+        echo
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
+    else
+        run rm -rf "$SESSION_DIR"
+    fi
+}
+
+__export_the_given_installed_package_as_deb() {
+    run install -d pkg/DEBIAN
+
+    run cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" pkg/usr
+    run rm -rf pkg/usr/.ppkg
+
+    SIZE="$(du -sk pkg | cut -f1)"
+
+    case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
+        x86_64) ARCHITECTURE='amd64' ;;
+        x86)    ARCHITECTURE='i386'  ;;
+        *)      ARCHITECTURE="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+    esac
+
+    case $RECEIPT_PACKAGE_GIT_URL in
+        https://github.com/*)
+            ISSUE_TRACKER_URL="$RECEIPT_PACKAGE_GIT_URL/issues" ;;
+        *)  ISSUE_TRACKER_URL="$RECEIPT_PACKAGE_WEB_URL"
+    esac
+
+    # https://manpages.debian.org/buster/dpkg-dev/deb-control.5.en.html
+    run tee pkg/DEBIAN/control <<EOF
+Package: $RECEIPT_PACKAGE_PKGNAME
+Version: $RECEIPT_PACKAGE_VERSION
+Section: custom
+Priority: optional
+Essential: no
+Bugs: $ISSUE_TRACKER_URL
+Homepage: $RECEIPT_PACKAGE_WEB_URL
+Maintainer: $RECEIPT_PACKAGE_WEB_URL
+Description: $RECEIPT_PACKAGE_SUMMARY
+Architecture: $ARCHITECTURE
+Installed-Size: $SIZE
+EOF
+
+    # https://manpages.debian.org/buster/dpkg/dpkg-deb.1.en.html
+    run dpkg-deb --root-owner-group --build pkg pkg.deb
+    run dpkg-deb --contents pkg.deb
+    run dpkg-deb --show pkg.deb
+    run dpkg-deb --info pkg.deb
+
+    TEPPUT_FILEPATH="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH.deb"
+
+    run mv pkg.deb "$TEPPUT_FILEPATH"
+}
+
+__export_the_given_installed_package_as_rpm() {
+    run rpmdev-setuptree
+    run tee SPECS/pkg.spec <<EOF
+Name:           $RECEIPT_PACKAGE_PKGNAME
+Version:        $RECEIPT_PACKAGE_VERSION
+Release:        1%{?dist}
+Summary:        $RECEIPT_PACKAGE_SUMMARY
+BuildArch:      $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
+
+License:        $RECEIPT_PACKAGE_LICENSE
+Source0:        %{name}-%{version}.tar.gz
+
+%description
+$RECEIPT_PACKAGE_SUMMARY
+
+%prep
+
+%build
+
+%install
+cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* %{buildroot}/
+
+%files
+/*
+EOF
+    run rpmlint      SPECS/pkg.spec
+    run rpmbuild -bb SPECS/pkg.spec
+
+    TEPPUT_FILEPATH='*.rpm'
+}
+
+__export_the_given_installed_package_as_pkg() {
+    # https://wiki.archlinux.org/title/PKGBUILD
+    run tee PKGBUILD <<EOF
+pkgname=('$RECEIPT_PACKAGE_PKGNAME')
+pkgver='$RECEIPT_PACKAGE_VERSION'
+pkgrel=1
+pkgdesc="$RECEIPT_PACKAGE_SUMMARY"
+arch=('$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH')
+license=('$RECEIPT_PACKAGE_LICENSE')
+url='$RECEIPT_PACKAGE_WEB_URL'
+makedepends=()
+source=(https://github.com/leleliu008/androidx/releases/download/v0.1.0/androidx-0.1.0.tar.gz)
+sha256sums=('504601758154dd1bbf643ffe80ca49711cd5e76231ba1970a1fd88109e06fc52')
+
+build() {
+    :
+}
+
+package() {
+    install -d "\${pkgdir}/usr/"
+    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\${pkgdir}/usr/"
+}
+EOF
+
+    # https://wiki.archlinux.org/title/Makepkg
+
+    unset CARCH
+    unset CHOST
+
+    unset LOGDEST
+    unset PKGDEST
+    unset SRCDEST
+    unset SRCPKGDEST
+    unset BUILDDIR
+
+    export SRCEXT=".src.tar.gz"
+    export PKGEXT=".pkg.tar.xz"
+
+    export PACKAGER="leleliu008 <leleliu008@gmail.com>"
+
+    run makepkg --nodeps --noextract --noprepare --nocheck
+
+    TEPPUT_FILEPATH='*.pkg.tar.xz'
+}
+
+__export_the_given_installed_package_as_apk() {
+    # https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package
+    # https://wiki.alpinelinux.org/wiki/APKBUILD_Reference
+
+    run install aports/community/pkg
+    run tee     aports/community/pkg/APKBUILD <<EOF
+pkgname=$RECEIPT_PACKAGE_PKGNAME
+pkgver=$RECEIPT_PACKAGE_VERSION
+pkgrel=0
+pkgdesc="$RECEIPT_PACKAGE_SUMMARY"
+url="$RECEIPT_PACKAGE_WEB_URL"
+arch="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+license="$RECEIPT_PACKAGE_LICENSE"
+source="https://github.com/leleliu008/test/releases/download/2023.10.08/ppkg-0.1000.2-linux-x86_64.tar.xz"
+sha512sums="52206434938da1d5ead71145cc8fef1439cc567c631c7448006e835a073a8d06ef4c8f62f635927390fcf9dd4a07aadc73a29087854af4468fe914cd0b270591  ppkg-0.1000.2-linux-x86_64.tar.xz"
+builddir="\$srcdir/build.d"
+
+build() {
+    :
+}
+
+check() {
+    :
+}
+
+package() {
+    install -d "\$pkgdir"
+    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\$pkgdir"
+    ls "\$pkgdir"
+}
+EOF
+
+    run export APORTSDIR="$PWD/aports"
+
+    run abuild -F
+
+    TEPPUT_FILEPATH='packages/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk'
+}
+
+# }}}
+##############################################################################
 # {{{ configure
 
 configure_only() {
@@ -8202,6 +8472,24 @@ ${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [
     If -o <OUTPUT-PATH> option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
 
     If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
+
+${COLOR_GREEN}ppkg export.<OUTPUT-TYPE> <PACKAGE-SPEC> [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
+    export the given installed package as another package format.
+
+    <OUTPUT-TYPE> can be any one of deb, rpm, pkg, apk
+
+    <OUTPUT-PATH> can be either the filepath or directory which indicates where the final file would be written to.
+
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
+
+    If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+
+    If -o <OUTPUT-PATH> option is unspecified, the final file would be written to current directory.
+
+    export.deb command only can be run on Debian GNU Linux and it's derivatives.
+    export.rpm command only can be run on RHEL/CentOS/Fedora/openSUSE Linux and their derivatives.
+    export.pkg command only can be run on Arch Linux and it's derivative.
+    export.apk command only can be run on Alpine Linux.
 "
 }
 
@@ -8218,7 +8506,7 @@ main() {
 
     PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    PPKG_VERSION=0.3.26
+    PPKG_VERSION=0.4.1
 
     PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
     PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8455,6 +8743,8 @@ EOF
         logs) shift; __logs_the_given_installed_package "$@" ;;
         pack) shift; __pack_the_given_installed_package "$@" ;;
         tree) shift; __tree_the_given_installed_package "$@" ;;
+
+        export.*)  __export_the_given_installed_package "$@" ;;
 
         *)  abort 1 "unrecognized argument: $1"
     esac

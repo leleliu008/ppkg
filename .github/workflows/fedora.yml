@@ -47,7 +47,11 @@ jobs:
       - run: ./ppkg install libzip
 
       - run: ./ppkg tree libzip
+
       - run: ./ppkg pack libzip -t tar.xz
+
+      - run: ./ppkg export.rpm libzip -o ~/
+      - run: ./ppkg export.rpm libzip -o a/b.rpm
 
       - run: ./ppkg formula-repo-list
 

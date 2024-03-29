@@ -566,6 +566,30 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg pack curl -o a/xx.zip
     ```
 
+- **export the given installed package as anthoer package format (e.g. deb, rpm, pkg, apk, etc)**
+
+    ```bash
+    ppkg export.deb curl
+    ppkg export.deb curl -o .
+    ppkg export.deb curl -o a/
+    ppkg export.deb curl -o curl-8.1.2-linux-x86_64.deb
+
+    ppkg export.rpm curl
+    ppkg export.rpm curl -o .
+    ppkg export.rpm curl -o a/
+    ppkg export.rpm curl -o curl-8.1.2-linux-x86_64.rpm
+
+    ppkg export.pkg curl
+    ppkg export.pkg curl -o .
+    ppkg export.pkg curl -o a/
+    ppkg export.pkg curl -o curl-8.1.2-linux-x86_64.pkg.tar.xz
+
+    ppkg export.apk curl
+    ppkg export.apk curl -o .
+    ppkg export.apk curl -o a/
+    ppkg export.apk curl -o curl-8.1.2-linux-x86_64.apk
+    ```
+
 - **delete the unused cached files**
 
     ```bash

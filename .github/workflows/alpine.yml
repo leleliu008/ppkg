@@ -51,17 +51,11 @@ jobs:
       - run: ./ppkg info-available libzip src-url
       - run: ./ppkg info-available libzip src-sha
 
-
-
-
       - run: ./ppkg depends libzip
 
       - run: ./ppkg install libzip
 
       - run: ./ppkg tree libzip
-
-
-
 
       - run: ./ppkg info-installed libzip installed-dir
       - run: ./ppkg info-installed libzip installed-files
@@ -72,7 +66,6 @@ jobs:
       - run: ./ppkg info-installed libzip builtat-iso-8601-utc
       - run: ./ppkg info-installed libzip builtat-rfc-3339-utc
 
-
       - run: ./ppkg pack libzip
       - run: ./ppkg pack libzip -t tar.gz
       - run: ./ppkg pack libzip -t tar.lz
@@ -80,10 +73,12 @@ jobs:
       - run: ./ppkg pack libzip -t tar.bz2
       - run: ./ppkg pack libzip -t zip
 
+      - run: ./ppkg export.apk libzip
+      - run: ./ppkg export.apk libzip -o ~/
+      - run: ./ppkg export.apk libzip -o a/b.apk
 
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
-
 
       - run: ./ppkg ls-available
       - run: ./ppkg ls-installed
