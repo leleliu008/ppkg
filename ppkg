@@ -2640,7 +2640,7 @@ Summary:        $RECEIPT_PACKAGE_SUMMARY
 BuildArch:      $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
 
 License:        $RECEIPT_PACKAGE_LICENSE
-Source0:        %{name}-%{version}.tar.gz
+Source0:        src.tar.gz
 
 %description
 $RECEIPT_PACKAGE_SUMMARY
@@ -2714,6 +2714,8 @@ __export_the_given_installed_package_as_apk() {
 
     run export APORTSDIR="$PWD/aports"
 
+    run export REPODEST="$PWD/packages"
+
     run install -d aports/community/pkg
     run cd         aports/community/pkg
     run tee APKBUILD <<EOF
@@ -2740,17 +2742,12 @@ check() {
 package() {
     install -d "\$pkgdir"
     cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\$pkgdir"
-    ls "\$pkgdir"
 }
 EOF
 
     run abuild -F
 
-    run cd -
-
-    run ls
-
-    TEPPUT_FILEPATH="packages/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
+    TEPPUT_FILEPATH="$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
 }
 
 # }}}
