@@ -2621,7 +2621,13 @@ EOF
 }
 
 __export_the_given_installed_package_as_rpm() {
-    run rpmdev-setuptree
+    run install -d BUILD
+    run install -d BUILDROOT
+    run install -d RPMS
+    run install -d SOURCES
+    run install -d SPECS
+    run install -d SRPMS
+
     run tee SPECS/pkg.spec <<EOF
 Name:           $RECEIPT_PACKAGE_PKGNAME
 Version:        $RECEIPT_PACKAGE_VERSION
@@ -2647,6 +2653,8 @@ cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEI
 EOF
     run rpmlint      SPECS/pkg.spec
     run rpmbuild -bb SPECS/pkg.spec
+
+    run ls
 
     TEPPUT_FILEPATH='*.rpm'
 }
@@ -2700,8 +2708,11 @@ __export_the_given_installed_package_as_apk() {
     # https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package
     # https://wiki.alpinelinux.org/wiki/APKBUILD_Reference
 
+    run export APORTSDIR="$PWD/aports"
+
     run install -d aports/community/pkg
-    run tee        aports/community/pkg/APKBUILD <<EOF
+    run cd         aports/community/pkg
+    run tee APKBUILD <<EOF
 pkgname=$RECEIPT_PACKAGE_PKGNAME
 pkgver=$RECEIPT_PACKAGE_VERSION
 pkgrel=0
@@ -2728,9 +2739,9 @@ package() {
 }
 EOF
 
-    run export APORTSDIR="$PWD/aports"
-
     run abuild -F
+
+    run cd -
 
     TEPPUT_FILEPATH='packages/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk'
 }
