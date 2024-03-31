@@ -711,6 +711,8 @@ a uppm formula's file content only has one level mapping and shall has following
 |`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
 |`fix-opt`|optional|options to be passed to `patch` command. default value is `-p1`.|
 ||||
+|`patches`|optional|multiple lines of `fix-sha\|fix-url` or `fix-sha\|fix-url\|fix-uri\|fix-opt`.|
+||||
 |`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
 |`res-uri`|optional|the mirror of `res-url`.|
 |`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|

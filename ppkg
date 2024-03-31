@@ -937,6 +937,8 @@ filetype_from_url() {
     # whether to support to create fully statically linked executables
     unset PACKAGE_SFSLINK
 
+    unset PACKAGE_PATCHES
+
     #########################################################################################
 
     if [ -z "$2" ] ; then
@@ -1003,6 +1005,8 @@ filetype_from_url() {
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
     #########################################################################################
 
     if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD" ] ; then
@@ -1051,10 +1055,6 @@ filetype_from_url() {
         abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
-    if [ -z "$PACKAGE_FIX_OPT" ] ; then
-        PACKAGE_FIX_OPT='-p1'
-    fi
-
     #########################################################################################
 
     unset PACKAGE_NEED_CURL
@@ -1062,23 +1062,20 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_SRC_URL" ] ; then
-        if [ -z "$PACKAGE_GIT_URL" ] ; then
-            abort 1 "neither src-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
-        fi
-
-        PACKAGE_SRC_FILETYPE=.git
-
-        if [ -z "$PACKAGE_VERSION" ] ; then
-            PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
-        fi
-
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
-    else
+    if [ -n "$PACKAGE_SRC_URL" ] ; then
         case $PACKAGE_SRC_URL in
             dir://*)
                 PACKAGE_SRC_FILETYPE=.dir
                 PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+
+                if [ -z "$PACKAGE_VERSION" ] ; then
+                    PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+                fi
+                ;;
+            file://*)
+                PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c8-)
+                PACKAGE_SRC_FILENAME="$(basename "$PACKAGE_SRC_FILEPATH")"
+                PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_FILENAME")"
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
@@ -1107,6 +1104,16 @@ filetype_from_url() {
                         PACKAGE_NEED_BTAR=1
                 esac
         esac
+    else
+        if [ -n "$PACKAGE_GIT_URL" ] ; then
+            PACKAGE_SRC_FILETYPE=.git
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            fi
+
+            PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
+        fi
     fi
 
     #########################################################################################
@@ -2125,14 +2132,19 @@ __fetch_resources_of_the_given_package() {
 
     __load_formula_of_the_given_package "$1"
 
-    if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
-        note "$PACKAGE_SRC_URL is local path, no need to fetch."
-        return 0
-    fi
-
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    if [ -z "$PACKAGE_SRC_URL" ] ; then
+    if [ -n "$PACKAGE_SRC_URL" ] ; then
+        case $PACKAGE_SRC_URL in
+            dir://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                return 0
+                ;;
+            file://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                return 0
+                ;;
+            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+        esac
+    elif [ -n "$PACKAGE_GIT_URL" ] ; then
         unset GIT_FETCH_URL
 
         if [ -z "$PPKG_URL_TRANSFORM" ] ; then
@@ -2168,6 +2180,8 @@ __fetch_resources_of_the_given_package() {
             GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
         fi
 
+        SESSION_DIR="$PPKG_HOME/run/$$"
+
         run rm -rf     "$SESSION_DIR"
         run install -d "$SESSION_DIR"
         run cd         "$SESSION_DIR"
@@ -2176,8 +2190,8 @@ __fetch_resources_of_the_given_package() {
         run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
         run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
         run git submodule update --init
-    else
-        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+        rm -rf "$SESSION_DIR"
     fi
 
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
@@ -2186,10 +2200,6 @@ __fetch_resources_of_the_given_package() {
 
     if [ -n    "$PACKAGE_RES_URL" ] ; then
         wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
-    fi
-
-    if [    -d "$SESSION_DIR" ] ; then
-        rm -rf "$SESSION_DIR"
     fi
 }
 
@@ -5785,71 +5795,78 @@ EOF
 
     step "fetch source/patches/resources from server"
 
-    if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
-        note "$PACKAGE_SRC_URL is local path, no need to fetch."
-    elif [ -z "$PACKAGE_SRC_URL" ] ; then
-        unset GIT_FETCH_URL
+    case $PACKAGE_SRC_URL in
+        '')
+            if [ -n "$PACKAGE_SRC_URL" ] ; then
+                unset GIT_FETCH_URL
 
-        if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-            GIT_FETCH_URL="$PACKAGE_GIT_URL"
-        else
-            GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-        fi
+                if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+                    GIT_FETCH_URL="$PACKAGE_GIT_URL"
+                else
+                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+                fi
 
-        if [ -z "$PACKAGE_GIT_SHA" ] ; then
-            if [ -z "$PACKAGE_GIT_REF" ] ; then
-                GIT_BRANCH_NAME=master
-                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-            else
-                GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                    if [ -z "$PACKAGE_GIT_REF" ] ; then
+                        GIT_BRANCH_NAME=master
+                        GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                    else
+                        GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                        GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                    fi
+                else
+                    GIT_BRANCH_NAME=master
+                    GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+                fi
+
+                if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                    PACKAGE_GIT_NTH=1
+                fi
+
+                if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+                    if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                        GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                    else
+                        GIT_FETCH_EXTRA_OPTIONS=
+                    fi
+                else
+                    GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+                fi
+
+                run cd "$PACKAGE_INSTALLING_SRC_DIR"
+                run git -c init.defaultBranch=master init
+                run git remote add origin "$GIT_FETCH_URL"
+                run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+                run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+
+                GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
+
+                if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
+                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                        for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
+                        do
+                            GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
+
+                            for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
+                            do
+                                GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+                                sed_in_place "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
+                            done
+                        done
+                    fi
+
+                    run git submodule update --init
+                fi
             fi
-        else
-            GIT_BRANCH_NAME=master
-            GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-        fi
-
-        if [ -z "$PACKAGE_GIT_NTH" ] ; then
-            PACKAGE_GIT_NTH=1
-        fi
-
-        if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-            if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-            else
-                GIT_FETCH_EXTRA_OPTIONS=
-            fi
-        else
-            GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-        fi
-
-        run cd "$PACKAGE_INSTALLING_SRC_DIR"
-        run git -c init.defaultBranch=master init
-        run git remote add origin "$GIT_FETCH_URL"
-        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-        run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-
-        GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
-
-        if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
-            if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
-                do
-                    GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
-
-                    for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
-                    do
-                        GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
-                        sed_in_place "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
-                    done
-                done
-            fi
-
-            run git submodule update --init
-        fi
-    else
-        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-    fi
+            ;;
+        dir://*)
+            note "$PACKAGE_SRC_URL is local path, no need to fetch."
+            ;;
+        file://*)
+            note "$PACKAGE_SRC_URL is local path, no need to fetch."
+            ;;
+        *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+    esac
 
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
         wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
@@ -5861,32 +5878,32 @@ EOF
 
     #########################################################################################
 
-    case $PACKAGE_SRC_FILETYPE in
-        .dir)
-            if [ "$PACKAGE_SRC_FILEPATH" = '/dev/null' ] ; then
-                :
-            elif [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
-                if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
-                    PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
+    if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
+        case $PACKAGE_SRC_FILETYPE in
+            .dir)
+                if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
+                    if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
+                        PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
+                    fi
+                    step "copy source files to the installing src directory"
+                    run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
+                else
+                    abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
                 fi
-                step "copy source files to the installing src directory"
-                run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
-            else
-                abort 1 "src-url point to dir does not exist."
-            fi
-            ;;
-        .git)
-            if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
-            fi
-            ;;
-        .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-            step "uncompressed source file to the installing src directory"
-            run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
-            ;;
-        *)  step "copy source files to the installing src directory"
-            run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
-    esac
+                ;;
+            .git)
+                if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                    PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
+                fi
+                ;;
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                step "uncompressed source file to the installing src directory"
+                run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  step "copy source files to the installing src directory"
+                run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
+        esac
+    fi
 
     if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
         case $PACKAGE_FIX_FILETYPE in
@@ -5895,7 +5912,8 @@ EOF
                 run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
             *)  step "copy patch file to the installing fix directory"
-                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/001.diff"
+                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
         esac
     fi
 
@@ -5909,6 +5927,30 @@ EOF
                 run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
         esac
     fi
+
+    for LINE in $PACKAGE_PATCHES
+    do
+        PACKAGE_FIX_SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        PACKAGE_FIX_URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+        PACKAGE_FIX_URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+        PACKAGE_FIX_OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+
+        PACKAGE_FIX_FILETYPE="$(filetype_from_url "$PACKAGE_FIX_URL")"
+        PACKAGE_FIX_FILENAME="$PACKAGE_FIX_SHA$PACKAGE_FIX_FILETYPE"
+        PACKAGE_FIX_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
+
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+
+        case $PACKAGE_FIX_FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                step "uncompressed patch file to the installing fix directory"
+                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  step "copy patch file to the installing fix directory"
+                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
+        esac
+    done
 
     #########################################################################################
 
@@ -5956,10 +5998,14 @@ $PACKAGE_ONREADY
         run cd "$PACKAGE_BSCRIPT_DIR"
     fi
 
-    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
-        if [ -f "$PACKAGE_INSTALLING_FIX_DIR/001.diff" ] ; then
-            run "patch $PACKAGE_FIX_OPT < $PACKAGE_INSTALLING_FIX_DIR/001.diff"
-        fi
+    if [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] ; then
+        for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")
+        do
+            FILE="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+            OPTS="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+            [ -z "$OPTS" ] && OPTS='-p1'
+            run "patch $OPTS < $PACKAGE_INSTALLING_FIX_DIR/$FILE"
+        done
     fi
 
     if [ -n "$PACKAGE_DOPATCH" ] ; then
@@ -6774,6 +6820,8 @@ EOF
     unset RECEIPT_PACKAGE_RES_URL
     unset RECEIPT_PACKAGE_RES_URI
     unset RECEIPT_PACKAGE_RES_SHA
+
+    unset RECEIPT_PACKAGE_PATCHES
 
     unset RECEIPT_PACKAGE_DEP_PKG
     unset RECEIPT_PACKAGE_DEP_UPP
@@ -8545,7 +8593,7 @@ ${COLOR_GREEN}ppkg export.<OUTPUT-TYPE> <PACKAGE-SPEC> [-o <OUTPUT-PATH>] [--kee
 
 # }}}
 ##############################################################################
-# {{{ main
+# {{{ ppkg main
 
 set -e
 
@@ -8569,7 +8617,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.4
+PPKG_VERSION=0.4.5
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
