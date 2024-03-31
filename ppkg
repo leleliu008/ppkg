@@ -926,9 +926,11 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_ACTIONS_DO12345
-    unset PACKAGE_ACTIONS_DOPATCH
-    unset PACKAGE_ACTIONS_DOBUILD
+    unset PACKAGE_ONREADY
+    unset PACKAGE_DO12345
+    unset PACKAGE_DOPATCH
+    unset PACKAGE_PREPARE
+    unset PACKAGE_DOBUILD
 
     unset PACKAGE_SYMLINK
 
@@ -995,14 +997,16 @@ filetype_from_url() {
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_ACTIONS_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ACTIONS_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ACTIONS_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_ACTIONS_DOBUILD" ] ; then
-        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD" ] ; then
+        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
         do
             case "$FirstWordOfLineInInstallActions" in
                 configure)    PACKAGE_BSYSTEM=configure ; break ;;
@@ -1196,18 +1200,18 @@ filetype_from_url() {
 
     #########################################################################################
 
-    [ -z "$PACKAGE_ACTIONS_DOBUILD" ] && {
+    [ -z "$PACKAGE_DOBUILD" ] && {
         case $PACKAGE_BSYSTEM in
-            autogen)   PACKAGE_ACTIONS_DOBUILD='configure' ;;
-            autotools) PACKAGE_ACTIONS_DOBUILD='configure' ;;
-            configure) PACKAGE_ACTIONS_DOBUILD='configure' ;;
-            cmake*)    PACKAGE_ACTIONS_DOBUILD='cmakew' ;;
-            xmake)     PACKAGE_ACTIONS_DOBUILD='xmakew' ;;
-            meson)     PACKAGE_ACTIONS_DOBUILD='mesonw' ;;
-            ninja)     PACKAGE_ACTIONS_DOBUILD='ninjaw clean && ninjaw && ninjaw install' ;;
-            gmake)     PACKAGE_ACTIONS_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
-            cargo)     PACKAGE_ACTIONS_DOBUILD='cargow install' ;;
-            go)        PACKAGE_ACTIONS_DOBUILD='gow' ;;
+            autogen)   PACKAGE_DOBUILD='configure' ;;
+            autotools) PACKAGE_DOBUILD='configure' ;;
+            configure) PACKAGE_DOBUILD='configure' ;;
+            cmake*)    PACKAGE_DOBUILD='cmakew' ;;
+            xmake)     PACKAGE_DOBUILD='xmakew' ;;
+            meson)     PACKAGE_DOBUILD='mesonw' ;;
+            ninja)     PACKAGE_DOBUILD='ninjaw clean && ninjaw && ninjaw install' ;;
+            gmake)     PACKAGE_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
+            cargo)     PACKAGE_DOBUILD='cargow install' ;;
+            go)        PACKAGE_DOBUILD='gow' ;;
             *)         abort 1 "install mapping not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     }
@@ -1511,8 +1515,8 @@ __info_all_available_packages_as_shell() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
-        --arg dopatch "$PACKAGE_ACTIONS_DOPATCH" \
-        --arg install "$PACKAGE_ACTIONS_DOBUILD" \
+        --arg dopatch "$PACKAGE_DOPATCH" \
+        --arg install "$PACKAGE_DOBUILD" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
@@ -1690,11 +1694,11 @@ EOF
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ACTIONS_DOPATCH"
+            printf '%s\n' "$PACKAGE_DOPATCH"
             ;;
         install)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD"
+            printf '%s\n' "$PACKAGE_DOBUILD"
             ;;
         developer)
             __load_formula_of_the_given_package "$1"
@@ -5931,6 +5935,21 @@ EOF
 
     #########################################################################################
 
+    if [ -n "$PACKAGE_ONREADY" ] ; then
+        step "onready"
+
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR"
+        fi
+        eval "
+onready() {
+$PACKAGE_ONREADY
+}"
+        onready "$1"
+    fi
+
+    #########################################################################################
+
     step "patching"
 
     if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
@@ -5943,12 +5962,14 @@ EOF
         fi
     fi
 
-    if [ -n "$PACKAGE_ACTIONS_DOPATCH" ] ; then
+    if [ -n "$PACKAGE_DOPATCH" ] ; then
         eval "
 dopatch() {
-$PACKAGE_ACTIONS_DOPATCH
+$PACKAGE_DOPATCH
 }"
         dopatch "$1"
+    else
+        note "dopatch mapping was not found in formula, skipped."
     fi
 
     #########################################################################################
@@ -6008,6 +6029,21 @@ $PACKAGE_ACTIONS_DOPATCH
 
     #########################################################################################
 
+    if [ -n "$PACKAGE_PREPARE" ] ; then
+        step "preparing"
+
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR"
+        fi
+        eval "
+prepare() {
+$PACKAGE_PREPARE
+}"
+        prepare "$1"
+    fi
+
+    #########################################################################################
+
     step "building"
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
@@ -6022,7 +6058,7 @@ $PACKAGE_ACTIONS_DOPATCH
 
     eval "
 dobuild() {
-$PACKAGE_ACTIONS_DOBUILD
+$PACKAGE_DOBUILD
 }"
 
     dobuild "$1"

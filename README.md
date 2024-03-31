@@ -725,12 +725,19 @@ a uppm formula's file content only has one level mapping and shall has following
 |`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
-|`dopatch`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
 |`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
 |`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
+||||
+|`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`dopatch`|optional|POSIX shell code to be run to apply patches. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
 
-**commands that can be used out of the box in `dopatch` and `install` block:**
+|phases|
+|-|
+|![phases](phases.svg)|
+
+**commands that can be used out of the box in `onready`, `dopatch`, `prepare`, `install` block:**
 
 |command|usage-example|
 |-|-|
@@ -755,7 +762,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`cargow`|`cargow`|
 |`gow`|`gow`|
 
-**shell variables can be used in `dopatch` and `install` block:**
+**shell variables can be used in `onready`, `dopatch`, `prepare`, `install` block:**
 
 |variable|overview|
 |-|-|
