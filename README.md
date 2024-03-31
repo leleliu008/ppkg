@@ -707,9 +707,12 @@ a uppm formula's file content only has one level mapping and shall has following
 |`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
 ||||
 |`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-uri`|optional|the mirror of `fix-url`.|
 |`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+|`fix-opt`|optional|options to be passed to `patch` command. default value is `-p1`.|
 ||||
 |`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-uri`|optional|the mirror of `res-url`.|
 |`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
 ||||
 |`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
@@ -726,12 +729,12 @@ a uppm formula's file content only has one level mapping and shall has following
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
 |`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
-|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
+|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-full` install option is given.|
 ||||
 |`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`dopatch`|optional|POSIX shell code to be run to apply patches. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`prepare`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
 
 |phases|
 |-|
