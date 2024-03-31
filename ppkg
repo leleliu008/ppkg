@@ -862,6 +862,7 @@ filetype_from_url() {
     unset PACKAGE_FIX_URL
     unset PACKAGE_FIX_URI
     unset PACKAGE_FIX_SHA
+    unset PACKAGE_FIX_OPT
     unset PACKAGE_FIX_FILENAME
     unset PACKAGE_FIX_FILETYPE
     unset PACKAGE_FIX_FILEPATH
@@ -966,6 +967,7 @@ filetype_from_url() {
     PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_FIX_OPT="$(yq '.fix-opt | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1043,6 +1045,10 @@ filetype_from_url() {
 
     if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
         abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -z "$PACKAGE_FIX_OPT" ] ; then
+        PACKAGE_FIX_OPT='-p1'
     fi
 
     #########################################################################################
@@ -1497,6 +1503,7 @@ __info_all_available_packages_as_shell() {
         --arg fix_url "$PACKAGE_FIX_URL" \
         --arg fix_uri "$PACKAGE_FIX_URI" \
         --arg fix_sha "$PACKAGE_FIX_SHA" \
+        --arg fix_opt "$PACKAGE_FIX_OPT" \
         --arg res_url "$PACKAGE_RES_URL" \
         --arg res_uri "$PACKAGE_RES_URI" \
         --arg res_sha "$PACKAGE_RES_SHA" \
@@ -1529,6 +1536,7 @@ __info_all_available_packages_as_shell() {
     "fix-url":$fix_url,
     "fix-uri":$fix_uri,
     "fix-sha":$fix_sha,
+    "fix-opt":$fix_opt,
     "res-url":$res_url,
     "res-uri":$res_uri,
     "res-sha":$res_sha,
@@ -1627,6 +1635,7 @@ PACKAGE_SRC_FILEPATH
 PACKAGE_FIX_URL
 PACKAGE_FIX_URI
 PACKAGE_FIX_SHA
+PACKAGE_FIX_OPT
 PACKAGE_FIX_FILETYPE
 PACKAGE_FIX_FILENAME
 PACKAGE_FIX_FILEPATH
@@ -5882,7 +5891,7 @@ EOF
                 run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
             *)  step "copy patch file to the installing fix directory"
-                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/001.diff"
         esac
     fi
 
@@ -5928,14 +5937,18 @@ EOF
         run cd "$PACKAGE_BSCRIPT_DIR"
     fi
 
+    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
+        if [ -f "$PACKAGE_INSTALLING_FIX_DIR/001.diff" ] ; then
+            run "patch $PACKAGE_FIX_OPT < $PACKAGE_INSTALLING_FIX_DIR/001.diff"
+        fi
+    fi
+
     if [ -n "$PACKAGE_ACTIONS_DOPATCH" ] ; then
         eval "
 dopatch() {
 $PACKAGE_ACTIONS_DOPATCH
 }"
         dopatch "$1"
-    else
-        note "dopatch mapping was not found in formula, skipped."
     fi
 
     #########################################################################################
@@ -6720,6 +6733,7 @@ EOF
     unset RECEIPT_PACKAGE_FIX_URL
     unset RECEIPT_PACKAGE_FIX_URI
     unset RECEIPT_PACKAGE_FIX_SHA
+    unset RECEIPT_PACKAGE_FIX_OPT
 
     unset RECEIPT_PACKAGE_RES_URL
     unset RECEIPT_PACKAGE_RES_URI
@@ -6767,6 +6781,7 @@ EOF
     RECEIPT_PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_OPT="$(yq '.fix-opt | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -8518,7 +8533,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.3
+PPKG_VERSION=0.4.4
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
