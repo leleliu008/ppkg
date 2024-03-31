@@ -8562,21 +8562,21 @@ TIMESTAMP_UNIX="$(date +%s)"
 case $1 in
     ''|help|--help|-h)
         __help
-        return 0
+        exit
         ;;
     version|--version|-V)
         printf '%s\n' "$PPKG_VERSION"
-        return 0
+        exit
         ;;
     setup)
         shift
         __setup "$@"
-        return 0
+        exit
         ;;
     gen-url-transform-sample)
         shift
         __gen_url_transform_sample "$@"
-        return 0
+        exit
         ;;
     env)
         cat <<EOF
@@ -8590,7 +8590,7 @@ EOF
             "$UPPM" env
         fi
 
-        return 0
+        exit
         ;;
 esac
 
@@ -8661,7 +8661,6 @@ fi
 case $1 in
     sysinfo)
         sysinfo
-        return 0
         ;;
 
     info-available)
