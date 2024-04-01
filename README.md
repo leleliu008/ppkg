@@ -736,6 +736,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-full` install option is given.|
 ||||
 |`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|

@@ -1,4 +1,7 @@
-digraph G {
+digraph {
     rankdir="LR"
-    onready -> dopatch -> prepare -> install
+    start -> dofetch -> onready -> do12345 -> dopatch -> prepare -> dobuild -> install -> docheck -> end
+    do12345 [shape="box"; style="dashed"];
+    start [fillcolor="green";style=filled]
+    end [fillcolor="green";style=filled]
 }

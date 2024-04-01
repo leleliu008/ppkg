@@ -1170,7 +1170,7 @@ filetype_from_url() {
         FILETYPE="$(filetype_from_url "$URL")"
 
         if [ "${#SHA}" -ne 64 ] ; then
-            abort 1 "not a sha256sum in: $LINE"
+            abort 1 "not a sha256sum in line: $LINE in file: $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_NEED_CURL=1
