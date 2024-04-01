@@ -938,6 +938,7 @@ filetype_from_url() {
     unset PACKAGE_SFSLINK
 
     unset PACKAGE_PATCHES
+    unset PACKAGE_RESLIST
 
     #########################################################################################
 
@@ -1006,6 +1007,7 @@ filetype_from_url() {
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
@@ -1053,6 +1055,14 @@ filetype_from_url() {
 
     if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
         abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -n "$PACKAGE_FIX_URL" ] && [ -n "$PACKAGE_PATCHES" ] ; then
+        abort 1 "fix-url and patches mapping shouldn't be used together in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -n "$PACKAGE_RES_URL" ] && [ -n "$PACKAGE_RESLIST" ] ; then
+        abort 1 "res-url and reslist mapping shouldn't be used together in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     #########################################################################################
@@ -1149,6 +1159,27 @@ filetype_from_url() {
                 PACKAGE_NEED_BTAR=1
         esac
     }
+
+    #########################################################################################
+
+    for LINE in $PACKAGE_PATCHES $PACKAGE_RESLIST
+    do
+        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+
+        FILETYPE="$(filetype_from_url "$URL")"
+
+        if [ "${#SHA}" -ne 64 ] ; then
+            abort 1 "not a sha256sum in: $LINE"
+        fi
+
+        PACKAGE_NEED_CURL=1
+
+        case $FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                PACKAGE_NEED_BTAR=1
+        esac
+    done
 
     #########################################################################################
 
@@ -5793,7 +5824,7 @@ EOF
 
     #########################################################################################
 
-    step "fetch source/patches/resources from server"
+    step "fetching source/patches/resources"
 
     case $PACKAGE_SRC_URL in
         '')
@@ -5878,6 +5909,8 @@ EOF
 
     #########################################################################################
 
+    step "unpack or copy source/patches/resources to proper location"
+
     if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
         case $PACKAGE_SRC_FILETYPE in
             .dir)
@@ -5885,7 +5918,6 @@ EOF
                     if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
                         PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
                     fi
-                    step "copy source files to the installing src directory"
                     run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
                 else
                     abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
@@ -5897,22 +5929,18 @@ EOF
                 fi
                 ;;
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                step "uncompressed source file to the installing src directory"
                 run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  step "copy source files to the installing src directory"
-                run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
+            *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
         esac
     fi
 
     if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
         case $PACKAGE_FIX_FILETYPE in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                step "uncompressed patch file to the installing fix directory"
                 run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  step "copy patch file to the installing fix directory"
-                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+            *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
                 printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
         esac
     fi
@@ -5920,35 +5948,62 @@ EOF
     if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
         case $PACKAGE_RES_FILETYPE in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                step "uncompressed res file to the installing res directory"
                 run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  step "copy res file to the installing res directory"
-                run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
+            *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
         esac
     fi
 
     for LINE in $PACKAGE_PATCHES
     do
-        PACKAGE_FIX_SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-        PACKAGE_FIX_URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-        PACKAGE_FIX_URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-        PACKAGE_FIX_OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+        OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
 
-        PACKAGE_FIX_FILETYPE="$(filetype_from_url "$PACKAGE_FIX_URL")"
-        PACKAGE_FIX_FILENAME="$PACKAGE_FIX_SHA$PACKAGE_FIX_FILETYPE"
-        PACKAGE_FIX_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
+        FILETYPE="$(filetype_from_url "$URL")"
+        FILENAME="$SHA$FILETYPE"
+        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
 
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
 
-        case $PACKAGE_FIX_FILETYPE in
+        case $FILETYPE in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                step "uncompressed patch file to the installing fix directory"
-                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
-            *)  step "copy patch file to the installing fix directory"
-                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
+            *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                printf '%s|%s\n' "$FILENAME" "$PACKAGE_FIX_OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
+        esac
+    done
+
+    for LINE in $PACKAGE_RESLIST
+    do
+        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+        DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+        LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
+
+        [ -z "$LEV" ] && LEV=1
+
+        FILETYPE="$(filetype_from_url "$URL")"
+        FILENAME="$SHA$FILETYPE"
+        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
+
+        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+
+        if [ -z "$DIR" ] ; then
+            DEST="$PACKAGE_INSTALLING_RES_DIR"
+        else
+            DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
+            run install -d "$DEST"
+        fi
+
+        case $FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
+                ;;
+            *)  run cp "$FILEPATH" "$DEST/"
         esac
     done
 
@@ -8617,7 +8672,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.5
+PPKG_VERSION=0.4.6
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
