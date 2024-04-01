@@ -5828,7 +5828,7 @@ EOF
 
     case $PACKAGE_SRC_URL in
         '')
-            if [ -n "$PACKAGE_SRC_URL" ] ; then
+            if [ -n "$PACKAGE_GIT_URL" ] ; then
                 unset GIT_FETCH_URL
 
                 if [ -z "$PPKG_URL_TRANSFORM" ] ; then
