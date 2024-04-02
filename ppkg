@@ -4116,8 +4116,8 @@ EOF
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         liblzma)
-            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.6.1.tar.bz2'
-            NATIVE_PACKAGE_SRC_SHA='d300422649a0124b1121630be559c890ceedf32667d7064b8128933166c217c8'
+            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
@@ -8672,7 +8672,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.6
+PPKG_VERSION=0.4.7
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
