@@ -84,7 +84,7 @@ jobs:
           run ./ppkg export.pkg libzip -o ~/
           run ./ppkg export.pkg libzip -o a/b.pkg
 
-          run sudo pacman -U *.pkg.tar.xz
+          run sudo pacman -U --noconfirm *.pkg.tar.xz
           run pacman -Qi libzip
           EOF
 
