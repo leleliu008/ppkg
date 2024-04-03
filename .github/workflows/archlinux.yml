@@ -72,10 +72,13 @@ jobs:
             eval "\$@"
           }
 
+          set -e
+
           run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
           run chmod a+x ppkg
 
           run ./ppkg setup
+          run ./ppkg update
           run ./ppkg install    libzip
           run ./ppkg export.pkg libzip
           run ./ppkg export.pkg libzip -o ~/
