@@ -2629,12 +2629,12 @@ __fetch_resources_of_the_given_package() {
 }
 
 __export_the_given_installed_package_as_deb() {
-    run install -d pkg/DEBIAN
+    run install -d ROOT/DEBIAN/
+    run install -d ROOT/usr/local/
 
-    run cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" pkg/usr
-    run rm -rf pkg/usr/.ppkg
+    run cp -r -L "$PACKAGE_INSTALLED_DIR"/* ROOT/usr/local/
 
-    SIZE="$(du -sk pkg | cut -f1)"
+    SIZE="$(du -sk ROOT | cut -f1)"
 
     case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
         x86_64) ARCHITECTURE='amd64' ;;
@@ -2649,7 +2649,7 @@ __export_the_given_installed_package_as_deb() {
     esac
 
     # https://manpages.debian.org/buster/dpkg-dev/deb-control.5.en.html
-    run tee pkg/DEBIAN/control <<EOF
+    run tee ROOT/DEBIAN/control <<EOF
 Package: $RECEIPT_PACKAGE_PKGNAME
 Version: $RECEIPT_PACKAGE_VERSION
 Section: custom
@@ -2664,7 +2664,7 @@ Installed-Size: $SIZE
 EOF
 
     # https://manpages.debian.org/buster/dpkg/dpkg-deb.1.en.html
-    run dpkg-deb --root-owner-group --build pkg pkg.deb
+    run dpkg-deb --root-owner-group --build ROOT pkg.deb
     run dpkg-deb --contents pkg.deb
     run dpkg-deb --show pkg.deb
     run dpkg-deb --info pkg.deb
@@ -2684,10 +2684,11 @@ __export_the_given_installed_package_as_rpm() {
     run install -d SPECS
     run install -d SRPMS
 
+    # create a fake source tarball
     run touch main.c
     run bsdtar cvaf SOURCES/src.tar.gz main.c
 
-    run tee SPECS/pkg.spec <<EOF
+    run cat SPECS/pkg.spec <<EOF
 Name:           $RECEIPT_PACKAGE_PKGNAME
 Version:        $RECEIPT_PACKAGE_VERSION
 Release:        1%{?dist}
@@ -2706,11 +2707,20 @@ $RECEIPT_PACKAGE_SUMMARY
 
 %install
 install -d %{buildroot}/usr/local
-cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* %{buildroot}/usr/local/
+cp -r -L "$PACKAGE_INSTALLED_DIR"/* %{buildroot}/usr/local/
+if [ -d %{buildroot}/usr/local/share/man ] ; then
+    mv  %{buildroot}/usr/local/share/man %{buildroot}/usr/local/man
+fi
 
 %files
-/usr/local/*
 EOF
+
+    # https://rpmfind.net/linux/RPM/opensuse/ports/tumbleweed/aarch64/filesystem-84.87-15.3.aarch64.html
+    # these directories belong to filesystem package, it can't be included in %files
+    cut -d '|' -f3 < "$PACKAGE_INSTALLED_DIR/.ppkg/MANIFEST.txt" | sed -e '/^src\/$/d' -e '/^bin\/$/d' -e '/^sbin\/$/d' -e '/^lib\/$/d' -e '/^lib64\/$/d' -e '/^libexec\/$/d' -e '/^include\/$/d' -e '/^share\/$/d' -e '/^man\/$/d' -e '/^man\/man1\/$/d' -e '/^man\/man2\/$/d' -e '/^man\/man3\/$/d' -e '/^man\/man4\/$/d' -e '/^man\/man5\/$/d' -e '/^man\/man6\/$/d' -e '/^man\/man7\/$/d' -e '/^man\/man8\/$/d' -e '/^man\/man9\/$/d' -e '/^man\/mann\/$/d' > SPECS/pkg.spec
+
+    run cat SPECS/pkg.spec
+
     #run rpmlint      SPECS/pkg.spec
     run rpmbuild --define "'_topdir $PWD'" -bb SPECS/pkg.spec
 
@@ -2738,8 +2748,8 @@ build() {
 }
 
 package() {
-    install -d "\${pkgdir}/usr/"
-    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\${pkgdir}/usr/"
+    install -d "\${pkgdir}/usr/local"
+    cp -r -L "$PACKAGE_INSTALLED_DIR"/* "\${pkgdir}/usr/local/"
 }
 EOF
 
@@ -2796,8 +2806,8 @@ check() {
 }
 
 package() {
-    install -d "\$pkgdir/usr"
-    cp -r -L "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME"/* "\$pkgdir/usr/"
+    install -d "\$pkgdir/usr/local"
+    cp -r -L "$PACKAGE_INSTALLED_DIR"/* "\$pkgdir/usr/local/"
 }
 EOF
 
@@ -8688,7 +8698,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.9
+PPKG_VERSION=0.4.10
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
