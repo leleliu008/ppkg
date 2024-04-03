@@ -74,7 +74,13 @@ jobs:
       - run: ./ppkg pack libzip -t zip
 
       - run: apk add alpine-sdk
-      - run: abuild-keygen -i -a -n
+
+      # https://wiki.alpinelinux.org/wiki/Abuild_and_Helpers#abuild-keygen
+      # https://github.com/alpinelinux/abuild/blob/master/abuild-keygen.in
+      - run: openssl genrsa -out ppkg.rsa.pri 2048
+      - run: openssl rsa     -in ppkg.rsa.pri -pubout -out /etc/apk/keys/ppkg.rsa.pub
+
+      - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/ppkg.rsa.pri" > ~/.abuild/abuild.conf
 
       - run: ./ppkg export.apk libzip
       - run: ./ppkg export.apk libzip -o ~/
