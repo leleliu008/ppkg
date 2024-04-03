@@ -2688,7 +2688,7 @@ __export_the_given_installed_package_as_rpm() {
     run touch main.c
     run bsdtar cvaf SOURCES/src.tar.gz main.c
 
-    run cat > SPECS/pkg.spec <<EOF
+    cat > SPECS/pkg.spec <<EOF
 Name:           $RECEIPT_PACKAGE_PKGNAME
 Version:        $RECEIPT_PACKAGE_VERSION
 Release:        1%{?dist}
@@ -2717,7 +2717,7 @@ EOF
 
     # https://rpmfind.net/linux/RPM/opensuse/ports/tumbleweed/aarch64/filesystem-84.87-15.3.aarch64.html
     # these directories belong to filesystem package, it can't be included in %files
-    cut -d '|' -f3 < "$PACKAGE_INSTALLED_DIR/.ppkg/MANIFEST.txt" | sed -e '/^src\/$/d' -e '/^bin\/$/d' -e '/^sbin\/$/d' -e '/^lib\/$/d' -e '/^lib64\/$/d' -e '/^libexec\/$/d' -e '/^include\/$/d' -e '/^share\/$/d' -e '/^man\/$/d' -e '/^man\/man1\/$/d' -e '/^man\/man2\/$/d' -e '/^man\/man3\/$/d' -e '/^man\/man4\/$/d' -e '/^man\/man5\/$/d' -e '/^man\/man6\/$/d' -e '/^man\/man7\/$/d' -e '/^man\/man8\/$/d' -e '/^man\/man9\/$/d' -e '/^man\/mann\/$/d' >> SPECS/pkg.spec
+    cut -d '|' -f3 < "$PACKAGE_INSTALLED_DIR/.ppkg/MANIFEST.txt" | sed -e '/^src\/$/d' -e '/^bin\/$/d' -e '/^sbin\/$/d' -e '/^lib\/$/d' -e '/^lib64\/$/d' -e '/^libexec\/$/d' -e '/^include\/$/d' -e '/^share\/$/d' -e '/^man\/$/d' -e '/^man\/man1\/$/d' -e '/^man\/man2\/$/d' -e '/^man\/man3\/$/d' -e '/^man\/man4\/$/d' -e '/^man\/man5\/$/d' -e '/^man\/man6\/$/d' -e '/^man\/man7\/$/d' -e '/^man\/man8\/$/d' -e '/^man\/man9\/$/d' -e '/^man\/mann\/$/d' | sed 's|^|/usr/local/|' >> SPECS/pkg.spec
 
     run cat SPECS/pkg.spec
 
@@ -8698,7 +8698,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.11
+PPKG_VERSION=0.4.12
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
