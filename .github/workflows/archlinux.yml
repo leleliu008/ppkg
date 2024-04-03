@@ -98,5 +98,5 @@ jobs:
           USER leleliu008
           EOF
 
-      - run: docker build -t myarchlinux -f Dockerfile
+      - run: docker build -t myarchlinux .
       - run: docker run -it -v $PWD:/home/leleliu008 -w /home/leleliu008 --name myarchlinux myarchlinux sh run.sh
