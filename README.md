@@ -1,6 +1,6 @@
 # ppkg
 
-A portable package manager for Unix-like system.
+A portable package builder/manager for Unix-like system.
 
 ## Caveats
 

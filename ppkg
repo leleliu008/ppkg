@@ -8672,7 +8672,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.7
+PPKG_VERSION=0.4.8
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8703,7 +8703,8 @@ fi
 
 UPPM="$PPKG_CORE_DIR/uppm"
 
-export UPPM_HOME="$PPKG_HOME/uppm"
+unset UPPM_HOME
+UPPM_HOME="$HOME/.uppm"
 
 if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
