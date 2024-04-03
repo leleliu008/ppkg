@@ -65,9 +65,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-      - run: chmod a+x ppkg
-
       - run: |
           cat > run.sh <<EOF
           run() {
@@ -75,11 +72,14 @@ jobs:
             eval "\$@"
           }
 
-          run bin/ppkg setup
-          run bin/ppkg install    libzip
-          run bin/ppkg export.pkg libzip
-          run bin/ppkg export.pkg libzip -o ~/
-          run bin/ppkg export.pkg libzip -o a/b.pkg
+          run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+          run chmod a+x ppkg
+
+          run ./ppkg setup
+          run ./ppkg install    libzip
+          run ./ppkg export.pkg libzip
+          run ./ppkg export.pkg libzip -o ~/
+          run ./ppkg export.pkg libzip -o a/b.pkg
 
           run sudo pacman -U *.pkg.tar.xz
           run pacman -Qi libzip
@@ -90,7 +90,7 @@ jobs:
           FROM archlinux
 
           RUN pacman -Syy --noconfirm && \
-              pacman -S sudo --noconfirm && \
+              pacman -S sudo curl gcc --noconfirm && \
               groupadd --gid 1000 leleliu008 && \
               useradd  --gid 1000 --uid 1000 -m leleliu008 && \
               echo 'leleliu008 ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
