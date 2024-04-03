@@ -74,7 +74,7 @@ jobs:
       - run: ./ppkg pack libzip -t zip
 
       - run: apk add alpine-sdk
-      - run: abuild-keygen -a -n
+      - run: abuild-keygen -i -a -n
 
       - run: ./ppkg export.apk libzip
       - run: ./ppkg export.apk libzip -o ~/
