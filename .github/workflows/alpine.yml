@@ -80,6 +80,9 @@ jobs:
       - run: ./ppkg export.apk libzip -o ~/
       - run: ./ppkg export.apk libzip -o a/b.apk
 
+      - run: apk add a/b.apk
+      - run: apk info -L libzip
+
       - run: |
           printf '%s\n' 'version: 1000' >> ~/.ppkg/repos.d/official-core/formula/libzip.yml
 
