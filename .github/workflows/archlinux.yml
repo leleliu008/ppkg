@@ -93,7 +93,7 @@ jobs:
           FROM archlinux
 
           RUN pacman -Syy --noconfirm && \
-              pacman -S sudo curl gcc --noconfirm && \
+              pacman -S sudo curl gcc fakeroot --noconfirm && \
               groupadd --gid 1000 leleliu008 && \
               useradd  --gid 1000 --uid 1000 -m leleliu008 && \
               echo 'leleliu008 ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
