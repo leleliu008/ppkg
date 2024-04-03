@@ -75,11 +75,11 @@ jobs:
             eval "\$@"
           }
 
-          run ~/ppkg setup
-          run ~/ppkg install    libzip
-          run ~/ppkg export.pkg libzip
-          run ~/ppkg export.pkg libzip -o ~/
-          run ~/ppkg export.pkg libzip -o a/b.pkg
+          run bin/ppkg setup
+          run bin/ppkg install    libzip
+          run bin/ppkg export.pkg libzip
+          run bin/ppkg export.pkg libzip -o ~/
+          run bin/ppkg export.pkg libzip -o a/b.pkg
 
           run sudo pacman -U *.pkg.tar.xz
           run pacman -Qi libzip
