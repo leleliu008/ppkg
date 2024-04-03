@@ -71,8 +71,8 @@ jobs:
       - run: |
           cat > run.sh <<EOF
           run() {
-            printf '%b\n' "$*"
-            eval "$@"
+            printf '%b\n' "\$*"
+            eval "\$@"
           }
 
           run ./ppkg setup
