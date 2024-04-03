@@ -77,15 +77,17 @@ jobs:
 
       # https://wiki.alpinelinux.org/wiki/Include:Abuild-keygen
       # https://github.com/alpinelinux/abuild/blob/master/abuild-keygen.in
-      - run: openssl genrsa -out leleliu008@gmail.com.rsa.pri 2048
-      - run: openssl rsa     -in leleliu008@gmail.com.rsa.pri -pubout -out /etc/apk/keys/leleliu008@gmail.com.rsa.pub
+      - run: openssl genrsa -out leleliu008@gmail.com.rsa 2048
+      - run: openssl rsa     -in leleliu008@gmail.com.rsa -pubout -out leleliu008@gmail.com.rsa.pub
 
       - run: install -d ~/.abuild/
-      - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/leleliu008@gmail.com.rsa.pri" > ~/.abuild/abuild.conf
+      - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/leleliu008@gmail.com.rsa" > ~/.abuild/abuild.conf
 
       - run: ./ppkg export.apk libzip
       - run: ./ppkg export.apk libzip -o ~/
       - run: ./ppkg export.apk libzip -o a/b.apk
+
+      - run: cp leleliu008@gmail.com.rsa.pub /etc/apk/keys/
 
       - run: apk add a/b.apk
       - run: apk info -L libzip
