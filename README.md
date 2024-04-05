@@ -740,6 +740,7 @@ a uppm formula's file content only has one level mapping and shall has following
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
 
 |phases|
 |-|

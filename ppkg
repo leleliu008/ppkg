@@ -931,6 +931,7 @@ filetype_from_url() {
     unset PACKAGE_DOPATCH
     unset PACKAGE_PREPARE
     unset PACKAGE_DOBUILD
+    unset PACKAGE_DOTWEAK
 
     unset PACKAGE_SYMLINK
 
@@ -1005,6 +1006,7 @@ filetype_from_url() {
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1555,6 +1557,7 @@ __info_all_available_packages_as_shell() {
         --arg dep_plm "$PACKAGE_DEP_PLM" \
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg install "$PACKAGE_DOBUILD" \
+        --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
@@ -1594,7 +1597,8 @@ __info_all_available_packages_as_shell() {
     "ldflags":$ldflags,
     "parallel":$parallel,
     "dopatch":$dopatch,
-    "install":$install
+    "install":$install,
+    "dotweak":$dotweak
 }' | jq 'with_entries(select(.value != ""))'
 }
 
@@ -1730,13 +1734,25 @@ EOF
         --json)
             __info_the_given_available_package_as_json "$1"
             ;;
+        onready)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_ONREADY"
+            ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOPATCH"
             ;;
+        prepare)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_PREPARE"
+            ;;
         install)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD"
+            ;;
+        dotweak)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DOTWEAK"
             ;;
         developer)
             __load_formula_of_the_given_package "$1"
@@ -6194,16 +6210,30 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
+    run cd "$PACKAGE_INSTALL_DIR" || abort 1 "nothing is installed."
+
+    [ -z "$(ls)" ]                && abort 1 "nothing is installed."
+
+    #########################################################################################
+
+    step "do some tweaks"
+
+    if [ -n "$PACKAGE_DOTWEAK" ] ; then
+        eval "
+dotweak() {
+$PACKAGE_DOTWEAK
+}"
+        dotweak "$1"
+    else
+        note "dotweak mapping was not found in formula, skipped."
+    fi
+
+    #########################################################################################
+
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
         rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
         rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
     }
-
-    #########################################################################################
-
-    cd "$PACKAGE_INSTALL_DIR" || abort 1 "nothing is installed."
-
-    [ -z "$(ls)" ]            && abort 1 "nothing is installed."
 
     #########################################################################################
 
@@ -6913,8 +6943,11 @@ EOF
 
     unset RECEIPT_PACKAGE_BSYSTEM
     unset RECEIPT_PACKAGE_BSCRIPT
+
     unset RECEIPT_PACKAGE_DOPATCH
     unset RECEIPT_PACKAGE_INSTALL
+    unset RECEIPT_PACKAGE_DOTWEAK
+
     unset RECEIPT_PACKAGE_SYMLINK
 
     unset RECEIPT_PACKAGE_PARALLEL
@@ -6970,6 +7003,7 @@ EOF
 
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -8700,7 +8734,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.4.14
+PPKG_VERSION=0.5.0
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
