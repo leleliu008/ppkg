@@ -8476,7 +8476,7 @@ __setup_uppm() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils easyutils gawk gsed grep bsdtar jq yq git curl tree patchelf
+    for UPPM_PACKAGE_NAME in bash coreutils findutils easyutils gawk gsed grep bsdtar git curl tree patchelf jq yq d2
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -8798,7 +8798,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.5.2
+PPKG_VERSION=0.5.3
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
