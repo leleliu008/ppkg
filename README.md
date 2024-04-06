@@ -290,6 +290,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [git](https://git-scm.com/docs/git)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
+    - [d2](https://github.com/terrastruct/d2)
 
 - **show basic information about this software**
 

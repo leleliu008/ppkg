@@ -6078,7 +6078,7 @@ EOF
                 run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
             *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$FILENAME" "$PACKAGE_FIX_OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
+                printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
         esac
     done
 
@@ -8532,7 +8532,7 @@ ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ppkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, grep, git, curl, bsdtar, tree, jq, yq, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, grep, git, curl, bsdtar, tree, jq, yq, d2, etc) used by this shell script.
 
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
     show basic information about this software.
@@ -8798,7 +8798,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.5.3
+PPKG_VERSION=0.5.4
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
