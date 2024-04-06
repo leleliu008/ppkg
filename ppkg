@@ -5822,13 +5822,24 @@ EOF
         # https://crates.io/crates/cc
         # https://docs.rs/cc/latest/cc/
         # https://github.com/alexcrichton/cc-rs
-        export HOST_CC="$CC"
-        export HOST_CFLAGS="$CFLAGS $CPPFLAGS"
 
-        export HOST_CXX="$CXX"
-        export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            export HOST_CC="$CC_FOR_BUILD"
+            export HOST_CFLAGS="$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD"
 
-        export HOST_AR="$AR"
+            export HOST_CXX="$CXX_FOR_BUILD"
+            export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD"
+
+            export HOST_AR="$AR_FOR_BUILD"
+        else
+            export HOST_CC="$CC"
+            export HOST_CFLAGS="$CFLAGS $CPPFLAGS"
+
+            export HOST_CXX="$CXX"
+            export HOST_CXXFLAGS="$CXXFLAGS $CPPFLAGS"
+
+            export HOST_AR="$AR"
+        fi
 
         export TARGET_CC="$CC"
         export TARGET_CFLAGS="$CFLAGS $CPPFLAGS"
@@ -5883,9 +5894,13 @@ EOF
         # https://golang.org/doc/install/source#environment
 
         if [ "$CROSS_COMPILING" = 1 ] ; then
-            export GOOS="$TARGET_PLATFORM_NAME"
+            if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+                export GOOS='darwin'
+            else
+                export GOOS="$TARGET_PLATFORM_NAME"
+            fi
 
-            if [ "$TARGET_PLATFORM_ARCH" = 'x86_64' ] ; then
+            if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] ; then
                 export GOARCH='amd64'
             else
                 export GOARCH="$TARGET_PLATFORM_ARCH"
@@ -8783,7 +8798,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
 PPKG="$CURRENT_SCRIPT_FILEPATH"
 
-PPKG_VERSION=0.5.1
+PPKG_VERSION=0.5.2
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
