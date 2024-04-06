@@ -2086,7 +2086,7 @@ $PACKAGE_NAME -> $item"
     case $OUTPUT_TYPE in
         dot)
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                printf 'digraph G {\n%s\n}\n' "$LINE"
+                printf 'digraph G {\n%s\n}\n' "$LINES"
             else
                 SESSION_DIR="$PPKG_HOME/run/$$"
 
@@ -2094,7 +2094,7 @@ $PACKAGE_NAME -> $item"
                 install -d "$SESSION_DIR"
                 cd         "$SESSION_DIR"
 
-                printf 'digraph G {\n%s\n}\n' "$LINE" > dependencies.dot
+                printf 'digraph G {\n%s\n}\n' "$LINES" > dependencies.dot
 
                 if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
                     install -d "$OUTPUT_DIR"
@@ -8612,7 +8612,7 @@ ${COLOR_GREEN}ppkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLO
 ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
-    <OUTPUT-TYPE> must be one of dot box svg png
+    <OUTPUT-TYPE> must be one of d2 dot box svg png
 
     <OUTPUT-PATH> can be either the filepath or directory.
 
