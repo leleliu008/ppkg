@@ -4811,7 +4811,6 @@ $DOT_CONTENT
 
             if [ -n "$D2" ] ; then
                 run "$D2" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_D2_" "$PACKAGE_WORKING_DIR/dependencies.svg"
-                run "$D2" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_D2_" "$PACKAGE_WORKING_DIR/dependencies.png"
             fi
         fi
 
@@ -8462,7 +8461,7 @@ __setup_uppm() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils easyutils gawk gsed grep bsdtar jq yq git curl tree patchelf d2
+    for UPPM_PACKAGE_NAME in bash coreutils findutils easyutils gawk gsed grep bsdtar jq yq git curl tree patchelf
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
