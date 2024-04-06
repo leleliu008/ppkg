@@ -436,16 +436,19 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ```bash
     ppkg depends curl
 
+    ppkg depends curl -t d2
     ppkg depends curl -t dot
     ppkg depends curl -t box
     ppkg depends curl -t png
     ppkg depends curl -t svg
 
+    ppkg depends curl -o curl-dependencies.d2
     ppkg depends curl -o curl-dependencies.dot
     ppkg depends curl -o curl-dependencies.txt
     ppkg depends curl -o curl-dependencies.png
     ppkg depends curl -o curl-dependencies.svg
 
+    ppkg depends curl -t d2  -o dependencies/
     ppkg depends curl -t dot -o dependencies/
     ppkg depends curl -t box -o dependencies/
     ppkg depends curl -t png -o dependencies/

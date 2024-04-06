@@ -5152,7 +5152,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ "$CROSS_COMPILING" = 1 ] ; then
+    if [ "$CROSS_COMPILING" = 1 ] && [ "$TARGET_PLATFORM_NAME" != macos ] ; then
         step "prepare C/C++ sysroot for target build"
 
         export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"

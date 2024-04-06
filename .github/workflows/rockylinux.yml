@@ -63,6 +63,7 @@ jobs:
 
 
       - run: ./ppkg depends libzip
+      - run: ./ppkg depends libzip -t d2
       - run: ./ppkg depends libzip -t dot
       - run: ./ppkg depends libzip -t box
       - run: ./ppkg depends libzip -t dot -o .
