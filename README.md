@@ -691,6 +691,7 @@ a uppm formula's file content only has one level mapping and shall has following
 
 |KEY|required?|overview|
 |-|-|-|
+|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe` , `lib`, `exe+lib`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|

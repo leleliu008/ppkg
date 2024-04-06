@@ -141,7 +141,7 @@ function _ppkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '-t[specify output format]:output-type:(dot box svg png)' \
+                        '-t[specify output format]:output-type:(dot box svg png d2)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
@@ -157,6 +157,7 @@ function _ppkg() {
                         '1:package-name:_ppkg_installed_packages' \
                         '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
+                        '--exclude=-[specify exclude path]' \
                         '--keep-session-dir[do not delete the session directory even if packed success]'
                     ;;
                 tree)
