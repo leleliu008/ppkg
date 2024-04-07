@@ -2001,8 +2001,12 @@ __show_packages_depended_by_the_given_package() {
         if [ "$OUTPUT_TYPE" = d2 ] || [ "$ENGIN" = d2 ] ; then
             for item in $PACKAGE_DEP_PKG
             do
-                LINES="$LINES
+                if [ -z "$LINES" ] ; then
+                    LINES="$PACKAGE_NAME -> $item"
+                else
+                    LINES="$LINES
 $PACKAGE_NAME -> $item"
+                fi
             done
         else
             unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
