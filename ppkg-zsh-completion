@@ -141,7 +141,7 @@ function _ppkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ppkg_available_packages' \
-                        '-t[specify output format]:output-type:(dot box svg png d2)' \
+                        '-t[specify output format]:output-type:(d2 dot box svg png)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;

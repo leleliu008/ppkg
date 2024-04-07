@@ -285,11 +285,11 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
-    - [tree](https://linux.die.net/man/1/tree)
-    - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
-    - [yq](https://mikefarah.gitbook.io/yq/)
+    - [curl](https://curl.se/docs/manpage.html)
+    - [tree](https://linux.die.net/man/1/tree)
     - [jq](https://stedolan.github.io/jq/manual/)
+    - [yq](https://mikefarah.gitbook.io/yq/)
     - [d2](https://github.com/terrastruct/d2)
 
 - **show basic information about this software**
@@ -337,50 +337,50 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **create a new empty formula repository**
 
     ```bash
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=master
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=main --pin
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --unpin --disable
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --enable
     ```
 
 - **create a new empty formula repository then sync with server**
 
     ```bash
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=master
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=main --pin
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --unpin --disable
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --enable
     ```
 
 - **delete the given formula repository**
 
     ```bash
-    uppm formula-repo-del my_repo
+    ppkg formula-repo-del my_repo
     ```
 
 - **sync the given formula repository with server**
 
     ```bash
-    uppm formula-repo-sync my_repo
+    ppkg formula-repo-sync my_repo
     ```
 
 - **show information of the given formula repository**
 
     ```bash
-    uppm formula-repo-info my_repo
+    ppkg formula-repo-info my_repo
     ```
 
 - **change the config of the given formula repository**
 
     ```bash
-    uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-conf my_repo --branch=main
-    uppm formula-repo-conf my_repo --pin
-    uppm formula-repo-conf my_repo --unpin
-    uppm formula-repo-conf my_repo --enable
-    uppm formula-repo-conf my_repo --disable
+    ppkg formula-repo-conf my_repo --url=https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-conf my_repo --branch=main
+    ppkg formula-repo-conf my_repo --pin
+    ppkg formula-repo-conf my_repo --unpin
+    ppkg formula-repo-conf my_repo --enable
+    ppkg formula-repo-conf my_repo --disable
     ```
 
 - **search all available packages whose name matches the given regular expression partten**
@@ -625,6 +625,14 @@ all relevant directories and files are located under `~/.ppkg` directory.
     export GOPROXY='https://goproxy.cn'
     ```
 
+- **PPKG_HOME**
+
+    If this environment variable is not set or set a empty string, `$HOME/.ppkg` will be used as the default value.
+
+    ```bash
+    export PPKG_HOME=$HOME/ppkg-home
+    ```
+
 - **PPKG_URL_TRANSFORM**
 
     ```bash
@@ -691,7 +699,7 @@ a ppkg formula'a filename prefix would be treated as the package name.
 
 a ppkg formula'a filename prefix must match the regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
 
-a uppm formula's file content only has one level mapping and shall has following KEY:
+a ppkg formula's file content only has one level mapping and shall has following KEY:
 
 |KEY|required?|overview|
 |-|-|-|
@@ -798,9 +806,11 @@ a uppm formula's file content only has one level mapping and shall has following
 |||
 |`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
 |||
-|`PPKG_VERSION`|the version of `ppkg`.|
-|`PPKG_HOME`|the home directory of `ppkg`.|
-|`PPKG`|the executable filepath of `ppkg`.|
+|`PPKG`|the name or path of `ppkg` that you're running.|
+|`PPKG_PATH`|the full path of `ppkg` that you're running.|
+|`PPKG_ARGS`|the arguments of `ppkg` that you've supplied.|
+|`PPKG_HOME`|the home directory of `ppkg` that you're running.|
+|`PPKG_VERSION`|the version of `ppkg` that you're running.|
 |||
 |`CC`|the C Compiler.|
 |`CFLAGS`|the flags of `CC`.|

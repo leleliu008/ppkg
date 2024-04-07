@@ -1865,7 +1865,7 @@ EOF
 
 # __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <dot|d2|box|svg|png>] [-o <OUTPUT-PATH>]
 __show_packages_depended_by_the_given_package() {
-    [ -z "$1" ] && abort 1 "_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
+    [ -z "$1" ] && abort 1 "$PPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
 
     PACKAGE_NAME="$1"
 
@@ -1883,18 +1883,18 @@ __show_packages_depended_by_the_given_package() {
                 case $1 in
                     dot|d2|box|svg|png)
                         OUTPUT_TYPE="$1" ;;
-                    '') abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
-                    *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|d2|box|svg|png"
+                    '') abort 1 "$PPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
+                    *)  abort 1 "$PPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|d2|box|svg|png"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$PPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$PPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -2370,19 +2370,19 @@ __fetch_resources_of_the_given_package() {
             -t) shift
 
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
+                    abort 1 "$PPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
                 else
                     OUTPUT_TYPE="$1"
                 fi
 
                 case $OUTPUT_TYPE in
                     zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
+                    *) abort 1 "$PPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$PPKG pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
@@ -2393,7 +2393,7 @@ __fetch_resources_of_the_given_package() {
                     EXCLUDES="$EXCLUDES $EXCLUDE"
                 fi
                 ;;
-            *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$PPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -2593,8 +2593,8 @@ __fetch_resources_of_the_given_package() {
         export.apk)
             OUTPUT_TYPE=apk
             ;;
-        '') abort 1 "$_0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , export.<OUTPUT-TYPE> is unspecified." ;;
-        *)  abort 1 "$_0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , unsupported type: $1, <OUTPUT-TYPE> must be any one of deb|rpm|pkg|apk"
+        '') abort 1 "$PPKG export.<OUTPUT-TYPE> <PACKAGE-NAME> , export.<OUTPUT-TYPE> is unspecified." ;;
+        *)  abort 1 "$PPKG export.<OUTPUT-TYPE> <PACKAGE-NAME> , unsupported type: $1, <OUTPUT-TYPE> must be any one of deb|rpm|pkg|apk"
     esac
 
     __load_receipt_of_the_given_package "$2"
@@ -2613,12 +2613,12 @@ __fetch_resources_of_the_given_package() {
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$PPKG export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$PPKG export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -7114,7 +7114,7 @@ EOF
 __install_the_given_packages() {
     __inspect_install_arguments "$@"
 
-    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$_0 install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
+    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$PPKG install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
 
     #########################################################################################
 
@@ -7578,17 +7578,17 @@ __uninstall_the_given_packages() {
     unset CURRENT_SCRIPT_REALPATH
 
     # if file exists and is a symbolic link
-    if [ -L "$CURRENT_SCRIPT_FILEPATH" ] ; then
+    if [ -L "$PPKG_PATH" ] ; then
         # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
         if command -v realpath > /dev/null ; then
-            CURRENT_SCRIPT_REALPATH=$(realpath "$CURRENT_SCRIPT_FILEPATH")
+            CURRENT_SCRIPT_REALPATH=$(realpath "$PPKG_PATH")
         elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
-            CURRENT_SCRIPT_REALPATH=$(readlink -f "$CURRENT_SCRIPT_FILEPATH")
+            CURRENT_SCRIPT_REALPATH=$(readlink -f "$PPKG_PATH")
         else
-            CURRENT_SCRIPT_REALPATH=$(realpath "$CURRENT_SCRIPT_FILEPATH")
+            CURRENT_SCRIPT_REALPATH=$(realpath "$PPKG_PATH")
         fi
     else
-        CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
+        CURRENT_SCRIPT_REALPATH="$PPKG_PATH"
     fi
 
     SESSION_DIR="$PPKG_HOME/run/$$"
@@ -7643,7 +7643,7 @@ __uninstall_the_given_packages() {
         esac
     done
 
-    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
+    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$(basename "$PPKG")"
 
     if [ -n "$OUTPUT_DIR" ] ; then
         ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$OUTPUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
@@ -7820,7 +7820,7 @@ __setup() {
 
                 unset BREW_PACKAGE_EXEFIND_PATH
 
-                for item in coreutils findutils gawk gsed grep libarchive jq yq git curl tree d2
+                for item in coreutils findutils gawk gsed grep libarchive git curl tree jq yq d2
                 do
                     run "$BREW" install "$item"
 
@@ -8536,7 +8536,7 @@ ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ppkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, grep, git, curl, bsdtar, tree, jq, yq, d2, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gawk, gsed, grep, git, curl, bsdtar, tree, jq, yq, d2, etc) used by this shell script.
 
 ${COLOR_GREEN}ppkg env${COLOR_OFF}
     show basic information about this software.
@@ -8786,23 +8786,27 @@ set -e
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
-_0=$0
+##################################################################################
 
-unset CURRENT_SCRIPT_DIR
-unset CURRENT_SCRIPT_FILENAME
-unset CURRENT_SCRIPT_FILEPATH
+if [ -n "$PPKG_XTRACE" ] ; then
+    set -x
+fi
 
-CURRENT_SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd) || exit 1
-CURRENT_SCRIPT_FILENAME=$(basename "$0")
-CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
+[ -z "$PPKG_HOME" ] && {
+    if [ -z "$HOME" ] ; then
+        abort 1 "HOME environment variable is not set."
+    else
+        PPKG_HOME="$HOME/.ppkg"
+    fi
+}
 
-[ -n "$PPKG_XTRACE" ] && set -x
+PPKG="$0"
 
-[ -z "$HOME" ] && abort 1 "HOME environment variable is not set."
+PPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
-PPKG="$CURRENT_SCRIPT_FILEPATH"
+PPKG_ARGS="$*"
 
-PPKG_VERSION=0.5.4
+PPKG_VERSION=0.5.5
 
 PPKG_OFFICIAL_FORMULA_REPO_URL="https://github.com/leleliu008/ppkg-formula-repository-official-core.git"
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8833,8 +8837,7 @@ fi
 
 UPPM="$PPKG_CORE_DIR/uppm"
 
-unset UPPM_HOME
-UPPM_HOME="$HOME/.uppm"
+UPPM_HOME="$PPKG_HOME/uppm"
 
 if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
@@ -8867,7 +8870,7 @@ case $1 in
         cat <<EOF
 ppkg.version : $PPKG_VERSION
 ppkg.homedir : $PPKG_HOME
-ppkg.exepath : $PPKG
+ppkg.exepath : $PPKG_PATH
 ppkg.website : https://github.com/leleliu008/ppkg
 EOF
         if [ -f "$UPPM" ] ; then
@@ -8907,7 +8910,7 @@ unset LDFLAGS
 if [ -f "$PPKG_CORE_DIR/profile" ] ; then
     .   "$PPKG_CORE_DIR/profile"
 else
-    abort 1 "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
+    abort 1 "please run ${COLOR_GREEN}$PPKG setup${COLOR_OFF} command first, then try again."
 fi
 
 #########################################################################################
