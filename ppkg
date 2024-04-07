@@ -1557,11 +1557,16 @@ __info_all_available_packages_as_shell() {
         --arg res_url "$PACKAGE_RES_URL" \
         --arg res_uri "$PACKAGE_RES_URI" \
         --arg res_sha "$PACKAGE_RES_SHA" \
+        --arg patches "$PACKAGE_PATCHES" \
+        --arg reslist "$PACKAGE_RESLIST" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
+        --arg onready "$PACKAGE_ONREADY" \
+        --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
+        --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
@@ -1591,6 +1596,8 @@ __info_all_available_packages_as_shell() {
     "res-url":$res_url,
     "res-uri":$res_uri,
     "res-sha":$res_sha,
+    "patches":$patches,
+    "reslist":$reslist,
     "dep-pkg":$dep_pkg,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
@@ -1602,7 +1609,10 @@ __info_all_available_packages_as_shell() {
     "ppflags":$ppflags,
     "ldflags":$ldflags,
     "parallel":$parallel,
+    "onready":$onready,
+    "do12345":$do12345,
     "dopatch":$dopatch,
+    "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak
 }' | jq 'with_entries(select(.value != ""))'
@@ -7010,7 +7020,10 @@ EOF
     unset RECEIPT_PACKAGE_BSYSTEM
     unset RECEIPT_PACKAGE_BSCRIPT
 
+    unset RECEIPT_PACKAGE_ONREADY
+    unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
+    unset RECEIPT_PACKAGE_PREPARE
     unset RECEIPT_PACKAGE_INSTALL
     unset RECEIPT_PACKAGE_DOTWEAK
 
@@ -7067,7 +7080,10 @@ EOF
     RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
