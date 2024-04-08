@@ -885,6 +885,7 @@ filetype_from_url() {
     unset PACKAGE_LICENSE
 
     unset PACKAGE_BSYSTEM
+    unset PACKAGE_BSYSTEM_MASTER
 
     unset PACKAGE_USE_BSYSTEM_GO
     unset PACKAGE_USE_BSYSTEM_RAKE
@@ -1027,6 +1028,8 @@ filetype_from_url() {
             esac
         done
     fi
+
+    PACKAGE_BSYSTEM_MASTER="${PACKAGE_BSYSTEM%%' '*}"
 
     #########################################################################################
 
@@ -1199,9 +1202,9 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_BSYSTEM
+    for BSYSTEM in $PACKAGE_BSYSTEM
     do
-        case $item in
+        case $BSYSTEM in
             autogen)     PACKAGE_USE_BSYSTEM_AUTOGENSH=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             autotools)   PACKAGE_USE_BSYSTEM_AUTOTOOLS=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             configure)   PACKAGE_USE_BSYSTEM_CONFIGURE=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
@@ -1220,9 +1223,9 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_BSYSTEM
+    for BSYSTEM in $PACKAGE_BSYSTEM
     do
-        case $item in
+        case $BSYSTEM in
             autogen)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             autotools)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"        ;;
@@ -1241,7 +1244,7 @@ filetype_from_url() {
     #########################################################################################
 
     [ -z "$PACKAGE_DOBUILD" ] && {
-        case $PACKAGE_BSYSTEM in
+        case $PACKAGE_BSYSTEM_MASTER in
             autogen)   PACKAGE_DOBUILD='configure' ;;
             autotools) PACKAGE_DOBUILD='configure' ;;
             configure) PACKAGE_DOBUILD='configure' ;;
@@ -6152,12 +6155,15 @@ EOF
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_ONREADY" ] ; then
-        step "onready"
+    step "onready"
 
+    if [ -z "$PACKAGE_ONREADY" ] ; then
+        note "onready mapping was not found in formula, skipped."
+    else
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+            run     cd "$PACKAGE_BSCRIPT_DIR"
         fi
+
         eval "
 onready() {
 $PACKAGE_ONREADY
@@ -6170,7 +6176,7 @@ $PACKAGE_ONREADY
     step "patching"
 
     if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run cd "$PACKAGE_BSCRIPT_DIR"
+        run     cd "$PACKAGE_BSCRIPT_DIR"
     fi
 
     if [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] ; then
@@ -6183,19 +6189,23 @@ $PACKAGE_ONREADY
         done
     fi
 
-    if [ -n "$PACKAGE_DOPATCH" ] ; then
+    if [ -z "$PACKAGE_DOPATCH" ] ; then
+        note "dopatch mapping was not found in formula, skipped."
+    else
         eval "
 dopatch() {
 $PACKAGE_DOPATCH
 }"
         dopatch "$1"
-    else
-        note "dopatch mapping was not found in formula, skipped."
     fi
 
     #########################################################################################
 
-    case $PACKAGE_BSYSTEM in
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run     cd "$PACKAGE_BSCRIPT_DIR"
+    fi
+
+    case $PACKAGE_BSYSTEM_MASTER in
         autogen)
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
@@ -6250,12 +6260,15 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_PREPARE" ] ; then
-        step "preparing"
+    step "preparing"
 
+    if [ -z "$PACKAGE_PREPARE" ] ; then
+        note "prepare mapping was not found in formula, skipped."
+    else
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+            run     cd "$PACKAGE_BSCRIPT_DIR"
         fi
+
         eval "
 prepare() {
 $PACKAGE_PREPARE
@@ -6273,7 +6286,7 @@ $PACKAGE_PREPARE
         run cd "$PACKAGE_BCACHED_DIR"
     fi
 
-    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+    if [        -d "$PACKAGE_INSTALL_DIR" ] ; then
         run rm -rf "$PACKAGE_INSTALL_DIR"
     fi
 
@@ -6294,14 +6307,14 @@ $PACKAGE_DOBUILD
 
     step "do some tweaks"
 
-    if [ -n "$PACKAGE_DOTWEAK" ] ; then
+    if [ -z "$PACKAGE_DOTWEAK" ] ; then
+        note "dotweak mapping was not found in formula, skipped."
+    else
         eval "
 dotweak() {
 $PACKAGE_DOTWEAK
 }"
         dotweak "$1"
-    else
-        note "dotweak mapping was not found in formula, skipped."
     fi
 
     #########################################################################################
@@ -6333,20 +6346,20 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
 
-    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
@@ -8822,7 +8835,7 @@ PPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 PPKG_ARGS="$*"
 
-PPKG_VERSION=0.5.5
+PPKG_VERSION=0.5.6
 
 PPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ppkg-formula-repository-official-core.git'
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
