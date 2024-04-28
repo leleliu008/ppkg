@@ -2413,11 +2413,32 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=0
+    SESSION_DIR="$PPKG_HOME/run/$$"
+
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    if [ -z "$EXCLUDES" ] ; then
+        run ln -s "$PACKAGE_INSTALLED_DIR" packed
+    else
+        run install -d packed
+
+        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
+
+        for EXCLUDE in $EXCLUDES
+        do
+            run rm -rf "packed/$EXCLUDE"
+        done
+    fi
+
+    ###########################################################################################
 
     if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
-        if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" ] ; then
-            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" -type f)
+        unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+
+        if [ -d packed/lib ] ; then
+            for FILEPATH in $(find packed/lib -type f)
             do
                 case $FILEPATH in
                     */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
@@ -2427,16 +2448,14 @@ __fetch_resources_of_the_given_package() {
             done
         fi
 
-        if [ -z "$PACKED_DIR_NAME" ] ; then
-            if [ -d "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" ] ; then
-                for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" -type f)
+        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+            if [ -d packed/bin ] ; then
+                for FILEPATH in $(find packed/bin -type f)
                 do
-                    FILEMAGIC=
                     FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
 
                     if [ "$FILEMAGIC" = '7F454C46' ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                        PT_INTERP=
                         PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                         if [ -n "$PT_INTERP" ] ; then
@@ -2448,15 +2467,13 @@ __fetch_resources_of_the_given_package() {
             fi
         fi
 
-        if [ -z "$PACKED_DIR_NAME" ] ; then
-            for FILEPATH in $(find "$PPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" -type f -a -name "*.a")
+        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+            for FILEPATH in $(find packed -type f -name '*.a' -print -quit)
             do
                 OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
             done
         fi
-    fi
 
-    if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
         if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
             PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
         else
@@ -2468,111 +2485,58 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    unset OUTPUT_DIR
-    unset OUTPUT_FILEPATH
+    if [ -z "$OUTPUT_TYPE" ] ; then
+        case $OUTPUT_PATH in
+            *.tar.gz|*.tgz)
+                OUTPUT_TYPE=tar.gz
+                ;;
+            *.tar.xz|*.txz)
+                OUTPUT_TYPE=tar.xz
+                ;;
+            *.tar.lz|*.tlz)
+                OUTPUT_TYPE=tar.lz
+                ;;
+            *.tar.bz2|*.tbz2)
+                OUTPUT_TYPE=tar.bz2
+                ;;
+            *.zip)
+                OUTPUT_TYPE=zip
+                ;;
+            *.7z)
+                OUTPUT_TYPE=7z
+                ;;
+            *)  OUTPUT_TYPE=tar.xz
+        esac
+    fi
+
+    ###########################################################################################
+
+    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_TYPE"
+
+    run mv packed "$PACKED_DIR_NAME"
+
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
+
+    run du -sh "$OUTPUT_FILENAME"
+
+    run cd -
+
+    ###########################################################################################
 
     case $OUTPUT_PATH in
-        '')
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            OUTPUT_DIR="$PWD"
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+        '') OUTPUT_PATH=.
             ;;
-        .|./)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
+        */*)
+            OUTPUT_DIR="${OUTPUT_PATH%/*}"
 
-            OUTPUT_DIR="$PWD"
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        ..|../)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            OUTPUT_DIR="$PWD/.."
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        */)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            case $OUTPUT_PATH in
-                /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
-                *)  OUTPUT_DIR="$PWD/$OUTPUT_PATH"
-            esac
-
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        *)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                case $OUTPUT_PATH in
-                    *.tar.gz|*.tgz)
-                        OUTPUT_TYPE=tar.gz
-                        ;;
-                    *.tar.xz|*.txz)
-                        OUTPUT_TYPE=tar.xz
-                        ;;
-                    *.tar.lz|*.tlz)
-                        OUTPUT_TYPE=tar.lz
-                        ;;
-                    *.tar.bz2|*.tbz2)
-                        OUTPUT_TYPE=tar.bz2
-                        ;;
-                    *.zip)
-                        OUTPUT_TYPE=zip
-                        ;;
-                    *.7z)
-                        OUTPUT_TYPE=7z
-                        ;;
-                    *)  OUTPUT_TYPE=tar.xz
-                esac
-            fi
-
-            case $OUTPUT_PATH in
-                /*) OUTPUT_DIR="${OUTPUT_PATH%/*}"
-                    OUTPUT_FILEPATH="$OUTPUT_PATH"
-                    ;;
-                *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
-                    OUTPUT_FILEPATH="$PWD/$OUTPUT_PATH"
-            esac
+            [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
     esac
 
     ###########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/run/$$"
+    run mv "$SESSION_DIR/$OUTPUT_FILENAME" "$OUTPUT_PATH"
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
-
-    if [ -z "$EXCLUDES" ] ; then
-        run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
-    else
-        run install -d "$PACKED_DIR_NAME"
-
-        run cp -r "$PACKAGE_INSTALLED_DIR/." "$PACKED_DIR_NAME/"
-
-        for EXCLUDE in $EXCLUDES
-        do
-            run rm -rf "$PACKED_DIR_NAME/$EXCLUDE"
-        done
-    fi
-
-    run bsdtar cvaf "packed.$OUTPUT_TYPE" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
-
-    run "du -sh "packed.$OUTPUT_TYPE" | cut -f1"
-
-    if [ ! -d "$OUTPUT_DIR" ] ; then
-        step "create output directory"
-        run install -d "$OUTPUT_DIR"
-    fi
-
-    run mv "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
+    ###########################################################################################
 
     if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         echo
