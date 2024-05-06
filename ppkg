@@ -8799,7 +8799,7 @@ PPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 PPKG_ARGS="$*"
 
-PPKG_VERSION=0.5.6
+PPKG_VERSION=0.5.7
 
 PPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ppkg-formula-repository-official-core.git'
 PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
@@ -8938,6 +8938,11 @@ fi
 #########################################################################################
 
 case $1 in
+    uppm)
+        shift
+        "$UPPM" "$@"
+        ;;
+
     sysinfo)
         sysinfo
         ;;
