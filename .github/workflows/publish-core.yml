@@ -1,0 +1,161 @@
+name: publish ppkg core
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  base:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - id:  calculate-release-version
+        run: |
+          RELEASE_VERSION="$(date +%Y.%m.%d)"
+
+          printf 'RELEASE_VERSION=%s\n' "$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      release-version: ${{ steps.calculate-release-version.outputs.RELEASE_VERSION }}
+
+
+  macos:
+    needs: base
+
+    runs-on: macos-14
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0']
+        target-arch: [x86_64, arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: |
+          set -ex
+
+          CC="$(xcrun --sdk macosx --find clang)"
+          SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
+          CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=${{ matrix.target-version }} -arch ${{ matrix.target-arch }} -Qunused-arguments"
+
+          for item in *.c
+          do
+            $CC $CFLAGS -std=c99 -Os -flto -Wl,-S -o "out/${item%.c}" "$item"
+          done
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
+      - run: chmod a+x xcpkg
+      - run: ./xcpkg setup
+      - run: ./xcpkg update
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/share
+      - run: rm -rf out/.xcpkg
+      - run: mv *.otf out/
+
+      - run: |
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppkg-core-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
+          path: ppkg-core-*.tar.xz
+
+
+  linux:
+    needs: base
+
+    runs-on: ubuntu-latest
+
+    container: alpine:3.19
+
+    steps:
+      - run: apk update
+      - run: apk add curl xz g++ libc-dev linux-headers
+
+      - uses: actions/checkout@v4
+
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: |
+          for item in *.c
+          do
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
+          done
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
+      - run: ./ppkg pack    uppm@0.15.4
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/share
+      - run: rm -rf out/.ppkg
+      - run: mv *.otf out/
+
+      - run: |
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppkg-core-linux-x86_64.tar.xz
+          path: ppkg-core-*.tar.xz
+
+
+  publish:
+
+    needs: [base, macos, linux]
+
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          path: .
+          merge-multiple: true
+
+      - run: ls -a
+
+      # to avaid: failed to run git: fatal: not a git repository (or any of the parent directories): .git
+      - run: git -c init.defaultBranch=master init
+      - run: git remote add origin ${{ github.repositoryUrl }}
+
+      - run: |
+          cat > notes.md <<EOF
+          sha256sum:
+
+          \`\`\`
+          $(sha256sum ppkg-core-*.tar.xz)
+          \`\`\`
+          EOF
+
+      - run: gh release create ppkg-core-${{ needs.base.outputs.release-version }} ppkg-core-*.tar.xz --title ppkg-core-${{ needs.base.outputs.release-version }} --notes-file notes.md
