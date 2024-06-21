@@ -8,7 +8,7 @@ A portable package builder/manager for Unix-like system.
 
 - Please do NOT place your own files under `~/.ppkg` directory, as `ppkg` will change files under `~/.ppkg` directory without notice.
 
-- Please do NOT run `ppkg` command in parallel to avoid generating dirty data.
+- Please do NOT run `ppkg` command in parallel so as not to generate dirty data.
 
 ## Two implementations
 
@@ -285,12 +285,17 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
-    - [git](https://git-scm.com/docs/git)
-    - [curl](https://curl.se/docs/manpage.html)
+    - [patchelf](https://github.com/NixOS/patchelf)
+    - [sysinfo](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)
     - [tree](https://linux.die.net/man/1/tree)
+    - [curl](https://curl.se/docs/manpage.html)
+    - [git](https://git-scm.com/docs/git)
     - [jq](https://stedolan.github.io/jq/manual/)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [d2](https://github.com/terrastruct/d2)
+    - [fzf](https://github.com/junegunn/fzf)
+    - [bat](https://github.com/sharkdp/bat)
+    - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
 
 - **show basic information about this software**
 
@@ -703,7 +708,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 
 |KEY|required?|overview|
 |-|-|-|
-|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe` , `lib`, `exe+lib`|
+|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ppkg` would add `--static -static` options to `LDFLAGS` if `--fsle` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ppkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
@@ -742,40 +747,77 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
-|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
-|`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
-|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-full` install option is given.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
+|`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
+|`parallel`|optional|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
-|`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
-|`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
-|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
+|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+||||
+|`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+||||
+|`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
 |phases|
 |-|
 |![phases](phases.svg)|
 
-**commands that can be used out of the box in `onready`, `dopatch`, `prepare`, `install` block:**
+|build system name|build script file name|
+|-|-|
+|`meson`|`meson.build`|
+|`cmake`|`CMakeLists.txt`|
+|`gmake`|`GNUMakefile` or `Makefile`|
+|`ninja`|`build.ninja`|
+|`xmake`|`xmake.lua`|
+|`cargo`|`Cargo.toml`|
+|`go`|`go.mod`|
+|`rake`|`Rakefile`|
+|`autogen`|`autogen.sh`|
+|`autotools`|`configure.ac`|
+|`configure`|`configure`|
+
+**commands that can be used out of the box:**
 
 |command|usage-example|
 |-|-|
+|`bash`|[Reference](https://www.gnu.org/software/bash/manual/bash.html)|
+|`CoreUtils`|[Reference](https://www.gnu.org/software/coreutils/manual/coreutils.html)|
+|`xargs`|[Reference](https://www.gnu.org/software/findutils/manual/html_node/find_html/Invoking-xargs.html)|
+|`find`|[Reference](https://www.gnu.org/software/findutils/manual/html_mono/find.html)|
+|`gawk`|[Reference](https://www.gnu.org/software/gawk/manual/gawk.html)|
+|`gsed`|[Reference](https://www.gnu.org/software/sed/manual/sed.html)|
+|`grep`|[Reference](https://www.gnu.org/software/grep/manual/grep.html)|
+|`tree`|[Reference](https://linux.die.net/man/1/tree)|
+|`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
+|`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
+|`d2`|[Reference](https://github.com/terrastruct/d2)|
+|`bat`|[Reference](https://github.com/sharkdp/bat)|
+|`xxd`|[Reference](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)|
+|`git`|[Reference](https://git-scm.com/docs/git)|
+|`curl`|[Reference](https://curl.se/docs/manpage.html)|
+|`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
+|`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
+|`patchelf`|[Reference](https://github.com/NixOS/patchelf)|
+|`sysinfo`|[Reference](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)|
+|||
 |`echo`|`echo 'your message.'`|
 |`info`|`info 'your information.'`|
 |`warn`|`warn "no package manager found."`|
 |`error`|`error 'error message.'`|
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
-|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
-|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256SUM>] [-o <OUTPUT-PATH>] [--no-buffer] [-q]`|
-
-**commands that can be used out of the box in `install` block only:**
-
-|command|usage-example|
-|-|-|
+|`isInteger`|`isInteger $x \|\| abort 1 "should be an integer."`|
+|`isCrossBuild`|`isCrossBuild && abort 1 "This package is not supposed to be cross built."`|
+|`sedInPlace`|`sedInPlace 's/-mandroid//g' Configure`|
+|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
+|||
 |`configure`|`configure --enable-pic`|
 |`mesonw`|`mesonw -Dneon=disabled -Darm-simd=disabled`|
 |`cmakew`|`cmakew -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON`|
@@ -784,10 +826,19 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`cargow`|`cargow`|
 |`gow`|`gow`|
 
-**shell variables can be used in `onready`, `dopatch`, `prepare`, `install` block:**
+**shell variables can be used directly:**
 
 |variable|overview|
 |-|-|
+|`PPKG_ARG0`|the 1st arguments of `ppkg` that you've supplied.|
+|`PPKG_ARG1`|the 2nd arguments of `ppkg` that you've supplied.|
+|`PPKG_ARGV`|the all arguments of `ppkg` that you've supplied.|
+|`PPKG_PATH`|the full path of `ppkg` that you're running.|
+|`PPKG_HOME`|the home directory of `ppkg` that you're running.|
+|`PPKG_VERSION`|the version of `ppkg` that you're running.|
+|||
+|`UPPM`|the executable filepath of [uppm](https://github.com/leleliu008/uppm)|
+|||
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
 |`NATIVE_OS_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
@@ -805,12 +856,6 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`TARGET_PLATFORM_ARCH`|target platform arch that is built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
 |||
 |`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
-|||
-|`PPKG`|the name or path of `ppkg` that you're running.|
-|`PPKG_PATH`|the full path of `ppkg` that you're running.|
-|`PPKG_ARGS`|the arguments of `ppkg` that you've supplied.|
-|`PPKG_HOME`|the home directory of `ppkg` that you're running.|
-|`PPKG_VERSION`|the version of `ppkg` that you're running.|
 |||
 |`CC`|the C Compiler.|
 |`CFLAGS`|the flags of `CC`.|
@@ -837,22 +882,26 @@ a ppkg formula's file content only has one level mapping and shall has following
 
 ## ppkg formula repository
 
-a ppkg formula repository is a git repository.
+a typical hierarchical structure of a ppkg formula repository looks like below:
 
-a ppkg formula repository's root dir should have a `formula` named sub dir, this repository's formulas all should be located in this dir.
+```
+PPKGFormulaRepoName
+├── formula
+│   ├── packageA.yml
+│   └── packageB.yml
+├── LICENSE
+└── README.md
+```
 
-a ppkg formula repository's local path is `~/.ppkg/repos.d/${PPKGFormulaRepoName}`
+## ppkg formula repository local location
 
-**Note:**
+`${PPKG_HOME}/repos.d/${PPKGFormulaRepoName}`
 
-- please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
-- ppkg supports multiple formula repositories.
+## ppkg formula repository local config
 
-## ppkg formula repository's config
+a ppkg formula repository's config file is located at `${PPKG_HOME}/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
 
-After a ppkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
-
-a typical ppkg formula repository's config as following:
+a typical ppkg formula repository's config file content looks like below:
 
 ```yaml
 url: https://github.com/leleliu008/ppkg-formula-repository-official-core
@@ -867,10 +916,24 @@ If a ppkg formula repository is `pinned`, which means it would not be updated.
 
 If a ppkg formula repository is `disabled`, which means ppkg would not search formulas in this formula repository.
 
+## ppkg formula repository management
+
+run `ppkg formula-repo-add ` command to create a new formula repository locally from an exsting remote git repository.
+
+run `ppkg formula-repo-init` command to create a new formula repository locally without taking any further action.
+
 ## ppkg official formula repository
 
-ppkg official formula repository's url: <https://github.com/leleliu008/ppkg-formula-repository-official-core>
+ppkg official formula repository is hosted at <https://github.com/leleliu008/ppkg-formula-repository-official-core>
 
-ppkg official formula repository would be automatically fetched to local cache as name `official-core` when you run `ppkg update` command.
+It would be automatically fetched to your local repository as name `official-core` when you run `ppkg update` command.
 
 **Note:** If you find that a package is not in ppkg official formula repository yet, PR is welcomed.
+
+## prebuild packages built by this software
+
+- <https://github.com/leleliu008/uppm-package-repository-linux-x86_64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-aarch64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-riscv64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-ppc64le>
+- <https://github.com/leleliu008/uppm-package-repository-linux-s390x>

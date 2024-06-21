@@ -1,4 +1,4 @@
-name: publish main
+name: publish ppkg main
 
 on:
   workflow_dispatch:
