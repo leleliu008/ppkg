@@ -300,13 +300,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **show basic information about this software**
 
     ```bash
-    ppkg env
-    ```
-
-- **show build information about this software**
-
-    ```bash
-    ppkg buildinfo
+    ppkg about
     ```
 
 - **show basic information about your current running operation system**

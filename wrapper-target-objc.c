@@ -13,29 +13,29 @@
 #define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
 
 int main(int argc, char * argv[]) {
-    char * const compiler = getenv("PROXIED_CC");
+    char * const compiler = getenv("PROXIED_OBJC");
 
     if (compiler == NULL) {
-        fprintf(stderr, "PROXIED_CC environment variable is not set.\n");
+        fprintf(stderr, "PROXIED_OBJC environment variable is not set.\n");
         return 1;
     }
 
     if (compiler[0] == '\0') {
-        fprintf(stderr, "PROXIED_CC environment variable value should be a non-empty string.\n");
+        fprintf(stderr, "PROXIED_OBJC environment variable value should be a non-empty string.\n");
         return 2;
     }
 
     /////////////////////////////////////////////////////////////////
 
-    char * const baseArgs = getenv("PROXIED_CC_ARGS");
+    char * const baseArgs = getenv("PROXIED_OBJC_ARGS");
 
     if (baseArgs == NULL) {
-        fprintf(stderr, "PROXIED_CC_ARGS environment variable is not set.\n");
+        fprintf(stderr, "PROXIED_OBJC_ARGS environment variable is not set.\n");
         return 5;
     }
 
     if (baseArgs[0] == '\0') {
-        fprintf(stderr, "PROXIED_CC_ARGS environment variable value should be a non-empty string.\n");
+        fprintf(stderr, "PROXIED_OBJC_ARGS environment variable value should be a non-empty string.\n");
         return 6;
     }
 

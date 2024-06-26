@@ -7,7 +7,7 @@ _ppkg_actions=(
     '-V:show version of this command.'
     '--version:show version of this command.'
     'version:show version of this command.'
-    'env:show basic information about this software.'
+    'about:show basic information about this software.'
     'buildinfo:show build information about this software.'
     'sysinfo:show basic information about your current running operation system.'
     'gen-url-transform-sample:generate url-transform sample.'
@@ -174,51 +174,119 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:_ppkg_available_packages' \
-                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[specify the build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
+                        '--fsle[create fully statically linked executables]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-I[specify the formula search directory]:search-dir:_path_files -/' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-formula[show formula content]' \
+                        '-v-toolchain[show C/C++ toolchain information]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[very verbose mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[specify the build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
+                        '--fsle[create fully statically linked executables]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-I[specify the formula search directory]:search-dir:_path_files -/' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-formula[show formula content]' \
+                        '-v-toolchain[show C/C++ toolchain information]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[very verbose mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ppkg_outdated_packages' \
-                        '--target=-[specify target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session directory even if installed success]' \
-                        '--build-type=-[specify the build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-full shared-full static-most shared-most)' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
+                        '--fsle[create fully statically linked executables]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-I[specify the formula search directory]:search-dir:_path_files -/' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-formula[show formula content]' \
+                        '-v-toolchain[show C/C++ toolchain information]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[very verbose mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
+
+
                 uninstall)
                     _arguments '*:package-name:_ppkg_installed_packages'
                     ;;

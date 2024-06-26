@@ -1,231 +1,298 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
-#include <unistd.h>
-#include <regex.h>
 
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
+#include <unistd.h>
+#include <sys/stat.h>
+
+#define ACTION_PREPROCESS                           1
+#define ACTION_COMPILE                              2
+#define ACTION_ASSEMBLE                             3
+#define ACTION_CREATE_SHARED_LIBRARY                4
+#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
 
 int main(int argc, char * argv[]) {
-    const char * options[7] = { "-shared", "-Bshareable", "-static", "--static", "-pie", "-c", "-o" };
-          int    indexes[7] = {    -1,          -1,           -1,       -1,        -1,    -1,   -1  };
+    char * const compiler = getenv("PROXIED_CXX");
 
-    for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 7; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
-                indexes[j] = i;
-                break;
-            }
-        }
-    }
-
-    int action = 0;
-
-    if (indexes[0] > 0 || indexes[1] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[2] > 0) || (indexes[3] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[4] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    char * const cxxc = getenv("CXX");
-
-    if (cxxc == NULL) {
-        fprintf(stderr, "CXX environment variable is not set.\n");
+    if (compiler == NULL) {
+        fprintf(stderr, "PROXIED_CXX environment variable is not set.\n");
         return 1;
     }
 
-    if (cxxc[0] == '\0') {
-        fprintf(stderr, "CXX environment variable value should be a non-empty string.\n");
+    if (compiler[0] == '\0') {
+        fprintf(stderr, "PROXIED_CXX environment variable value should be a non-empty string.\n");
         return 2;
     }
 
     /////////////////////////////////////////////////////////////////
 
-    const char * const TARGET = getenv("ANDROID_TARGET");
+    char * const baseArgs = getenv("PROXIED_CXX_ARGS");
 
-    if (TARGET == NULL) {
-        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 3;
-    }
-
-    if (TARGET[0] == '\0') {
-        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 4;
-    }
-
-    size_t targetArgLength = strlen(TARGET) + 10U;
-    char   targetArg[targetArgLength];
-
-    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    if (ret < 0) {
-        perror(NULL);
+    if (baseArgs == NULL) {
+        fprintf(stderr, "PROXIED_CXX_ARGS environment variable is not set.\n");
         return 5;
     }
 
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("SYSROOT");
-
-    if (SYSROOT == NULL) {
-        fprintf(stderr, "SYSROOT environment variable is not set.\n");
+    if (baseArgs[0] == '\0') {
+        fprintf(stderr, "PROXIED_CXX_ARGS environment variable value should be a non-empty string.\n");
         return 6;
     }
 
-    if (SYSROOT[0] == '\0') {
-        fprintf(stderr, "SYSROOT environment variable value should be a non-empty string.\n");
-        return 7;
+    /////////////////////////////////////////////////////////////////
+
+    int action = 0;
+
+    int staticFlag = 0;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-E") == 0) {
+            action = ACTION_PREPROCESS;
+            break;
+        }
+
+        if (strcmp(argv[i], "-S") == 0) {
+            action = ACTION_ASSEMBLE;
+            break;
+        }
+
+        if (strcmp(argv[i], "-c") == 0) {
+            action = ACTION_COMPILE;
+            break;
+        }
+
+#if defined (__APPLE__)
+        if (strcmp(argv[i], "-dynamiclib") == 0) {
+            action = ACTION_CREATE_SHARED_LIBRARY;
+            break;
+        }
+#endif
+
+        if (strcmp(argv[i], "-shared") == 0) {
+            action = ACTION_CREATE_SHARED_LIBRARY;
+            break;
+        }
+
+        if (strcmp(argv[i], "-static") == 0) {
+            staticFlag = 1;
+        }
+
+        if (strcmp(argv[i], "--static") == 0) {
+            staticFlag = 1;
+        }
     }
 
-    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
-    char   sysrootArg[sysrootArgLength];
-
-    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 8;
+    if (action == 0) {
+        if (staticFlag == 1) {
+            action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+        }
     }
 
     /////////////////////////////////////////////////////////////////
 
-    char* argv2[argc + 4];
+    size_t baseArgc = 1U;
 
-    argv2[0] = cxxc;
-    argv2[1] = targetArg;
-    argv2[2] = sysrootArg;
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        argv2[3] = (char*)"-fPIC";
-
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-static") == 0) {
-                argv2[i + 3] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i + 3] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 3] = (char*)"-fPIC";
-            } else {
-                argv2[i + 3] = argv[i];
-            }
+    for (size_t i = 0U; ; i++) {
+        if (baseArgs[i] == '\0') {
+            break;
         }
 
-        char sonameArg[100]; sonameArg[0] = '\0';
-
-        char * outputFilePath = NULL;
-        char * outputFileName = NULL;
-
-        if (indexes[5] == -1) {
-            // It's rare to see. like -o/a/b/libxx.so.1
-            for (int i = 1; i < argc; i++) {
-                if (strncmp(argv[i], "-o", 2) == 0) {
-                    indexes[5] = i;
-                    outputFilePath = &argv[i][2];
-                    break;
-                }
-            }
-        } else {
-            // if -o <FILE> option is specified.
-            int i = indexes[5] + 1;
-
-            if (i < argc) {
-                outputFilePath = argv[i];
-            }
+        if (baseArgs[i] == ' ') {
+            baseArgc++;
         }
-
-        if (outputFilePath != NULL) {
-            int len = 0;
-
-            for (;;) {
-                if (outputFilePath[len] == '\0') {
-                    break;
-                } else {
-                    len++;
-                }
-            }
-
-            for (int i = len - 1; i > 0; i--) {
-                if (outputFilePath[i] == '/') {
-                    outputFileName = outputFilePath + i + 1;
-                    break;
-                }
-            }
-
-            if (outputFileName == NULL) {
-                outputFileName = outputFilePath;
-            }
-
-            regex_t regex;
-
-            if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
-                perror(NULL);
-                regfree(&regex);
-                return 9;
-            }
-
-            regmatch_t regmatch[2];
-
-            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
-                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
-
-                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &outputFileName[regmatch[0].rm_so];
-
-                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
-
-                    if (ret < 0) {
-                        perror(NULL);
-                        regfree(&regex);
-                        return 10;
-                    }
-                }
-            }
-
-            regfree(&regex);
-        }
-
-        if (sonameArg[0] == '\0') {
-            argv2[argc + 3] = NULL;
-        } else {
-            argv2[argc + 3] = sonameArg;
-            argv2[argc + 4] = NULL;
-        }
-    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-rdynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else {
-                argv2[i + 2] = argv[i];
-            }
-        }
-
-        argv2[argc + 2] = NULL;
-    } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-
-        argv2[argc + 2] = NULL;
     }
 
-    execv (cxxc, argv2);
-    perror(cxxc);
+    /////////////////////////////////////////////////////////////////
+
+    char* argv2[argc + baseArgc + 5];
+
+    if (action == ACTION_PREPROCESS || action == ACTION_COMPILE || action == ACTION_ASSEMBLE) {
+        for (int i = 1; i < argc; i++) {
+            argv2[i] = argv[i];
+        }
+    } else if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        // remove -static , --static , -pie options if they also are specified
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-static") == 0) {
+                argv2[i] = (char*)"-fPIC";
+            } else if (strcmp(argv[i], "--static") == 0) {
+                argv2[i] = (char*)"-fPIC";
+            } else if (strcmp(argv[i], "-pie") == 0) {
+                argv2[i] = (char*)"-fPIC";
+            } else {
+                argv2[i] = argv[i];
+            }
+        }
+    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
+        // remove -pie , -Wl,-Bdynamic option if it also is specified
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-rdynamic") == 0) {
+                argv2[i] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+                argv2[i] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
+                argv2[i] = (char*)"-static";
+            } else if (strcmp(argv[i], "-pie") == 0) {
+                argv2[i] = (char*)"-static";
+            } else if (argv[i][0] == '/') {
+                int len = 0;
+
+                int slashIndex = -1;
+
+                for (int j = 0; ; j++) {
+                    if (argv[i][j] == '\0') {
+                        len = j;
+                        break;
+                    } else if (argv[i][j] == '/') {
+                        slashIndex = j;
+                    }
+                }
+
+                const char * filename = argv[i] + slashIndex + 1;
+
+                fprintf(stderr, "filename=%s\n", filename);
+
+                if (strcmp(filename, "libm.so") == 0) {
+                    argv[i][0] = '-';
+                    argv[i][1] = 'l';
+                    argv[i][2] = 'm';
+                    argv[i][3] = '\0';
+                } else if (strcmp(filename, "libdl.so") == 0) {
+                    argv[i][0] = '-';
+                    argv[i][1] = 'l';
+                    argv[i][2] = 'd';
+                    argv[i][3] = 'l';
+                    argv[i][4] = '\0';
+                } else {
+                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
+                        argv[i][len - 2] = 'a';
+                        argv[i][len - 1] = '\0';
+
+                        struct stat st;
+
+                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                            argv[i][len - 2] = 's';
+                            argv[i][len - 1] = 'o';
+                        }
+                    }
+                }
+
+                argv2[i] = argv[i];
+            } else {
+                argv2[i] = argv[i];
+            }
+        }
+    } else {
+        const char * msle = getenv("PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
+
+        if (msle != NULL && strcmp(msle, "1") == 0) {
+            for (int i = 1; i < argc; i++) {
+                if (argv[i][0] == '/') {
+                    int len = 0;
+                    int dotIndex = -1;
+
+                    for (int j = 0; ; j++) {
+                        if (argv[i][j] == '\0') {
+                            len = j;
+                            break;
+                        }
+
+                        if (argv[i][j] == '.') {
+                            dotIndex = j;
+                        }
+                    }
+
+                    if (dotIndex > 0) {
+#if defined (__APPLE__)
+                        if (len - dotIndex == 6) {
+                            if (strcmp(&argv[i][dotIndex], ".dylib") == 0) {
+                                argv[i][dotIndex + 1] = 'a' ;
+                                argv[i][dotIndex + 2] = '\0';
+
+                                struct stat st;
+
+                                if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                    argv[i][dotIndex + 1] = 'd';
+                                    argv[i][dotIndex + 2] = 'y';
+                                }
+                            }
+                        }
+#else
+                        if (len - dotIndex == 3) {
+                            if (strcmp(&argv[i][dotIndex], ".so") == 0) {
+                                argv[i][dotIndex + 1] = 'a' ;
+                                argv[i][dotIndex + 2] = '\0';
+
+                                struct stat st;
+
+                                if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                    argv[i][dotIndex + 1] = 's';
+                                    argv[i][dotIndex + 2] = 'o';
+                                }
+                            }
+                        }
+#endif
+                    }
+                }
+
+                argv2[i] = argv[i];
+            }
+        } else {
+            for (int i = 1; i < argc; i++) {
+                argv2[i] = argv[i];
+            }
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    char * p = baseArgs;
+
+    for (size_t i = 0U; ; i++) {
+        if (baseArgs[i] == '\0') {
+            if (p[0] != '\0') {
+                argv2[argc++] = p;
+            }
+            break;
+        }
+
+        if (baseArgs[i] == ' ') {
+            baseArgs[i] = '\0';
+
+            if (p[0] != '\0') {
+                argv2[argc++] = p;
+            }
+
+            p = &baseArgs[i + 1];
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        argv2[argc++] = (char*)"-fPIC";
+    }
+
+    argv2[argc++] = NULL;
+    argv2[0] = compiler;
+
+    /////////////////////////////////////////////////////////////////
+
+    const char * verbose = getenv("PPKG_VERBOSE");
+
+    if (verbose != NULL && strcmp(verbose, "1") == 0) {
+        for (int i = 0; ;i++) {
+            if (argv2[i] == NULL) {
+                break;
+            } else {
+                fprintf(stderr, "%s\n", argv2[i]);
+            }
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    execv (compiler, argv2);
+    perror(compiler);
     return 255;
 }
