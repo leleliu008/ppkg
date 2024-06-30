@@ -8605,6 +8605,12 @@ __setup_uppm() {
 
     ##################################################################################
 
+    if [ -z "$NATIVE_OS_TYPE" ] ; then
+        NATIVE_OS_TYPE="$NATIVE_OS_KIND"
+    fi
+
+    ##################################################################################
+
     if [ -z "$NATIVE_OS_VERS" ] ; then
         NATIVE_OS_TARGET="$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
     else
