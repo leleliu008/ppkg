@@ -4239,9 +4239,9 @@ $FORMULA_SEARCH_DIR"
         READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
     fi
 
-    PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
-    PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
-    PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
+    export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
+    export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
+    export PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
 
      CC_FOR_BUILD="$PPKG_CORE_DIR/wrapper-native-cc"
    OBJC_FOR_BUILD="$PPKG_CORE_DIR/wrapper-native-objc"
