@@ -6842,6 +6842,8 @@ __check_elf_files() {
                 ;;
             libstdc++.so)
                 ;;
+            libstdc++.so.6)
+                ;;
             libutil.so)
                 ;;
             libcrypt.so)
