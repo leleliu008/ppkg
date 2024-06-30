@@ -1375,40 +1375,6 @@ filetype_from_url() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg ls-available
-
-__list_available_packages() {
-    [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
-
-    {
-        AVAILABLE_FORMULA_REPOSITORY_NAMES=
-
-        for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
-        do
-            if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
-                AVAILABLE_FORMULA_REPOSITORY_NAMES="$AVAILABLE_FORMULA_REPOSITORY_NAMES $item"
-            fi
-        done
-
-        for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
-        do
-            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE"
-
-            if [ -d "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
-            fi
-
-            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
-
-            if [ -d "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
-            fi
-        done
-    } | sort | uniq
-}
-
-# }}}
-##############################################################################
 # {{{ ppkg ls-installed
 
 __list_installed_packages() {
@@ -1417,6 +1383,94 @@ __list_installed_packages() {
     else
         return 0
     fi
+}
+
+# }}}
+##############################################################################
+# {{{ ppkg ls-available [-v] [--yaml | --json]
+
+__list_available_packages() {
+    unset OUTPUT_MODE
+    unset OUTPUT_TYPE
+
+    for arg in $@
+    do
+        case $arg in
+            -v)     OUTPUT_MODE=full ;;
+            --json) OUTPUT_TYPE=json ;;
+            --yaml) OUTPUT_TYPE=yaml ;;
+            *) abort 1 "unrecognized argument: $arg"
+        esac
+    done
+
+    if [ -z "$OUTPUT_MODE" ] ; then
+        __list_available_package_names
+    else
+        AVAILABLE_PACKAGE_NAMES="$(__list_available_package_names)"
+
+        [ -z "$AVAILABLE_PACKAGE_NAMES" ] && return 0
+
+        IS_FIRST_ELEMENT=1
+
+        case $OUTPUT_TYPE in
+            yaml|'')
+                for PKGNAME in $AVAILABLE_PACKAGE_NAMES
+                do
+                    if [ "$IS_FIRST_ELEMENT" = 1 ] ; then
+                        unset IS_FIRST_ELEMENT
+                    else
+                        printf '%s\n' '---'
+                    fi
+                    __info_the_given_available_package_as_yaml "$PKGNAME"
+                done
+                ;;
+            json)
+                printf '%s\n' '['
+
+                for PKGNAME in $AVAILABLE_PACKAGE_NAMES
+                do
+                    if [ "$IS_FIRST_ELEMENT" = 1 ] ; then
+                        unset IS_FIRST_ELEMENT
+                    else
+                        printf '%s\n' ','
+                    fi
+                    __info_the_given_available_package_as_json "$PKGNAME"
+                done
+
+                printf '%s\n' ']'
+                ;;
+        esac
+    fi
+}
+
+__list_available_package_names() {
+    [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
+
+    {
+        FORMULA_REPOSITORY_NAMES=
+
+        for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
+        do
+            if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
+                FORMULA_REPOSITORY_NAMES="$FORMULA_REPOSITORY_NAMES $item"
+            fi
+        done
+
+        for FORMULA_REPOSITORY_NAME in $FORMULA_REPOSITORY_NAMES
+        do
+            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$TARGET_PLATFORM_NAME"
+
+            if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            fi
+
+            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
+
+            if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+            fi
+        done
+    } | sort | uniq
 }
 
 # }}}
@@ -1453,7 +1507,7 @@ __list__outdated_packages() {
 # {{{ ppkg search <REGULAR-EXPRESSION-PATTERN> [-v]
 
 __search_packages() {
-    [ -z "$1" ] && abort 1 "please specify a regular express partten."
+    [ -z "$1" ] && abort 1 "please specify a regular express pattern."
 
     AVAILABLE_PACKAGE_NAMES_ALL="$(__list_available_package_names)"
 
@@ -3282,9 +3336,9 @@ EOF
 # https://github.com/xmake-io/xmake/issues/2003
 # run in a subshell
 xmakew() {
-    export CC="$XCPKG_COMPILER_C"
-    export AS="$XCPKG_COMPILER_C"
-    export LD="$XCPKG_COMPILER_C"
+    export CC="$PPKG_COMPILER_C"
+    export AS="$PPKG_COMPILER_C"
+    export LD="$PPKG_COMPILER_C"
 
     XMAKE_CONFIG_OPTIONS="$*"
 
