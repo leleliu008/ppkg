@@ -35,7 +35,7 @@ jobs:
 
             run ./ppkg setup
 
-            run ./ppkg env
+            run ./ppkg about
 
             run ./ppkg integrate zsh
 

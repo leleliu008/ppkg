@@ -37,8 +37,8 @@ jobs:
 
       - run: ./ppkg setup -v
 
-      - run: ./ppkg env
-      - run: ./ppkg env -v
+      - run: ./ppkg about
+      - run: ./ppkg about -v
 
       - run: ./ppkg integrate zsh
       - run: ./ppkg integrate zsh -v
