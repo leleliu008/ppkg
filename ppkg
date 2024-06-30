@@ -6750,7 +6750,7 @@ __check_elf_files() {
     do
         [ -f "$FILEPATH" ] || continue
 
-        FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
+        FILE_HEADER_ACTUAL="$(xxd -u -p -l 18 "$FILEPATH")"
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         case $FILE_HEADER_ACTUAL in
