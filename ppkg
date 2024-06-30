@@ -8622,6 +8622,8 @@ __setup_uppm() {
     # https://curl.se/docs/caextract.html
     wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
+    export SSL_CERT_FILE="$PWD/cacert.pem"
+
     ##################################################################################
 
     PPKG_CORE_RELEASE_VERSION='2024.06.30'
