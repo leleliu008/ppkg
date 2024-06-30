@@ -38,12 +38,12 @@ int main(int argc, char * argv[]) {
         }
 
         if (strcmp(argv[i], "-S") == 0) {
-            action = ACTION_ASSEMBLE;
+            action = ACTION_COMPILE;
             break;
         }
 
         if (strcmp(argv[i], "-c") == 0) {
-            action = ACTION_COMPILE;
+            action = ACTION_ASSEMBLE;
             break;
         }
 
@@ -265,7 +265,7 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
+    if (action == ACTION_ASSEMBLE || action == ACTION_CREATE_SHARED_LIBRARY) {
         argv2[argc++] = (char*)"-fPIC";
     }
 
