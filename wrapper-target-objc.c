@@ -27,20 +27,6 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * const baseArgs = getenv("PROXIED_OBJC_ARGS");
-
-    if (baseArgs == NULL) {
-        fprintf(stderr, "PROXIED_OBJC_ARGS environment variable is not set.\n");
-        return 5;
-    }
-
-    if (baseArgs[0] == '\0') {
-        fprintf(stderr, "PROXIED_OBJC_ARGS environment variable value should be a non-empty string.\n");
-        return 6;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
     int action = 0;
 
     int staticFlag = 0;
@@ -90,15 +76,23 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    size_t baseArgc = 1U;
+    int baseArgc;
 
-    for (size_t i = 0U; ; i++) {
-        if (baseArgs[i] == '\0') {
-            break;
-        }
+    char * const baseArgs = getenv("PROXIED_OBJC_ARGS");
 
-        if (baseArgs[i] == ' ') {
-            baseArgc++;
+    if (baseArgs == NULL || baseArgs[0] == '\0') {
+        baseArgc = 0;
+    } else {
+        baseArgc = 1;
+
+        for (int i = 0; ; i++) {
+            if (baseArgs[i] == '\0') {
+                break;
+            }
+
+            if (baseArgs[i] == ' ') {
+                baseArgc++;
+            }
         }
     }
 
@@ -246,24 +240,26 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * p = baseArgs;
+    if (baseArgc != 0) {
+        char * p = baseArgs;
 
-    for (size_t i = 0U; ; i++) {
-        if (baseArgs[i] == '\0') {
-            if (p[0] != '\0') {
-                argv2[argc++] = p;
-            }
-            break;
-        }
-
-        if (baseArgs[i] == ' ') {
-            baseArgs[i] = '\0';
-
-            if (p[0] != '\0') {
-                argv2[argc++] = p;
+        for (int i = 0; ; i++) {
+            if (baseArgs[i] == '\0') {
+                if (p[0] != '\0') {
+                    argv2[argc++] = p;
+                }
+                break;
             }
 
-            p = &baseArgs[i + 1];
+            if (baseArgs[i] == ' ') {
+                baseArgs[i] = '\0';
+
+                if (p[0] != '\0') {
+                    argv2[argc++] = p;
+                }
+
+                p = &baseArgs[i + 1];
+            }
         }
     }
 
