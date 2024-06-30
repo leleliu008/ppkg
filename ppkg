@@ -8631,7 +8631,7 @@ __setup_uppm() {
 
     wfetch "$PPKG_CORE_RELEASE_TARBALL_URL" --no-buffer
 
-    run bsdtar xvf "$PPKG_CORE_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
+    run tar xvf "$PPKG_CORE_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
