@@ -6748,7 +6748,7 @@ __check_elf_files() {
 
     for FILEPATH in $FILEPATHs
     do
-        [ -e "$FILEPATH" ] || continue
+        [ -f "$FILEPATH" ] || continue
 
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
 
@@ -6777,7 +6777,7 @@ __check_elf_files() {
                 ELF_TYPE_SHAREDABLE=1
                 ;;
             7F454C46*)
-                abort 1 "mismatched ELF header: $FILEPATH, $FILE_HEADER_ACTUAL"
+                abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
                 ;;
             *)  continue
         esac
@@ -6915,10 +6915,10 @@ __check_mach_o_files() {
 
     for FILEPATH in $FILEPATHs
     do
-        [ -e "$FILEPATH" ] || continue
+        [ -f "$FILEPATH" ] || continue
 
         FILE_HEADER_ACTUAL=
-        FILE_HEADER_ACTUAL="$(hexdump -n 16 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+        FILE_HEADER_ACTUAL="$(xxd -u -p -l 16 "$FILEPATH")"
 
         unset LIBRARY
         unset EXECUTABLE
@@ -9132,7 +9132,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.6.0
+PPKG_VERSION=0.6.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
