@@ -6854,6 +6854,8 @@ __check_elf_files() {
                 ;;
             libclang_rt.*.so)
                 ;;
+            libc.musl-x86_64.so.1)
+                ;;
             ld-linux-x86-64.so.2)
                 ;;
             lib*.so|lib*.so.*)
