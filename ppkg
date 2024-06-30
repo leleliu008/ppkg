@@ -6856,7 +6856,7 @@ __check_elf_files() {
                 ;;
             ld-linux-x86-64.so.2)
                 ;;
-            lib*.so)
+            lib*.so|lib*.so.*)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
                 if [ -e "$DT_NEEDED_FILEPATH" ] ; then
