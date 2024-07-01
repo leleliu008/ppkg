@@ -3377,6 +3377,7 @@ xmakew() {
 # {{{ mesonw
 
 # https://mesonbuild.com/Native-environments.html
+# https://mesonbuild.com/Cross-compilation.html
 mesonw() {
     MESON_NATIVE_FILE="$PACKAGE_WORKING_DIR/native-file.ini"
 
@@ -3386,6 +3387,8 @@ c = '$CC'
 cpp = '$CXX'
 ar = '$AR'
 strip = '$STRIP'
+cmake = '$CMAKE'
+pkg-config = '$PKG_CONFIG'
 
 [built-in options]
 c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
@@ -3394,14 +3397,20 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path='$PKG_CONFIG_PATH' --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
+    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
 
-    MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
-    MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
+    MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
+
+    if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+    fi
 
     if [ "$VERBOSE_MESON" = 1 ] ; then
         MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
     fi
+
+    MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
+    MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
 
     run "$MESON" setup   "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
     run "$MESON" compile "$MESON_COMPILE_ARGS" &&
@@ -6060,6 +6069,66 @@ EOF
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
 
+        #########################################################################
+
+        # https://docs.rs/openssl/latest/openssl/
+        [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
+            case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
+                linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
+                macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
+                macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
+            esac
+
+            eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
+        }
+
+        #########################################################################
+
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        do
+            case $DEPENDENT_PACKAGE_NAME in
+                openssl@1.1)
+                    # https://docs.rs/openssl/latest/openssl/
+                    export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
+
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
+                        export OPENSSL_STATIC=1
+                        export OPENSSL_NO_VENDOR=1
+                    fi
+                    ;;
+                libopenssl)
+                    # https://docs.rs/openssl/latest/openssl/
+                    export OPENSSL_DIR="$libopenssl_INSTALL_DIR"
+
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
+                        export OPENSSL_STATIC=1
+                        export OPENSSL_NO_VENDOR=1
+                    fi
+                    ;;
+                libssh2)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/alexcrichton/ssh2-rs/blob/master/libssh2-sys/build.rs
+                        export LIBSSH2_SYS_USE_PKG_CONFIG=1
+                    fi
+                    ;;
+                libgit2)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/rust-lang/git2-rs/blob/master/libgit2-sys/build.rs
+                        export LIBGIT2_NO_VENDOR=1
+                        export LIBGIT2_SYS_USE_PKG_CONFIG=1
+                    fi
+                    ;;
+                libz|zlib)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/rust-lang/libz-sys/blob/main/build.rs
+                        export LIBZ_SYS_STATIC=1
+                    fi
+                    ;;
+            esac
+        done
+
         #########################################################
 
         # https://libraries.io/cargo/cc
@@ -6109,19 +6178,6 @@ EOF
         # export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
 
 
-        for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-        do
-            case $item in
-                openssl)
-                    # https://docs.rs/openssl/0.10.35/openssl/
-                    export OPENSSL_DIR="$openssl_INSTALL_DIR"
-                    ;;
-                openssl@1.1)
-                    # https://docs.rs/openssl/0.10.35/openssl/
-                    export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
-                    ;;
-            esac
-        done
     fi
 
     #########################################################################################
