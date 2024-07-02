@@ -3292,6 +3292,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 EOF
     fi
 
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+# https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_ARCHITECTURES.html
+set(CMAKE_OSX_ARCHITECTURES "$TARGET_PLATFORM_ARCH" CACHE STRING "")
+EOF
+    fi
+
     if [ "$VERBOSE_CMAKE" = 1 ] ; then
         run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
     fi
@@ -5994,7 +6001,6 @@ $PACKAGE_DO12345
             XXFLAGS="$XXFLAGS -O0 -g"
             ;;
         release)
-            PPFLAGS="$PPFLAGS -DNDEBUG"
             CCFLAGS="$CCFLAGS -Os"
             OCFLAGS="$OCFLAGS -Os"
             XXFLAGS="$XXFLAGS -Os"
@@ -6033,6 +6039,8 @@ $PACKAGE_DO12345
     #esac
 
     #########################################################################################
+
+    cd "$PACKAGE_WORKING_DIR"
 
     step "check if C compiler supports -Wno-error=unused-command-line-argument option"
 
@@ -6972,6 +6980,8 @@ __check_elf_files() {
             libdl.so)
                 ;;
             libomp.so)
+                ;;
+            libgomp.so.1)
                 ;;
             libc++.so)
                 ;;
