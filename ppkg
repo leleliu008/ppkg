@@ -5334,10 +5334,8 @@ $DOT_CONTENT
     }
 
     #########################################################################################
-    #                               below is for target                                     #
-    #########################################################################################
 
-    step "locate build tools"
+    step "locate needed tools"
 
     unset AUTORECONF
     unset AUTOCONF
@@ -5444,6 +5442,299 @@ $DOT_CONTENT
     unset  M4
     export M4="$(command -v m4 || true)"
 
+    #########################################################################################
+
+    step "fetch resources"
+
+    case $PACKAGE_SRC_URL in
+        '')
+            if [ -n "$PACKAGE_GIT_URL" ] ; then
+                unset GIT_FETCH_URL
+
+                if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+                    GIT_FETCH_URL="$PACKAGE_GIT_URL"
+                else
+                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+                fi
+
+                if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                    if [ -z "$PACKAGE_GIT_REF" ] ; then
+                        GIT_BRANCH_NAME=master
+                        GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                    else
+                        GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                        GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                    fi
+                else
+                    GIT_BRANCH_NAME=master
+                    GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+                fi
+
+                if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                    PACKAGE_GIT_NTH=1
+                fi
+
+                if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+                    if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                        GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                    else
+                        GIT_FETCH_EXTRA_OPTIONS=
+                    fi
+                else
+                    GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+                fi
+
+                run cd "$PACKAGE_INSTALLING_SRC_DIR"
+                run git -c init.defaultBranch=master init
+                run git remote add origin "$GIT_FETCH_URL"
+                run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+                run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+
+                GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
+
+                if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
+                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
+                        for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
+                        do
+                            GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
+
+                            for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
+                            do
+                                GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+                                sedInPlace "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
+                            done
+                        done
+                    fi
+
+                    run git submodule update --init
+                fi
+            fi
+            ;;
+        dir://*)
+            note "$PACKAGE_SRC_URL is local path, no need to fetch."
+            ;;
+        file://*)
+            note "$PACKAGE_SRC_URL is local path, no need to fetch."
+            ;;
+        *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+    esac
+
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+    fi
+
+    #########################################################################################
+
+    step "unpack/copy resources to proper location"
+
+    if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
+        case $PACKAGE_SRC_FILETYPE in
+            .dir)
+                if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
+                    if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
+                        PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
+                    fi
+                    run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
+                else
+                    abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
+                fi
+                ;;
+            .git)
+                if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                    PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
+                fi
+                ;;
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
+        esac
+    fi
+
+    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
+        case $PACKAGE_FIX_FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
+        esac
+    fi
+
+    if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
+        case $PACKAGE_RES_FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
+        esac
+    fi
+
+    for LINE in $PACKAGE_PATCHES
+    do
+        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+        OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+
+        FILETYPE="$(filetype_from_url "$URL")"
+        FILENAME="$SHA$FILETYPE"
+        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
+
+        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+
+        case $FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                ;;
+            *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
+        esac
+    done
+
+    for LINE in $PACKAGE_RESLIST
+    do
+        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+        DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+        LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
+
+        [ -z "$LEV" ] && LEV=1
+
+        FILETYPE="$(filetype_from_url "$URL")"
+        FILENAME="$SHA$FILETYPE"
+        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
+
+        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+
+        if [ -z "$DIR" ] ; then
+            DEST="$PACKAGE_INSTALLING_RES_DIR"
+        else
+            DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
+            run install -d "$DEST"
+        fi
+
+        case $FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
+                ;;
+            *)  run cp "$FILEPATH" "$DEST/"
+        esac
+    done
+
+    #########################################################################################
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        step "tree files of the installing top directory"
+        run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
+
+        step "list files of the installing src directory"
+        run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
+
+        if [ -n "$PACKAGE_BSCRIPT" ] ; then
+            step "list files of the installing build script directory"
+            run ls -l "$PACKAGE_BSCRIPT_DIR"
+        fi
+    fi
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_ONREADY" ] && {
+        step "onready"
+
+        cd "$PACKAGE_BSCRIPT_DIR"
+
+        eval "
+onready() {
+$PACKAGE_ONREADY
+}"
+        onready "$1"
+    }
+
+    #########################################################################################
+
+    if [ -n "$PACKAGE_DO12345" ] ; then
+        step "build for native"
+
+        NATIVE_BUILD_NEEDED=1
+
+        NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
+
+        [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] && {
+            if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" = "$PACKAGE_VERSION" ] ; then
+                NATIVE_BUILD_NEEDED=0
+                note "build for native already have been done, skipped."
+            else
+                note "build for native already have been done, but not the same version, rebuild it."
+            fi
+        }
+
+        if [ "$NATIVE_BUILD_NEEDED" = 1 ] ; then
+            NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
+            NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+            cat <<EOF
+NATIVE_BCACHED_DIR = $NATIVE_BCACHED_DIR
+NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
+EOF
+
+            (
+                PACKAGE_BCACHED_DIR="$NATIVE_BCACHED_DIR"
+                PACKAGE_INSTALL_DIR="$NATIVE_INSTALL_DIR"
+
+                run install -d "$PACKAGE_BCACHED_DIR"
+
+                if [ "$PACKAGE_BINBSTD" = 1 ] ; then
+                    run cd "$PACKAGE_BSCRIPT_DIR"
+                else
+                    run cd "$PACKAGE_BCACHED_DIR"
+                fi
+
+                eval "
+build_for_native() {
+$PACKAGE_DO12345
+}"
+
+                [ "$DUMP_ENV" = 1 ] && {
+                    run export -p
+                    printf '\n'
+                }
+
+                BUILD_FOR_NATIVE=1
+
+                build_for_native
+            )
+
+            [ -d "$NATIVE_INSTALL_DIR" ] && {
+                printf '%s\n' "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
+                run ln -s -r -f -T "$NATIVE_INSTALL_DIR" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+            }
+        else
+            NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+        fi
+
+        [ -d "$NATIVE_INSTALL_DIR" ] && {
+            if [ -d  "$NATIVE_INSTALL_DIR/bin" ] ; then
+                PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$NATIVE_INSTALL_DIR/sbin" ] ; then
+                PATH="$NATIVE_INSTALL_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$NATIVE_INSTALL_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        }
+    fi
+
+    #########################################################################################
+    #                               below is for target                                     #
     #########################################################################################
 
     step "locate C/C++ toolchain for target build"
@@ -6211,220 +6502,6 @@ EOF
         export CGO_CPPFLAGS="$CPPFLAGS"
         export CGO_LDFLAGS="$LDFLAGS"
     fi
-
-    #########################################################################################
-
-    step "fetch resources"
-
-    case $PACKAGE_SRC_URL in
-        '')
-            if [ -n "$PACKAGE_GIT_URL" ] ; then
-                unset GIT_FETCH_URL
-
-                if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-                    GIT_FETCH_URL="$PACKAGE_GIT_URL"
-                else
-                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-                fi
-
-                if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                    if [ -z "$PACKAGE_GIT_REF" ] ; then
-                        GIT_BRANCH_NAME=master
-                        GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-                    else
-                        GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                        GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
-                    fi
-                else
-                    GIT_BRANCH_NAME=master
-                    GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-                fi
-
-                if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                    PACKAGE_GIT_NTH=1
-                fi
-
-                if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                    if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                        GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                    else
-                        GIT_FETCH_EXTRA_OPTIONS=
-                    fi
-                else
-                    GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-                fi
-
-                run cd "$PACKAGE_INSTALLING_SRC_DIR"
-                run git -c init.defaultBranch=master init
-                run git remote add origin "$GIT_FETCH_URL"
-                run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-                run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-
-                GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
-
-                if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
-                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                        for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
-                        do
-                            GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
-
-                            for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
-                            do
-                                GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
-                                sedInPlace "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
-                            done
-                        done
-                    fi
-
-                    run git submodule update --init
-                fi
-            fi
-            ;;
-        dir://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        file://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-    esac
-
-    if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
-    fi
-
-    if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
-    fi
-
-    #########################################################################################
-
-    step "unpack/copy resources to proper location"
-
-    if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
-        case $PACKAGE_SRC_FILETYPE in
-            .dir)
-                if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
-                    if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
-                        PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
-                    fi
-                    run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
-                else
-                    abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
-                fi
-                ;;
-            .git)
-                if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                    PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
-                fi
-                ;;
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
-        esac
-    fi
-
-    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
-        case $PACKAGE_FIX_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
-        esac
-    fi
-
-    if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
-        case $PACKAGE_RES_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
-        esac
-    fi
-
-    for LINE in $PACKAGE_PATCHES
-    do
-        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-        OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
-
-        FILETYPE="$(filetype_from_url "$URL")"
-        FILENAME="$SHA$FILETYPE"
-        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
-
-        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
-
-        case $FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
-        esac
-    done
-
-    for LINE in $PACKAGE_RESLIST
-    do
-        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-        DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
-        LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
-
-        [ -z "$LEV" ] && LEV=1
-
-        FILETYPE="$(filetype_from_url "$URL")"
-        FILENAME="$SHA$FILETYPE"
-        FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
-
-        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
-
-        if [ -z "$DIR" ] ; then
-            DEST="$PACKAGE_INSTALLING_RES_DIR"
-        else
-            DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
-            run install -d "$DEST"
-        fi
-
-        case $FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
-                ;;
-            *)  run cp "$FILEPATH" "$DEST/"
-        esac
-    done
-
-    #########################################################################################
-
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        step "tree files of the installing top directory"
-        run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
-
-        step "list files of the installing src directory"
-        run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
-
-        if [ -n "$PACKAGE_BSCRIPT" ] ; then
-            step "list files of the installing build script directory"
-            run ls -l "$PACKAGE_BSCRIPT_DIR"
-        fi
-    fi
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_ONREADY" ] && {
-        step "onready"
-
-        cd "$PACKAGE_BSCRIPT_DIR"
-
-        eval "
-onready() {
-$PACKAGE_ONREADY
-}"
-        onready "$1"
-    }
 
     #########################################################################################
 
@@ -7236,6 +7313,9 @@ __tweak_pc_files() {
         sedInPlace 's|-flto||g'                   "$pcfile"
         sedInPlace 's|-Wl,--strip-debug||g'       "$pcfile"
         sedInPlace 's|-Wl,-search_paths_first||g' "$pcfile"
+
+        sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" "$pcfile"
+        sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"     "$pcfile"
 
         if [ -n "$SYSROOT" ] ; then
             sedInPlace "s|-L$SYSROOT[^' ]*||g"    "$pcfile"
@@ -9239,6 +9319,12 @@ fi
 ##################################################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
+
+##################################################################################
+
+export BAT_THEME=Dracula
+
+##################################################################################
 
 case $1 in
     ''|help|--help|-h)
