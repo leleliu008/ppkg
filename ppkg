@@ -6968,44 +6968,42 @@ __check_elf_files() {
 
     for DT_NEEDED in $DT_NEEDED_LIST
     do
-        case $DT_NEEDED in
-            libc.so)
+        case "${DT_NEEDED%.so*}" in
+            libc)
                 ;;
-            libc.so.6)
+            libm)
                 ;;
-            libm.so)
+            librt)
                 ;;
-            librt.so)
+            libdl)
                 ;;
-            libdl.so)
+            libomp)
                 ;;
-            libomp.so)
+            libgomp)
                 ;;
-            libgomp.so.1)
+            libc++)
                 ;;
-            libc++.so)
+            libstdc++)
                 ;;
-            libstdc++.so)
+            libutil)
                 ;;
-            libstdc++.so.6)
+            libcrypt)
                 ;;
-            libutil.so)
+            libresolv)
                 ;;
-            libcrypt.so)
+            libpthread)
                 ;;
-            libresolv.so)
+            libgfortran)
                 ;;
-            libpthread.so)
+            libgcc_s)
                 ;;
-            libgcc_s.so.1)
+            libclang_rt.*)
                 ;;
-            libclang_rt.*.so)
+            libc.musl-x86_64)
                 ;;
-            libc.musl-x86_64.so.1)
+            ld-linux-x86-64)
                 ;;
-            ld-linux-x86-64.so.2)
-                ;;
-            lib*.so|lib*.so.*)
+            *)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
                 if [ -e "$DT_NEEDED_FILEPATH" ] ; then
@@ -7048,8 +7046,6 @@ __check_elf_files() {
                 else
                     __check_DT_NEEDED "$DT_NEEDED_FILEPATH" 0
                 fi
-                ;;
-            *)  abort 1 "unexpected ELF file: $1\n    invalid DT_NEEDED: $DT_NEEDED"
         esac
     done
 }
