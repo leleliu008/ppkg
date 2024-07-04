@@ -6999,9 +6999,9 @@ __check_elf_files() {
                 ;;
             libclang_rt.*)
                 ;;
-            libc.musl-x86_64)
+            libc.musl-*)
                 ;;
-            ld-linux-x86-64)
+            ld-linux-*)
                 ;;
             *)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
