@@ -7582,55 +7582,44 @@ __check_if_build_for_specific_linux_libc() {
 
 # __generate_receipt_of_the_given_package <PACKAGE-NAME>
   __generate_receipt_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-
-    __check_if_build_for_specific_linux_libc "$PACKAGE_INSTALL_DIR"
-
-    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
-
-    sedInPlace '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
-
-    sedInPlace "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
-
-    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sedInPlace "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
+    [ -z "$1" ] && {
+        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+        return 1
     }
 
-    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sedInPlace "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    }
+    cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
 
-    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sedInPlace "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    }
+    sed -i '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
 
-    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sedInPlace "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
-    }
+    sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
-    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sedInPlace "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
-    }
+    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sedInPlace "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
         }
 
         grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sedInPlace "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
         }
     }
 
     [ -n "$PACKAGE_DEP_UPP" ] && {
         if grep -q '^dep-upp: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            sedInPlace "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         else
-            sedInPlace "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         fi
     }
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
+profile: $PROFILE
 builtfor: $TARGET_PLATFORM_SPEC
 builtby: ppkg-$PPKG_VERSION
 builtat: $TIMESTAMP_UNIX
@@ -7645,7 +7634,6 @@ builton:
     os-ncpu: $NATIVE_OS_NCPU
     os-euid: $NATIVE_OS_EUID
     os-egid: $NATIVE_OS_EGID
-profile: $PROFILE
 EOF
 }
 
