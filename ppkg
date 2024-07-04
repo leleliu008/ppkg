@@ -2531,7 +2531,7 @@ __fetch_resources_of_the_given_package() {
                 ;;
             --exclude)
                 shift
-                if [ -n "$1" ] ; then
+                if [ -z "$1" ] ; then
                     abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
                 else
                     EXCLUDES="$EXCLUDES $1"
