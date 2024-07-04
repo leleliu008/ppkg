@@ -7517,65 +7517,6 @@ install_mans() {
     unset IFS
 }
 
-__check_if_build_for_specific_linux_libc() {
-    BUILD_FOR_SPECIFIC_LIBC=0
-
-    if [ "$TARGET_PLATFORM_NAME" != linux ] ; then
-        return 0
-    fi
-
-    PACKAGE_INSTALLED_DIR="$1"
-
-    PACKAGE_INSTALLED_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib"
-
-    if [ -d "$PACKAGE_INSTALLED_LIBRARY_DIR" ] ; then
-        for FILEPATH in $(find "$PACKAGE_INSTALLED_LIBRARY_DIR" -type f)
-        do
-            case $FILEPATH in
-                */lib*.a)   BUILD_FOR_SPECIFIC_LIBC=1; return 0 ;;
-                */lib*.so*) BUILD_FOR_SPECIFIC_LIBC=1; return 0 ;;
-                */*.o)      BUILD_FOR_SPECIFIC_LIBC=1; return 0 ;;
-            esac
-        done
-    fi
-
-    for item in bin sbin
-    do
-        PACKAGE_INSTALLED_BINARY_DIR="$PACKAGE_INSTALLED_DIR/$item"
-
-        if [ -d "$PACKAGE_INSTALLED_BINARY_DIR" ] ; then
-            for FILEPATH in $(find "$PACKAGE_INSTALLED_BINARY_DIR" -type f)
-            do
-                FILEMAGIC=
-                FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
-
-                if [ "$FILEMAGIC" = '7F454C46' ] ; then
-                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                    PT_INTERP=
-                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                    if [ -n "$PT_INTERP" ] ; then
-                        BUILD_FOR_SPECIFIC_LIBC=1
-                        return 0
-                    fi
-                fi
-            done
-        fi
-    done
-
-    for FILEPATH in $(find "$PACKAGE_INSTALLED_DIR" -type f -a -name "*.a")
-    do
-        BUILD_FOR_SPECIFIC_LIBC=1
-        return 0
-    done
-
-    for FILEPATH in $(find "$PACKAGE_INSTALLED_DIR" -type f -a -name "*.so")
-    do
-        BUILD_FOR_SPECIFIC_LIBC=1
-        return 0
-    done
-}
-
 # }}}
 ##############################################################################
 # {{{ operation of receipt
