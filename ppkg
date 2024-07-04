@@ -2529,10 +2529,12 @@ __fetch_resources_of_the_given_package() {
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            --exclude=*)
-                EXCLUDE="${1#*=}"
-                if [ -n "$EXCLUDE" ] ; then
-                    EXCLUDES="$EXCLUDES $EXCLUDE"
+            --exclude)
+                shift
+                if [ -n "$1" ] ; then
+                    abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                else
+                    EXCLUDES="$EXCLUDES $1"
                 fi
                 ;;
             *)  abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
