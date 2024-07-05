@@ -4706,31 +4706,36 @@ EOF
 
     run cd src
 
-    if   [ "$1" = 'zlib' ] ; then
-        sedInPlace 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
-    elif [ "$1" = 'texinfo' ] ; then
-        sedInPlace '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
-    elif [ "$1" = 'python3' ] ; then
-        unset PYTHONHOME
-        unset PYTHONPATH
+    #########################################################################################
 
-        export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/include"
-        export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/lib -lz"
+    case $1 in
+        libz)
+            sedInPlace 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+            ;;
+        texinfo)
+            sedInPlace '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
+            ;;
+        python3)
+            unset PYTHONHOME
+            unset PYTHONPATH
 
-        export BZIP2_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/include"
-        export BZIP2_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
+            export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libz/include"
+            export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libz/lib -lz"
 
-        export LIBLZMA_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/include"
-        export LIBLZMA_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
+            export BZIP2_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/include"
+            export BZIP2_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
 
-        export LIBSQLITE3_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/include"
-        export LIBSQLITE3_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
+            export LIBLZMA_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/include"
+            export LIBLZMA_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
 
-        export GDBM_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/include"
-        export GDBM_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/lib -lgdbm -lgdbm_compat"
+            export LIBSQLITE3_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/include"
+            export LIBSQLITE3_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
 
-        export LIBS='-lm'
-    fi
+            export GDBM_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libgdbm/include"
+            export GDBM_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
+
+            export LIBS='-lm'
+    esac
 
     #########################################################################################
 
@@ -4757,7 +4762,7 @@ EOF
                         run ./Configure "-Dprefix=$NATIVE_PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
                         ;;
                     perl-XML-Parser)
-                        run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
+                        run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
                         run install -d "$NATIVE_PACKAGE_INSTALL_DIR"
                         ;;
                     *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
