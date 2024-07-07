@@ -7004,6 +7004,8 @@ __check_elf_files() {
                 ;;
             libstdc++)
                 ;;
+            libmvec)
+                ;;
             libutil)
                 ;;
             libcrypt)
@@ -7338,6 +7340,7 @@ __tweak_pc_files() {
         sedInPlace 's|-flto||g'                   "$pcfile"
         sedInPlace 's|-Wl,--strip-debug||g'       "$pcfile"
         sedInPlace 's|-Wl,-search_paths_first||g' "$pcfile"
+        sedInPlace 's|-Wl,-S||g' "$pcfile"
 
         sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" "$pcfile"
         sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"     "$pcfile"
