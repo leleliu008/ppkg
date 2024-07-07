@@ -7004,6 +7004,8 @@ __check_elf_files() {
                 ;;
             libstdc++)
                 ;;
+            libasan)
+                ;;
             libmvec)
                 ;;
             libutil)
