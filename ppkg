@@ -3088,7 +3088,7 @@ configure_only() {
         CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-year2038"
     fi
 
-    CONFIGURE_ENVS="$CONFIGURE_ENVS --with-pic
+    CONFIGURE_ENVS="$CONFIGURE_ENVS
         CC='$CC'
         CFLAGS='$CFLAGS'
         CXX='$CXX'
@@ -4424,13 +4424,6 @@ $FORMULA_SEARCH_DIR"
     case $1 in
         '') abort 1 "__install_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
             ;;
-        libexpat)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
-            ;;
         libz)
             NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
@@ -4444,6 +4437,20 @@ $FORMULA_SEARCH_DIR"
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
+            ;;
+        libpcre2)
+            NATIVE_PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+            ;;
+        libexpat)
+            NATIVE_PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
             ;;
         perl)
             NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
@@ -4557,13 +4564,6 @@ $FORMULA_SEARCH_DIR"
             NATIVE_PACKAGE_DEPENDENCIES='perl libexpat'
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        libpcre2)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
-            NATIVE_PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
             ;;
         swig)
             NATIVE_PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
