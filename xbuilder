@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-set -e
+set -ex
 
 # If IFS is not set, the default value will be <space><tab><newline>
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
