@@ -1,0 +1,1172 @@
+#!/bin/sh
+
+# Copyright (c) 2024-2024 刘富频
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+set -e
+
+# If IFS is not set, the default value will be <space><tab><newline>
+# https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+unset IFS
+
+
+COLOR_RED='\033[0;31m'          # Red
+COLOR_GREEN='\033[0;32m'        # Green
+COLOR_YELLOW='\033[0;33m'       # Yellow
+COLOR_BLUE='\033[0;94m'         # Blue
+COLOR_PURPLE='\033[0;35m'       # Purple
+COLOR_OFF='\033[0m'             # Reset
+
+print() {
+    printf '%b' "$*"
+}
+
+echo() {
+    printf '%b\n' "$*"
+}
+
+note() {
+    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
+}
+
+warn() {
+    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+}
+
+success() {
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
+}
+
+error() {
+    printf '%b\n' "${COLOR_RED}💔  xbuilder: $*${COLOR_OFF}" >&2
+}
+
+abort() {
+    EXIT_STATUS_CODE="$1"
+    shift
+    printf '%b\n' "${COLOR_RED}💔  xbuilder: $*${COLOR_OFF}" >&2
+    exit "$EXIT_STATUS_CODE"
+}
+
+run() {
+    if [ "$RUN_SILENT" != 1 ] ; then
+        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    fi
+
+    eval "$@"
+}
+
+isInteger() {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [--no-buffer]
+#
+# If -o <OUTPUT-PATH> option is unspecified, the result will be written to <PWD>/$(basename <URL>).
+#
+# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+#
+# If <OUTPUT-PATH> is -, then it will be treated as /dev/stdout.
+#
+# If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
+#
+wfetch() {
+    unset FETCH_UTS
+    unset FETCH_SHA
+
+    unset FETCH_URL
+    unset FETCH_URI
+
+    unset FETCH_PATH
+
+    unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_FILEPATH
+    unset FETCH_OUTPUT_FILENAME
+
+    unset FETCH_BUFFER_FILEPATH
+
+    unset FETCH_SHA256_EXPECTED
+
+    unset NOT_BUFFER
+
+    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+
+    if [ -z "$URL_TRANSFORM" ] ; then
+        FETCH_URL="$1"
+    else
+        FETCH_URL="$("$URL_TRANSFORM" "$1")" || return 1
+    fi
+
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --uri=*)
+                FETCH_URI="${1#*=}"
+                ;;
+            --sha256=*)
+                FETCH_SHA256_EXPECTED="${1#*=}"
+                ;;
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                else
+                    FETCH_PATH="$1"
+                fi
+                ;;
+            --no-buffer)
+                NOT_BUFFER=1
+                ;;
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
+        esac
+        shift
+    done
+
+    if [ -z "$FETCH_URI" ] ; then
+        # remove query params
+        FETCH_URI="${FETCH_URL%%'?'*}"
+        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URI##*/}"
+    else
+        if [ -n "$URL_TRANSFORM" ] ; then
+            FETCH_URI="$("$URL_TRANSFORM" "$FETCH_URI")" || return 1
+        fi
+    fi
+
+    case $FETCH_PATH in
+        -)  FETCH_BUFFER_FILEPATH='-' ;;
+        .|'')
+            FETCH_OUTPUT_DIR='.'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        ..)
+            FETCH_OUTPUT_DIR='..'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        */)
+            FETCH_OUTPUT_DIR="${FETCH_PATH%/}"
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        *)
+            FETCH_OUTPUT_DIR="$(dirname "$FETCH_PATH")"
+            FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
+    esac
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
+            if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+                if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
+                    success "$FETCH_OUTPUT_FILEPATH already have been fetched."
+                    return 0
+                fi
+            fi
+        fi
+
+        if [ "$NOT_BUFFER" = 1 ] ; then
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_FILEPATH"
+        else
+            FETCH_UTS="$(date +%s)"
+
+            FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
+
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
+        fi
+    fi
+
+    for FETCH_TOOL in curl wget http lynx aria2c axel
+    do
+        if command -v "$FETCH_TOOL" > /dev/null ; then
+            break
+        else
+            unset FETCH_TOOL
+        fi
+    done
+
+    if [ -z "$FETCH_TOOL" ] ; then
+        abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
+    fi
+
+    if [                -n "$FETCH_OUTPUT_DIR" ] ; then
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+    fi
+
+    case $FETCH_TOOL in
+        curl)
+            CURL_OPTIONS="--fail --retry 20 --retry-delay 30 --location"
+
+            if [ "$DUMP_HTTP" = 1 ] ; then
+                CURL_OPTIONS="$CURL_OPTIONS --verbose"
+            fi
+
+            if [ -n "$SSL_CERT_FILE" ] ; then
+                CURL_OPTIONS="$CURL_OPTIONS --cacert $SSL_CERT_FILE"
+            fi
+
+            run "curl $CURL_OPTIONS -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "curl $CURL_OPTIONS -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        wget)
+            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        http)
+            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        lynx)
+            run "lynx -source '$FETCH_URL' > '$FETCH_BUFFER_FILEPATH'" ||
+            run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        aria2c)
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
+            ;;
+        axel)
+            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
+            ;;
+    esac
+
+    [ $? -eq 0 ] || return 1
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+            FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
+
+            if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
+                abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
+            fi
+        fi
+
+        if [ "$NOT_BUFFER" != 1 ] ; then
+            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
+        fi
+    fi
+}
+
+filetype_from_url() {
+    # remove query params
+    URL="${1%%'?'*}"
+
+    FNAME="${URL##*/}"
+
+    case $FNAME in
+        *.tar.gz|*.tgz)
+            printf '%s\n' '.tgz'
+            ;;
+        *.tar.lz|*.tlz)
+            printf '%s\n' '.tlz'
+            ;;
+        *.tar.xz|*.txz)
+            printf '%s\n' '.txz'
+            ;;
+        *.tar.bz2|*.tbz2)
+            printf '%s\n' '.tbz2'
+            ;;
+        *.*)printf '%s\n' ".${FNAME##*.}"
+    esac
+}
+
+inspect_install_arguments() {
+    unset PROFILE
+
+    unset LOG_LEVEL
+
+    unset BUILD_NJOBS
+
+    unset ENABLE_LTO
+
+    unset ENABLE_STRIP
+
+    unset ENABLE_CCACHE
+
+    unset REQUEST_TO_KEEP_SESSION_DIR
+
+    unset REQUEST_TO_UPGRADE_IF_POSSIBLE
+
+    unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
+
+    unset SPECIFIED_PACKAGE_LIST
+
+    unset SESSION_DIR
+    unset DOWNLOAD_DIR
+    unset PACKAGE_INSTALLED_ROOT
+
+    unset DUMP_ENV
+    unset DUMP_HTTP
+    unset DUMP_UPPM
+
+    unset VERBOSE_GMAKE
+    unset VERBOSE_CMAKE
+
+    unset DEBUG_CC
+    unset DEBUG_LD
+    unset DEBUG_GO
+    unset DEBUG_CARGO
+    unset DEBUG_GMAKE
+    unset DEBUG_CMAKE
+    unset DEBUG_XMAKE
+    unset DEBUG_PKG_CONFIG
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -q) LOG_LEVEL=0 ;;
+            -v) LOG_LEVEL=2
+
+                DUMP_ENV=1
+                DUMP_HTTP=1
+                DUMP_UPPM=1
+
+                VERBOSE_GMAKE=1
+                VERBOSE_CMAKE=1
+                ;;
+            -x) LOG_LEVEL=3
+
+                DUMP_ENV=1
+                DUMP_HTTP=1
+                DUMP_UPPM=1
+
+                VERBOSE_GMAKE=1
+                VERBOSE_CMAKE=1
+
+                DEBUG_CC=1
+                DEBUG_LD=1
+                DEBUG_GMAKE=1
+                DEBUG_CMAKE=1
+                DEBUG_PKG_CONFIG=1
+                ;;
+            -v-env)
+                DUMP_ENV=1
+                ;;
+            -v-http)
+                DUMP_HTTP=1
+                ;;
+            -v-uppm)
+                DUMP_UPPM=1
+                ;;
+            -v-gmake)
+                VERBOSE_GMAKE=1
+                ;;
+            -v-cmake)
+                VERBOSE_CMAKE=1
+                ;;
+            -x-sh)
+                set -x
+                ;;
+            -x-cc)
+                DEBUG_CC=1
+                ;;
+            -x-ld)
+                DEBUG_LD=1
+                ;;
+            -x-gmake)
+                DEBUG_GMAKE=1
+                ;;
+            -x-cmake)
+                DEBUG_CMAKE=1
+                ;;
+            -x-pkg-config)
+                DEBUG_PKG_CONFIG=1
+                ;;
+
+            --disable-ccache)
+                ENABLE_CCACHE=0
+                ;;
+            --enable-lto)
+                ENABLE_LTO=1
+                ;;
+            --enable-strip)
+                ENABLE_STRIP=all
+                ;;
+            --enable-strip=*)
+                ENABLE_STRIP="${1#*=}"
+                case $ENABLE_STRIP in
+                    no|all|debug|unneeded) ;;
+                    *)  abort 1 "--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded"
+                esac
+                ;;
+            --profile=*)
+                PROFILE="${1#*=}"
+                ;;
+            --session-dir=*)
+                SESSION_DIR="${1#*=}"
+                [ -d "$SESSION_DIR" ] || abort 1 "directory does not exist: $SESSION_DIR"
+                ;;
+            --download-dir=*)
+                DOWNLOAD_DIR="${1#*=}"
+                [ -d "$DOWNLOAD_DIR" ] || abort 1 "directory does not exist: $DOWNLOAD_DIR"
+                ;;
+            --dest-dir=*)
+                PACKAGE_INSTALLED_ROOT="${1#*=}"
+                [ -d "$PACKAGE_INSTALLED_ROOT" ] || abort 1 "directory does not exist: $PACKAGE_INSTALLED_ROOT"
+                ;;
+            -j) shift
+                isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
+                BUILD_NJOBS="$1"
+                ;;
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
+            -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
+            -E) REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1 ;;
+
+            -*) abort 1 "unrecognized option: $1"
+                ;;
+            *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
+        esac
+        shift
+    done
+
+    #########################################################################################
+
+    if [ -z "$SESSION_DIR" ] ; then
+        SESSION_DIR="$HOME/.xbuilder/run/$$"
+    fi
+
+    if [ -z "$DOWNLOAD_DIR" ] ; then
+        DOWNLOAD_DIR="$HOME/.xbuilder/downloads"
+    fi
+
+    if [ -z "$PACKAGE_INSTALLED_ROOT" ] ; then
+        PACKAGE_INSTALLED_ROOT="$HOME/.xbuilder/installed"
+    fi
+
+    #########################################################################################
+
+    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_OS_ARCH="$(uname -m)"
+
+    #########################################################################################
+
+    if [ -z "$BUILD_NJOBS" ] ; then
+        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+            NATIVE_OS_NCPU="$(sysctl -n machdep.cpu.thread_count)"
+        else
+            NATIVE_OS_NCPU="$(nproc)"
+        fi
+
+        BUILD_NJOBS="$NATIVE_OS_NCPU"
+    fi
+
+    #########################################################################################
+
+    if [ "$LOG_LEVEL" = 0 ] ; then
+        exec 1>/dev/null
+        exec 2>&1
+        RUN_SILENT=1
+    else
+        if [ -z "$LOG_LEVEL" ] ; then
+            LOG_LEVEL=1
+        fi
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PROFILE" ] ; then
+        PROFILE=release
+    fi
+
+    #########################################################################################
+
+    if [ -z "$ENABLE_STRIP" ] ; then
+        case $PROFILE in
+            debug)   ENABLE_STRIP=no  ;;
+            release) ENABLE_STRIP=all ;;
+        esac
+    fi
+
+    #########################################################################################
+
+    unset      CC
+    unset    OBJC
+    unset     CXX
+    unset     CPP
+    unset      AS
+    unset      AR
+    unset  RANLIB
+    unset      LD
+    unset      NM
+    unset    SIZE
+    unset   STRIP
+    unset STRINGS
+    unset OBJDUMP
+    unset OBJCOPY
+    unset READELF
+    unset SYSROOT
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+             CC="$(xcrun --sdk macosx --find clang)"
+           OBJC="$(xcrun --sdk macosx --find clang)"
+            CXX="$(xcrun --sdk macosx --find clang++)"
+             AS="$(xcrun --sdk macosx --find as)"
+             AR="$(xcrun --sdk macosx --find ar)"
+         RANLIB="$(xcrun --sdk macosx --find ranlib)"
+             LD="$(xcrun --sdk macosx --find ld)"
+             NM="$(xcrun --sdk macosx --find nm)"
+           SIZE="$(xcrun --sdk macosx --find size)"
+          STRIP="$(xcrun --sdk macosx --find strip)"
+        STRINGS="$(xcrun --sdk macosx --find strings)"
+        OBJDUMP="$(xcrun --sdk macosx --find objdump)"
+        SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
+    else
+             CC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+           OBJC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+             AS="$(command -v as)"      || abort 1 "command not found: as"
+             AR="$(command -v ar)"      || abort 1 "command not found: ar"
+         RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
+             LD="$(command -v ld)"      || abort 1 "command not found: ld"
+             NM="$(command -v nm)"      || abort 1 "command not found: nm"
+           SIZE="$(command -v size)"    || abort 1 "command not found: size"
+          STRIP="$(command -v strip)"   || abort 1 "command not found: strip"
+        STRINGS="$(command -v strings)" || abort 1 "command not found: strings"
+        OBJDUMP="$(command -v objdump)" || abort 1 "command not found: objdump"
+        OBJCOPY="$(command -v objcopy)" || abort 1 "command not found: objcopy"
+        READELF="$(command -v readelf)" || abort 1 "command not found: readelf"
+    fi
+
+    CPP="$CC -E"
+
+    #########################################################################################
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        NATIVE_OS_VERS="$(sw_vers -productVersion)"
+
+          CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+       OBJCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+        CXXFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
+         LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
+    else
+          CFLAGS="-fPIC -fno-common"
+       OBJCFLAGS="-fPIC -fno-common"
+        CXXFLAGS="-fPIC -fno-common"
+        CPPFLAGS=
+        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+         LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+    fi
+
+    if [ "$DEBUG_CC" = 1 ] ; then
+          CFLAGS="$CFLAGS -v"
+        CXXFLAGS="$CXXFLAGS -v"
+       OBJCFLAGS="$OBJCFLAGS -v"
+    fi
+
+    if [ "$DEBUG_LD" = 1 ] ; then
+         LDFLAGS="$LDFLAGS -Wl,-v"
+    fi
+
+    if [ "$PROFILE" = release ] ; then
+          CFLAGS="$CFLAGS -Os"
+        CXXFLAGS="$CXXFLAGS -Os"
+       OBJCFLAGS="$OBJCFLAGS -Os"
+        
+        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+            LDFLAGS="$LDFLAGS -Wl,-S"
+        else
+            LDFLAGS="$LDFLAGS -Wl,-s"
+        fi
+    fi
+
+    case $NATIVE_OS_KIND in
+        netbsd)  LDFLAGS="$LDFLAGS -lpthread" ;;
+        openbsd) LDFLAGS="$LDFLAGS -lpthread" ;;
+    esac
+
+    #########################################################################################
+
+    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    do
+        export "${TOOL}"
+    done
+
+    #########################################################################################
+
+    # DO NOT use these environment variables
+
+    unset LIBS
+
+    # autoreconf --help
+
+    unset AUTOCONF
+    unset AUTOHEADER
+    unset AUTOM4TE
+    unset AUTOMAKE
+    unset AUTOPOINT
+    unset ACLOCAL
+    unset GTKDOCIZE
+    unset INTLTOOLIZE
+    unset LIBTOOLIZE
+    unset M4
+    unset MAKE
+
+    # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
+    unset   MACOSX_DEPLOYMENT_TARGET
+    unset IPHONEOS_DEPLOYMENT_TARGET
+    unset  WATCHOS_DEPLOYMENT_TARGET
+
+    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
+    unset TARGET_ARCH
+
+    # https://keith.github.io/xcode-man-pages/xcrun.1.html
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
+    unset SDKROOT
+
+    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+
+    unset CMAKE_APPBUNDLE_PATH
+    unset CMAKE_FRAMEWORK_PATH
+    unset CMAKE_PROGRAM_PATH
+    unset CMAKE_INCLUDE_PATH
+    unset CMAKE_LIBRARY_PATH
+    unset CMAKE_PREFIX_PATH
+    unset CMAKE_MAXIMUM_RECURSION_DEPTH
+    unset CMAKE_APPLE_SILICON_PROCESSOR
+    unset CMAKE_BUILD_PARALLEL_LEVEL
+    unset CMAKE_BUILD_TYPE
+    unset CMAKE_CONFIGURATION_TYPES
+    unset CMAKE_CONFIG_TYPE
+    unset CMAKE_EXPORT_COMPILE_COMMANDS
+    unset CMAKE_GENERATOR
+    unset CMAKE_GENERATOR_INSTANCE
+    unset CMAKE_GENERATOR_PLATFORM
+    unset CMAKE_GENERATOR_TOOLSET
+    unset CMAKE_INSTALL_MODE
+    unset CMAKE_C_COMPILER_LAUNCHER
+    unset CMAKE_C_LINKER_LAUNCHER
+    unset CMAKE_CXX_COMPILER_LAUNCHER
+    unset CMAKE_CXX_LINKER_LAUNCHER
+    unset CMAKE_MSVCIDE_RUN_PATH
+    unset CMAKE_NO_VERBOSE
+    unset CMAKE_OSX_ARCHITECTURES
+    unset CMAKE_TOOLCHAIN_FILE
+    unset DESTDIR
+    unset VERBOSE
+    unset CTEST_INTERACTIVE_DEBUG_MODE
+    unset CTEST_OUTPUT_ON_FAILURE
+    unset CTEST_PARALLEL_LEVEL
+    unset CTEST_PROGRESS_OUTPUT
+    unset CTEST_USE_LAUNCHERS_DEFAULT
+    unset DASHBOARD_TEST_FROM_CTEST
+
+    # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
+    export CMAKE_GENERATOR='Unix Makefiles'
+
+    # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
+    export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
+
+    # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
+    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
+        export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+    else
+        export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
+    fi
+
+    case $PROFILE in
+        debug)   CMAKE_BUILD_TYPE=Debug   ;;
+        release) CMAKE_BUILD_TYPE=Release ;;
+    esac
+
+    if [ "$VERBOSE_CMAKE" = 1 ] ; then
+        CMAKE_VERBOSE_MAKEFILE=ON
+        CMAKE_COLOR_MAKEFILE=ON
+    else
+        CMAKE_VERBOSE_MAKEFILE=OFF
+        CMAKE_COLOR_MAKEFILE=OFF
+    fi
+
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+    if [ "$DEBUG_CMAKE" = 1 ] ; then
+        CMAKE_FIND_DEBUG_MODE=ON
+    else
+        CMAKE_FIND_DEBUG_MODE=OFF
+    fi
+}
+
+cmakew() {
+    if [ -z "$CMAKE" ] ; then
+        CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
+    fi
+
+    run "$CMAKE" -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE -DCMAKE_COLOR_MAKEFILE=$CMAKE_COLOR_MAKEFILE -DCMAKE_FIND_DEBUG_MODE=$CMAKE_FIND_DEBUG_MODE -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$*" -S . -B build.d
+    run "$CMAKE" --build   build.d
+    run "$CMAKE" --install build.d
+}
+
+configure() {
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
+
+    run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
+
+    run "$GMAKE" "--jobs=$BUILD_NJOBS"
+    run "$GMAKE" install
+}
+
+install_openssl() {
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
+
+    # https://github.com/openssl/openssl/blob/master/INSTALL.md
+    run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix="$PACKAGE_INSTALL_DIR" --libdir=lib --openssldir=etc/ssl
+
+    run "$GMAKE" "--jobs=$BUILD_NJOBS"
+    run "$GMAKE" install_sw
+}
+
+install_perl() {
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
+
+    run ./Configure "-Dprefix=$PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+
+    run "$GMAKE" "--jobs=$BUILD_NJOBS"
+    run "$GMAKE" install
+}
+
+install_perl_XML_Parser() {
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
+
+    run perl Makefile.PL EXPATLIBPATH="$PACKAGE_INSTALLED_ROOT/libexpat/lib" EXPATINCPATH="$PACKAGE_INSTALLED_ROOT/libexpat/include"
+    run install -d "$PACKAGE_INSTALL_DIR"
+
+    run "$GMAKE" "--jobs=$BUILD_NJOBS"
+    run "$GMAKE" install
+}
+
+install_the_given_package() {
+    unset PACKAGE_SRC_URI
+    unset PACKAGE_DEP_PKG
+    unset PACKAGE_INSTALL
+
+    case $1 in
+        '') abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+            ;;
+        libz)
+            PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
+            PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
+            PACKAGE_INSTALL='cmakew'
+            ;;
+        libbz2)
+            PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
+            PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
+            PACKAGE_INSTALL='cmakew -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
+            ;;
+        libpcre2)
+            PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
+            PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
+            PACKAGE_INSTALL='cmakew -DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+            ;;
+        libexpat)
+            PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+            PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+            PACKAGE_INSTALL='cmakew -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
+            ;;
+        perl)
+            PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
+            PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
+            PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
+            ;;
+        openssl)
+            PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
+            PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
+            PACKAGE_DEP_PKG='perl'
+            ;;
+        texinfo)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
+            PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
+            PACKAGE_DEP_PKG='perl'
+            PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+            ;;
+        help2man)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+            PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+            PACKAGE_DEP_PKG='perl'
+            PACKAGE_INSTALL='configure'
+            ;;
+        intltool)
+            PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+            PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+            PACKAGE_DEP_PKG='libexpat perl perl-XML-Parser'
+            PACKAGE_INSTALL='configure'
+            ;;
+        libtool)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+            PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+            PACKAGE_INSTALL='configure --enable-ltdl-install'
+            ;;
+        autoconf)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+            PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+            PACKAGE_DEP_PKG='perl'
+            PACKAGE_INSTALL='configure'
+            ;;
+        automake)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+            PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+            PACKAGE_DEP_PKG='perl autoconf'
+            PACKAGE_INSTALL='configure'
+            ;;
+        liblzma)
+            PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
+            PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
+            ;;
+        libgdbm)
+            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+            PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
+            ;;
+        sqlite3)
+            PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3450200.tar.gz'
+            PACKAGE_SRC_SHA='bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae'
+            PACKAGE_DEP_PKG='libz'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
+            ;;
+        libffi)
+            PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
+            PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
+            ;;
+        libyaml)
+            PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
+            PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
+            ;;
+        ruby)
+            PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
+            PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
+            PACKAGE_DEP_PKG='libz libyaml libffi'
+            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --disable-docs'
+            ;;
+        python3)
+            PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
+            PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
+            PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
+            PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+            ;;
+        perl-XML-Parser)
+            PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+            PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
+            PACKAGE_DEP_PKG='perl libexpat'
+            ;;
+        swig)
+            PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
+            PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
+            PACKAGE_DEP_PKG='libpcre2'
+            PACKAGE_INSTALL='configure --enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
+            ;;
+        ghc)
+            PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.6.3/ghc-9.6.3-aarch64-apple-darwin.tar.xz'
+            PACKAGE_SRC_SHA='e1cdf458926b2eaf52d2a8287d99a965040ff9051171f5c3b7467049cf0eb213'
+            PACKAGE_INSTALL='configure'
+            ;;
+        *)  abort 1 "unsupported package name: $1"
+    esac
+
+    #########################################################################################
+
+    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
+    do
+        (install_the_given_package "$PACKAGE_DEPENDENCY")
+    done
+
+    #########################################################################################
+
+    printf '\n%b\n' "${COLOR_PURPLE}=>> xbuilder: install package : $1${COLOR_OFF}"
+
+    if [ -f "$PACKAGE_INSTALLED_ROOT/$1/receipt.txt" ] ; then
+        note "package '$1' already has been installed, skipped."
+        return 0
+    fi
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_UTS=
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA=
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+    PACKAGE_SRC_FILEPATH="$DOWNLOAD_DIR/$PACKAGE_SRC_FILENAME"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/$1"
+
+    #########################################################################################
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
+    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
+    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS="$CPPFLAGS -I$DEPENDENT_PACKAGE_INSTALLED_DIR/include"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS="$LDFLAGS -L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
+        do
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
+            fi
+        done
+    done
+
+    #########################################################################################
+
+    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+    SRCDIR="$PACKAGE_WORKING_DIR/src"
+
+    run install -d "$SRCDIR"
+
+    run tar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C "$SRCDIR"
+
+    run cd "$SRCDIR"
+
+    #########################################################################################
+
+    case $1 in
+        libz)
+            gsed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+            ;;
+        texinfo)
+            gsed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
+            ;;
+        python3)
+            unset PYTHONHOME
+            unset PYTHONPATH
+
+            export ZLIB_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libz/include"
+            export ZLIB_LIBS="-L$PACKAGE_INSTALLED_ROOT/libz/lib -lz"
+
+            export BZIP2_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libbz2/include"
+            export BZIP2_LIBS="-L$PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
+
+            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/liblzma/include"
+            export LIBLZMA_LIBS="-L$PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
+
+            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/sqlite3/include"
+            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
+
+            export GDBM_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libgdbm/include"
+            export GDBM_LIBS="-L$PACKAGE_INSTALLED_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
+
+            export LIBS='-lm'
+    esac
+
+    #########################################################################################
+
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        install_perl_XML_Parser
+    else
+        if [ -z "$PACKAGE_INSTALL" ] ; then
+            eval "install_$1"
+        else
+            eval "$PACKAGE_INSTALL"
+        fi
+    fi
+
+    #########################################################################################
+
+    cat > "$PACKAGE_INSTALL_DIR/toolchain.txt" <<EOF
+     CC='$CC'
+   OBJC='$OBJC'
+    CXX='$CXX'
+    CPP='$CPP'
+     AS='$AS'
+     AR='$AR'
+ RANLIB='$RANLIB'
+     LD='$LD'
+     NM='$NM'
+   SIZE='$SIZE'
+  STRIP='$STRIP'
+STRINGS='$STRINGS'
+OBJDUMP='$OBJDUMP'
+OBJCOPY='$OBJCOPY'
+READELF='$READELF'
+SYSROOT='$SYSROOT'
+EOF
+
+    #########################################################################################
+
+    cat > "$PACKAGE_INSTALL_DIR/receipt.txt" <<EOF
+src-url: $PACKAGE_SRC_URL
+src-uri: $PACKAGE_SRC_URI
+src-sha: $PACKAGE_SRC_SHA
+dep-pkg: $PACKAGE_DEP_PKG
+install: $PACKAGE_INSTALL
+builtat: $PACKAGE_INSTALL_UTS
+builtby: xbuilder-$RUNTIME_BUILDER_VERSION
+EOF
+
+    #########################################################################################
+
+    run ln -s -r -f -T "$PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA" "$PACKAGE_INSTALLED_ROOT/$1"
+}
+
+help() {
+    printf '%b\n' "\
+${COLOR_GREEN}runtime builder for UNIX-like systems.${COLOR_OFF}
+
+${COLOR_GREEN}xbuilder --help${COLOR_OFF}
+${COLOR_GREEN}xbuilder -h${COLOR_OFF}
+    show help of this command.
+
+${COLOR_GREEN}xbuilder --version${COLOR_OFF}
+${COLOR_GREEN}xbuilder -V${COLOR_OFF}
+    show version of this command.
+
+${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
+    install the specified packages.
+
+    OPTIONS:
+        ${COLOR_BLUE}--dest-dir=<DIR>${COLOR_OFF}
+            specify where to be installed into.
+
+        ${COLOR_BLUE}--session-dir=<DIR>${COLOR_OFF}
+            specify the session directory.
+
+        ${COLOR_BLUE}--download-dir=<DIR>${COLOR_OFF}
+            specify the download directory.
+
+        ${COLOR_BLUE}-j <N>${COLOR_OFF}
+            specify the number of jobs you can run in parallel.
+
+        ${COLOR_BLUE}-E${COLOR_OFF}
+            export compile_commands.json
+
+        ${COLOR_BLUE}-U${COLOR_OFF}
+            upgrade packages if possible.
+
+        ${COLOR_BLUE}-K${COLOR_OFF}
+            keep the session directory even if this packages are successfully installed.
+
+        ${COLOR_BLUE}-q${COLOR_OFF}
+            silent mode. no any messages will be output to terminal.
+
+        ${COLOR_BLUE}-v${COLOR_OFF}
+            verbose mode. many messages will be output to terminal.
+
+            This option is equivalent to -v-* options all are supplied.
+
+        ${COLOR_BLUE}-x${COLOR_OFF}
+            very verbose mode. many many messages will be output to terminal.
+
+            This option is equivalent to -v-* and -x-* options all are supplied.
+
+        ${COLOR_BLUE}-v-env${COLOR_OFF}
+            show all environment variables before starting to build.
+
+        ${COLOR_BLUE}-v-http${COLOR_OFF}
+            show http request/response.
+
+        ${COLOR_BLUE}-v-uppm${COLOR_OFF}
+            pass -v argument to uppm command.
+
+        ${COLOR_BLUE}-v-gmake${COLOR_OFF}
+            pass V=1 argument to gmake command.
+
+        ${COLOR_BLUE}-v-cmake${COLOR_OFF}
+            pass -DCMAKE_VERBOSE_MAKEFILE=ON argument to cmake command.
+
+        ${COLOR_BLUE}-x-sh${COLOR_OFF}
+            set -x to debug current running shell.
+
+        ${COLOR_BLUE}-x-cc${COLOR_OFF}
+            pass -v argument to clang command.
+
+        ${COLOR_BLUE}-x-ld${COLOR_OFF}
+            pass -Wl,-v argument to linker.
+
+        ${COLOR_BLUE}-x-gmake${COLOR_OFF}
+            pass --debug argument to gmake command.
+
+        ${COLOR_BLUE}-x-cmake${COLOR_OFF}
+            pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command.
+
+        ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
+            export PKG_CONFIG_DEBUG_SPEW=1
+"
+}
+
+RUNTIME_BUILDER_VERSION=1
+
+case $1 in
+    ''|--help|-h)
+        help
+        ;;
+    --version|-V)
+        printf '%s\n' "$RUNTIME_BUILDER_VERSION"
+        ;;
+    install)
+        shift
+
+        inspect_install_arguments "$@"
+
+        for PACKAGE_NAME in $SPECIFIED_PACKAGE_LIST
+        do
+            install_the_given_package "$@"
+        done
+        ;;
+    *)  abort 1 "unrecognized argument: $1"
+esac
