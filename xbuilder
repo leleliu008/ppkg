@@ -411,15 +411,12 @@ inspect_install_arguments() {
                 ;;
             --session-dir=*)
                 SESSION_DIR="${1#*=}"
-                [ -d "$SESSION_DIR" ] || abort 1 "directory does not exist: $SESSION_DIR"
                 ;;
             --download-dir=*)
                 DOWNLOAD_DIR="${1#*=}"
-                [ -d "$DOWNLOAD_DIR" ] || abort 1 "directory does not exist: $DOWNLOAD_DIR"
                 ;;
             --dest-dir=*)
                 PACKAGE_INSTALLED_ROOT="${1#*=}"
-                [ -d "$PACKAGE_INSTALLED_ROOT" ] || abort 1 "directory does not exist: $PACKAGE_INSTALLED_ROOT"
                 ;;
             -j) shift
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
@@ -1165,7 +1162,7 @@ case $1 in
 
         for PACKAGE_NAME in $SPECIFIED_PACKAGE_LIST
         do
-            install_the_given_package "$@"
+            install_the_given_package "$PACKAGE_NAME"
         done
         ;;
     *)  abort 1 "unrecognized argument: $1"
