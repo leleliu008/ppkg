@@ -8409,6 +8409,11 @@ __setup_uppm() {
 
     ##################################################################################
 
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/dev/xbuilder' --no-buffer
+    run chmod +x xbuilder
+
+    ##################################################################################
+
     PPKG_CORE_RELEASE_VERSION='2024.06.30'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
     PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_OS_TARGET.tar.xz"
