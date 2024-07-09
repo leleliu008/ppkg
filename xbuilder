@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-set -ex
+set -e
 
 # If IFS is not set, the default value will be <space><tab><newline>
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
@@ -412,8 +412,9 @@ inspect_install_arguments() {
             --download-dir=*)
                 DOWNLOAD_DIR="${1#*=}"
                 ;;
-            --dest-dir=*)
+            --prefix=*)
                 PACKAGE_INSTALLED_ROOT="${1#*=}"
+                PACKAGE_INSTALLED_ROOT="$(realpath "$PACKAGE_INSTALLED_ROOT")"
                 ;;
             -j) shift
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
@@ -751,13 +752,13 @@ install_perl_XML_Parser() {
     run "$GMAKE" install
 }
 
-install_the_given_package() {
+getinfo_the_given_package() {
     unset PACKAGE_SRC_URI
     unset PACKAGE_DEP_PKG
     unset PACKAGE_INSTALL
 
     case $1 in
-        '') abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+        '') abort 1 "getinfo_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
             ;;
         libz)
             PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
@@ -857,8 +858,8 @@ install_the_given_package() {
             PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
-            PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
-            PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
+            PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
+            PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
             PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
             PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
@@ -880,6 +881,10 @@ install_the_given_package() {
             ;;
         *)  abort 1 "unsupported package name: $1"
     esac
+}
+
+install_the_given_package() {
+    getinfo_the_given_package "$1"
 
     #########################################################################################
 
@@ -935,11 +940,11 @@ EOF
         DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
 
         if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
-            CPPFLAGS="$CPPFLAGS -I$DEPENDENT_PACKAGE_INSTALLED_DIR/include"
+            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
         fi
 
         if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
-            LDFLAGS="$LDFLAGS -L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib"
+            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
         fi
 
         if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
@@ -1069,11 +1074,14 @@ ${COLOR_GREEN}xbuilder --version${COLOR_OFF}
 ${COLOR_GREEN}xbuilder -V${COLOR_OFF}
     show version of this command.
 
+${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
+    install the available packages.
+
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
 
     OPTIONS:
-        ${COLOR_BLUE}--dest-dir=<DIR>${COLOR_OFF}
+        ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}
             specify where to be installed into.
 
         ${COLOR_BLUE}--session-dir=<DIR>${COLOR_OFF}
@@ -1139,10 +1147,13 @@ ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
 
         ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
             export PKG_CONFIG_DEBUG_SPEW=1
+
+${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
+    execute command in environment.
 "
 }
 
-RUNTIME_BUILDER_VERSION=1
+RUNTIME_BUILDER_VERSION=1.0.0
 
 case $1 in
     ''|--help|-h)
@@ -1150,6 +1161,19 @@ case $1 in
         ;;
     --version|-V)
         printf '%s\n' "$RUNTIME_BUILDER_VERSION"
+        ;;
+    ls-available)
+        PACKAGE_NAMES='libz libbz2 liblzma libpcre2 libexpat libgdbm libffi libyaml ruby perl python3 sqlite3 openssl texinfo help2man intltool libtool autoconf automake swig ghc perl-XML-Parser'
+
+        if [ "$2" = -v ] ; then
+            for PACKAGE_NAME in $PACKAGE_NAMES
+            do
+                getinfo_the_given_package "$PACKAGE_NAME"
+                printf '%-10s: %s\n' "$PACKAGE_NAME" "$PACKAGE_SRC_URL"
+            done
+        else
+            printf '%s\n' $PACKAGE_NAMES
+        fi
         ;;
     install)
         shift
@@ -1160,6 +1184,69 @@ case $1 in
         do
             install_the_given_package "$PACKAGE_NAME"
         done
+        ;;
+    exec)
+        shift
+
+        case $1 in
+            '') abort 1 'xbuilder exec <CMD> , <CMD> is unspecified.'
+                ;;
+            --prefix=*)
+                PACKAGE_INSTALLED_ROOT="${1#*=}"
+                PACKAGE_INSTALLED_ROOT="$(realpath "$PACKAGE_INSTALLED_ROOT")"
+
+                [ -d "$PACKAGE_INSTALLED_ROOT" ] && abort 1 "directory $PACKAGE_INSTALLED_ROOT does not exist."
+
+                shift
+
+                [ -z "$1" ] && abort 1 'xbuilder exec --prefix=<DIR> <CMD> , <CMD> is unspecified.'
+                ;;
+        esac
+
+        if [ -z "$PACKAGE_INSTALLED_ROOT" ] ; then
+            [ -z "$HOME" ] && abort 1 'HOME environment is not set.'
+
+            PACKAGE_INSTALLED_ROOT="$HOME/.xbuilder/installed"
+        fi
+
+        PACKAGE_NAMES="$(cd "$PACKAGE_INSTALLED_ROOT" && find . -maxdepth 1 -mindepth 1 -type l -printf '%P\n')"
+
+        for PACKAGE_NAME in $PACKAGE_NAMES
+        do
+            PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+
+            if [ ! -f "$PACKAGE_INSTALLED_DIR/receipt.txt" ] ; then
+                continue
+            fi
+
+            if [ -d  "$PACKAGE_INSTALLED_DIR/include" ] ; then
+                CPPFLAGS="-I$PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
+            fi
+
+            if [ -d  "$PACKAGE_INSTALLED_DIR/lib" ] ; then
+                LDFLAGS="-L$PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
+            fi
+
+            if [ -d  "$PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
+
+        export CPPFLAGS
+        export LDFLAGS
+        export PATH
+        export ACLOCAL_PATH
+
+        pwd
+        exec "$@"
         ;;
     *)  abort 1 "unrecognized argument: $1"
 esac
