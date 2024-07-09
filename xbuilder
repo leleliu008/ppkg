@@ -418,18 +418,32 @@ inspect_install_arguments() {
                 ;;
             --cc=*)
                 CC="${1#*=}"
+                [ -f "$CC" ] || abort 1 "$CC file does not exist."
                 CC="$(realpath "$CC")"
                 ;;
             --c++=*)
                 CXX="${1#*=}"
+                [ -f "$CXX" ] || abort 1 "$CXX file does not exist."
                 CXX="$(realpath "$CXX")"
+                ;;
+            --as=*)
+                AS="${1#*=}"
+                [ -f "$AS" ] || abort 1 "$AS file does not exist."
+                AS="$(realpath "$AS")"
+                ;;
+            --ld=*)
+                LD="${1#*=}"
+                [ -f "$LD" ] || abort 1 "$LD file does not exist."
+                LD="$(realpath "$LD")"
                 ;;
             --ar=*)
                 AR="${1#*=}"
+                [ -f "$AR" ] || abort 1 "$AR file does not exist."
                 AR="$(realpath "$AR")"
                 ;;
             --ranlib=*)
                 RANLIB="${1#*=}"
+                [ -f "$RANLIB" ] || abort 1 "$RANLIB file does not exist."
                 RANLIB="$(realpath "$RANLIB")"
                 ;;
             -j) shift
@@ -509,6 +523,8 @@ inspect_install_arguments() {
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         [ -z "$CC"      ] &&      CC="$(xcrun --sdk macosx --find clang)"
         [ -z "$CXX"     ] &&     CXX="$(xcrun --sdk macosx --find clang++)"
+        [ -z "$AS"      ] &&      AS="$(xcrun --sdk macosx --find as)"
+        [ -z "$LD"      ] &&      LD="$(xcrun --sdk macosx --find ld)"
         [ -z "$AR"      ] &&      AR="$(xcrun --sdk macosx --find ar)"
         [ -z "$RANLIB"  ] &&  RANLIB="$(xcrun --sdk macosx --find ranlib)"
         [ -z "$SYSROOT" ] && SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
@@ -520,21 +536,29 @@ inspect_install_arguments() {
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
          LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
     else
-        if [ -z "$CC" ] ; then
-             CC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-        fi
+        [ -z "$CC" ] && {
+             CC="$(command -v cc  || command -v clang   || command -v gcc)" || abort 1 "C Compiler not found."
+        }
 
-        if [ -z "$CXX" ] ; then
-            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
-        fi
+        [ -z "$CXX" ] && {
+            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler not found."
+        }
 
-        if [ -z "$AR" ] ; then
-             AR="$(command -v ar)"      || abort 1 "command not found: ar"
-        fi
+        [ -z "$AS" ] && {
+            AS="$(command -v as)" || abort 1 "command not found: as"
+        }
 
-        if [ -z "$RANLIB" ] ; then
-            RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
-        fi
+        [ -z "$LD" ] && {
+            LD="$(command -v ld)" || abort 1 "command not found: ld"
+        }
+
+        [ -z "$AR" ] && {
+            AR="$(command -v ar)" || abort 1 "command not found: ar"
+        }
+
+        [ -z "$RANLIB" ] && {
+            RANLIB="$(command -v ranlib)" || abort 1 "command not found: ranlib"
+        }
 
           CFLAGS="-fPIC -fno-common"
         CXXFLAGS="-fPIC -fno-common"
@@ -546,8 +570,6 @@ inspect_install_arguments() {
     #########################################################################################
 
     CPP="$CC -E"
-    AS="$CC"
-    LD="$CC"
 
     #########################################################################################
 
@@ -1059,7 +1081,7 @@ ${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
 
-    Influential environment variables: CC, CFLAGS, LDFLAGS, CPPFLAGS, AR, RANLIB
+    Influential environment variables: CC, CXX, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB
 
     OPTIONS:
         ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}
