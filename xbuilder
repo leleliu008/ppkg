@@ -285,12 +285,6 @@ filetype_from_url() {
 }
 
 inspect_install_arguments() {
-    unset CC
-    unset CXX
-    unset AR
-    unset RANLIB
-    unset SYSROOT
-
     unset PROFILE
 
     unset LOG_LEVEL
@@ -513,11 +507,11 @@ inspect_install_arguments() {
     #########################################################################################
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-             CC="$(xcrun --sdk macosx --find clang)"
-            CXX="$(xcrun --sdk macosx --find clang++)"
-             AR="$(xcrun --sdk macosx --find ar)"
-         RANLIB="$(xcrun --sdk macosx --find ranlib)"
-        SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
+        [ -z "$CC"      ] &&      CC="$(xcrun --sdk macosx --find clang)"
+        [ -z "$CXX"     ] &&     CXX="$(xcrun --sdk macosx --find clang++)"
+        [ -z "$AR"      ] &&      AR="$(xcrun --sdk macosx --find ar)"
+        [ -z "$RANLIB"  ] &&  RANLIB="$(xcrun --sdk macosx --find ranlib)"
+        [ -z "$SYSROOT" ] && SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
         NATIVE_OS_VERS="$(sw_vers -productVersion)"
 
@@ -526,10 +520,21 @@ inspect_install_arguments() {
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
          LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
     else
+        if [ -z "$CC" ] ; then
              CC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+        fi
+
+        if [ -z "$CXX" ] ; then
             CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+        fi
+
+        if [ -z "$AR" ] ; then
              AR="$(command -v ar)"      || abort 1 "command not found: ar"
-         RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
+        fi
+
+        if [ -z "$RANLIB" ] ; then
+            RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
+        fi
 
           CFLAGS="-fPIC -fno-common"
         CXXFLAGS="-fPIC -fno-common"
@@ -1053,6 +1058,8 @@ ${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
 
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
+
+    Influential environment variables: CC, CFLAGS, LDFLAGS, CPPFLAGS, AR, RANLIB
 
     OPTIONS:
         ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}
