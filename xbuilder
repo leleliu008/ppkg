@@ -285,6 +285,12 @@ filetype_from_url() {
 }
 
 inspect_install_arguments() {
+    unset CC
+    unset CXX
+    unset AR
+    unset RANLIB
+    unset SYSROOT
+
     unset PROFILE
 
     unset LOG_LEVEL
@@ -416,6 +422,22 @@ inspect_install_arguments() {
                 PACKAGE_INSTALLED_ROOT="${1#*=}"
                 PACKAGE_INSTALLED_ROOT="$(realpath "$PACKAGE_INSTALLED_ROOT")"
                 ;;
+            --cc=*)
+                CC="${1#*=}"
+                CC="$(realpath "$CC")"
+                ;;
+            --c++=*)
+                CXX="${1#*=}"
+                CXX="$(realpath "$CXX")"
+                ;;
+            --ar=*)
+                AR="${1#*=}"
+                AR="$(realpath "$AR")"
+                ;;
+            --ranlib=*)
+                RANLIB="${1#*=}"
+                RANLIB="$(realpath "$RANLIB")"
+                ;;
             -j) shift
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
                 BUILD_NJOBS="$1"
@@ -490,79 +512,43 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    unset      CC
-    unset    OBJC
-    unset     CXX
-    unset     CPP
-    unset      AS
-    unset      AR
-    unset  RANLIB
-    unset      LD
-    unset      NM
-    unset    SIZE
-    unset   STRIP
-    unset STRINGS
-    unset OBJDUMP
-    unset OBJCOPY
-    unset READELF
-    unset SYSROOT
-
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
              CC="$(xcrun --sdk macosx --find clang)"
-           OBJC="$(xcrun --sdk macosx --find clang)"
             CXX="$(xcrun --sdk macosx --find clang++)"
-             AS="$(xcrun --sdk macosx --find as)"
              AR="$(xcrun --sdk macosx --find ar)"
          RANLIB="$(xcrun --sdk macosx --find ranlib)"
-             LD="$(xcrun --sdk macosx --find ld)"
-             NM="$(xcrun --sdk macosx --find nm)"
-           SIZE="$(xcrun --sdk macosx --find size)"
-          STRIP="$(xcrun --sdk macosx --find strip)"
-        STRINGS="$(xcrun --sdk macosx --find strings)"
-        OBJDUMP="$(xcrun --sdk macosx --find objdump)"
         SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
-    else
-             CC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-           OBJC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
-             AS="$(command -v as)"      || abort 1 "command not found: as"
-             AR="$(command -v ar)"      || abort 1 "command not found: ar"
-         RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
-             LD="$(command -v ld)"      || abort 1 "command not found: ld"
-             NM="$(command -v nm)"      || abort 1 "command not found: nm"
-           SIZE="$(command -v size)"    || abort 1 "command not found: size"
-          STRIP="$(command -v strip)"   || abort 1 "command not found: strip"
-        STRINGS="$(command -v strings)" || abort 1 "command not found: strings"
-        OBJDUMP="$(command -v objdump)" || abort 1 "command not found: objdump"
-        OBJCOPY="$(command -v objcopy)" || abort 1 "command not found: objcopy"
-        READELF="$(command -v readelf)" || abort 1 "command not found: readelf"
-    fi
 
-    CPP="$CC -E"
-
-    #########################################################################################
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         NATIVE_OS_VERS="$(sw_vers -productVersion)"
 
           CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-       OBJCFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
         CXXFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
         CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
          LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
     else
+             CC="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+             AR="$(command -v ar)"      || abort 1 "command not found: ar"
+         RANLIB="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
+
           CFLAGS="-fPIC -fno-common"
-       OBJCFLAGS="-fPIC -fno-common"
         CXXFLAGS="-fPIC -fno-common"
         CPPFLAGS=
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
          LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
+    #########################################################################################
+
+    CPP="$CC -E"
+    AS="$CC"
+    LD="$CC"
+
+    #########################################################################################
+
     if [ "$DEBUG_CC" = 1 ] ; then
           CFLAGS="$CFLAGS -v"
         CXXFLAGS="$CXXFLAGS -v"
-       OBJCFLAGS="$OBJCFLAGS -v"
     fi
 
     if [ "$DEBUG_LD" = 1 ] ; then
@@ -572,7 +558,6 @@ inspect_install_arguments() {
     if [ "$PROFILE" = release ] ; then
           CFLAGS="$CFLAGS -Os"
         CXXFLAGS="$CXXFLAGS -Os"
-       OBJCFLAGS="$OBJCFLAGS -Os"
         
         if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
             LDFLAGS="$LDFLAGS -Wl,-S"
@@ -588,7 +573,7 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    for TOOL in CC CXX CPP AS AR RANLIB LD SYSROOT CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
     do
         export "${TOOL}"
     done
@@ -1028,20 +1013,9 @@ EOF
 
     cat > "$PACKAGE_INSTALL_DIR/toolchain.txt" <<EOF
      CC='$CC'
-   OBJC='$OBJC'
     CXX='$CXX'
-    CPP='$CPP'
-     AS='$AS'
      AR='$AR'
  RANLIB='$RANLIB'
-     LD='$LD'
-     NM='$NM'
-   SIZE='$SIZE'
-  STRIP='$STRIP'
-STRINGS='$STRINGS'
-OBJDUMP='$OBJDUMP'
-OBJCOPY='$OBJCOPY'
-READELF='$READELF'
 SYSROOT='$SYSROOT'
 EOF
 
@@ -1064,7 +1038,7 @@ EOF
 
 help() {
     printf '%b\n' "\
-${COLOR_GREEN}runtime builder for UNIX-like systems.${COLOR_OFF}
+${COLOR_GREEN}A package builder to build non-relocatable packages such as automake, autoconf, libtool, ruby, perl, python3, etc.${COLOR_OFF}
 
 ${COLOR_GREEN}xbuilder --help${COLOR_OFF}
 ${COLOR_GREEN}xbuilder -h${COLOR_OFF}
