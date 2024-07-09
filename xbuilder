@@ -1041,6 +1041,8 @@ EOF
     cat > "$PACKAGE_INSTALL_DIR/toolchain.txt" <<EOF
      CC='$CC'
     CXX='$CXX'
+     AS='$AS'
+     LD='$LD'
      AR='$AR'
  RANLIB='$RANLIB'
 SYSROOT='$SYSROOT'

@@ -1284,6 +1284,8 @@ filetype_from_url() {
         case $PACKAGE_NAME in
             lib*)   PACKAGE_PKGTYPE=lib ;;
             *lib)   PACKAGE_PKGTYPE=lib ;;
+            xorg-lib*)
+                    PACKAGE_PKGTYPE=lib ;;
                *)
                 # https://github.com/golang/go/issues/59942
                 if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
@@ -4518,10 +4520,10 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_PKGTYPE" != lib ] ; then
-        export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-    else
+    if [ "$PACKAGE_PKGTYPE" = lib ] ; then
         unset  PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
+    else
+        export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
     fi
 
     #########################################################################################
