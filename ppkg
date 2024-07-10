@@ -8259,7 +8259,7 @@ __setup() {
         done
 
         run mv ppkg/fonts.conf .
-        run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
+        run sed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
 
         wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' --no-buffer
 
