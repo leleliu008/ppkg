@@ -4124,7 +4124,7 @@ __inspect_install_arguments() {
             --profile=*)
                 PROFILE="${1#*=}"
                 ;;
-            --fsle)
+            --static)
                 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
             -j) shift
@@ -8662,7 +8662,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
                 CPPFLAGS: -DNDEBUG
                  LDFLAGS: -flto -Wl,-s
 
-        ${COLOR_BLUE}--fsle${COLOR_OFF}
+        ${COLOR_BLUE}--static${COLOR_OFF}
             create Fully Statically Linked Executables
 
             This option only affects the package whose type is exe. If this option is not given, ppkg will create Mostly Statically Linked Executables
