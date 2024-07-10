@@ -8288,7 +8288,7 @@ __setup() {
         [ "$NATIVE_OS_KIND" = darwin ] || {
             step "install patchelf"
             wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
-            run tar xf patchelf-0.17.2.zip --no-same-owner
+            run bsdtar xf patchelf-0.17.2.zip --no-same-owner
             run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
         }
 
