@@ -8240,7 +8240,7 @@ __setup() {
             NATIVE_OS_NAME="$NATIVE_OS_KIND"
         fi
 
-        eval "setup_$NATIVE_OS_NAME"
+        eval "__setup_$NATIVE_OS_NAME"
 
         export PATH="$PWD/bin:$PATH"
 
