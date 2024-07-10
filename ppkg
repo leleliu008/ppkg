@@ -9098,9 +9098,7 @@ case $1 in
     logs) shift; __logs_the_given_installed_package "$@" ;;
     tree) shift; __tree_the_given_installed_package "$@" ;;
     pack) shift; __pack_the_given_installed_package "$@" ;;
-
-    export) shift; __export_google_prefab_aar_for_the_given_installed_packages "$@" ;;
-    deploy) shift; __deploy_google_prefab_aar_for_the_given_installed_packages "$@" ;;
+    export.*)  __export_the_given_installed_package "$@" ;;
 
     integrate)
         shift
