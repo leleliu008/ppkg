@@ -4784,7 +4784,6 @@ $DOT_CONTENT
 
         if [ -n "$DOT" ] ; then
             run "$DOT" -Tsvg -o "$PACKAGE_WORKING_DIR/dependencies.svg" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-            run "$DOT" -Tpng -o "$PACKAGE_WORKING_DIR/dependencies.png" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
         else
             D2="$(command -v d2 || true)"
 
