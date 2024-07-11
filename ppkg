@@ -5619,8 +5619,7 @@ $PACKAGE_DO12345
 
             if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
                 # https://github.com/llvm/llvm-project/issues/74917
-                # https://github.com/madler/zlib/issues/856
-                LDFLAGS="$LDFLAGS -fuse-ld=lld -Wl,--undefined-version"
+                LDFLAGS="$LDFLAGS -fuse-ld=lld"
             fi
         fi
     fi
