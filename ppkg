@@ -5604,7 +5604,7 @@ $PACKAGE_DO12345
         fi
 
         if [ "$CROSS_COMPILING" = 1 ] ; then
-            unset ENABLE_LTO
+            ENABLE_LTO=0
 
             if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
                 CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
