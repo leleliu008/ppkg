@@ -59,11 +59,11 @@ int main(int argc, char * argv[]) {
             break;
         }
 
-        if (strcmp(argv[i], "-static") == 0) {
-            staticFlag = 1;
+        if (staticFlag == 1) {
+            continue;
         }
 
-        if (strcmp(argv[i], "--static") == 0) {
+        if (strcmp(argv[i], "-static") == 0 || strcmp(argv[i], "--static") == 0) {
             staticFlag = 1;
         }
     }
