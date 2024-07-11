@@ -4160,7 +4160,7 @@ $FORMULA_SEARCH_DIR"
 
     for PACKAGE in $SPECIFIED_PACKAGE_LIST
     do
-        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST $(inspect_package_spec "$PACKAGE")"
+        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST $(inspect_package_spec "$PACKAGE" $SPECIFIED_TARGET)"
     done
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
@@ -5604,6 +5604,8 @@ $PACKAGE_DO12345
         fi
 
         if [ "$CROSS_COMPILING" = 1 ] ; then
+            unset ENABLE_LTO
+
             if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
                 CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
             else
