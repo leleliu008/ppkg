@@ -4883,9 +4883,9 @@ $DOT_CONTENT
     }
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq  | tr '\n' ' ')"
+        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
 
-            run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+        run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 
         for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
         do
