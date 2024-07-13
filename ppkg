@@ -130,6 +130,75 @@ git() {
     fi
 }
 
+git_submodule_update_recursive() {
+    if [ -z "$1" ] ; then
+        GIT_REPO_ROOT_DIR="$PWD"
+    else
+        GIT_REPO_ROOT_DIR="$1"
+    fi
+
+    GIT_SUBMODULE_HAVE="$(cd "$GIT_REPO_ROOT_DIR" && find . -type f -name '.gitmodules' -print -quit)"
+
+    if [ -n "$GIT_SUBMODULE_HAVE" ] ; then
+        if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+            run git submodule update --init --recursive
+        else
+            unset GIT_SUBMODULE_BASEDIR_STACK
+
+            GIT_SUBMODULE_CONFIG_FILE_LIST="$(find "$GIT_REPO_ROOT_DIR" -type f -name '.gitmodules')"
+
+            for f in $GIT_SUBMODULE_CONFIG_FILE_LIST
+            do
+                if [ -z "$GIT_SUBMODULE_BASEDIR_STACK" ] ; then
+                    GIT_SUBMODULE_BASEDIR_STACK="${f%/*}"
+                else
+                    GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR_STACK;${f%/*}"
+                fi
+            done
+
+            while [ -n "$GIT_SUBMODULE_BASEDIR_STACK" ]
+            do
+                case $GIT_SUBMODULE_BASEDIR_STACK in
+                    *\;*) GIT_SUBMODULE_BASEDIR="${GIT_SUBMODULE_BASEDIR_STACK##*;}" ; GIT_SUBMODULE_BASEDIR_STACK="${GIT_SUBMODULE_BASEDIR_STACK%;*}" ;;
+                    *)    GIT_SUBMODULE_BASEDIR="${GIT_SUBMODULE_BASEDIR_STACK}"     ; GIT_SUBMODULE_BASEDIR_STACK=
+                esac
+
+                run cd "$GIT_SUBMODULE_BASEDIR"
+
+                GIT_SUBMODULE_NAME_LIST="$(sed -n '/\[submodule ".*"\]/p' .gitmodules | sed 's|\[submodule "\(.*\)"\]|\1|')"
+
+                for GIT_SUBMODULE_NAME in $GIT_SUBMODULE_NAME_LIST
+                do
+                    GIT_SUBMODULE_PATH="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.path")"
+                    GIT_SUBMODULE_URL="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.url")"
+                    GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+
+                    run git submodule set-url "$GIT_SUBMODULE_PATH" "$GIT_SUBMODULE_URI"
+                done
+
+                run git submodule update --init
+
+                GIT_SUBMODULE_PATH_LIST="$(git submodule | sed 's|^ *||' | cut -d ' ' -f2)"
+
+                for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
+                do
+                    GIT_SUBMODULE_CONFIG_FILE_LIST="$(find "$GIT_SUBMODULE_PATH" -type f -name '.gitmodules')"
+
+                    for f in $GIT_SUBMODULE_CONFIG_FILE_LIST
+                    do
+                        if [ -z "$GIT_SUBMODULE_BASEDIR_STACK" ] ; then
+                            GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR/${f%/*}"
+                        else
+                            GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR_STACK;$GIT_SUBMODULE_BASEDIR/${f%/*}"
+                        fi
+                    done
+                done
+            done
+        fi
+    fi
+}
+
+
 # check if the given two versions match the condition
 #
 # condition:
@@ -2419,11 +2488,13 @@ __fetch_resources_of_the_given_package() {
         run rm -rf     "$SESSION_DIR"
         run install -d "$SESSION_DIR"
         run cd         "$SESSION_DIR"
+
         run git -c init.defaultBranch=master init
         run git remote add origin "$GIT_FETCH_URL"
         run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
         run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-        run git submodule update --init
+
+        git_submodule_update_recursive
 
         rm -rf "$SESSION_DIR"
     fi
@@ -5133,29 +5204,13 @@ $DOT_CONTENT
                 fi
 
                 run cd "$PACKAGE_INSTALLING_SRC_DIR"
+
                 run git -c init.defaultBranch=master init
                 run git remote add origin "$GIT_FETCH_URL"
                 run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
                 run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
 
-                GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
-
-                if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
-                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                        for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
-                        do
-                            GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
-
-                            for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
-                            do
-                                GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
-                                sedInPlace "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
-                            done
-                        done
-                    fi
-
-                    run git submodule update --init
-                fi
+                git_submodule_update_recursive
             fi
             ;;
         dir://*)
@@ -8868,7 +8923,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.6.1
+PPKG_VERSION=0.6.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
