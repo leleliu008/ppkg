@@ -307,7 +307,7 @@ inspect_install_arguments() {
 
     unset SESSION_DIR
     unset DOWNLOAD_DIR
-    unset PACKAGE_INSTALLED_ROOT
+    unset PACKAGE_INSTALL_ROOT
 
     unset DUMP_ENV
     unset DUMP_HTTP
@@ -413,8 +413,8 @@ inspect_install_arguments() {
                 DOWNLOAD_DIR="${1#*=}"
                 ;;
             --prefix=*)
-                PACKAGE_INSTALLED_ROOT="${1#*=}"
-                PACKAGE_INSTALLED_ROOT="$(realpath "$PACKAGE_INSTALLED_ROOT")"
+                PACKAGE_INSTALL_ROOT="${1#*=}"
+                PACKAGE_INSTALL_ROOT="$(realpath "$PACKAGE_INSTALL_ROOT")"
                 ;;
             --cc=*)
                 CC="${1#*=}"
@@ -471,8 +471,8 @@ inspect_install_arguments() {
         DOWNLOAD_DIR="$HOME/.xbuilder/downloads"
     fi
 
-    if [ -z "$PACKAGE_INSTALLED_ROOT" ] ; then
-        PACKAGE_INSTALLED_ROOT="$HOME/.xbuilder/installed"
+    if [ -z "$PACKAGE_INSTALL_ROOT" ] ; then
+        PACKAGE_INSTALL_ROOT="$HOME/.xbuilder/installed"
     fi
 
     #########################################################################################
@@ -757,7 +757,7 @@ install_perl_XML_Parser() {
         GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
     fi
 
-    run perl Makefile.PL EXPATLIBPATH="$PACKAGE_INSTALLED_ROOT/libexpat/lib" EXPATINCPATH="$PACKAGE_INSTALLED_ROOT/libexpat/include"
+    run perl Makefile.PL EXPATLIBPATH="$PACKAGE_INSTALL_ROOT/libexpat/lib" EXPATINCPATH="$PACKAGE_INSTALL_ROOT/libexpat/include"
     run install -d "$PACKAGE_INSTALL_DIR"
 
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
@@ -873,7 +873,7 @@ getinfo_the_given_package() {
             PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
             PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
             PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
-            PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+            PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
         perl-XML-Parser)
             PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
@@ -909,7 +909,7 @@ install_the_given_package() {
 
     printf '\n%b\n' "${COLOR_PURPLE}=>> xbuilder: install package : $1${COLOR_OFF}"
 
-    if [ -f "$PACKAGE_INSTALLED_ROOT/$1/receipt.txt" ] ; then
+    if [ -f "$PACKAGE_INSTALL_ROOT/$1/receipt.txt" ] ; then
         note "package '$1' already has been installed, skipped."
         return 0
     fi
@@ -929,7 +929,7 @@ EOF
 
     #########################################################################################
 
-    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALL_ROOT/$PACKAGE_INSTALL_SHA"
 
     PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
     PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
@@ -949,7 +949,7 @@ EOF
 
     for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
     do
-        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALL_ROOT/$DEPENDENT_PACKAGE_NAME"
 
         if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
             CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
@@ -1006,20 +1006,20 @@ EOF
             unset PYTHONHOME
             unset PYTHONPATH
 
-            export ZLIB_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libz/include"
-            export ZLIB_LIBS="-L$PACKAGE_INSTALLED_ROOT/libz/lib -lz"
+            export ZLIB_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libz/include"
+            export ZLIB_LIBS="-L$PACKAGE_INSTALL_ROOT/libz/lib -lz"
 
-            export BZIP2_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libbz2/include"
-            export BZIP2_LIBS="-L$PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
+            export BZIP2_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libbz2/include"
+            export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
 
-            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/liblzma/include"
-            export LIBLZMA_LIBS="-L$PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
+            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
+            export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
 
-            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/sqlite3/include"
-            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
+            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
+            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
 
-            export GDBM_CFLAGS="-I$PACKAGE_INSTALLED_ROOT/libgdbm/include"
-            export GDBM_LIBS="-L$PACKAGE_INSTALLED_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
+            export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
+            export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
 
             export LIBS='-lm'
     esac
@@ -1038,7 +1038,21 @@ EOF
 
     #########################################################################################
 
-    cat > "$PACKAGE_INSTALL_DIR/toolchain.txt" <<EOF
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    # TO FIX: glibtoolize: command not found
+    if [ "$1" = 'libtool' ] ; then
+        run cd bin
+        run ln -s -r libtool    glibtool
+        run ln -s -r libtoolize glibtoolize
+        run cd -
+    fi
+
+    #########################################################################################
+
+    cat > toolchain.txt <<EOF
      CC='$CC'
     CXX='$CXX'
      AS='$AS'
@@ -1050,7 +1064,7 @@ EOF
 
     #########################################################################################
 
-    cat > "$PACKAGE_INSTALL_DIR/receipt.txt" <<EOF
+    cat > receipt.txt <<EOF
 src-url: $PACKAGE_SRC_URL
 src-uri: $PACKAGE_SRC_URI
 src-sha: $PACKAGE_SRC_SHA
@@ -1062,7 +1076,8 @@ EOF
 
     #########################################################################################
 
-    run ln -s -r -f -T "$PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA" "$PACKAGE_INSTALLED_ROOT/$1"
+    run cd "$PACKAGE_INSTALL_ROOT"
+    run ln -s -r -f -T "$PACKAGE_INSTALL_SHA" "$1"
 }
 
 help() {
@@ -1197,10 +1212,10 @@ case $1 in
             '') abort 1 'xbuilder exec <CMD> , <CMD> is unspecified.'
                 ;;
             --prefix=*)
-                PACKAGE_INSTALLED_ROOT="${1#*=}"
-                PACKAGE_INSTALLED_ROOT="$(realpath "$PACKAGE_INSTALLED_ROOT")"
+                PACKAGE_INSTALL_ROOT="${1#*=}"
+                PACKAGE_INSTALL_ROOT="$(realpath "$PACKAGE_INSTALL_ROOT")"
 
-                [ -d "$PACKAGE_INSTALLED_ROOT" ] && abort 1 "directory $PACKAGE_INSTALLED_ROOT does not exist."
+                [ -d "$PACKAGE_INSTALL_ROOT" ] && abort 1 "directory $PACKAGE_INSTALL_ROOT does not exist."
 
                 shift
 
@@ -1208,17 +1223,17 @@ case $1 in
                 ;;
         esac
 
-        if [ -z "$PACKAGE_INSTALLED_ROOT" ] ; then
+        if [ -z "$PACKAGE_INSTALL_ROOT" ] ; then
             [ -z "$HOME" ] && abort 1 'HOME environment is not set.'
 
-            PACKAGE_INSTALLED_ROOT="$HOME/.xbuilder/installed"
+            PACKAGE_INSTALL_ROOT="$HOME/.xbuilder/installed"
         fi
 
-        PACKAGE_NAMES="$(cd "$PACKAGE_INSTALLED_ROOT" && find . -maxdepth 1 -mindepth 1 -type l -printf '%P\n')"
+        PACKAGE_NAMES="$(cd "$PACKAGE_INSTALL_ROOT" && find . -maxdepth 1 -mindepth 1 -type l -printf '%P\n')"
 
         for PACKAGE_NAME in $PACKAGE_NAMES
         do
-            PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+            PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALL_ROOT/$PACKAGE_NAME"
 
             if [ ! -f "$PACKAGE_INSTALLED_DIR/receipt.txt" ] ; then
                 continue

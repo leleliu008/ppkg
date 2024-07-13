@@ -198,7 +198,6 @@ git_submodule_update_recursive() {
     fi
 }
 
-
 # check if the given two versions match the condition
 #
 # condition:
