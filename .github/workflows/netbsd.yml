@@ -8,28 +8,27 @@ on:
 
 jobs:
   test:
-    runs-on: macos-12
-    
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        version: [9]
+        netbsd-version: ['10.0', '9.4', '9.3', '9.2']
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/cache@v4
+      - uses: cross-platform-actions/action@v0.25.0
         with:
-          path: ~/.vagrant.d/boxes
-          key: vagrant-generic-netbsd-${{ matrix.version }}
-          restore-keys: |
-            vagrant-generic-netbsd-${{ matrix.version }}
-
-      - uses: leleliu008/github-actions-vagrant@main
-        with:
-          mem: 2048
-          box: generic/netbsd${{ matrix.version }}
+          operating_system: netbsd
+          version: ${{ matrix.netbsd-version }}
+          shell: bash
           run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
             run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
             run sudo update-ca-certificates
 

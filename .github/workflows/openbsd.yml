@@ -8,24 +8,27 @@ on:
 
 jobs:
   test:
-    runs-on: macos-12
-    
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        openbsd-version: ['7.5', '7.4', '7.3', '7.2']
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/cache@v4
+      - uses: cross-platform-actions/action@v0.25.0
         with:
-          path: ~/.vagrant.d/boxes
-          key: vagrant-generic-openbsd-7
-          restore-keys: |
-            vagrant-generic-openbsd-7
-
-      - uses: leleliu008/github-actions-vagrant@main
-        with:
-          mem: 2048
-          box: generic/openbsd7
-          box-version: 4.2.16
+          operating_system: openbsd
+          version: ${{ matrix.openbsd-version }}
+          shell: bash
           run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
             run sudo pkg_add curl gtar-- gcc%11
 
             run sudo ln -s /usr/local/bin/gtar /usr/bin/tar
