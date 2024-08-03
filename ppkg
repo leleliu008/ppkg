@@ -6383,8 +6383,6 @@ $PACKAGE_DOTWEAK
     PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
 
-    PACKAGE_DEPENDENT_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
-
     install -d "$PACKAGE_METAINFO_DIR"
 
     #########################################################################################
@@ -6434,33 +6432,58 @@ $PACKAGE_DOTWEAK
             done
         }
     else
-        # executable that need to be set rpath : $ORIGIN/../lib
-        unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
+        # ELF files that need to be set rpath : $ORIGIN/../lib
+        unset PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
 
-        # executable that need to be set rpath : $ORIGIN/../.ppkg/dependencies/lib
-        unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
+        # ELF files that need to be set rpath : $ORIGIN/../.ppkg/dependencies/lib
+        unset PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
+
+        unset PACKAGE_NEEDED_SHARED_LIBS
 
         __check_elf_files
 
-        [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1" ] && {
-            step "set rpath for executables"
+        [ -n "$PACKAGE_NEEDED_SHARED_LIBS" ] && {
+            step "copy dependent shared libs"
 
-            PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 | sort | uniq)"
+            PACKAGE_NEEDED_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
 
-            for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
+            install -d -v "$PACKAGE_NEEDED_SHARED_LIBS_DIR"
+
+            for f in $PACKAGE_NEEDED_SHARED_LIBS
             do
-                DIRNAME="${f%/*}"
-                RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" lib)"
-                run patchelf --add-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
+                F="$PACKAGE_NEEDED_SHARED_LIBS_DIR/${f##*/}"
+
+                if [ ! -f "$F" ] ; then
+                    cp -L -v "$f" "$PACKAGE_NEEDED_SHARED_LIBS_DIR/"
+                    run patchelf --add-rpath "\\\$ORIGIN" "$F"
+                fi
             done
         }
 
-        [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2" ] && {
-            step "set rpath for executables"
+        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1" ] && {
+            step "set rpath for ELF files"
 
-            PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 | sort | uniq)"
+            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$(printf '%s\n' $PACKAGE_ELF_FILES_NEED_SET_RPATH_S1 | sort | uniq)"
 
-            for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
+            for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
+            do
+                DIRNAME="${f%/*}"
+
+                if [ "$DIRNAME" = './lib' ] ; then
+                    run patchelf --add-rpath "\\\$ORIGIN" "$f"
+                else
+                    RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" lib)"
+                    run patchelf --add-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
+                fi
+            done
+        }
+
+        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2" ] && {
+            step "set rpath for ELF files"
+
+            PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$(printf '%s\n' $PACKAGE_ELF_FILES_NEED_SET_RPATH_S2 | sort | uniq)"
+
+            for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
             do
                 DIRNAME="${f%/*}"
                 RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ppkg/dependencies/lib)"
@@ -6586,79 +6609,24 @@ __check_elf_files() {
     do
         [ -f "$FILEPATH" ] || continue
 
-        FILE_HEADER_ACTUAL="$(xxd -u -p -l 18 "$FILEPATH")"
+        FILE_MAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-        case $FILE_HEADER_ACTUAL in
-            7F454C460[12]01010[0239C]00000000000000000100)
-                continue
-                ;;
-            7F454C460[12]01010[0239C]00000000000000000200)
-                # little-endian mode
-                ELF_TYPE_EXECUTABLE=1
-                ;;
-            7F454C460[12]01010[0239C]00000000000000000300)
-                # little-endian mode
-                ELF_TYPE_SHAREDABLE=1
-                ;;
-            7F454C460[12]02010[0239C]00000000000000000001)
-                continue
-                ;;
-            7F454C460[12]02010[0239C]00000000000000000002)
-                # big-endian mode
-                ELF_TYPE_EXECUTABLE=1
-                ;;
-            7F454C460[12]02010[0239C]00000000000000000003)
-                # big-endian mode
-                ELF_TYPE_SHAREDABLE=1
-                ;;
-            7F454C46*)
-                abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
-                ;;
-            *)  continue
-        esac
+        if [ "$FILE_MAGIC" = 7F454C46 ] ; then
+            ELF_TYPE="$(xxd -u -p -l 17 "$FILEPATH" | cut -c33-34)"
 
-        ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
-
-        # 03 means it is a shared library or dynamically linked executable
-        if [ "$ELF_TYPE" = '03' ] ; then
-            patchelf --remove-rpath "$FILEPATH"
-
-            # patchelf would report a error if there is no '.interp' section in a ELF file
-            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-            if [ -n  "$PT_INTERP" ] ; then
-                # A dynamically linked executable always have the .interp section.
-                # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
-                case "${FILEPATH##*/}" in
-                    *.so)
-                        IS_SHARED_LIBRAY=1 ;;
-                    *.so.*)
-                        IS_SHARED_LIBRAY=1 ;;
-                    *)  IS_SHARED_LIBRAY=0 ;;
-                esac
-            else
-                IS_SHARED_LIBRAY=1
+            # 03 means it is a shared library or dynamically linked executable
+            if [ "$ELF_TYPE" = '03' ] ; then
+                patchelf --remove-rpath "$FILEPATH"
+                __check_DT_NEEDED "$FILEPATH"
             fi
-
-            #####################################################################
-
-            if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
-                IS_EXECUTABLE=0
-            else
-                IS_EXECUTABLE=1
-            fi
-
-            #####################################################################
-
-            __check_DT_NEEDED "$FILEPATH" "$IS_EXECUTABLE"
         fi
     done
 
     unset IFS
 }
 
-# __check_DT_NEEDED <ELF-FILE-PATH> <IS-EXECUTABLE>
+# __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
     # a \n-separated list
     DT_NEEDED_LIST="$(patchelf --print-needed "$1")"
@@ -6705,47 +6673,40 @@ __check_elf_files() {
             ld-linux-*)
                 ;;
             *)
-                DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
+                NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
 
-                if [ -e "$DT_NEEDED_FILEPATH" ] ; then
-                    if [ "$2" = 1 ] ; then
-                        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 $1"
-                    fi
+                if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                    PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1 $1"
                 else
-                    unset DT_NEEDED_FILEPATH
+                    unset NEEDED_SHARED_LIBRARY_FILEPATH
 
                     if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
                         RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
 
                         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
                         do
-                            DT_NEEDED_FILEPATH="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
+                            NEEDED_SHARED_LIBRARY_FILEPATH="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
 
-                            if [ -e "$DT_NEEDED_FILEPATH" ] ; then
-                                if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
-                                    install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
-                                fi
+                            if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                                PACKAGE_NEEDED_SHARED_LIBS="$PACKAGE_NEEDED_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
 
-                                if [ ! -e "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
-                                    cp -L -v "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
-                                fi
-
-                                if [ "$2" = 1 ] ; then
-                                    PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 $1"
-                                fi
+                                case $1 in
+                                    ./*) PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2 $1"
+                                esac
 
                                 break
                             else
-                                unset DT_NEEDED_FILEPATH
+                                unset NEEDED_SHARED_LIBRARY_FILEPATH
                             fi
                         done
                     fi
                 fi
 
-                if [ -z "$DT_NEEDED_FILEPATH" ] ; then
+                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                     abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
                 else
-                    __check_DT_NEEDED "$DT_NEEDED_FILEPATH" 0
+                    __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
                 fi
         esac
     done
@@ -8922,7 +8883,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.6.2
+PPKG_VERSION=0.6.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
