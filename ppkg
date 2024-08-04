@@ -6463,7 +6463,7 @@ $PACKAGE_DOTWEAK
         [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1" ] && {
             step "set rpath for ELF files"
 
-            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$(printf '%s\n' $PACKAGE_ELF_FILES_NEED_SET_RPATH_S1 | sort | uniq)"
+            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1" | sort | uniq)"
 
             for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
             do
@@ -6481,7 +6481,7 @@ $PACKAGE_DOTWEAK
         [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2" ] && {
             step "set rpath for ELF files"
 
-            PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$(printf '%s\n' $PACKAGE_ELF_FILES_NEED_SET_RPATH_S2 | sort | uniq)"
+            PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2" | sort | uniq)"
 
             for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
             do
@@ -6672,14 +6672,30 @@ __check_elf_files() {
                 ;;
             ld-linux-*)
                 ;;
-            *)
-                NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
+            libtinfo)
+                ;;
+            *)  unset NEEDED_SHARED_LIBRARY_FILEPATH
 
-                if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                    PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1 $1"
-                else
-                    unset NEEDED_SHARED_LIBRARY_FILEPATH
+                case $1 in
+                    ./*)
+                        NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
 
+                        if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
+$1"
+                        else
+                            NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$DT_NEEDED" -print -quit)"
+
+                            if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                                PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
+$1"
+                            else
+                                unset NEEDED_SHARED_LIBRARY_FILEPATH
+                            fi
+                        fi
+                esac
+
+                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                     if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
                         RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
 
@@ -6692,7 +6708,8 @@ __check_elf_files() {
 $NEEDED_SHARED_LIBRARY_FILEPATH"
 
                                 case $1 in
-                                    ./*) PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2 $1"
+                                    ./*) PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
+$1"
                                 esac
 
                                 break
