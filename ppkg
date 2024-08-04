@@ -8306,7 +8306,7 @@ __setup() {
         for f in ppkg/*.c
         do
             F="${f#*/}"
-            F="${f%.c}"
+            F="${F%.c}"
 
             run cc -flto -Os -std=c99 -o "$F" "$f"
             run strip "$F"
