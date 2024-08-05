@@ -6678,19 +6678,21 @@ __check_elf_files() {
 
                 case $1 in
                     ./*)
-                        NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
-
-                        if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
-$1"
-                        else
-                            NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$DT_NEEDED" -print -quit)"
+                        if [ -d lib ] ; then
+                            NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
 
                             if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                                 PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
 $1"
                             else
-                                unset NEEDED_SHARED_LIBRARY_FILEPATH
+                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$DT_NEEDED" -print -quit)"
+
+                                if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                                    PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
+$1"
+                                else
+                                    unset NEEDED_SHARED_LIBRARY_FILEPATH
+                                fi
                             fi
                         fi
                 esac
