@@ -8225,15 +8225,17 @@ __setup_netbsd() {
 
     printf 'export ACLOCAL_PATH=/usr/pkg/share/aclocal' > init.rc
 
-    run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
-    run sudo update-ca-certificates
+    if [ -z "$SSL_CERT_FILE" ] ; then
+        run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
+        run sudo update-ca-certificates
 
-    unset ETCCERTSDIR
+        unset ETCCERTSDIR
 
-    ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
+        ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
 
-    if [ -n "$ETCCERTSDIR" ] ; then
-        export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
+        if [ -n "$ETCCERTSDIR" ] ; then
+            export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
+        fi
     fi
 }
 
