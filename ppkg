@@ -6487,7 +6487,7 @@ $PACKAGE_DOTWEAK
             do
                 DIRNAME="${f%/*}"
                 RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ppkg/dependencies/lib)"
-                run patchelf --add-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
+                run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$f"
             done
         }
     fi
