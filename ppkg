@@ -8220,6 +8220,7 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/gmake      bin/make
     run ln -sf /usr/pkg/bin/gnproc     bin/nproc
     run ln -sf /usr/pkg/bin/gbase64    bin/base64
+    run ln -sf /usr/pkg/bin/gprintf    bin/printf
     run ln -sf /usr/pkg/bin/gunlink    bin/unlink
     run ln -sf /usr/pkg/bin/ginstall   bin/install
     run ln -sf /usr/pkg/bin/grealpath  bin/realpath
