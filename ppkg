@@ -8210,7 +8210,7 @@ __setup_netbsd() {
     run $sudo pkgin -y update
     run $sudo pkgin -y install bash coreutils findutils gawk gsed grep tree bsdtar patch patchelf pkg-config go git curl cmake ninja-build gmake llvm flex bison m4 jq
 
-    run ln -sf /usr/pkg/go118/bin/go   bin/go
+    run ln -sf /usr/pkg/go*/bin/go     bin/go
     run ln -sf /usr/pkg/bin/gln        bin/ln
     run ln -sf /usr/pkg/bin/gm4        bin/m4
     run ln -sf /usr/pkg/bin/gsed       bin/sed
@@ -8218,6 +8218,7 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/ggrep      bin/grep
     run ln -sf /usr/pkg/bin/gfind      bin/find
     run ln -sf /usr/pkg/bin/gmake      bin/make
+    run ln -sf /usr/pkg/bin/gnproc     bin/nproc
     run ln -sf /usr/pkg/bin/gbase64    bin/base64
     run ln -sf /usr/pkg/bin/gunlink    bin/unlink
     run ln -sf /usr/pkg/bin/ginstall   bin/install
