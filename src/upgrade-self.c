@@ -61,7 +61,7 @@ static int ppkg_upgrade_tar_filename(char buf[], const size_t bufSize, const cha
 #elif defined (__DragonFly__)
     ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
 #elif defined (__FreeBSD__)
-    double v = atof(osVers * 10);
+    double v = atof(osVers) * 10;
 
     if (v < 130) {
         osVers[0] = '1';
@@ -79,7 +79,7 @@ static int ppkg_upgrade_tar_filename(char buf[], const size_t bufSize, const cha
 
     ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
 #elif defined (__OpenBSD__)
-    double v = atof(osVers * 10);
+    double v = atof(osVers) * 10;
 
     if (v < 73) {
         osVers[0] = '7';
@@ -95,7 +95,7 @@ static int ppkg_upgrade_tar_filename(char buf[], const size_t bufSize, const cha
 
     ret = snprintf(buf, bufSize, "ppkg-%s-%s-%s-%s.tar.xz", latestVersion, osType, osVers, osArch);
 #elif defined (__NetBSD__)
-    double v = atof(osVers * 10);
+    double v = atof(osVers) * 10;
 
     if (v < 92) {
         osVers[0] = '9';
