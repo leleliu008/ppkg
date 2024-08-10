@@ -13,6 +13,7 @@ pkgin() {
 package_name_transform_from_uppm_to_pkgin() {
     case $1 in
         gm4)      printf '%s\n' 'm4'        ;;
+        xxd)      printf '%s\n' 'vim'       ;;
         ninja)    printf '%s\n' 'ninja-build';;
         golang)   printf '%s\n' 'go'        ;;
         pkgconf)  printf '%s\n' 'pkg-config';;
