@@ -6652,6 +6652,8 @@ __check_elf_files() {
                 ;;
             libldap)
                 ;;
+            liblber)
+                ;;
             libasan)
                 ;;
             libmvec)
