@@ -15,7 +15,7 @@ jobs:
     steps:
       - run:  emerge cmake dev-util/ninja gcc pkg-config dev-vcs/git net-misc/curl dev-libs/libgit2 libarchive dev-libs/libyaml dev-libs/jansson dev-db/sqlite
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run:  cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
       - run:  cmake --build   build.d

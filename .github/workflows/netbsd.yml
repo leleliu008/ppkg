@@ -34,6 +34,7 @@ jobs:
             run sudo pkgin -y install cmake ninja-build pkg-config clang curl libgit2 libarchive libyaml jansson
 
             run export SSL_CERT_FILE="$PWD/cacert.pem"
+            run export LD_LIBRARY_PATH=/usr/pkg/lib
 
             run cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
             run cmake --build   build.d

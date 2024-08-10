@@ -238,7 +238,7 @@ jobs:
       - run: apk update
       - run: apk add wget g++ libc-dev linux-headers
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg

@@ -27,9 +27,9 @@ jobs:
       - run:  apt -y update
       - run:  apt -y install cmake ninja-build pkg-config g++ linux-headers-generic  curl zip unzip tar git
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
