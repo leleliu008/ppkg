@@ -66,10 +66,9 @@ jobs:
       - run: ppkg --version
       - run: ppkg -V
 
-      - run: ppkg env
-      - run: ppkg env -v
+      - run: ppkg about
+      - run: ppkg about -v
 
-      - run: ppkg buildinfo
       - run: ppkg sysinfo
 
       - run: ppkg setup -v
@@ -206,10 +205,9 @@ jobs:
       - run: ppkg --version
       - run: ppkg -V
 
-      - run: ppkg env
-      - run: ppkg env -v
+      - run: ppkg about
+      - run: ppkg about -v
 
-      - run: ppkg buildinfo
       - run: ppkg sysinfo
 
       - run: ppkg setup -v

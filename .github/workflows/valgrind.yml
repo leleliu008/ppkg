@@ -57,8 +57,8 @@ jobs:
 
       - run: $VALGRIND ./output/bin/ppkg setup -v
 
-      - run: $VALGRIND ./output/bin/ppkg env
-      - run: $VALGRIND ./output/bin/ppkg env -v
+      - run: $VALGRIND ./output/bin/ppkg about
+      - run: $VALGRIND ./output/bin/ppkg about -v
 
       - run: $VALGRIND ./output/bin/ppkg integrate zsh
       - run: $VALGRIND ./output/bin/ppkg integrate zsh -v

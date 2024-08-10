@@ -308,7 +308,7 @@ int ppkg_sysinfo();
 
 int ppkg_buildinfo();
 
-int ppkg_env(const bool verbose);
+int ppkg_about(const bool verbose);
 
 int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
 

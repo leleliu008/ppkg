@@ -17,17 +17,13 @@ int ppkg_help() {
         COLOR_OFF
         "    show version of this command.\n\n"
         COLOR_GREEN
-        "ppkg env\n"
+        "ppkg about\n"
         COLOR_OFF
-        "    show basic information about this software.\n\n"
-        COLOR_GREEN
-        "ppkg buildinfo\n"
-        COLOR_OFF
-        "    show build information about this software.\n\n"
+        "    show information about this software.\n\n"
         COLOR_GREEN
         "ppkg sysinfo\n"
         COLOR_OFF
-        "    show basic information about your current running operation system.\n\n"
+        "    show information about your current running operation system.\n\n"
         COLOR_GREEN
         "ppkg integrate zsh [-v] [--output-dir=<DIR>]\n"
         COLOR_OFF
@@ -222,12 +218,10 @@ int ppkg_help() {
         "ppkg --version\n"
         "ppkg -V\n"
         "    show version of this command.\n\n"
-        "ppkg env\n"
-        "    show basic information about this software.\n\n"
-        "ppkg buildinfo\n"
-        "    show build information about this software.\n\n"
+        "ppkg about\n"
+        "    show information about this software.\n\n"
         "ppkg sysinfo\n"
-        "    show basic information about your current running operation system.\n\n"
+        "    show information about your current running operation system.\n\n"
         "ppkg update\n"
         "    update all available formula repositories.\n\n"
         "ppkg search <REGULAR-EXPRESSION> [-p linux|macos|freebsd|openbsd|netbsd|dragonflybsd]\n"

@@ -6,7 +6,7 @@
 
 #include "ppkg.h"
 
-int ppkg_env(const bool verbose) {
+int ppkg_about(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
@@ -30,7 +30,7 @@ int ppkg_env(const bool verbose) {
 
     free(selfRealPath);
 
-    printf("ppkg.website : %s\n", "https://github.com/leleliu008/ppkg");
+    printf("ppkg.website : %s\n\n", "https://github.com/leleliu008/ppkg");
    
-    return PPKG_OK;
+    return ppkg_buildinfo();
 }

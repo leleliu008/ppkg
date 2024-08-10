@@ -54,8 +54,8 @@ jobs:
 
       - run: ./output/bin/ppkg setup -v
 
-      - run: ./output/bin/ppkg env
-      - run: ./output/bin/ppkg env -v
+      - run: ./output/bin/ppkg about
+      - run: ./output/bin/ppkg about -v
 
       - run: ./output/bin/ppkg integrate zsh
       - run: ./output/bin/ppkg integrate zsh -v
@@ -176,8 +176,8 @@ jobs:
 
       - run: ./output/bin/ppkg setup -v
 
-      - run: ./output/bin/ppkg env
-      - run: ./output/bin/ppkg env -v
+      - run: ./output/bin/ppkg about
+      - run: ./output/bin/ppkg about -v
 
       - run: ./output/bin/ppkg integrate zsh
       - run: ./output/bin/ppkg integrate zsh -v

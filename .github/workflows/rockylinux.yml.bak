@@ -30,7 +30,7 @@ jobs:
 
       - run: bin/ppkg setup -v
 
-      - run: bin/ppkg env
+      - run: bin/ppkg about
 
       - run: bin/ppkg integrate zsh
 

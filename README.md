@@ -1,6 +1,6 @@
 # ppkg
 
-A portable package manager for Unix-like system.
+A portable package builder/manager for Unix-like system.
 
 ## Caveats
 
@@ -8,7 +8,7 @@ A portable package manager for Unix-like system.
 
 - Please do NOT place your own files under `~/.ppkg` directory, as `ppkg` will change files under `~/.ppkg` directory without notice.
 
-- Please do NOT run `ppkg` command in parallel to avoid generating dirty data.
+- Please do NOT run `ppkg` command in parallel so as not to generate dirty data.
 
 ## Two implementations
 
@@ -189,7 +189,7 @@ cmake --install build.d
 **[openSUSE](https://www.opensuse.org/)**
 
 ```bash
-zypper update  -y  
+zypper update  -y
 zypper install -y git cmake ninja gcc pkg-config libcurl-devel libgit2-devel libarchive-devel libyaml-devel libjansson-devel zlib-devel
 
 git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
@@ -285,22 +285,22 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
+    - [patchelf](https://github.com/NixOS/patchelf)
+    - [sysinfo](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)
     - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
-    - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
+    - [yq](https://mikefarah.gitbook.io/yq/)
+    - [d2](https://github.com/terrastruct/d2)
+    - [fzf](https://github.com/junegunn/fzf)
+    - [bat](https://github.com/sharkdp/bat)
+    - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
 
 - **show basic information about this software**
 
     ```bash
-    ppkg env
-    ```
-
-- **show build information about this software**
-
-    ```bash
-    ppkg buildinfo
+    ppkg about
     ```
 
 - **show basic information about your current running operation system**
@@ -336,50 +336,50 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **create a new empty formula repository**
 
     ```bash
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-init my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=master
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=main --pin
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --unpin --disable
+    ppkg formula-repo-init my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --enable
     ```
 
 - **create a new empty formula repository then sync with server**
 
     ```bash
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=master
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --branch=main --pin
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --unpin --disable
-    uppm formula-repo-add my_repo https://github.com/leleliu008/uppm-formula-repository-my_repo --enable
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=master
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --branch=main --pin
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --unpin --disable
+    ppkg formula-repo-add my_repo https://github.com/leleliu008/ppkg-formula-repository-my_repo --enable
     ```
 
 - **delete the given formula repository**
 
     ```bash
-    uppm formula-repo-del my_repo
+    ppkg formula-repo-del my_repo
     ```
 
 - **sync the given formula repository with server**
 
     ```bash
-    uppm formula-repo-sync my_repo
+    ppkg formula-repo-sync my_repo
     ```
 
 - **show information of the given formula repository**
 
     ```bash
-    uppm formula-repo-info my_repo
+    ppkg formula-repo-info my_repo
     ```
 
 - **change the config of the given formula repository**
 
     ```bash
-    uppm formula-repo-conf my_repo --url=https://github.com/leleliu008/uppm-formula-repository-my_repo
-    uppm formula-repo-conf my_repo --branch=main
-    uppm formula-repo-conf my_repo --pin
-    uppm formula-repo-conf my_repo --unpin
-    uppm formula-repo-conf my_repo --enable
-    uppm formula-repo-conf my_repo --disable
+    ppkg formula-repo-conf my_repo --url=https://github.com/leleliu008/ppkg-formula-repository-my_repo
+    ppkg formula-repo-conf my_repo --branch=main
+    ppkg formula-repo-conf my_repo --pin
+    ppkg formula-repo-conf my_repo --unpin
+    ppkg formula-repo-conf my_repo --enable
+    ppkg formula-repo-conf my_repo --disable
     ```
 
 - **search all available packages whose name matches the given regular expression partten**
@@ -436,16 +436,19 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ```bash
     ppkg depends curl
 
+    ppkg depends curl -t d2
     ppkg depends curl -t dot
     ppkg depends curl -t box
     ppkg depends curl -t png
     ppkg depends curl -t svg
 
+    ppkg depends curl -o curl-dependencies.d2
     ppkg depends curl -o curl-dependencies.dot
     ppkg depends curl -o curl-dependencies.txt
     ppkg depends curl -o curl-dependencies.png
     ppkg depends curl -o curl-dependencies.svg
 
+    ppkg depends curl -t d2  -o dependencies/
     ppkg depends curl -t dot -o dependencies/
     ppkg depends curl -t box -o dependencies/
     ppkg depends curl -t png -o dependencies/
@@ -566,6 +569,30 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg pack curl -o a/xx.zip
     ```
 
+- **export the given installed package as anthoer package format (e.g. deb, rpm, pkg, apk, etc)**
+
+    ```bash
+    ppkg export.deb curl
+    ppkg export.deb curl -o .
+    ppkg export.deb curl -o a/
+    ppkg export.deb curl -o curl-8.1.2-linux-x86_64.deb
+
+    ppkg export.rpm curl
+    ppkg export.rpm curl -o .
+    ppkg export.rpm curl -o a/
+    ppkg export.rpm curl -o curl-8.1.2-linux-x86_64.rpm
+
+    ppkg export.pkg curl
+    ppkg export.pkg curl -o .
+    ppkg export.pkg curl -o a/
+    ppkg export.pkg curl -o curl-8.1.2-linux-x86_64.pkg.tar.xz
+
+    ppkg export.apk curl
+    ppkg export.apk curl -o .
+    ppkg export.apk curl -o a/
+    ppkg export.apk curl -o curl-8.1.2-linux-x86_64.apk
+    ```
+
 - **delete the unused cached files**
 
     ```bash
@@ -597,6 +624,14 @@ all relevant directories and files are located under `~/.ppkg` directory.
     export GOPROXY='https://goproxy.cn'
     ```
 
+- **PPKG_HOME**
+
+    If this environment variable is not set or set a empty string, `$HOME/.ppkg` will be used as the default value.
+
+    ```bash
+    export PPKG_HOME=$HOME/ppkg-home
+    ```
+
 - **PPKG_URL_TRANSFORM**
 
     ```bash
@@ -623,11 +658,23 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 - **PPKG_DEFAULT_TARGET**
 
-    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`. To simplify the usage, `ppkg` allows omitting `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then will retrieve your current running os's information.
+    Some ACTIONs of ppkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
 
-    `<TARGET>` has the form `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+    **PACKAGE-SPEC** : a formatted string that has form: `<TARGET-PLATFORM>/<PACKAGE-NAME>`, represents an installed package.
 
-    examples:
+    **PACKAGE-NAME** : should match the regular expression pattern `^[A-Za-z0-9+-_.@]{1,50}$`
+
+    **TARGET-PLATFORM** : a formatted string that has form: `<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH>`
+
+    **TARGET-PLATFORM-ARCH** : indicates which cpu arch was built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`
+
+    **TARGET-PLATFORM-NAME** : indicates which platform name was built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`
+
+    **TARGET-PLATFORM-VERSION** : indicates which platform version was built with.
+
+    To simplify the usage, you are allowed to omit `<TARGET-PLATFORM>/`. If `<TARGET-PLATFORM>/` is omitted, environment variable `PPKG_DEFAULT_TARGET` would be checked, if this environment variable is not set, then your current running os target will be used as the default.
+
+    **Example**:
 
     ```bash
     export PPKG_DEFAULT_TARGET=linux-glibc-x86_64
@@ -651,10 +698,11 @@ a ppkg formula'a filename prefix would be treated as the package name.
 
 a ppkg formula'a filename prefix must match the regular expression partten `^[A-Za-z0-9+-._@]{1,50}$`
 
-a uppm formula's file content only has one level mapping and shall has following KEY:
+a ppkg formula's file content only has one level mapping and shall has following KEY:
 
 |KEY|required?|overview|
 |-|-|-|
+|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ppkg` would add `--static -static` options to `LDFLAGS` if `--static` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ppkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
@@ -666,15 +714,22 @@ a uppm formula's file content only has one level mapping and shall has following
 |`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
 |`git-nth`|optional|tell `ppkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
 ||||
-|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
 |`src-uri`|optional|the mirror of `src-url`.|
 |`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
 ||||
-|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-uri`|optional|the mirror of `fix-url`.|
 |`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+|`fix-opt`|optional|options to be passed to `patch` command. default value is `-p1`.|
 ||||
-|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`patches`|optional|multiple lines of `<fix-sha>\|<fix-url>[\|fix-uri][\|fix-opt]`.|
+||||
+|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-uri`|optional|the mirror of `res-url`.|
 |`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+||||
+|`reslist`|optional|multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
 |`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
 |`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
@@ -686,31 +741,77 @@ a uppm formula's file content only has one level mapping and shall has following
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
-|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
-|`dopatch`|optional|POSIX shell code to be run before `install`. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`|
-|`symlink`|optional|whether to symlink installed files to `$PPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
-|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ppkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-fully` install option is given.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
+|`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
+|`parallel`|optional|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
+||||
+|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+||||
+|`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ppkg install <PKG>`. If this mapping is not present, `ppkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+||||
+|`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
-**commands that can be used out of the box in `dopatch` and `install` block:**
+|phases|
+|-|
+|![phases](phases.svg)|
+
+|build system name|build script file name|
+|-|-|
+|`meson`|`meson.build`|
+|`cmake`|`CMakeLists.txt`|
+|`gmake`|`GNUMakefile` or `Makefile`|
+|`ninja`|`build.ninja`|
+|`xmake`|`xmake.lua`|
+|`cargo`|`Cargo.toml`|
+|`go`|`go.mod`|
+|`rake`|`Rakefile`|
+|`autogen`|`autogen.sh`|
+|`autotools`|`configure.ac`|
+|`configure`|`configure`|
+
+**commands that can be used out of the box:**
 
 |command|usage-example|
 |-|-|
+|`bash`|[Reference](https://www.gnu.org/software/bash/manual/bash.html)|
+|`CoreUtils`|[Reference](https://www.gnu.org/software/coreutils/manual/coreutils.html)|
+|`xargs`|[Reference](https://www.gnu.org/software/findutils/manual/html_node/find_html/Invoking-xargs.html)|
+|`find`|[Reference](https://www.gnu.org/software/findutils/manual/html_mono/find.html)|
+|`gawk`|[Reference](https://www.gnu.org/software/gawk/manual/gawk.html)|
+|`gsed`|[Reference](https://www.gnu.org/software/sed/manual/sed.html)|
+|`grep`|[Reference](https://www.gnu.org/software/grep/manual/grep.html)|
+|`tree`|[Reference](https://linux.die.net/man/1/tree)|
+|`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
+|`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
+|`d2`|[Reference](https://github.com/terrastruct/d2)|
+|`bat`|[Reference](https://github.com/sharkdp/bat)|
+|`xxd`|[Reference](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)|
+|`git`|[Reference](https://git-scm.com/docs/git)|
+|`curl`|[Reference](https://curl.se/docs/manpage.html)|
+|`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
+|`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
+|`patchelf`|[Reference](https://github.com/NixOS/patchelf)|
+|`sysinfo`|[Reference](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)|
+|||
 |`echo`|`echo 'your message.'`|
 |`info`|`info 'your information.'`|
 |`warn`|`warn "no package manager found."`|
 |`error`|`error 'error message.'`|
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
-|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
-|`wfetch`|`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-path=PATH`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR --output-name=NAME`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] --output-dir=DIR [--output-name=NAME]`<br>`wfetch URL [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] --output-name=NAME`|
-
-**commands that can be used out of the box in `install` block only:**
-
-|command|usage-example|
-|-|-|
+|`isInteger`|`isInteger $x \|\| abort 1 "should be an integer."`|
+|`isCrossBuild`|`isCrossBuild && abort 1 "This package is not supposed to be cross built."`|
+|`sedInPlace`|`sedInPlace 's/-mandroid//g' Configure`|
+|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
+|||
 |`configure`|`configure --enable-pic`|
 |`mesonw`|`mesonw -Dneon=disabled -Darm-simd=disabled`|
 |`cmakew`|`cmakew -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON`|
@@ -719,10 +820,19 @@ a uppm formula's file content only has one level mapping and shall has following
 |`cargow`|`cargow`|
 |`gow`|`gow`|
 
-**shell variables can be used in `dopatch` and `install` block:**
+**shell variables can be used directly:**
 
 |variable|overview|
 |-|-|
+|`PPKG_ARG0`|the 1st arguments of `ppkg` that you've supplied.|
+|`PPKG_ARG1`|the 2nd arguments of `ppkg` that you've supplied.|
+|`PPKG_ARGV`|the all arguments of `ppkg` that you've supplied.|
+|`PPKG_PATH`|the full path of `ppkg` that you're running.|
+|`PPKG_HOME`|the home directory of `ppkg` that you're running.|
+|`PPKG_VERSION`|the version of `ppkg` that you're running.|
+|||
+|`UPPM`|the executable filepath of [uppm](https://github.com/leleliu008/uppm)|
+|||
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
 |`NATIVE_OS_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
@@ -740,10 +850,6 @@ a uppm formula's file content only has one level mapping and shall has following
 |`TARGET_PLATFORM_ARCH`|target platform arch that is built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
 |||
 |`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
-|||
-|`PPKG_VERSION`|the version of `ppkg`.|
-|`PPKG_HOME`|the home directory of `ppkg`.|
-|`PPKG`|the executable filepath of `ppkg`.|
 |||
 |`CC`|the C Compiler.|
 |`CFLAGS`|the flags of `CC`.|
@@ -770,22 +876,26 @@ a uppm formula's file content only has one level mapping and shall has following
 
 ## ppkg formula repository
 
-a ppkg formula repository is a git repository.
+a typical hierarchical structure of a ppkg formula repository looks like below:
 
-a ppkg formula repository's root dir should have a `formula` named sub dir, this repository's formulas all should be located in this dir.
+```
+PPKGFormulaRepoName
+├── formula
+│   ├── packageA.yml
+│   └── packageB.yml
+├── LICENSE
+└── README.md
+```
 
-a ppkg formula repository's local path is `~/.ppkg/repos.d/${PPKGFormulaRepoName}`
+## ppkg formula repository local location
 
-**Note:**
+`${PPKG_HOME}/repos.d/${PPKGFormulaRepoName}`
 
-- please do NOT directly modify the formulas since your changes may be lost after the formula repository is updated!
-- ppkg supports multiple formula repositories.
+## ppkg formula repository local config
 
-## ppkg formula repository's config
+a ppkg formula repository's config file is located at `${PPKG_HOME}/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
 
-After a ppkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ppkg/repos.d/${PPKGFormulaRepoName}/.ppkg-formula-repo.yml`
-
-a typical ppkg formula repository's config as following:
+a typical ppkg formula repository's config file content looks like below:
 
 ```yaml
 url: https://github.com/leleliu008/ppkg-formula-repository-official-core
@@ -800,10 +910,24 @@ If a ppkg formula repository is `pinned`, which means it would not be updated.
 
 If a ppkg formula repository is `disabled`, which means ppkg would not search formulas in this formula repository.
 
+## ppkg formula repository management
+
+run `ppkg formula-repo-add ` command to create a new formula repository locally from an exsting remote git repository.
+
+run `ppkg formula-repo-init` command to create a new formula repository locally without taking any further action.
+
 ## ppkg official formula repository
 
-ppkg official formula repository's url: <https://github.com/leleliu008/ppkg-formula-repository-official-core>
+ppkg official formula repository is hosted at <https://github.com/leleliu008/ppkg-formula-repository-official-core>
 
-ppkg official formula repository would be automatically fetched to local cache as name `official-core` when you run `ppkg update` command.
+It would be automatically fetched to your local repository as name `official-core` when you run `ppkg update` command.
 
 **Note:** If you find that a package is not in ppkg official formula repository yet, PR is welcomed.
+
+## prebuild packages built by this software
+
+- <https://github.com/leleliu008/uppm-package-repository-linux-x86_64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-aarch64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-riscv64>
+- <https://github.com/leleliu008/uppm-package-repository-linux-ppc64le>
+- <https://github.com/leleliu008/uppm-package-repository-linux-s390x>

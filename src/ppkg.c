@@ -29,11 +29,7 @@ int ppkg_main(int argc, char* argv[]) {
         return ppkg_sysinfo();
     }
 
-    if (strcmp(argv[1], "buildinfo") == 0) {
-        return ppkg_buildinfo();
-    }
-
-    if (strcmp(argv[1], "env") == 0) {
+    if (strcmp(argv[1], "about") == 0) {
         bool verbose = false;
 
         for (int i = 2; i < argc; i++) {
@@ -43,7 +39,7 @@ int ppkg_main(int argc, char* argv[]) {
             }
         }
 
-        int ret = ppkg_env(verbose);
+        int ret = ppkg_about(verbose);
 
         if (ret == PPKG_ERROR_ENV_HOME_NOT_SET) {
             fprintf(stderr, "%s\n", "HOME environment variable is not set.\n");
