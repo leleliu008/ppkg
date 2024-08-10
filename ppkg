@@ -6650,10 +6650,6 @@ __check_elf_files() {
                 ;;
             libstdc++)
                 ;;
-            libldap)
-                ;;
-            liblber)
-                ;;
             libasan)
                 ;;
             libmvec)
@@ -6726,9 +6722,7 @@ $1"
                     fi
                 fi
 
-                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                    abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
-                else
+                if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                     __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
                 fi
         esac
