@@ -8,47 +8,37 @@ on:
 
 jobs:
   test:
-    runs-on: macos-12
-    
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        version: [9]
+        netbsd-version: ['10.0', '9.4', '9.3', '9.2']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/cache@v3
-        with:
-          path: ~/.vagrant.d/boxes
-          key: vagrant-generic-netbsd-${{ matrix.version }}
-          restore-keys: |
-            vagrant-generic-netbsd-${{ matrix.version }}
+      - run: curl -LO https://curl.se/ca/cacert.pem
 
-      - uses: leleliu008/github-actions-vagrant@main
+      - uses: cross-platform-actions/action@v0.25.0
         with:
-          ncpu: 1
-          mem: 1024
-          box: generic/netbsd${{ matrix.version }}
+          operating_system: netbsd
+          version: ${{ matrix.netbsd-version }}
+          shell: bash
           run: |
-            run sudo pkgin -y install cmake ninja-build pkg-config clang curl libgit2 libarchive libyaml jansson sqlite
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
+            run sudo pkgin -y install cmake ninja-build pkg-config clang curl libgit2 libarchive libyaml jansson
+
+            run export SSL_CERT_FILE="$PWD/cacert.pem"
 
             run cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
             run cmake --build   build.d
             run cmake --install build.d
 
-
-            export LD_LIBRARY_PATH=/usr/pkg/lib
-
-            run sudo rm -rf /usr/pkg/etc/openssl
-            run sudo pkgin -y install mozilla-rootcerts
-            run sudo mozilla-rootcerts install
-
-            if [ ${{matrix.version}} -eq 8 ] ; then
-                export SSL_CERT_FILE=/usr/pkg/etc/openssl/certs/ca-certificates.crt
-            else
-                export SSL_CERT_FILE=/etc/openssl/certs/ca-certificates.crt
-            fi
 
             run ./output/bin/ppkg
 

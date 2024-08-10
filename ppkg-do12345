@@ -66,7 +66,7 @@ run() {
     eval "$@"
 }
 
-sed_in_place() {
+sedInPlace() {
     if [ "$RUN_SILENT" = 1 ] ; then
         sed -i "$@"
     else
@@ -80,7 +80,7 @@ sed_in_place() {
     fi
 }
 
-is_integer() {
+isInteger() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
@@ -200,7 +200,7 @@ gow() {
                 GO_VERSION_MAJOR=$(go env GOVERSION | cut -c3- | cut -d. -f1)
                 GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
 
-                sed_in_place "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+                sedInPlace "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
 
                 run go mod tidy
                 run go mod vendor
@@ -482,7 +482,7 @@ configure_only() {
     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
 
     if [ -n "$PPKG_XTRACE" ] ; then
-        sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
+        sedInPlace '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
     if run "$PACKAGE_BSCRIPT_DIR/configure" "$CONFIGURE_ARGS" "$@" ; then
@@ -500,8 +500,8 @@ configure_only() {
     if [ "$LOG_LEVEL" -ge 2 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
-            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+            sedInPlace 's|\t@|\t|g'     "$Makefile" || return 1
+            sedInPlace 's|@echo|echo|g' "$Makefile" || return 1
         done
 
         unset Makefile

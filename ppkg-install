@@ -66,7 +66,7 @@ run() {
     eval "$@"
 }
 
-sed_in_place() {
+sedInPlace() {
     if [ "$RUN_SILENT" = 1 ] ; then
         sed -i "$@"
     else
@@ -80,7 +80,7 @@ sed_in_place() {
     fi
 }
 
-is_integer() {
+isInteger() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
@@ -200,7 +200,7 @@ gow() {
                 GO_VERSION_MAJOR=$(go env GOVERSION | cut -c3- | cut -d. -f1)
                 GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
 
-                sed_in_place "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+                sedInPlace "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
 
                 run go mod tidy
                 run go mod vendor
@@ -508,7 +508,7 @@ configure_only() {
     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-option-checking --enable-rpath --disable-nls --enable-largefile"
 
     if [ -n "$PPKG_XTRACE" ] ; then
-        sed_in_place '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
+        sedInPlace '1a set -x' "$PACKAGE_BSCRIPT_DIR/configure"
     fi
 
     if run "$PACKAGE_BSCRIPT_DIR/configure" "$CONFIGURE_ARGS" "$@" ; then
@@ -526,8 +526,8 @@ configure_only() {
     if [ "$LOG_LEVEL" -ge 2 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
-            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+            sedInPlace 's|\t@|\t|g'     "$Makefile" || return 1
+            sedInPlace 's|@echo|echo|g' "$Makefile" || return 1
         done
 
         unset Makefile
@@ -1034,11 +1034,11 @@ __adjust_la_files() {
 
     for lafile in $LA_FILES
     do
-        sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
-        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$lafile"
-        sed_in_place "s|-R[^' ]*||g"               "$lafile"
-        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
-        #sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
+        sedInPlace 's|-Wl,--strip-debug||g'      "$lafile"
+        sedInPlace "s|-L${PPKG_HOME}[^' ]*||g"   "$lafile"
+        sedInPlace "s|-R[^' ]*||g"               "$lafile"
+        #sedInPlace "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
+        #sedInPlace "s|--sysroot $SYSROOT||g"     "$lafile"
     done
 }
 
@@ -1050,32 +1050,32 @@ __adjust_pc_files() {
     # cc: error: unrecognized command line option ‘-R’
     for pcfile in $PC_FILES
     do
-        sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
-        sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
-        sed_in_place "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
-        sed_in_place "s|${PPKG_HOME}/.*/lib.*\.a||g" "$pcfile"
-        sed_in_place "s|-R[^' ]*||g"               "$pcfile"
-        sed_in_place "s|-pthread|-lpthread|g"      "$pcfile"
-        #sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
-        #sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
+        sedInPlace "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        sedInPlace 's|-Wl,--strip-debug||g'      "$pcfile"
+        sedInPlace "s|-L${PPKG_HOME}[^' ]*||g"   "$pcfile"
+        sedInPlace "s|${PPKG_HOME}/.*/lib.*\.a||g" "$pcfile"
+        sedInPlace "s|-R[^' ]*||g"               "$pcfile"
+        sedInPlace "s|-pthread|-lpthread|g"      "$pcfile"
+        #sedInPlace "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
+        #sedInPlace "s|--sysroot $SYSROOT||"      "$pcfile"
 
         if grep 'Libs.private:' "$pcfile" > /dev/null ; then
             if grep 'Libs:' "$pcfile" > /dev/null ; then
                 LIBS_PRIVATE_CONTENT=$(sed -n '/Libs.private:/p' "$pcfile" | cut -c14-)
-                sed_in_place "/Libs:/s|\$|$LIBS_PRIVATE_CONTENT|" "$pcfile"
-                sed_in_place '/Libs.private:/d' "$pcfile"
+                sedInPlace "/Libs:/s|\$|$LIBS_PRIVATE_CONTENT|" "$pcfile"
+                sedInPlace '/Libs.private:/d' "$pcfile"
             else
-                sed_in_place 's|Libs.private:|Libs:|' "$pcfile"
+                sedInPlace 's|Libs.private:|Libs:|' "$pcfile"
             fi
         fi
 
         if grep 'Requires.private:' "$pcfile" > /dev/null ; then
             if grep 'Requires:' "$pcfile" > /dev/null ; then
                 REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                sed_in_place "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
-                sed_in_place '/Requires.private:/d' "$pcfile"
+                sedInPlace "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                sedInPlace '/Requires.private:/d' "$pcfile"
             else
-                sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
+                sedInPlace 's|Requires.private:|Requires:|' "$pcfile"
             fi
         fi
     done
