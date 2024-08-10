@@ -5123,8 +5123,6 @@ static int ppkg_install_package(
 
             ///////////////////////////////////////////
 
-            const size_t ccLength = strlen(toolchainForNativeBuild->cc);
-
             const char * compilerNames[2] = { "clang", "clang++" };
 
             for (int i = 0; i < 2; i++) {
@@ -5138,41 +5136,6 @@ static int ppkg_install_package(
                 if (ret < 0) {
                     perror(NULL);
                     return PPKG_ERROR;
-                }
-
-                struct stat st;
-
-                if (stat(wrapperFilePath, &st) != 0) {
-                    size_t outputFilePathCapacity = sessionDIRLength + 23U;
-                    char   outputFilePath[outputFilePathCapacity];
-
-                    ret = snprintf(outputFilePath, outputFilePathCapacity, "%s/wrapper-target-%s", sessionDIR, compilerName);
-
-                    if (ret < 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-
-                    size_t cmdLength = ccLength + outputFilePathCapacity + ppkgCoreDIRCapacity + 29U;
-                    char   cmd[cmdLength];
-
-                    ret = snprintf(cmd, cmdLength, "%s -o %s %s/wrapper-target-%s.c", toolchainForNativeBuild->cc, outputFilePath, ppkgCoreDIR, compilerName);
-
-                    if (ret < 0) {
-                        perror(NULL);
-                        return PPKG_ERROR;
-                    }
-
-                    ret = run_cmd(cmd, STDOUT_FILENO);
-
-                    if (ret != PPKG_OK) {
-                        return ret;
-                    }
-
-                    if (rename(outputFilePath, wrapperFilePath) != 0) {
-                        perror(wrapperFilePath);
-                        return PPKG_ERROR;
-                    }
                 }
 
                 if (strcmp(compilerName, "clang") == 0) {
@@ -6674,65 +6637,6 @@ int ppkg_setup_toolchain_for_native_build(
         const char * ppkgCoreDIR,
         const size_t ppkgCoreDIRLength,
         const PPKGInstallOptions * installOptions) {
-    struct stat st;
-
-    const size_t ccLength      = strlen(toolchainForNativeBuild->cc);
-    const size_t ccFlagsLength = strlen(toolchainForNativeBuild->ccflags);
-    const size_t ldFlagsLength = strlen(toolchainForNativeBuild->ldflags);
-
-    const char * compilerNames[3] = { "cc", "c++", "objc" };
-
-    for (int i = 0; i < 3; i++) {
-        const char * compilerName = compilerNames[i];
-
-        size_t wrapperFilePathCapacity = ppkgCoreDIRLength + 21U;
-        char   wrapperFilePath[wrapperFilePathCapacity];
-
-        int ret = snprintf(wrapperFilePath, wrapperFilePathCapacity, "%s/wrapper-native-%s", ppkgCoreDIR, compilerName);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        if (stat(wrapperFilePath, &st) == 0) {
-            continue;
-        }
-
-        size_t outputFilePathCapacity = sessionDIRLength + 23U;
-        char   outputFilePath[outputFilePathCapacity];
-
-        ret = snprintf(outputFilePath, outputFilePathCapacity, "%s/wrapper-native-%s", sessionDIR, compilerName);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        size_t cmdCapacity = ccLength + ccFlagsLength + ldFlagsLength + outputFilePathCapacity + ppkgCoreDIRLength + 27U;
-        char   cmd[cmdCapacity];
-
-        ret = snprintf(cmd, cmdCapacity, "%s %s %s -o %s %s/wrapper-native-%s.c", toolchainForNativeBuild->cc, toolchainForNativeBuild->ccflags, toolchainForNativeBuild->ldflags, outputFilePath, ppkgCoreDIR, compilerName);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
-        }
-
-        ret = run_cmd(cmd, STDOUT_FILENO);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        if (rename(outputFilePath, wrapperFilePath) != 0) {
-            perror(wrapperFilePath);
-            return PPKG_ERROR;
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////
-
     const KV kvs[3] = {
         { "PROXIED_CC_FOR_BUILD",   toolchainForNativeBuild->cc   },
         { "PROXIED_CXX_FOR_BUILD",  toolchainForNativeBuild->cxx  },
@@ -6768,6 +6672,8 @@ int ppkg_setup_toolchain_for_native_build(
     free(toolchainForNativeBuild->objc);
 
     //////////////////////////////////////////////////////////////////////
+
+    const char * compilerNames[3] = { "cc", "c++", "objc" };
 
     char* fields[3] = {NULL};
 
