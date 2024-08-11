@@ -8185,6 +8185,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/ggrep      bin/grep
     run ln -sf /usr/local/bin/gfind      bin/find
     run ln -sf /usr/local/bin/gmake      bin/make
+    run ln -sf /usr/local/bin/gdate      bin/date
     run ln -sf /usr/local/bin/gbase64    bin/base64
     run ln -sf /usr/local/bin/gunlink    bin/unlink
     run ln -sf /usr/local/bin/ginstall   bin/install
