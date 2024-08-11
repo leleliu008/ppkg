@@ -8454,7 +8454,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/dev/xbuilder' --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' --no-buffer
     run chmod +x xbuilder
 
     ##################################################################################
