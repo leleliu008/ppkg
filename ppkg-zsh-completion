@@ -156,7 +156,7 @@ function _ppkg() {
                         '1:package-name:_ppkg_installed_packages' \
                         '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
-                        '--exclude=-[specify exclude path]' \
+                        '--exclude[specify exclude path]:exclude-path:_path_files -/' \
                         '--keep-session-dir[do not delete the session directory even if packed success]'
                     ;;
                 tree)

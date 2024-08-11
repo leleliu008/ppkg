@@ -2552,7 +2552,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ppkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude=<PATH>] [-K]
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]
 # __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
@@ -8191,6 +8191,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/gbase64    bin/base64
     run ln -sf /usr/local/bin/gunlink    bin/unlink
     run ln -sf /usr/local/bin/ginstall   bin/install
+    run ln -sf /usr/local/bin/grealpath  bin/realpath
     run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
     run ln -sf /usr/local/bin/pkgconf    bin/pkg-config
 
