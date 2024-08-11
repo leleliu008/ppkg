@@ -91,7 +91,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
       - run: install -d    out/
@@ -120,7 +119,6 @@ jobs:
           run apk update
           run apk add curl xz g++ libc-dev linux-headers
 
-          run chmod a+x ppkg
           run ./ppkg setup
           run ./ppkg update
           run ./ppkg install uppm@0.15.4 --static
@@ -195,19 +193,15 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkg install -y gcc
-
-            for item in *.c
-            do
-              gcc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-            run chmod a+x ppkg
-            run ./ppkg setup
+            run ./ppkg setup --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static
             run ./ppkg pack    uppm@0.15.4
+
+            for item in *.c
+            do
+              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
 
       - run: install -d out/
 
@@ -264,19 +258,15 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkg_add llvm
-
-            for item in *.c
-            do
-              clang -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-            run chmod a+x ppkg
-            run ./ppkg setup
+            run ./ppkg setup  --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static
             run ./ppkg pack    uppm@0.15.4
+
+            for item in *.c
+            do
+              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
 
       - run: install -d out/
 
@@ -335,21 +325,17 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkgin -y install clang
-
-            for item in *.c
-            do
-              clang -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
             run export SSL_CERT_FILE="$PWD/cacert.pem"
 
-            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-            run chmod a+x ppkg
-            run ./ppkg setup
+            run ./ppkg setup --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static
             run ./ppkg pack    uppm@0.15.4
+
+            for item in *.c
+            do
+              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
 
       - run: install -d out/
 
