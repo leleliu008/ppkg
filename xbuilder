@@ -848,8 +848,8 @@ getinfo_the_given_package() {
             PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
             ;;
         sqlite3)
-            PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3450200.tar.gz'
-            PACKAGE_SRC_SHA='bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae'
+            PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz'
+            PACKAGE_SRC_SHA='6f8e6a7b335273748816f9b3b62bbdc372a889de8782d7f048c653a447417a7d'
             PACKAGE_DEP_PKG='libz'
             PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
             ;;
