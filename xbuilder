@@ -997,10 +997,10 @@ EOF
 
     case $1 in
         libz)
-            gsed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+            sed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
             ;;
         texinfo)
-            gsed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
+            sed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
             ;;
         python3)
             unset PYTHONHOME
