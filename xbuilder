@@ -764,139 +764,159 @@ install_perl_XML_Parser() {
     run "$GMAKE" install
 }
 
-getinfo_the_given_package() {
+package_info_libz() {
+    PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
+    PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
+    PACKAGE_INSTALL='cmakew'
+}
+
+package_info_libbz2() {
+    PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
+    PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
+    PACKAGE_INSTALL='cmakew -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
+}
+
+package_info_libpcre2() {
+    PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
+    PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
+    PACKAGE_INSTALL='cmakew -DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+}
+
+package_info_libexpat() {
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+    PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+    PACKAGE_INSTALL='cmakew -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
+}
+
+package_info_perl() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
+    PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
+}
+
+package_info_openssl() {
+    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
+    PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
+    PACKAGE_DEP_PKG='perl'
+}
+
+package_info_texinfo() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
+    PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
+    PACKAGE_DEP_PKG='perl'
+    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+}
+
+package_info_help2man() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+    PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+    PACKAGE_DEP_PKG='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_intltool() {
+    PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+    PACKAGE_DEP_PKG='libexpat perl perl-XML-Parser'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_libtool() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+    PACKAGE_INSTALL='configure --enable-ltdl-install'
+}
+
+package_info_autoconf() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+    PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+    PACKAGE_DEP_PKG='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_automake() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+    PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+    PACKAGE_DEP_PKG='perl autoconf'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_liblzma() {
+    PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
+    PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
+}
+
+package_info_libgdbm() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+    PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
+}
+
+package_info_sqlite3() {
+    PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz'
+    PACKAGE_SRC_SHA='6f8e6a7b335273748816f9b3b62bbdc372a889de8782d7f048c653a447417a7d'
+    PACKAGE_DEP_PKG='libz'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
+}
+
+package_info_libffi() {
+    PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
+    PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
+}
+
+package_info_libyaml() {
+    PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
+    PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
+}
+
+package_info_ruby() {
+    PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
+    PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
+    PACKAGE_DEP_PKG='libz libyaml libffi'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --disable-docs'
+}
+
+package_info_python3() {
+    PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
+    PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
+    PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
+    PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+}
+
+package_info_perl_XML_Parser() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+    PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
+    PACKAGE_DEP_PKG='perl libexpat'
+}
+
+package_info_swig() {
+    PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
+    PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
+    PACKAGE_DEP_PKG='libpcre2'
+    PACKAGE_INSTALL='configure --enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
+}
+
+package_info_ghc() {
+    PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.6.3/ghc-9.6.3-aarch64-apple-darwin.tar.xz'
+    PACKAGE_SRC_SHA='e1cdf458926b2eaf52d2a8287d99a965040ff9051171f5c3b7467049cf0eb213'
+    PACKAGE_INSTALL='configure'
+}
+
+install_the_given_package() {
+    [ -z "$1" ] && abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+
     unset PACKAGE_SRC_URI
     unset PACKAGE_DEP_PKG
     unset PACKAGE_INSTALL
 
-    case $1 in
-        '') abort 1 "getinfo_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
-            ;;
-        libz)
-            PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
-            PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
-            PACKAGE_INSTALL='cmakew'
-            ;;
-        libbz2)
-            PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-            PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
-            PACKAGE_INSTALL='cmakew -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
-            ;;
-        libpcre2)
-            PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
-            PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
-            PACKAGE_INSTALL='cmakew -DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
-            ;;
-        libexpat)
-            PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-            PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-            PACKAGE_INSTALL='cmakew -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
-            ;;
-        perl)
-            PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
-            PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
-            PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
-            ;;
-        openssl)
-            PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
-            PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
-            PACKAGE_DEP_PKG='perl'
-            ;;
-        texinfo)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
-            PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
-            PACKAGE_DEP_PKG='perl'
-            PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
-            ;;
-        help2man)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
-            PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-            PACKAGE_DEP_PKG='perl'
-            PACKAGE_INSTALL='configure'
-            ;;
-        intltool)
-            PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-            PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-            PACKAGE_DEP_PKG='libexpat perl perl-XML-Parser'
-            PACKAGE_INSTALL='configure'
-            ;;
-        libtool)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-            PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-            PACKAGE_INSTALL='configure --enable-ltdl-install'
-            ;;
-        autoconf)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-            PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-            PACKAGE_DEP_PKG='perl'
-            PACKAGE_INSTALL='configure'
-            ;;
-        automake)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-            PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-            PACKAGE_DEP_PKG='perl autoconf'
-            PACKAGE_INSTALL='configure'
-            ;;
-        liblzma)
-            PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
-            PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
-            ;;
-        libgdbm)
-            PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
-            PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
-            ;;
-        sqlite3)
-            PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz'
-            PACKAGE_SRC_SHA='6f8e6a7b335273748816f9b3b62bbdc372a889de8782d7f048c653a447417a7d'
-            PACKAGE_DEP_PKG='libz'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
-            ;;
-        libffi)
-            PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
-            PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
-            ;;
-        libyaml)
-            PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
-            PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
-            ;;
-        ruby)
-            PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
-            PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-            PACKAGE_DEP_PKG='libz libyaml libffi'
-            PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --disable-docs'
-            ;;
-        python3)
-            PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
-            PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
-            PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
-            PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
-            ;;
-        perl-XML-Parser)
-            PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
-            PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
-            PACKAGE_DEP_PKG='perl libexpat'
-            ;;
-        swig)
-            PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
-            PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
-            PACKAGE_DEP_PKG='libpcre2'
-            PACKAGE_INSTALL='configure --enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
-            ;;
-        ghc)
-            PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.6.3/ghc-9.6.3-aarch64-apple-darwin.tar.xz'
-            PACKAGE_SRC_SHA='e1cdf458926b2eaf52d2a8287d99a965040ff9051171f5c3b7467049cf0eb213'
-            PACKAGE_INSTALL='configure'
-            ;;
-        *)  abort 1 "unsupported package name: $1"
-    esac
-}
-
-install_the_given_package() {
-    getinfo_the_given_package "$1"
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        package_info_perl_XML_Parser
+    else
+        package_info_$1
+    fi
 
     #########################################################################################
 
@@ -1188,7 +1208,16 @@ case $1 in
         if [ "$2" = -v ] ; then
             for PACKAGE_NAME in $PACKAGE_NAMES
             do
-                getinfo_the_given_package "$PACKAGE_NAME"
+                unset PACKAGE_SRC_URI
+                unset PACKAGE_DEP_PKG
+                unset PACKAGE_INSTALL
+
+                if [ "$PACKAGE_NAME" = 'perl-XML-Parser' ] ; then
+                    package_info_perl_XML_Parser
+                else
+                    package_info_$PACKAGE_NAME
+                fi
+
                 printf '%-10s: %s\n' "$PACKAGE_NAME" "$PACKAGE_SRC_URL"
             done
         else
