@@ -764,6 +764,226 @@ install_perl_XML_Parser() {
     run "$GMAKE" install
 }
 
+is_build_system_configure() {
+    [ "$1" = configure ]
+}
+
+install_the_given_package() {
+    [ -z "$1" ] && abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+
+    unset PACKAGE_SRC_URI
+    unset PACKAGE_DEP_PKG
+    unset PACKAGE_INSTALL
+
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        package_info_perl_XML_Parser
+    else
+        package_info_$1
+    fi
+
+    #########################################################################################
+
+    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
+    do
+        (install_the_given_package "$PACKAGE_DEPENDENCY")
+    done
+
+    #########################################################################################
+
+    printf '\n%b\n' "${COLOR_PURPLE}=>> xbuilder: install package : $1${COLOR_OFF}"
+
+    if [ -f "$PACKAGE_INSTALL_ROOT/$1/receipt.txt" ] ; then
+        note "package '$1' already has been installed, skipped."
+        return 0
+    fi
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_UTS=
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA=
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALL_ROOT/$PACKAGE_INSTALL_SHA"
+
+    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+    PACKAGE_SRC_FILEPATH="$DOWNLOAD_DIR/$PACKAGE_SRC_FILENAME"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/$1"
+
+    #########################################################################################
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
+    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
+    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALL_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
+        do
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
+            fi
+        done
+    done
+
+    #########################################################################################
+
+    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+    SRCDIR="$PACKAGE_WORKING_DIR/src"
+
+    run install -d "$SRCDIR"
+
+    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C "$SRCDIR"
+
+    run cd "$SRCDIR"
+
+    #########################################################################################
+
+    if is_build_system_configure $PACKAGE_INSTALL ; then
+        for FILENAME in config.sub config.guess
+        do
+            FILEPATH="$SESSION_DIR/$FILENAME"
+
+            [ -f "$FILEPATH" ] || {
+                wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
+
+                run chmod a+x "$FILEPATH"
+
+                if [ "$FILENAME" = 'config.sub' ] ; then
+                    sed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                fi
+            }
+
+            find . -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+        done
+    fi
+
+    #########################################################################################
+
+    case $1 in
+        libz)
+            sed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+            ;;
+        texinfo)
+            sed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
+            ;;
+        python3)
+            unset PYTHONHOME
+            unset PYTHONPATH
+
+            export ZLIB_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libz/include"
+            export ZLIB_LIBS="-L$PACKAGE_INSTALL_ROOT/libz/lib -lz"
+
+            export BZIP2_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libbz2/include"
+            export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
+
+            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
+            export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
+
+            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
+            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
+
+            export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
+            export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
+
+            export LIBS='-lm'
+    esac
+
+    #########################################################################################
+
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        install_perl_XML_Parser
+    else
+        if [ -z "$PACKAGE_INSTALL" ] ; then
+            eval "install_$1"
+        else
+            eval "$PACKAGE_INSTALL"
+        fi
+    fi
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    # TO FIX: glibtoolize: command not found
+    if [ "$1" = 'libtool' ] ; then
+        run cd bin
+        run ln -s -r libtool    glibtool
+        run ln -s -r libtoolize glibtoolize
+        run cd -
+    fi
+
+    #########################################################################################
+
+    cat > toolchain.txt <<EOF
+     CC='$CC'
+    CXX='$CXX'
+     AS='$AS'
+     LD='$LD'
+     AR='$AR'
+ RANLIB='$RANLIB'
+SYSROOT='$SYSROOT'
+EOF
+
+    #########################################################################################
+
+    cat > receipt.txt <<EOF
+src-url: $PACKAGE_SRC_URL
+src-uri: $PACKAGE_SRC_URI
+src-sha: $PACKAGE_SRC_SHA
+dep-pkg: $PACKAGE_DEP_PKG
+install: $PACKAGE_INSTALL
+builtat: $PACKAGE_INSTALL_UTS
+builtby: xbuilder-$RUNTIME_BUILDER_VERSION
+EOF
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_ROOT"
+    run ln -s -r -f -T "$PACKAGE_INSTALL_SHA" "$1"
+}
+
 package_info_libz() {
     PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
     PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
@@ -903,201 +1123,6 @@ package_info_ghc() {
     PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.6.3/ghc-9.6.3-aarch64-apple-darwin.tar.xz'
     PACKAGE_SRC_SHA='e1cdf458926b2eaf52d2a8287d99a965040ff9051171f5c3b7467049cf0eb213'
     PACKAGE_INSTALL='configure'
-}
-
-install_the_given_package() {
-    [ -z "$1" ] && abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
-
-    unset PACKAGE_SRC_URI
-    unset PACKAGE_DEP_PKG
-    unset PACKAGE_INSTALL
-
-    if [ "$1" = 'perl-XML-Parser' ] ; then
-        package_info_perl_XML_Parser
-    else
-        package_info_$1
-    fi
-
-    #########################################################################################
-
-    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
-    do
-        (install_the_given_package "$PACKAGE_DEPENDENCY")
-    done
-
-    #########################################################################################
-
-    printf '\n%b\n' "${COLOR_PURPLE}=>> xbuilder: install package : $1${COLOR_OFF}"
-
-    if [ -f "$PACKAGE_INSTALL_ROOT/$1/receipt.txt" ] ; then
-        note "package '$1' already has been installed, skipped."
-        return 0
-    fi
-
-    #########################################################################################
-
-    PACKAGE_INSTALL_UTS=
-    PACKAGE_INSTALL_UTS="$(date +%s)"
-
-    PACKAGE_INSTALL_SHA=
-    PACKAGE_INSTALL_SHA="$(
-{
-    sha256sum <<EOF
-$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
-EOF
-} | cut -d ' ' -f1)"
-
-    #########################################################################################
-
-    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALL_ROOT/$PACKAGE_INSTALL_SHA"
-
-    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
-    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
-    PACKAGE_SRC_FILEPATH="$DOWNLOAD_DIR/$PACKAGE_SRC_FILENAME"
-
-    PACKAGE_WORKING_DIR="$SESSION_DIR/$1"
-
-    #########################################################################################
-
-    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    # because we only want to use our own
-    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
-    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
-    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
-
-    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
-    do
-        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALL_ROOT/$DEPENDENT_PACKAGE_NAME"
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
-            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
-            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-
-        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-        fi
-
-        for d in lib share
-        do
-            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
-
-            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
-            fi
-        done
-    done
-
-    #########################################################################################
-
-    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-
-    SRCDIR="$PACKAGE_WORKING_DIR/src"
-
-    run install -d "$SRCDIR"
-
-    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C "$SRCDIR"
-
-    run cd "$SRCDIR"
-
-    #########################################################################################
-
-    case $1 in
-        libz)
-            sed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
-            ;;
-        texinfo)
-            sed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
-            ;;
-        python3)
-            unset PYTHONHOME
-            unset PYTHONPATH
-
-            export ZLIB_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libz/include"
-            export ZLIB_LIBS="-L$PACKAGE_INSTALL_ROOT/libz/lib -lz"
-
-            export BZIP2_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libbz2/include"
-            export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
-
-            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
-            export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
-
-            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
-            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
-
-            export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
-            export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
-
-            export LIBS='-lm'
-    esac
-
-    #########################################################################################
-
-    if [ "$1" = 'perl-XML-Parser' ] ; then
-        install_perl_XML_Parser
-    else
-        if [ -z "$PACKAGE_INSTALL" ] ; then
-            eval "install_$1"
-        else
-            eval "$PACKAGE_INSTALL"
-        fi
-    fi
-
-    #########################################################################################
-
-    run cd "$PACKAGE_INSTALL_DIR"
-
-    #########################################################################################
-
-    # TO FIX: glibtoolize: command not found
-    if [ "$1" = 'libtool' ] ; then
-        run cd bin
-        run ln -s -r libtool    glibtool
-        run ln -s -r libtoolize glibtoolize
-        run cd -
-    fi
-
-    #########################################################################################
-
-    cat > toolchain.txt <<EOF
-     CC='$CC'
-    CXX='$CXX'
-     AS='$AS'
-     LD='$LD'
-     AR='$AR'
- RANLIB='$RANLIB'
-SYSROOT='$SYSROOT'
-EOF
-
-    #########################################################################################
-
-    cat > receipt.txt <<EOF
-src-url: $PACKAGE_SRC_URL
-src-uri: $PACKAGE_SRC_URI
-src-sha: $PACKAGE_SRC_SHA
-dep-pkg: $PACKAGE_DEP_PKG
-install: $PACKAGE_INSTALL
-builtat: $PACKAGE_INSTALL_UTS
-builtby: xbuilder-$RUNTIME_BUILDER_VERSION
-EOF
-
-    #########################################################################################
-
-    run cd "$PACKAGE_INSTALL_ROOT"
-    run ln -s -r -f -T "$PACKAGE_INSTALL_SHA" "$1"
 }
 
 help() {
