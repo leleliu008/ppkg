@@ -123,7 +123,7 @@ jobs:
           run chmod a+x ppkg
           run ./ppkg setup
           run ./ppkg update
-          run ./ppkg install uppm@0.15.4 --link-type=static-full
+          run ./ppkg install uppm@0.15.4 --static
           run ./ppkg pack    uppm@0.15.4
           EOF
 
@@ -170,7 +170,7 @@ jobs:
           path: ppkg-core-*-linux-${{ matrix.target-arch }}.tar.xz
 
 
-  bsd:
+  freebsd:
     needs: base
 
     runs-on: ubuntu-latest
@@ -178,54 +178,212 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # https://ftp.netbsd.org/pub/NetBSD/
-        # https://cdn.openbsd.org/pub/OpenBSD/
+        freebsd-version: ['14.1', '14.0', '13.3', '13.2', '13.1', '13.0', '12.4']
         # https://archive.freebsd.org/old-releases/amd64/
-        target: ['netbsd-9.4-amd64', 'netbsd-9.3-amd64', 'netbsd-9.2-amd64', 'openbsd-7.4-amd64', 'openbsd-7.3-amd64', 'freebsd-13.2-amd64', 'freebsd-13.1-amd64', 'freebsd-13.0-amd64']
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: cross-platform-actions/action@v0.25.0
+        with:
+          operating_system: freebsd
+          version: ${{ matrix.freebsd-version }}
+          shell: bash
+          run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
+            run sudo pkg install -y gcc
+
+            for item in *.c
+            do
+              gcc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup
+            run ./ppkg update
+            run ./ppkg install uppm@0.15.4 --static
+            run ./ppkg pack    uppm@0.15.4
 
       - run: install -d out/
 
       - run: mv fonts.conf out/
 
-      - run: |
-          for item in *.c
-          do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
-          done
-
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-      - run: chmod a+x ppkg
-      - run: ./ppkg setup
-      - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
-      - run: ./ppkg pack    uppm@0.15.4
+      - run: |
+            for item in *.c
+            do
+              mv "${item%.c}" out/
+            done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
       - run: rm -rf out/bin
       - run: rm -rf out/share
       - run: rm -rf out/.ppkg
-      - run: mv *.otf out/
 
       - run: |
-          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-${{ matrix.target }}"
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.freebsd-version }}-amd64"
           mv out "$DIRNAME"
           tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ppkg-core---${{ matrix.target }}.tar.xz
-          path: ppkg-core-*-${{ matrix.target }}.tar.xz
+          name: ppkg-core---freebsd-${{ matrix.freebsd-version }}-amd64.tar.xz
+          path: ppkg-core-*-freebsd-${{ matrix.freebsd-version }}-amd64.tar.xz
+
+
+  openbsd:
+    needs: base
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        openbsd-version: ['7.4', '7.3', '7.2']
+        # https://cdn.openbsd.org/pub/OpenBSD/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cross-platform-actions/action@v0.25.0
+        with:
+          operating_system: openbsd
+          version: ${{ matrix.openbsd-version }}
+          shell: bash
+          run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
+            run sudo pkg_add llvm
+
+            for item in *.c
+            do
+              clang -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup
+            run ./ppkg update
+            run ./ppkg install uppm@0.15.4 --static
+            run ./ppkg pack    uppm@0.15.4
+
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
+
+      - run: |
+            for item in *.c
+            do
+              mv "${item%.c}" out/
+            done
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/share
+      - run: rm -rf out/.ppkg
+
+      - run: |
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-openbsd-${{ matrix.openbsd-version }}-amd64"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppkg-core---openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
+          path: ppkg-core-*-openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
+
+
+  netbsd:
+    needs: base
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        netbsd-version: ['10.0', '9.4', '9.3', '9.2', '9.1']
+        # https://ftp.netbsd.org/pub/NetBSD/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: curl -LO https://curl.se/ca/cacert.pem
+
+      - uses: cross-platform-actions/action@v0.25.0
+        with:
+          operating_system: netbsd
+          version: ${{ matrix.netbsd-version }}
+          shell: bash
+          run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
+            run sudo pkgin -y install clang
+
+            for item in *.c
+            do
+              clang -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
+            done
+
+            run export SSL_CERT_FILE="$PWD/cacert.pem"
+
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup
+            run ./ppkg update
+            run ./ppkg install uppm@0.15.4 --static
+            run ./ppkg pack    uppm@0.15.4
+
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
+
+      - run: |
+            for item in *.c
+            do
+              mv "${item%.c}" out/
+            done
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/share
+      - run: rm -rf out/.ppkg
+
+      - run: |
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-netbsd-${{ matrix.netbsd-version }}-amd64"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppkg-core---netbsd-${{ matrix.netbsd-version }}-amd64.tar.xz
+          path: ppkg-core-*-netbsd-${{ matrix.netbsd-version }}-amd64.tar.xz
 
 
   publish:
 
-    needs: [base, macos, linux, bsd]
+    needs: [base, macos, linux, freebsd, openbsd, netbsd]
 
     runs-on: ubuntu-latest
 
