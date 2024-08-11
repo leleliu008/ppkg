@@ -8349,20 +8349,20 @@ __setup() {
         unset YQ_SHA
 
         # https://github.com/mikefarah/yq/releases
-        case $NATIVE_OS_KIND in
-            linux)
+        case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+            linux-x86_64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
                 YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
                 ;;
-            freebsd)
+            freebsd-amd64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
                 YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
                 ;;
-            openbsd)
+            openbsd-amd64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_openbsd_amd64'
                 YQ_SHA='2c3c42137b7bff40b7f592d13923f5d3fcd8f91e8f54131c3c4059bd6890283c'
                 ;;
-            netbsd)
+            netbsd-amd64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
                 YQ_SHA='cad6dcd7449e11868eadb122bca6be5ec8a0918f822528e1e7c845d4ca637492'
                 ;;
