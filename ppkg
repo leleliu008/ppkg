@@ -8158,6 +8158,7 @@ __setup_freebsd() {
     run ln -sf /usr/local/bin/gbase64    bin/base64
     run ln -sf /usr/local/bin/gunlink    bin/unlink
     run ln -sf /usr/local/bin/ginstall   bin/install
+    run ln -sf /usr/local/bin/grealpath  bin/realpath
     run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.rc
