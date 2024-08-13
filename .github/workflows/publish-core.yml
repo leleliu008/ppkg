@@ -124,12 +124,12 @@ jobs:
             gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
           done
 
-          run ./ppkg setup
+          run ./ppkg setup --syspm
           run ./ppkg update
 
           if [ ${{ matrix.target-arch }} = riscv64 ] ; then
             sed -i '/src-url: /c src-url: https://www.openssl.org/source/openssl-3.1.1.tar.gz' ~/.ppkg/repos.d/official-core/formula/libopenssl.yml
-            sed -i '/src-sha: /c src-sha: b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674' ~/.ppkg/repos.d/official-core/formula/libop    enssl.yml
+            sed -i '/src-sha: /c src-sha: b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674' ~/.ppkg/repos.d/official-core/formula/libopenssl.yml
           fi
 
           run ./ppkg install uppm@0.15.4 --static
