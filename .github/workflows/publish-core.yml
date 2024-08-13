@@ -83,8 +83,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #target-arch: [x86_64, aarch64, riscv64, ppc64le, s390x]
-        target-arch: [x86_64, aarch64, riscv64]
+        target-arch: [x86_64, aarch64, riscv64, ppc64le, s390x]
+          #target-arch: [x86_64, aarch64, riscv64]
 
     runs-on: ubuntu-latest
 
@@ -119,8 +119,19 @@ jobs:
           run apk update
           run apk add curl xz g++ libc-dev linux-headers
 
+          for item in *.c
+          do
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
+          done
+
           run ./ppkg setup
           run ./ppkg update
+
+          if [ ${{ matrix.target-arch }} = riscv64 ] ; then
+            sed -i '/src-url: /c src-url: https://www.openssl.org/source/openssl-3.1.1.tar.gz' ~/.ppkg/repos.d/official-core/formula/libopenssl.yml
+            sed -i '/src-sha: /c src-sha: b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674' ~/.ppkg/repos.d/official-core/formula/libop    enssl.yml
+          fi
+
           run ./ppkg install uppm@0.15.4 --static
           run ./ppkg pack    uppm@0.15.4
           EOF
@@ -152,12 +163,6 @@ jobs:
       - run: rm -rf out/.ppkg
 
       - run: |
-          for item in *.c
-          do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
-          done
-
-      - run: |
           DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}"
           mv out "$DIRNAME"
           tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
@@ -182,6 +187,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
+
       - uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: freebsd
@@ -200,20 +212,7 @@ jobs:
 
             for item in *.c
             do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
-      - run: install -d out/
-
-      - run: mv fonts.conf out/
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-      - run: mv *.otf out/
-
-      - run: |
-            for item in *.c
-            do
-              mv "${item%.c}" out/
+              cc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
             done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
@@ -247,6 +246,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
+
       - uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: openbsd
@@ -265,20 +271,7 @@ jobs:
 
             for item in *.c
             do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
-      - run: install -d out/
-
-      - run: mv fonts.conf out/
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-      - run: mv *.otf out/
-
-      - run: |
-            for item in *.c
-            do
-              mv "${item%.c}" out/
+              cc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
             done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
@@ -314,6 +307,13 @@ jobs:
 
       - run: curl -LO https://curl.se/ca/cacert.pem
 
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: mv *.otf out/
+
       - uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: netbsd
@@ -334,20 +334,7 @@ jobs:
 
             for item in *.c
             do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}" "$item"
-            done
-
-      - run: install -d out/
-
-      - run: mv fonts.conf out/
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-      - run: mv *.otf out/
-
-      - run: |
-            for item in *.c
-            do
-              mv "${item%.c}" out/
+              cc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
             done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
