@@ -121,7 +121,7 @@ jobs:
 
           for item in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
           done
 
           run ./ppkg setup
