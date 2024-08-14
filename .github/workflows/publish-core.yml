@@ -127,9 +127,9 @@ jobs:
           run ./ppkg setup --syspm
           run ./ppkg update
 
-          if [ ${{ matrix.target-arch }} = riscv64 ] ; then
-            sed -i '/src-url: /c src-url: https://www.openssl.org/source/openssl-3.1.1.tar.gz' ~/.ppkg/repos.d/official-core/formula/libopenssl.yml
-            sed -i '/src-sha: /c src-sha: b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674' ~/.ppkg/repos.d/official-core/formula/libopenssl.yml
+          if [ ${{ matrix.target-arch }} = s390x ] ; then
+            sed -i '/src-url: /c src-url: https://curl.haxx.se/download/curl-8.4.0.tar.bz2' ~/.ppkg/repos.d/official-core/formula/libcurl.yml
+            sed -i '/src-sha: /c src-sha: e5250581a9c032b1b6ed3cf2f9c114c811fc41881069e9892d115cc73f9e88c6' ~/.ppkg/repos.d/official-core/formula/libcurl.yml
           fi
 
           run ./ppkg install uppm@0.15.4 --static

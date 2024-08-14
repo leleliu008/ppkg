@@ -2544,7 +2544,11 @@ __fetch_resources_of_the_given_package() {
 
     cd "$PACKAGE_INSTALLED_DIR/.ppkg"
 
-    fzf --preview='bat --color=always --theme=Dracula {}' --preview-window='right:75%'
+    if command -v bat > /dev/null ; then
+        fzf --preview='bat --color=always --theme=Dracula {}' --preview-window='right:75%'
+    else
+        fzf
+    fi
 }
 
 # }}}
@@ -3365,7 +3369,11 @@ EOF
     fi
 
     if [ "$VERBOSE_CMAKE" = 1 ] ; then
-        run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+        if command -v bat > /dev/null ; then
+            run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+        else
+            run cat "$CMAKE_TOOLCHAIN_FILE"
+        fi
     fi
 
     unset CMAKE_PROJECT_INCLUDE
@@ -4565,7 +4573,11 @@ EOF
     step "load formula"
 
     if [ "$DUMP_FORMULA" = 1 ] ; then
-        bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
+        if command -v bat > /dev/null ; then
+            bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
+        else
+            cat "$PACKAGE_FORMULA_FILEPATH"
+        fi
     fi
 
     __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
@@ -6011,8 +6023,15 @@ EOF
         case $TARGET_PLATFORM_NAME in
             linux)
                 case $TARGET_PLATFORM_VERS in
-                    glibc) RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-linux-gnu"  ;;
-                    musl)  RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-linux-musl" ;;
+                    glibc) XX=gnu  ;;
+                    musl)  XX=musl ;;
+                    *)     XX=
+                esac
+
+                case $TARGET_PLATFORM_ARCH in
+                    ppc64le) RUST_TARGET="powerpc64le-unknown-linux-$XX" ;;
+                    riscv64) RUST_TARGET="riscv64gc-unknown-linux-$XX"  ;;
+                    *)       RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-linux-$XX" ;;
                 esac
                 ;;
             macos)
@@ -8477,7 +8496,13 @@ __setup_uppm() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar git curl tree sysinfo patchelf fzf bat xxd jq yq d2
+    if ./uppm is-available bat ; then
+        BAT=bat
+    else
+        BAT=
+    fi
+
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar git curl tree sysinfo patchelf fzf xxd jq yq d2 $BAT
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
