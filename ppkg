@@ -3404,9 +3404,24 @@ EOF
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_PROJECT_INCLUDE=$CMAKE_PROJECT_INCLUDE"
     fi
 
-    run "$CMAKE" "$CMAKE_CONFIG_OPTIONS" -S "$PACKAGE_BSCRIPT_DIR" -B "$PACKAGE_BCACHED_DIR" "$@" &&
-    run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
-    run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
+    # https://cmake.org/cmake/help/latest/manual/cmake.1.html
+
+    run "$CMAKE" "$CMAKE_CONFIG_OPTIONS" -S "$PACKAGE_BSCRIPT_DIR" -B "$PACKAGE_BCACHED_DIR" "$@"
+
+    if [ -z "$CMAKE_BUILD_TARGETS" ] ; then
+        run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR"
+    else
+        run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" --target "$CMAKE_BUILD_TARGETS"
+    fi
+
+    if [ -z "$CMAKE_INSTALL_COMPONENTS" ] ; then
+        run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
+    else
+        for component in $CMAKE_INSTALL_COMPONENTS
+        do
+        run "$CMAKE" --install "$PACKAGE_BCACHED_DIR" --component "$component"
+        done
+    fi
 }
 
 # }}}
@@ -4526,6 +4541,12 @@ __install_the_given_package() {
     else
         CROSS_COMPILING=1
     fi
+
+    #########################################################################################
+
+    # these two variable might be set in formula file to control cmakew's behavor
+    unset CMAKE_BUILD_TARGETS
+    unset CMAKE_INSTALL_COMPONENTS
 
     #########################################################################################
 
