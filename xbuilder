@@ -719,47 +719,26 @@ cmakew() {
 }
 
 configure() {
-    if [ -z "$GMAKE" ] ; then
-        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-    fi
-
     run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
-
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
     run "$GMAKE" install
 }
 
-install_openssl() {
-    if [ -z "$GMAKE" ] ; then
-        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-    fi
+Configure() {
+    run ./Configure "-Dprefix=$PACKAGE_INSTALL_DIR" "$@"
+    run "$GMAKE" "--jobs=$BUILD_NJOBS"
+    run "$GMAKE" install
+}
 
-    # https://github.com/openssl/openssl/blob/master/INSTALL.md
-    run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix="$PACKAGE_INSTALL_DIR" --libdir=lib --openssldir=etc/ssl
-
+config() {
+    run ./config "--prefix=$PACKAGE_INSTALL_DIR" "$@"
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
     run "$GMAKE" install_sw
 }
 
-install_perl() {
-    if [ -z "$GMAKE" ] ; then
-        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-    fi
-
-    run ./Configure "-Dprefix=$PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
-
-    run "$GMAKE" "--jobs=$BUILD_NJOBS"
-    run "$GMAKE" install
-}
-
-install_perl_XML_Parser() {
-    if [ -z "$GMAKE" ] ; then
-        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-    fi
-
-    run perl Makefile.PL EXPATLIBPATH="$PACKAGE_INSTALL_ROOT/libexpat/lib" EXPATINCPATH="$PACKAGE_INSTALL_ROOT/libexpat/include"
+Makefile_PL() {
+    run perl Makefile.PL "$@"
     run install -d "$PACKAGE_INSTALL_DIR"
-
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
     run "$GMAKE" install
 }
@@ -773,6 +752,7 @@ install_the_given_package() {
 
     unset PACKAGE_SRC_URI
     unset PACKAGE_DEP_PKG
+    unset PACKAGE_DOPATCH
     unset PACKAGE_INSTALL
 
     if [ "$1" = 'perl-XML-Parser' ] ; then
@@ -899,45 +879,22 @@ EOF
 
     #########################################################################################
 
-    case $1 in
-        libz)
-            sed -i 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
-            ;;
-        texinfo)
-            sed -i '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
-            ;;
-        python3)
-            unset PYTHONHOME
-            unset PYTHONPATH
-
-            export ZLIB_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libz/include"
-            export ZLIB_LIBS="-L$PACKAGE_INSTALL_ROOT/libz/lib -lz"
-
-            export BZIP2_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libbz2/include"
-            export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
-
-            export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
-            export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
-
-            export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
-            export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
-
-            export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
-            export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
-
-            export LIBS='-lm'
-    esac
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
 
     #########################################################################################
 
-    if [ "$1" = 'perl-XML-Parser' ] ; then
-        install_perl_XML_Parser
+    if [ -n  "$PACKAGE_DOPATCH" ] ; then
+        eval "$PACKAGE_DOPATCH"
+    fi
+
+    #########################################################################################
+
+    if [ -n  "$PACKAGE_INSTALL" ] ; then
+        eval "$PACKAGE_INSTALL"
     else
-        if [ -z "$PACKAGE_INSTALL" ] ; then
-            eval "install_$1"
-        else
-            eval "$PACKAGE_INSTALL"
-        fi
+        abort 1 "PACKAGE_INSTALL variable is not set for package '$1'"
     fi
 
     #########################################################################################
@@ -987,6 +944,7 @@ EOF
 package_info_libz() {
     PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
     PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
+    PACKAGE_DOPATCH='sed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
     PACKAGE_INSTALL='cmakew'
 }
 
@@ -1012,18 +970,22 @@ package_info_perl() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
     PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
     PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
+    PACKAGE_INSTALL='Configure -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true'
 }
 
 package_info_openssl() {
     PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
     PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
     PACKAGE_DEP_PKG='perl'
+    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
+    # https://github.com/openssl/openssl/blob/master/INSTALL.md
 }
 
 package_info_texinfo() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
     PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
     PACKAGE_DEP_PKG='perl'
+    PACKAGE_DOPATCH='sed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
@@ -1104,12 +1066,33 @@ package_info_python3() {
     PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
     PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
     PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+    PACKAGE_DOPATCH='
+unset PYTHONHOME
+unset PYTHONPATH
+
+export ZLIB_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libz/include"
+export ZLIB_LIBS="-L$PACKAGE_INSTALL_ROOT/libz/lib -lz"
+
+export BZIP2_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libbz2/include"
+export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
+
+export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
+export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
+
+export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
+export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
+
+export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
+export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
+
+export LIBS=-lm'
 }
 
 package_info_perl_XML_Parser() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
     PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
     PACKAGE_DEP_PKG='perl libexpat'
+    PACKAGE_INSTALL="Makefile_PL EXPATLIBPATH=$PACKAGE_INSTALL_ROOT/libexpat/lib EXPATINCPATH=$PACKAGE_INSTALL_ROOT/libexpat/include"
 }
 
 package_info_swig() {
@@ -1218,7 +1201,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=1.0.0
+RUNTIME_BUILDER_VERSION=2.0.0
 
 case $1 in
     ''|--help|-h)
@@ -1235,6 +1218,7 @@ case $1 in
             do
                 unset PACKAGE_SRC_URI
                 unset PACKAGE_DEP_PKG
+                unset PACKAGE_DOPATCH
                 unset PACKAGE_INSTALL
 
                 if [ "$PACKAGE_NAME" = 'perl-XML-Parser' ] ; then

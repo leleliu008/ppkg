@@ -175,7 +175,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        freebsd-version: ['14.1', '14.0', '13.3', '13.2', '13.1', '13.0', '12.4']
+        freebsd-version: ['14.1', '14.0', '13.3']
         # https://archive.freebsd.org/old-releases/amd64/
 
     steps:
