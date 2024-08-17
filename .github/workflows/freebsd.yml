@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        freebsd-version: ['14.1', '14.0', '13.3', '13.2']
+        freebsd-version: ['14.1', '14.0', '13.3', '13.2', '13.1', '13.0', '12.4']
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
             run ./ppkg --help
             run ./ppkg --version
 
-            run ./ppkg setup
+            run ./ppkg setup --syspm
 
             run ./ppkg about
 
