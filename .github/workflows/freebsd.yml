@@ -29,7 +29,6 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkg update
             run sudo pkg install -y curl libnghttp2 gcc
 
             run ./ppkg --help
