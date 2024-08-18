@@ -18,6 +18,9 @@ jobs:
     container: centos:${{ matrix.tag }}
 
     steps:
+      - run: sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+      - run: sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+
       - run: |
             yum -y update
             yum -y install epel-release
@@ -26,8 +29,6 @@ jobs:
         if: ${{ matrix.tag == 7 }}
 
       - run: |
-            sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
-            sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
             dnf -y update
             dnf -y install curl xz gcc-c++
         if: ${{ matrix.tag == 8 }}

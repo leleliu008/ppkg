@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         freebsd-version: ['14.1', '14.0', '13.3', '13.2', '13.1']
+        pm: ['--syspm', '']
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,7 @@ jobs:
             run ./ppkg --help
             run ./ppkg --version
 
-            run ./ppkg setup --syspm
+            run ./ppkg setup ${{ matrix.pm }}
 
             run ./ppkg about
 
