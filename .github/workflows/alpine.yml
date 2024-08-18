@@ -80,14 +80,14 @@ jobs:
       - run: openssl genrsa -out leleliu008@gmail.com.rsa 2048
       - run: openssl rsa     -in leleliu008@gmail.com.rsa -pubout -out leleliu008@gmail.com.rsa.pub
 
+      - run: cp leleliu008@gmail.com.rsa.pub /etc/apk/keys/
+
       - run: install -d ~/.abuild/
       - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/leleliu008@gmail.com.rsa" > ~/.abuild/abuild.conf
 
       - run: ./ppkg export.apk libzip
       - run: ./ppkg export.apk libzip -o ~/
       - run: ./ppkg export.apk libzip -o a/b.apk
-
-      - run: cp leleliu008@gmail.com.rsa.pub /etc/apk/keys/
 
       - run: apk add a/b.apk
       - run: apk info -L libzip
