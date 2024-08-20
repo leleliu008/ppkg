@@ -3049,7 +3049,14 @@ EOF
 ##############################################################################
 # {{{ configure
 
-configure_only() {
+configure() {
+    unset CONFIGURE_ONLY
+
+    if [ "$1" = only ] ; then
+        CONFIGURE_ONLY=1
+        shift
+    fi
+
     export FORCE_UNSAFE_CONFIGURE=1
 
     export ac_cv_func_malloc_0_nonnull=yes
@@ -3198,13 +3205,12 @@ configure_only() {
         done
         unset Makefile
     fi
-}
 
-configure() {
-    configure_only "$@"
-    gmakew clean
-    gmakew
-    gmakew install
+    if [ "$CONFIGURE_ONLY" != 1 ] ; then
+        gmakew clean
+        gmakew
+        gmakew install
+    fi
 }
 
 # }}}
@@ -3687,6 +3693,7 @@ gow() {
                 GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
 
                 sedInPlace "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+                sedInPlace 's|^go 1.22$|go 1.22.0|' "$GOMOD"
 
                 run go mod tidy
                 run go mod vendor
