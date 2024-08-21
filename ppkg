@@ -4334,9 +4334,9 @@ $FORMULA_SEARCH_DIR"
         OBJDUMP_FOR_BUILD="$(xcrun --sdk macosx --find objdump)"
         SYSROOT_FOR_BUILD="$(xcrun --sdk macosx --show-sdk-path)"
     else
-             CC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-           OBJC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-            CXX_FOR_BUILD="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+             CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"   || abort 1 "C Compiler for native build not found."
+           OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v objc)" || abort 1 "OBJC Compiler for native build not found."
+            CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)"  || abort 1 "C++ Compiler for native build not found."
              AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
              AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
          RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
@@ -8965,7 +8965,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.6.4
+PPKG_VERSION=0.7.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
