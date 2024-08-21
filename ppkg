@@ -1005,6 +1005,7 @@ filetype_from_url() {
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
+    unset PACKAGE_USE_BSYSTEM_WAF
     unset PACKAGE_USE_BSYSTEM_GO
     unset PACKAGE_USE_BSYSTEM_RAKE
     unset PACKAGE_USE_BSYSTEM_NINJA
@@ -1256,6 +1257,7 @@ filetype_from_url() {
                     gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
                     cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
                     go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+                    waf)          PACKAGE_BSYSTEM=waf   ; break ;;
                 esac
             done
         fi
@@ -1281,6 +1283,7 @@ filetype_from_url() {
             rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
             go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
+            waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
         esac
     done
 
@@ -1298,6 +1301,7 @@ filetype_from_url() {
             gmake)     PACKAGE_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
             cargo)     PACKAGE_DOBUILD='cargow install' ;;
             go)        PACKAGE_DOBUILD='gow' ;;
+            waf)       PACKAGE_DOBUILD='waf' ;;
         esac
     }
 
@@ -1321,9 +1325,11 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
     [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
     [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+    [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
 
     #########################################################################################
 
+    [ "$PACKAGE_USE_BSYSTEM_WAF"   = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_GO"    = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
@@ -3043,6 +3049,14 @@ EOF
     TEPPUT_FILEPATH="$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
 
     run bsdtar tf "$TEPPUT_FILEPATH"
+}
+
+# }}}
+##############################################################################
+# {{{ waf
+
+waf() {
+    run python3 ./waf "$@"
 }
 
 # }}}
@@ -8965,7 +8979,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.7.0
+PPKG_VERSION=0.8.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
