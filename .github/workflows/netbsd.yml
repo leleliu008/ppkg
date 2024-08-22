@@ -32,8 +32,8 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkgin -y update
-            run sudo pkgin -y install llvm
+            #run sudo pkgin -y update
+            #run sudo pkgin -y install llvm
 
             run export SSL_CERT_FILE="$PWD/cacert.pem"
 
@@ -58,15 +58,13 @@ jobs:
 
             run ./ppkg depends libzip
 
-
             run ./ppkg install libzip
 
-
             run ./ppkg tree libzip
+
             run ./ppkg pack libzip -t tar.xz
 
             run ./ppkg formula-repo-list
-
 
             run ./ppkg ls-available
             run ./ppkg ls-installed

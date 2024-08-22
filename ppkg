@@ -8278,6 +8278,7 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/go122/bin/go   bin/go
     run ln -sf /usr/pkg/gcc13/bin/gcc  bin/gcc
     run ln -sf /usr/pkg/gcc13/bin/g++  bin/g++
+    run ln -sf /usr/pkg/gcc13/bin/gfortran bin/gfortran
 
     run ln -sf /usr/pkg/bin/gln        bin/ln
     run ln -sf /usr/pkg/bin/gm4        bin/m4
