@@ -8273,7 +8273,7 @@ __setup_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 cmake gmake ninja-build flex bison m4
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4
 
     run ln -sf /usr/pkg/go122/bin/go   bin/go
     run ln -sf /usr/pkg/gcc13/bin/gcc  bin/gcc
@@ -8281,6 +8281,8 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/gcc13/bin/gfortran bin/gfortran
 
     run ln -sf /usr/pkg/bin/gln        bin/ln
+    run ln -sf /usr/pkg/bin/gld        bin/ld
+    run ln -sf /usr/pkg/bin/gas        bin/as
     run ln -sf /usr/pkg/bin/gm4        bin/m4
     run ln -sf /usr/pkg/bin/gsed       bin/sed
     run ln -sf /usr/pkg/bin/gawk       bin/awk
