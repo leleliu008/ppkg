@@ -8277,8 +8277,8 @@ __setup_netbsd() {
 
     # https://github.com/ebiggers/libdeflate/issues/387
     # https://github.com/NetBSD/pkgsrc/blob/trunk/lang/gcc13/Makefile.common#L90
-    run $sudo ln /usr/pkg/bin/gas /usr/bin/as
-    run $sudo ln /usr/pkg/bin/gld /usr/bin/ld
+    run $sudo ln -sf /usr/pkg/bin/gas /usr/bin/as
+    run $sudo ln -sf /usr/pkg/bin/gld /usr/bin/ld
 
     run ln -sf /usr/pkg/go122/bin/go   bin/go
     run ln -sf /usr/pkg/gcc13/bin/gcc  bin/gcc
