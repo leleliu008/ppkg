@@ -8302,7 +8302,7 @@ __setup_netbsd() {
     # https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html
     cat > init.rc <<EOF
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
-export GCC_EXEC_PREFIX='$PPKG_CORE_DIR/bin'
+export COMPILER_PATH='$PPKG_CORE_DIR/bin'
 EOF
 
     if [ -z "$SSL_CERT_FILE" ] ; then
