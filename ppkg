@@ -8298,7 +8298,12 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/grealpath  bin/realpath
     run ln -sf /usr/pkg/bin/gsha256sum bin/sha256sum
 
-    printf 'export ACLOCAL_PATH=/usr/pkg/share/aclocal' > init.rc
+
+    # https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html
+    cat > init.rc <<EOF
+export ACLOCAL_PATH=/usr/pkg/share/aclocal
+export GCC_EXEC_PREFIX='$PPKG_CORE_DIR/bin'
+EOF
 
     if [ -z "$SSL_CERT_FILE" ] ; then
         run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
