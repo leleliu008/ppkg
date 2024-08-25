@@ -8729,7 +8729,7 @@ ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.
 
 
-${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ppkg install <PACKAGE-NAME|PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
     ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
@@ -8795,7 +8795,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
             This option only affects the package whose type is exe. If this option is not given, ppkg will create Mostly Statically Linked Executables
 
             a  fully statically linked executable is a executable that without any additional libraries to be loaded at runtime.
-            a mostly statically linked executable is a executable that without any additional libraries except libc.so, libm.so, libdl.so, liblog.so, etc.
+            a mostly statically linked executable is a executable that without any additional libraries except libc.so, libm.so, libdl.so, libpthread.so, etc.
 
             a fully  statically linked executable is easy to distribute and deploy especially on different GNU/Linux systems.
             a mostly statically linked executable is easy to distribute and deploy especially on macOS.

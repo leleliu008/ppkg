@@ -18,7 +18,9 @@ package_name_transform_from_uppm_to_pkgin() {
         golang)   printf '%s\n' 'go'        ;;
         pkgconf)  printf '%s\n' 'pkg-config';;
         xsltproc) printf '%s\n' 'libxslt'   ;;
-        grpc-plugins) ;;
+        grpc-plugins)
+                  printf '%s\n' 'grpc'
+                  ;;
         *)        printf '%s\n' "$1"
     esac
 }
