@@ -8437,8 +8437,8 @@ __setup() {
                 YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
                 ;;
             openbsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_openbsd_amd64'
-                YQ_SHA='2c3c42137b7bff40b7f592d13923f5d3fcd8f91e8f54131c3c4059bd6890283c'
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_openbsd_amd64'
+                YQ_SHA='38116c63589b5726826567b70555c6cd587f09a2ab6b16d759badcbefcc9b0f3'
                 ;;
             netbsd-amd64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
