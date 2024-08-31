@@ -8297,6 +8297,7 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/gmake      bin/make
     run ln -sf /usr/pkg/bin/gstat      bin/stat
     run ln -sf /usr/pkg/bin/getopt     bin/getopt
+    run ln -sf /usr/pkg/bin/grmdir     bin/rmdir
     run ln -sf /usr/pkg/bin/gnproc     bin/nproc
     run ln -sf /usr/pkg/bin/gbase64    bin/base64
     run ln -sf /usr/pkg/bin/gprintf    bin/printf
