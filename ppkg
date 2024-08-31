@@ -8273,7 +8273,7 @@ __setup_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4
+    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4
 
     # https://github.com/ebiggers/libdeflate/issues/387
     # https://github.com/NetBSD/pkgsrc/blob/trunk/lang/gcc13/Makefile.common#L90
@@ -8295,6 +8295,7 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/gfind      bin/find
     run ln -sf /usr/pkg/bin/gmake      bin/make
     run ln -sf /usr/pkg/bin/gstat      bin/stat
+    run ln -sf /usr/pkg/bin/getopt     bin/getopt
     run ln -sf /usr/pkg/bin/gnproc     bin/nproc
     run ln -sf /usr/pkg/bin/gbase64    bin/base64
     run ln -sf /usr/pkg/bin/gprintf    bin/printf
