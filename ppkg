@@ -5641,7 +5641,8 @@ $PACKAGE_DO12345
 
     case $TARGET_PLATFORM_NAME in
         netbsd)
-            printf '%s\n' 'INPUT(-lc)' > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lc)'      > "$PACKAGE_WORKING_DIR/lib/libdl.a"
+            printf '%s\n' 'INPUT(-lgcc_eh)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
             ;;
         openbsd)
             # https://github.com/mesonbuild/meson/issues/5390
