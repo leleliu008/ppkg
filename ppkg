@@ -9254,9 +9254,21 @@ case $1 in
             exit
         }
 
-        DIRS1="$(find "$UPPM_HOME/installed"           -maxdepth 1 -mindepth 1 -type d)"
-        DIRS2="$(find "$NATIVE_PACKAGE_INSTALLED_ROOT" -maxdepth 1 -mindepth 1 -type l)"
-        DIRS3="$(find "$PPKG_PACKAGE_INSTALLED_ROOT/$NATIVE_OS_NAME-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"  -maxdepth 1 -mindepth 1 -type l)"
+        unset DIRS1
+        unset DIRS2
+        unset DIRS3
+
+        unset ROOT1
+        unset ROOT2
+        unset ROOT3
+
+        ROOT1="$UPPM_HOME/installed"
+        ROOT2="$NATIVE_PACKAGE_INSTALLED_ROOT"
+        ROOT3="$PPKG_PACKAGE_INSTALLED_ROOT/$NATIVE_OS_NAME-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+
+        [ -n "$ROOT1" ] && DIRS1="$(find "$ROOT1" -maxdepth 1 -mindepth 1 -type d)"
+        [ -n "$ROOT2" ] && DIRS2="$(find "$ROOT2" -maxdepth 1 -mindepth 1 -type l)"
+        [ -n "$ROOT3" ] && DIRS3="$(find "$ROOT3" -maxdepth 1 -mindepth 1 -type l)"
 
         for DIR in $DIRS1 $DIRS2 $DIRS3
         do
