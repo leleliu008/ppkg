@@ -5016,8 +5016,8 @@ $DOT_CONTENT
 
         step "install needed packages via uppm"
 
-        run "$UPPM" about
-        run "$UPPM" update
+        uppm about
+        uppm update
 
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
         do
@@ -5027,7 +5027,7 @@ $DOT_CONTENT
                 continue
             fi
 
-            run "$UPPM" install "$UPPM_PACKAGE_NAME"
+            uppm install "$UPPM_PACKAGE_NAME"
 
             UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -9049,7 +9049,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.0
+PPKG_VERSION=0.9.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9092,6 +9092,10 @@ export UPPM_HOME="$PPKG_HOME/uppm"
 if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
 fi
+
+uppm() {
+    run "$UPPM" "$@"
+}
 
 ##################################################################################
 
