@@ -6721,13 +6721,19 @@ __check_elf_files() {
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         if [ "$FILE_MAGIC" = 7F454C46 ] ; then
-            ELF_TYPE="$(xxd -u -p -l 17 "$FILEPATH" | cut -c33-34)"
+            ELF_TYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
 
-            # 03 means it is a shared library or dynamically linked executable
-            if [ "$ELF_TYPE" = '03' ] ; then
-                patchelf --remove-rpath "$FILEPATH"
-                __check_DT_NEEDED "$FILEPATH"
-            fi
+            case $ELF_TYPE in
+                03)
+                    # 03 means it is a shared library or dynamically linked executable
+                    patchelf --remove-rpath "$FILEPATH"
+                    __check_DT_NEEDED "$FILEPATH"
+                    ;;
+                02)
+                    # 02 means it is a statically or dynamically linked executable
+                    patchelf --remove-rpath "$FILEPATH" &&
+                    __check_DT_NEEDED "$FILEPATH"
+            esac
         fi
     done
 
@@ -6737,11 +6743,11 @@ __check_elf_files() {
 # __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
     # a \n-separated list
-    DT_NEEDED_LIST="$(patchelf --print-needed "$1")"
+    DT_NEEDED="$(patchelf --print-needed "$1")"
 
-    for DT_NEEDED in $DT_NEEDED_LIST
+    for NEEDED in $DT_NEEDED
     do
-        case "${DT_NEEDED%.so*}" in
+        case "${NEEDED%.so*}" in
             libc)
                 ;;
             libm)
@@ -6787,13 +6793,13 @@ __check_elf_files() {
                 case $1 in
                     ./*)
                         if [ -d lib ] ; then
-                            NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$DT_NEEDED"
+                            NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$NEEDED"
 
                             if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                                 PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
 $1"
                             else
-                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$DT_NEEDED" -print -quit)"
+                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
 
                                 if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                                     PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
@@ -6811,7 +6817,7 @@ $1"
 
                         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
                         do
-                            NEEDED_SHARED_LIBRARY_FILEPATH="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
+                            NEEDED_SHARED_LIBRARY_FILEPATH="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$NEEDED"
 
                             if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                                 PACKAGE_NEEDED_SHARED_LIBS="$PACKAGE_NEEDED_SHARED_LIBS
@@ -9043,7 +9049,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.8.0
+PPKG_VERSION=0.9.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
