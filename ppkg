@@ -3298,6 +3298,51 @@ gmakew() {
 #
 # run in a subshell
 cmakew() {
+    if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
+        cmakew_for_native "$@"
+    else
+        cmakew_for_target "$@"
+    fi
+}
+
+cmakew_for_native() {
+    if [ "$PACKAGE_USE_BSYSTEM_NINJA" = 1 ] ; then
+        CMAKE_GENERATOR='Ninja'
+    else
+        CMAKE_GENERATOR='Unix Makefiles'
+    fi
+
+    if [ "$VERBOSE_CMAKE" = 1 ] ; then
+        CMAKE_VERBOSE_MAKEFILE=ON
+        CMAKE_COLOR_MAKEFILE=ON
+    else
+        CMAKE_VERBOSE_MAKEFILE=OFF
+        CMAKE_COLOR_MAKEFILE=OFF
+    fi
+
+    if [ "$DEBUG_CMAKE" = 1 ] ; then
+        CMAKE_FIND_DEBUG_MODE=ON
+    else
+        CMAKE_FIND_DEBUG_MODE=OFF
+    fi
+
+    run "$CMAKE" \
+        -Wno-dev \
+        -S "$PACKAGE_BSCRIPT_DIR" \
+        -B "$PACKAGE_BCACHED_DIR" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
+        -DCMAKE_FIND_DEBUG_MODE="$CMAKE_FIND_DEBUG_MODE" \
+        -DCMAKE_VERBOSE_MAKEFILE="$CMAKE_VERBOSE_MAKEFILE" \
+        -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        "$@" &&
+    run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" &&
+    run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
+}
+
+cmakew_for_target() {
     echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
 
     cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
