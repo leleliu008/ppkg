@@ -1095,10 +1095,6 @@ filetype_from_url() {
         abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
-    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
-    fi
-
     if [ -n "$PACKAGE_FIX_URL" ] && [ -n "$PACKAGE_PATCHES" ] ; then
         abort 1 "fix-url and patches mapping shouldn't be used together in $PACKAGE_FORMULA_FILEPATH"
     fi
@@ -1145,6 +1141,17 @@ filetype_from_url() {
                     abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
                 fi
 
+                if [ -z "$PACKAGE_GIT_URL" ] ; then
+                    case $PACKAGE_SRC_URL in
+                        https://github.com/*/*/releases/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/releases/*}"
+                            ;;
+                        https://github.com/*/*/archive/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
+                            ;;
+                    esac
+                fi
+
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                     case $PACKAGE_VERSION in
@@ -1170,6 +1177,12 @@ filetype_from_url() {
 
             PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
         fi
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
+        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     #########################################################################################
@@ -9048,7 +9061,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.3
+PPKG_VERSION=0.9.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
