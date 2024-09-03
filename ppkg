@@ -8340,7 +8340,11 @@ __setup_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4
+    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4 ca-certificates
+
+    # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
+    run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
+    #export SSL_CERT_FILE='/etc/openssl/certs/ca-certificates.crt'
 
     # https://github.com/ebiggers/libdeflate/issues/387
     # https://github.com/NetBSD/pkgsrc/blob/trunk/lang/gcc13/Makefile.common#L90
@@ -8378,19 +8382,6 @@ __setup_netbsd() {
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 export COMPILER_PATH='$PPKG_CORE_DIR/bin'
 EOF
-
-    if [ -z "$SSL_CERT_FILE" ] ; then
-        run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
-        run sudo update-ca-certificates
-
-        unset ETCCERTSDIR
-
-        ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
-
-        if [ -n "$ETCCERTSDIR" ] ; then
-            export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
-        fi
-    fi
 }
 
 __setup() {
