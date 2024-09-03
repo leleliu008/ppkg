@@ -1149,6 +1149,9 @@ filetype_from_url() {
                         https://github.com/*/*/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
                             ;;
+                        https://gitlab.com/*/*/-/archive/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/-/archive/*}"
+                            ;;
                     esac
                 fi
 
