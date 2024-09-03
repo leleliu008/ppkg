@@ -3559,10 +3559,10 @@ EOF
 
     MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
 
-    MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
-
     if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
-        MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=static --prefer-static"
+    else
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
     fi
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
@@ -9048,7 +9048,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.2
+PPKG_VERSION=0.9.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
