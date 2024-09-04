@@ -8376,11 +8376,9 @@ __setup_netbsd() {
     run ln -sf /usr/pkg/bin/grealpath  bin/realpath
     run ln -sf /usr/pkg/bin/gsha256sum bin/sha256sum
 
-
-    # https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html
     cat > init.rc <<EOF
+export PATH="/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
-export COMPILER_PATH='$PPKG_CORE_DIR/bin'
 EOF
 }
 
