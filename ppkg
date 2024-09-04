@@ -1376,13 +1376,7 @@ filetype_from_url() {
             *lib)   PACKAGE_PKGTYPE=lib ;;
             xorg-lib*)
                     PACKAGE_PKGTYPE=lib ;;
-               *)
-                # https://github.com/golang/go/issues/59942
-                if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-                    PACKAGE_PKGTYPE=pie
-                else
-                    PACKAGE_PKGTYPE=exe
-                fi
+               *)   PACKAGE_PKGTYPE=exe ;;
         esac
     fi
 }
@@ -7334,7 +7328,8 @@ install_mans() {
 
     grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
     grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
     grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
     grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
     grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
@@ -9053,7 +9048,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.4
+PPKG_VERSION=0.9.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
