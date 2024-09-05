@@ -8205,6 +8205,7 @@ __setup_alpine() {
     run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkgconf go jq yq git curl cmake ninja make g++ libc-dev linux-headers flex bison m4
 
     run ln -s /usr/bin/make bin/gmake
+    run ln -s     /bin/sed  bin/gsed
 
     printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.rc
 }
