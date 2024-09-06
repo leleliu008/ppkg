@@ -8521,7 +8521,7 @@ __setup() {
 
     run mv "$SESSION_DIR" "$PPKG_HOME/"
 
-    success "ppkg have been successfully setup."
+    success "ppkg has been set up successfully."
 }
 
 # use commands: uname curl|wget tar xz cut
