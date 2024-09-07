@@ -1126,7 +1126,7 @@ ${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
 
-    Influential environment variables: CC, CXX, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB
+    Influential environment variables: CC, CXX, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB, GMAKE, CMAKE, URL_TRANSFORM
 
     OPTIONS:
         ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}

@@ -3129,6 +3129,25 @@ EOF
 
 # }}}
 ##############################################################################
+# {{{ add_ldflags
+
+add_ldflags() {
+    for FLAG in "$@"
+    do
+        case $FLAG in
+            -l*)
+                PROXIED_CC_ARGS="$PROXIED_CC_ARGS $FLAG"
+                PROXIED_CXX_ARGS="$PROXIED_CXX_ARGS $FLAG"
+                ;;
+            *)  LDFLAG="$LDFLAG $FLAG"
+        esac
+        shift
+    done
+}
+
+
+# }}}
+##############################################################################
 # {{{ waf
 
 waf() {
@@ -9162,6 +9181,7 @@ export UPPM_HOME="$PPKG_HOME/uppm"
 
 if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
+    export      URL_TRANSFORM="$PPKG_URL_TRANSFORM"
 fi
 
 uppm() {
