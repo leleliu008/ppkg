@@ -130,6 +130,72 @@ git() {
     fi
 }
 
+# git_checkout <URL> --ref-from=<FROM> --ref-to=<TO> --depth=<N> -B <CHECKOUT-BRANCH-NAME> -C <WORKDIR> --recursive
+git_checkout() {
+    OLDCWD="$PWD"
+
+    unset GIT_FETCH_FROM_URL
+    unset GIT_FETCH_FROM_REF
+    unset GIT_FETCH_TO___REF
+    unset GIT_FETCH_DEPTH
+    unset GIT_FETCH_SUBMODULE_RECURSIVE
+    unset GIT_CHECKOUT_BRANCH_NAME
+    unset GIT_WORK_DIR
+
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        GIT_FETCH_FROM_URL="$1"
+    else
+        GIT_FETCH_FROM_URL="$("$PPKG_URL_TRANSFORM" "$1")"
+    fi
+
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --ref-from=*)
+                GIT_FETCH_FROM_REF="${1#*=}"
+                ;;
+            --ref-to=*)
+                GIT_FETCH_TO___REF="${1#*=}"
+                ;;
+            --depth=*)
+                GIT_FETCH_DEPTH="${1#*=}"
+                ;;
+            -B) shift
+                GIT_CHECKOUT_BRANCH_NAME="${1#*=}"
+                ;;
+            -C) shift
+                GIT_WORK_DIR="$1"
+                ;;
+            --recursive)
+                GIT_FETCH_SUBMODULE_RECURSIVE=1
+                ;;
+        esac
+        shift
+    done
+
+    [ -z "$GIT_FETCH_DEPTH" ] && GIT_FETCH_DEPTH=1
+    [ -z "$GIT_FETCH_FROM_REF" ] && GIT_FETCH_FROM_REF='HEAD'
+    [ -z "$GIT_FETCH_TO___REF" ] && GIT_FETCH_TO___REF='refs/remotes/origin/master'
+
+    [ -z "$GIT_CHECKOUT_BRANCH_NAME" ] && GIT_CHECKOUT_BRANCH_NAME="${GIT_FETCH_TO___REF##*/}"
+
+    if [    -n "$GIT_WORK_DIR" ] ; then
+        [   -d "$GIT_WORK_DIR" ] || run install -d "$GIT_WORK_DIR"
+        run cd "$GIT_WORK_DIR"
+    fi
+
+    run git -c init.defaultBranch=master init
+    run git remote add origin "$GIT_FETCH_FROM_URL"
+    run git -c protocol.version=2 fetch --progress --depth="$GIT_FETCH_DEPTH" origin "$GIT_FETCH_FROM_REF:$GIT_FETCH_TO___REF"
+    run git checkout --progress --force -B "$GIT_CHECKOUT_BRANCH_NAME" "$GIT_FETCH_TO___REF"
+
+    git_submodule_update_recursive
+
+    run cd "$OLDCWD"
+}
+
 git_submodule_update_recursive() {
     if [ -z "$1" ] ; then
         GIT_REPO_ROOT_DIR="$PWD"
