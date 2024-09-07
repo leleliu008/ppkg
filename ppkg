@@ -4794,11 +4794,16 @@ EOF
 
     #########################################################################################
 
+    PACKAGE_UUID="$TARGET_PLATFORM_SPEC/$PACKAGE_INSTALL_SHA"
+
+    #########################################################################################
+
     PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_SPEC"
     PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
     PACKAGE_BSCRIPT_DIR="$PACKAGE_WORKING_DIR/src/$PACKAGE_BSCRIPT"
     PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
-    PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$PACKAGE_INSTALL_SHA"
+    PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_UUID"
+    PACKAGE_LINKAGE_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
     #########################################################################################
 
@@ -6749,7 +6754,7 @@ $PACKAGE_ONFINAL
     __generate_receipt_of_the_given_package "$1"
 
     step "generate index"
-    run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$PACKAGE_LINKAGE_DIR"
 
     #########################################################################################
 
