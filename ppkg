@@ -3289,7 +3289,7 @@ configure() {
     CONFIGURE="$PACKAGE_BSCRIPT_DIR/configure"
 
     if [ "$CROSS_COMPILING" = 1 ] ; then
-        sedInPlace 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
+        gsed -i 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
     fi
 
     if run $CONFIGURE $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
@@ -3309,8 +3309,8 @@ configure() {
     if [ "$VERBOSE_GMAKE" = 1 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sedInPlace 's|\t@|\t|g'     "$Makefile"
-            sedInPlace 's|@echo|echo|g' "$Makefile"
+            gsed -i 's|\t@|\t|g'     "$Makefile"
+            gsed -i 's|@echo|echo|g' "$Makefile"
         done
         unset Makefile
     fi
@@ -3846,8 +3846,8 @@ gow() {
                 GO_VERSION_MAJOR=$(go env GOVERSION | cut -c3- | cut -d. -f1)
                 GO_VERSION_MINOR=$(go env GOVERSION | cut -c3- | cut -d. -f2)
 
-                sedInPlace "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
-                sedInPlace 's|^go 1.22$|go 1.22.0|' "$GOMOD"
+                gsed -i "/^go[[:space:]]*[1-9]\.[0-9][0-9]/c go $GO_VERSION_MAJOR.$GO_VERSION_MINOR" "$GOMOD"
+                gsed -i 's|^go 1.22$|go 1.22.0|' "$GOMOD"
 
                 run go mod tidy
                 run go mod vendor
@@ -6447,7 +6447,7 @@ $PACKAGE_DOPATCH
     #########################################################################################
 
     # https://github.com/golang/go/issues/65568
-    [ -f go.mod ] && sedInPlace 's|^go 1.22$|go 1.22.0|' go.mod
+    [ -f go.mod ] && gsed -i 's|^go 1.22$|go 1.22.0|' go.mod
 
     #########################################################################################
 
@@ -6504,7 +6504,7 @@ $PACKAGE_DOPATCH
                 run chmod a+x "$FILEPATH"
 
                 if [ "$FILENAME" = 'config.sub' ] ; then
-                    sedInPlace 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
                 fi
             }
 
@@ -7198,43 +7198,43 @@ __tweak_pc_files() {
 
     for pcfile in $PC_FILES
     do
-        sedInPlace "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        gsed -i "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
 
-        sedInPlace "s|-I$PPKG_HOME[^' ]*||g"      "$pcfile"
-        sedInPlace "s|-L$PPKG_HOME[^' ]*||g"      "$pcfile"
+        gsed -i "s|-I$PPKG_HOME[^' ]*||g"      "$pcfile"
+        gsed -i "s|-L$PPKG_HOME[^' ]*||g"      "$pcfile"
 
-        sedInPlace "s|-R[^' ]*||g"                "$pcfile"
-        sedInPlace "s|-F[^' ]*||g"                "$pcfile"
-        sedInPlace "s|-idirafter[^' ]*||g"        "$pcfile"
-        sedInPlace "s|-isysroot [^' ]*||g"        "$pcfile"
+        gsed -i "s|-R[^' ]*||g"                "$pcfile"
+        gsed -i "s|-F[^' ]*||g"                "$pcfile"
+        gsed -i "s|-idirafter[^' ]*||g"        "$pcfile"
+        gsed -i "s|-isysroot [^' ]*||g"        "$pcfile"
 
-        sedInPlace 's|-flto||g'                   "$pcfile"
-        sedInPlace 's|-Wl,--strip-debug||g'       "$pcfile"
-        sedInPlace 's|-Wl,-search_paths_first||g' "$pcfile"
-        sedInPlace 's|-Wl,-S||g' "$pcfile"
+        gsed -i 's|-flto||g'                   "$pcfile"
+        gsed -i 's|-Wl,--strip-debug||g'       "$pcfile"
+        gsed -i 's|-Wl,-search_paths_first||g' "$pcfile"
+        gsed -i 's|-Wl,-S||g' "$pcfile"
 
-        sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" "$pcfile"
-        sedInPlace "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"     "$pcfile"
+        gsed -i "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" "$pcfile"
+        gsed -i "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"     "$pcfile"
 
         if [ -n "$SYSROOT" ] ; then
-            sedInPlace "s|-L$SYSROOT[^' ]*||g"    "$pcfile"
-            sedInPlace "s|--sysroot=$SYSROOT||"   "$pcfile"
+            gsed -i "s|-L$SYSROOT[^' ]*||g"    "$pcfile"
+            gsed -i "s|--sysroot=$SYSROOT||"   "$pcfile"
         fi
 
         if grep -q 'Libs.private:' "$pcfile" ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
             LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            sedInPlace "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            sedInPlace '/Libs.private/d' "$pcfile"
+            gsed -i "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+            gsed -i '/Libs.private/d' "$pcfile"
         fi
 
         if grep -q 'Requires.private:' "$pcfile" ; then
             if grep -q 'Requires:' "$pcfile" ; then
                 REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                sedInPlace "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
-                sedInPlace '/Requires.private:/d' "$pcfile"
+                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                gsed -i '/Requires.private:/d' "$pcfile"
             else
-                sedInPlace 's|Requires.private:|Requires:|' "$pcfile"
+                gsed -i 's|Requires.private:|Requires:|' "$pcfile"
             fi
         fi
     done
@@ -9139,7 +9139,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.5
+PPKG_VERSION=0.9.6
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
