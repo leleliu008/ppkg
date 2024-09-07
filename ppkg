@@ -6594,9 +6594,9 @@ $PACKAGE_DOTWEAK
         [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH" ] && {
             step "set rpath for executables"
 
-            echo "PACKAGE_EXECUTABLES_NEED_SET_RPATH=$PACKAGE_EXECUTABLES_NEED_SET_RPATH"
-
             PACKAGE_EXECUTABLES_NEED_SET_RPATH="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH | sort | uniq)"
+
+            echo "PACKAGE_EXECUTABLES_NEED_SET_RPATH=$PACKAGE_EXECUTABLES_NEED_SET_RPATH"
 
             for item in $PACKAGE_EXECUTABLES_NEED_SET_RPATH
             do
@@ -6611,7 +6611,7 @@ $PACKAGE_DOTWEAK
 
                 RELATIVE_PATH="$(realpath -m --relative-to="${f%/*}" "$X")"
 
-                run install_name_tool -add_rpath "@executable_path/$RELATIVE_PATH" "$f"
+                run install_name_tool -add_rpath "@executable_path/$RELATIVE_PATH" "$f" || true
             done
         }
     else
