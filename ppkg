@@ -4557,6 +4557,7 @@ $FORMULA_SEARCH_DIR"
     for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
     do
         export "${TOOL}_FOR_BUILD"
+        eval export "$TOOL=\"\$${TOOL}_FOR_BUILD\""
     done
 
     #########################################################################################

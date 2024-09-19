@@ -416,36 +416,6 @@ inspect_install_arguments() {
                 PACKAGE_INSTALL_ROOT="${1#*=}"
                 PACKAGE_INSTALL_ROOT="$(realpath "$PACKAGE_INSTALL_ROOT")"
                 ;;
-            --cc=*)
-                CC="${1#*=}"
-                [ -f "$CC" ] || abort 1 "$CC file does not exist."
-                CC="$(realpath "$CC")"
-                ;;
-            --c++=*)
-                CXX="${1#*=}"
-                [ -f "$CXX" ] || abort 1 "$CXX file does not exist."
-                CXX="$(realpath "$CXX")"
-                ;;
-            --as=*)
-                AS="${1#*=}"
-                [ -f "$AS" ] || abort 1 "$AS file does not exist."
-                AS="$(realpath "$AS")"
-                ;;
-            --ld=*)
-                LD="${1#*=}"
-                [ -f "$LD" ] || abort 1 "$LD file does not exist."
-                LD="$(realpath "$LD")"
-                ;;
-            --ar=*)
-                AR="${1#*=}"
-                [ -f "$AR" ] || abort 1 "$AR file does not exist."
-                AR="$(realpath "$AR")"
-                ;;
-            --ranlib=*)
-                RANLIB="${1#*=}"
-                [ -f "$RANLIB" ] || abort 1 "$RANLIB file does not exist."
-                RANLIB="$(realpath "$RANLIB")"
-                ;;
             -j) shift
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
                 BUILD_NJOBS="$1"
@@ -718,6 +688,11 @@ cmakew() {
     run "$CMAKE" --install build.d
 }
 
+configure_ghc() {
+    run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
+    run "$GMAKE" install
+}
+
 configure() {
     run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
@@ -869,7 +844,7 @@ EOF
                 run chmod a+x "$FILEPATH"
 
                 if [ "$FILENAME" = 'config.sub' ] ; then
-                    sed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
                 fi
             }
 
@@ -905,10 +880,12 @@ EOF
 
     # TO FIX: glibtoolize: command not found
     if [ "$1" = 'libtool' ] ; then
-        run cd bin
-        run ln -s -r libtool    glibtool
-        run ln -s -r libtoolize glibtoolize
-        run cd -
+        run ln -s libtool    bin/glibtool
+        run ln -s libtoolize bin/glibtoolize
+    fi
+
+    if [ "$1" = 'ghc' ] ; then
+        gsed -i "/ compiler flags/s|\")| -I$PACKAGE_INSTALL_ROOT/libffi/include\")|" lib/ghc-*/lib/settings
     fi
 
     #########################################################################################
@@ -944,7 +921,7 @@ EOF
 package_info_libz() {
     PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
     PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
-    PACKAGE_DOPATCH='sed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
+    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
     PACKAGE_INSTALL='cmakew'
 }
 
@@ -985,7 +962,7 @@ package_info_texinfo() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
     PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
     PACKAGE_DEP_PKG='perl'
-    PACKAGE_DOPATCH='sed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
+    PACKAGE_DOPATCH='gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
@@ -1105,7 +1082,8 @@ package_info_swig() {
 package_info_ghc() {
     PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.6.3/ghc-9.6.3-aarch64-apple-darwin.tar.xz'
     PACKAGE_SRC_SHA='e1cdf458926b2eaf52d2a8287d99a965040ff9051171f5c3b7467049cf0eb213'
-    PACKAGE_INSTALL='configure'
+    PACKAGE_DEP_PKG='libffi'
+    PACKAGE_INSTALL='configure_ghc'
 }
 
 help() {
@@ -1126,7 +1104,7 @@ ${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
 
-    Influential environment variables: CC, CXX, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB, GMAKE, CMAKE, URL_TRANSFORM
+    Influential environment variables: CC, CXX, CPP, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB, CMAKE, GMAKE, PKG_CONFIG, URL_TRANSFORM
 
     OPTIONS:
         ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}
@@ -1201,7 +1179,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=2.0.0
+RUNTIME_BUILDER_VERSION=3.0.0
 
 case $1 in
     ''|--help|-h)
