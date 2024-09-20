@@ -6033,7 +6033,8 @@ EOF
     ##################################################################################
 
     if [ "$PACKAGE_USE_BSYSTEM_CABAL" = 1 ] ; then
-        PROXIED_CC_ARGS="$PROXIED_CC_ARGS -L$PACKAGE_WORKING_DIR/lib"
+        # fatal error: 'ffi.h' file not found
+        PROXIED_CC_ARGS="$PROXIED_CC_ARGS -L$PACKAGE_WORKING_DIR/lib -I$libffi_INCLUDE_DIR"
     fi
 
     ##################################################################################
