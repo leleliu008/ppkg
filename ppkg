@@ -3166,6 +3166,7 @@ cabal_v2_install() {
         CABAL_ARGS="$CABAL_ARGS --enable-executable-static"
     fi
 
+    run cabal --version
     run cabal update
     run cabal v2-install "$CABAL_ARGS" "$@"
 }
