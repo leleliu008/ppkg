@@ -3159,11 +3159,36 @@ add_ldflags() {
 # {{{ cabal_v2_install
 
 # https://cabal.readthedocs.io/en/3.4/cabal-projectindex.html
+# https://cabal.readthedocs.io/en/3.4/cabal-project.html
 cabal_v2_install() {
-    CABAL_ARGS="--jobs=$BUILD_NJOBS --max-backjumps=100000 --install-method=copy --installdir=$PACKAGE_INSTALL_DIR"
+    if [ ! -f cabal.project ] ; then
+        cat > cabal.project <<EOF
+packages: ./*.cabal
+EOF
+    fi
+
+    cat >> cabal.project <<EOF
+package *
+    extra-include-dirs: $libffi_INCLUDE_DIR
+    extra-lib-dirs: $PACKAGE_WORKING_DIR/lib
+EOF
+
+    if [ "$ENABLE_STRIP" = 1 ] ; then
+        cat >> cabal.project <<EOF
+    executable-stripping: True
+EOF
+    fi
 
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-        CABAL_ARGS="$CABAL_ARGS --enable-executable-static"
+        cat >> cabal.project <<EOF
+    ld-options: -static
+EOF
+    fi
+
+    CABAL_ARGS="--jobs=$BUILD_NJOBS --max-backjumps=100000 --install-method=copy --installdir=$PACKAGE_INSTALL_DIR/bin"
+
+    if [ "$VERBOSE_CABAL" = 1 ] ; then
+        CABAL_ARGS="$CABAL_ARGS -v"
     fi
 
     run cabal --version
@@ -6028,13 +6053,6 @@ EOF
         #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
         # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
         LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
-    fi
-
-    ##################################################################################
-
-    if [ "$PACKAGE_USE_BSYSTEM_CABAL" = 1 ] ; then
-        # fatal error: 'ffi.h' file not found
-        PROXIED_CC_ARGS="$PROXIED_CC_ARGS -L$PACKAGE_WORKING_DIR/lib -I$libffi_INCLUDE_DIR"
     fi
 
     ##################################################################################
