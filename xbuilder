@@ -884,10 +884,6 @@ EOF
         run ln -s libtoolize bin/glibtoolize
     fi
 
-    if [ "$1" = 'ghc' ] ; then
-        gsed -i "/ compiler flags/s|\")| -I$PACKAGE_INSTALL_ROOT/libffi/include\")|" lib/ghc-*/lib/settings
-    fi
-
     #########################################################################################
 
     cat > toolchain.txt <<EOF

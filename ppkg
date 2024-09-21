@@ -3169,7 +3169,7 @@ EOF
 
     cat >> cabal.project <<EOF
 package *
-    extra-include-dirs: $libffi_INCLUDE_DIR
+    extra-include-dirs: $libffi_INCLUDE_DIR,$libz_INCLUDE_DIR
     extra-lib-dirs: $PACKAGE_WORKING_DIR/lib
 EOF
 
