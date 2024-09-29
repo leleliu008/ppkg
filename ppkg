@@ -1048,6 +1048,8 @@ filetype_from_url() {
     # space-separated ppkg packages that are depended by this package when installing and/or runtime, which will be installed via ppkg
     unset PACKAGE_DEP_PKG
 
+    unset PACKAGE_DEP_LIB
+
     unset PACKAGE_PPFLAGS
     unset PACKAGE_CCFLAGS
     unset PACKAGE_XXFLAGS
@@ -1124,6 +1126,7 @@ filetype_from_url() {
     PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1721,6 +1724,7 @@ __search_packages() {
         --arg patches "$PACKAGE_PATCHES" \
         --arg reslist "$PACKAGE_RESLIST" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
+        --arg dep_lib "$PACKAGE_DEP_LIB" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
@@ -1764,6 +1768,7 @@ __search_packages() {
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
+    "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
     "dep-plm":$dep_plm,
@@ -1823,6 +1828,7 @@ res-url: $PACKAGE_RES_URL
 res-uri: $PACKAGE_RES_URI
 res-sha: $PACKAGE_RES_SHA
 dep-pkg: $PACKAGE_DEP_PKG
+dep-lib: $PACKAGE_DEP_LIB
 dep-upp: $PACKAGE_DEP_UPP
 dep-pym: $PACKAGE_DEP_PYM
 dep-plm: $PACKAGE_DEP_PLM
@@ -1895,6 +1901,7 @@ PACKAGE_USE_BSYSTEM_AUTOGENSH
 PACKAGE_USE_BSYSTEM_AUTOTOOLS
 PACKAGE_USE_BSYSTEM_CONFIGURE
 PACKAGE_DEP_PKG
+PACKAGE_DEP_LIB
 PACKAGE_DEP_UPP
 PACKAGE_DEP_PYM
 PACKAGE_DEP_PLM
@@ -2096,6 +2103,7 @@ EOF
         --arg patches "$RECEIPT_PACKAGE_PATCHES" \
         --arg reslist "$RECEIPT_PACKAGE_RESLIST" \
         --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
+        --arg dep_lib "$RECEIPT_PACKAGE_DEP_LIB" \
         --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
         --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
@@ -2142,6 +2150,7 @@ EOF
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
+    "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
     "dep-plm":$dep_plm,
@@ -3426,23 +3435,61 @@ gmakew() {
 ##############################################################################
 # {{{ cmakew
 
-# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
-# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
-# https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
-# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
-#
-# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_IGNORE_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_MODULE_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_PROGRAM_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_LIBRARY_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
-#
-# run in a subshell
+# cmakew [2] [--targets=<comma-separated list>] [--components=<comma-separated list>] [CMAKE-OPTIONS]
 cmakew() {
+    unset CMAKE_EXTRA_ARGS
+    unset CMAKE_BUILD_TARGETS
+    unset CMAKE_INSTALL_COMPONENTS
+    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY
+
+    if [ "$1" = 2 ] ; then
+        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY=1
+        shift
+    fi
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -S) shift; PACKAGE_BSCRIPT_DIR="$1" ;;
+            -B) shift; PACKAGE_BCACHED_DIR="$1" ;;
+            --targets=*)
+                TARGETS="${1#*=}"
+
+                export IFS=','
+
+                for item in $TARGETS
+                do
+                    CMAKE_BUILD_TARGETS="$CMAKE_BUILD_TARGETS $item"
+                done
+
+                unset IFS
+                ;;
+            --components=*)
+                COMPONENTS="${1#*=}"
+
+                export IFS=','
+
+                for item in $COMPONENTS
+                do
+                    CMAKE_INSTALL_COMPONENTS="$CMAKE_INSTALL_COMPONENTS $item"
+                done
+
+                unset IFS
+                ;;
+            *)  CMAKE_EXTRA_ARGS="$CMAKE_EXTRA_ARGS $1"
+        esac
+        shift
+    done
+
+    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY" = 1 ] ; then
+        cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=OFF
+        cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=ON
+    else
+        cmakew_internal $CMAKE_EXTRA_ARGS
+    fi
+}
+
+cmakew_internal() {
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         cmakew_for_native "$@"
     else
@@ -4756,12 +4803,6 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    # these two variable might be set in formula file to control cmakew's behavor
-    unset CMAKE_BUILD_TARGETS
-    unset CMAKE_INSTALL_COMPONENTS
-
-    #########################################################################################
-
     cat <<EOF
      TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
@@ -5132,7 +5173,6 @@ $DOT_CONTENT
     for item in $PACKAGE_DEP_UPP
     do
         case $item in
-            ghc)      PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
@@ -6148,6 +6188,20 @@ EOF
     if [ "$DEBUG_PKG_CONFIG" = 1 ] ; then
         export PKG_CONFIG_DEBUG_SPEW='set'
     fi
+
+    #########################################################################################
+
+    for item in $PACKAGE_DEP_LIB
+    do
+        case $item in
+            -l*);;
+            *)  item="$(pkg-config --libs-only-l "$item")"
+        esac
+
+        PROXIED_CC_ARGS="$PROXIED_CC_ARGS $item"
+        PROXIED_CXX_ARGS="$PROXIED_CXX_ARGS $item"
+        PROXIED_OBJC_ARGS="$PROXIED_OBJC_ARGS $item"
+    done
 
     #########################################################################################
 
@@ -7318,6 +7372,11 @@ install_libs() {
     done
 }
 
+writepc() {
+    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
+    cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
+}
+
 install_pcfs() {
     install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
     install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
@@ -7553,6 +7612,7 @@ EOF
     unset RECEIPT_PACKAGE_RESLIST
 
     unset RECEIPT_PACKAGE_DEP_PKG
+    unset RECEIPT_PACKAGE_DEP_LIB
     unset RECEIPT_PACKAGE_DEP_UPP
     unset RECEIPT_PACKAGE_DEP_PYM
     unset RECEIPT_PACKAGE_DEP_PLM
@@ -7615,6 +7675,7 @@ EOF
     RECEIPT_PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -9190,7 +9251,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.9.6
+PPKG_VERSION=0.10.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

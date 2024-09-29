@@ -688,11 +688,6 @@ cmakew() {
     run "$CMAKE" --install build.d
 }
 
-configure_ghc() {
-    run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
-    run "$GMAKE" install
-}
-
 configure() {
     run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
@@ -1075,38 +1070,6 @@ package_info_swig() {
     PACKAGE_INSTALL='configure --enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
 }
 
-package_info_ghc() {
-    case $NATIVE_OS_KIND in
-        darwin)
-            case $NATIVE_OS_ARCH in
-                x86_64)
-                    PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.8.2/ghc-9.8.2-x86_64-apple-darwin.tar.xz'
-                    PACKAGE_SRC_SHA='64e8cca6310443cd6de8255edcf391d937829792e701167f7e5fb234f7150078'
-                    ;;
-                arm64)
-                    PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.8.2/ghc-9.8.2-aarch64-apple-darwin.tar.xz'
-                    PACKAGE_SRC_SHA='67be089dedbe599d911efd8f82e4f9a19225761a3872be74dfd4b5a557fb8e1a'
-                    ;;
-            esac
-            ;;
-        linux)
-            case $NATIVE_OS_ARCH in
-                x86_64)
-                    PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.8.2/ghc-9.8.2-x86_64-ubuntu20_04-linux.tar.xz'
-                    PACKAGE_SRC_SHA='a65a4726203c606b58a7f6b714a576e7d81390158c8afa0dece3841a4c602de2'
-                    ;;
-                arm64)
-                    PACKAGE_SRC_URL='https://downloads.haskell.org/~ghc/9.8.2/ghc-9.8.2-aarch64-deb10-linux.tar.xz'
-                    PACKAGE_SRC_SHA='9a3776fd8dc02f95b751f0e44823d6727dea2c212857e2c5c5f6a38a034d1575'
-                    ;;
-            esac
-            ;;
-    esac
-
-    PACKAGE_DEP_PKG='libffi'
-    PACKAGE_INSTALL='configure_ghc'
-}
-
 help() {
     printf '%b\n' "\
 ${COLOR_GREEN}A package builder to build non-relocatable packages such as automake, autoconf, libtool, ruby, perl, python3, etc.${COLOR_OFF}
@@ -1210,7 +1173,7 @@ case $1 in
         printf '%s\n' "$RUNTIME_BUILDER_VERSION"
         ;;
     ls-available)
-        PACKAGE_NAMES='libz libbz2 liblzma libpcre2 libexpat libgdbm libffi libyaml ruby perl python3 sqlite3 openssl texinfo help2man intltool libtool autoconf automake swig ghc perl-XML-Parser'
+        PACKAGE_NAMES='libz libbz2 liblzma libpcre2 libexpat libgdbm libffi libyaml ruby perl python3 sqlite3 openssl texinfo help2man intltool libtool autoconf automake swig perl-XML-Parser'
 
         if [ "$2" = -v ] ; then
             for PACKAGE_NAME in $PACKAGE_NAMES
