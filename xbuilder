@@ -507,11 +507,11 @@ inspect_install_arguments() {
          LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
     else
         [ -z "$CC" ] && {
-             CC="$(command -v cc  || command -v clang   || command -v gcc)" || abort 1 "C Compiler not found."
+             CC="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler not found."
         }
 
         [ -z "$CXX" ] && {
-            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler not found."
+            CXX="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler not found."
         }
 
         [ -z "$AS" ] && {
@@ -938,7 +938,7 @@ package_info_perl() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
     PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
     PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
-    PACKAGE_INSTALL='Configure -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true'
+    PACKAGE_INSTALL='Configure -Dman1dir=none -Dman3dir=none -des -Dcc="$CC" -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true'
 }
 
 package_info_openssl() {
@@ -1163,7 +1163,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=3.0.0
+RUNTIME_BUILDER_VERSION=4.0.0
 
 case $1 in
     ''|--help|-h)
