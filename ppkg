@@ -8483,6 +8483,7 @@ __setup_freebsd() {
     run ln -sf /usr/local/bin/ggrep      bin/grep
     run ln -sf /usr/local/bin/gfind      bin/find
     run ln -sf /usr/local/bin/gmake      bin/make
+    run ln -sf /usr/local/bin/gstat      bin/stat
     run ln -sf /usr/local/bin/gdate      bin/date
     run ln -sf /usr/local/bin/gnproc     bin/nproc
     run ln -sf /usr/local/bin/gbase64    bin/base64
@@ -8517,6 +8518,7 @@ __setup_openbsd() {
     run ln -sf /usr/local/bin/ggrep      bin/grep
     run ln -sf /usr/local/bin/gfind      bin/find
     run ln -sf /usr/local/bin/gmake      bin/make
+    run ln -sf /usr/local/bin/gstat      bin/stat
     run ln -sf /usr/local/bin/gdate      bin/date
     run ln -sf /usr/local/bin/gnproc     bin/nproc
     run ln -sf /usr/local/bin/gbase64    bin/base64
