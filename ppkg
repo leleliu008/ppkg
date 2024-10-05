@@ -6527,9 +6527,9 @@ EOF
 
     step "dopatch for target"
 
-    [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
-        cd "$PACKAGE_BSCRIPT_DIR"
+    cd "$PACKAGE_BSCRIPT_DIR"
 
+    [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
         for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")
         do
             FILE="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
@@ -6540,20 +6540,12 @@ EOF
     }
 
     [ -n "$PACKAGE_DOPATCH" ] && {
-        cd "$PACKAGE_BSCRIPT_DIR"
-
         eval "
 dopatch() {
 $PACKAGE_DOPATCH
 }"
         dopatch
     }
-
-    #########################################################################################
-
-    cd "$PACKAGE_BSCRIPT_DIR"
-
-    #########################################################################################
 
     # https://github.com/golang/go/issues/65568
     [ -f go.mod ] && gsed -i 's|^go 1.22$|go 1.22.0|' go.mod
@@ -8454,15 +8446,21 @@ __setup_darwin() {
 
     BREW_PACKAGE_EXEFIND_PATH="${BREW_PACKAGE_EXEFIND_PATH#':'}"
 
-    run ln -sf /usr/local/bin/gln      bin/ln
-    run ln -sf /usr/local/bin/gsed     bin/sed
-    run ln -sf /usr/local/bin/gawk     bin/awk
-    run ln -sf /usr/local/bin/ggrep    bin/grep
-    run ln -sf /usr/local/bin/gfind    bin/find
-    run ln -sf /usr/local/bin/gbase64  bin/base64
-    run ln -sf /usr/local/bin/gunlink  bin/unlink
-    run ln -sf /usr/local/bin/ginstall bin/install
-    run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
+    if [ "$NATIVE_OS_ARCH" = x86_64 ] ; then
+        BREW_BIN_DIR='/usr/local/bin'
+    else
+        BREW_BIN_DIR='/opt/homebrew/bin'
+    fi
+
+    run ln -s $BREW_BIN_DIR/gln      bin/ln
+    run ln -s $BREW_BIN_DIR/gsed     bin/sed
+    run ln -s $BREW_BIN_DIR/gawk     bin/awk
+    run ln -s $BREW_BIN_DIR/ggrep    bin/grep
+    run ln -s $BREW_BIN_DIR/gfind    bin/find
+    run ln -s $BREW_BIN_DIR/gbase64  bin/base64
+    run ln -s $BREW_BIN_DIR/gunlink  bin/unlink
+    run ln -s $BREW_BIN_DIR/ginstall bin/install
+    run ln -s $BREW_BIN_DIR/gsha256sum bin/sha256sum
 
     cat > init.rc <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
@@ -8476,21 +8474,21 @@ __setup_freebsd() {
     run $sudo pkg update
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go go-yq jq git curl cmake ninja gmake gcc flex bison m4
 
-    run ln -sf /usr/local/bin/gln        bin/ln
-    run ln -sf /usr/local/bin/gm4        bin/m4
-    run ln -sf /usr/local/bin/gsed       bin/sed
-    run ln -sf /usr/local/bin/gawk       bin/awk
-    run ln -sf /usr/local/bin/ggrep      bin/grep
-    run ln -sf /usr/local/bin/gfind      bin/find
-    run ln -sf /usr/local/bin/gmake      bin/make
-    run ln -sf /usr/local/bin/gstat      bin/stat
-    run ln -sf /usr/local/bin/gdate      bin/date
-    run ln -sf /usr/local/bin/gnproc     bin/nproc
-    run ln -sf /usr/local/bin/gbase64    bin/base64
-    run ln -sf /usr/local/bin/gunlink    bin/unlink
-    run ln -sf /usr/local/bin/ginstall   bin/install
-    run ln -sf /usr/local/bin/grealpath  bin/realpath
-    run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
+    run ln -s /usr/local/bin/gln        bin/ln
+    run ln -s /usr/local/bin/gm4        bin/m4
+    run ln -s /usr/local/bin/gsed       bin/sed
+    run ln -s /usr/local/bin/gawk       bin/awk
+    run ln -s /usr/local/bin/ggrep      bin/grep
+    run ln -s /usr/local/bin/gfind      bin/find
+    run ln -s /usr/local/bin/gmake      bin/make
+    run ln -s /usr/local/bin/gstat      bin/stat
+    run ln -s /usr/local/bin/gdate      bin/date
+    run ln -s /usr/local/bin/gnproc     bin/nproc
+    run ln -s /usr/local/bin/gbase64    bin/base64
+    run ln -s /usr/local/bin/gunlink    bin/unlink
+    run ln -s /usr/local/bin/ginstall   bin/install
+    run ln -s /usr/local/bin/grealpath  bin/realpath
+    run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.rc
 }
@@ -8510,23 +8508,23 @@ __setup_openbsd() {
         7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep libarchive gpatch pkgconf metaauto go git curl cmake ninja gmake gcc%11 patchelf bison m4 jq
     esac
 
-    run ln -sf /usr/local/bin/gln        bin/ln
-    run ln -sf /usr/local/bin/gm4        bin/m4
-    run ln -sf /usr/local/bin/gsed       bin/sed
-    run ln -sf /usr/local/bin/gawk       bin/awk
-    run ln -sf /usr/local/bin/ghead      bin/head
-    run ln -sf /usr/local/bin/ggrep      bin/grep
-    run ln -sf /usr/local/bin/gfind      bin/find
-    run ln -sf /usr/local/bin/gmake      bin/make
-    run ln -sf /usr/local/bin/gstat      bin/stat
-    run ln -sf /usr/local/bin/gdate      bin/date
-    run ln -sf /usr/local/bin/gnproc     bin/nproc
-    run ln -sf /usr/local/bin/gbase64    bin/base64
-    run ln -sf /usr/local/bin/gunlink    bin/unlink
-    run ln -sf /usr/local/bin/ginstall   bin/install
-    run ln -sf /usr/local/bin/grealpath  bin/realpath
-    run ln -sf /usr/local/bin/gsha256sum bin/sha256sum
-    run ln -sf /usr/local/bin/pkgconf    bin/pkg-config
+    run ln -s /usr/local/bin/gln        bin/ln
+    run ln -s /usr/local/bin/gm4        bin/m4
+    run ln -s /usr/local/bin/gsed       bin/sed
+    run ln -s /usr/local/bin/gawk       bin/awk
+    run ln -s /usr/local/bin/ghead      bin/head
+    run ln -s /usr/local/bin/ggrep      bin/grep
+    run ln -s /usr/local/bin/gfind      bin/find
+    run ln -s /usr/local/bin/gmake      bin/make
+    run ln -s /usr/local/bin/gstat      bin/stat
+    run ln -s /usr/local/bin/gdate      bin/date
+    run ln -s /usr/local/bin/gnproc     bin/nproc
+    run ln -s /usr/local/bin/gbase64    bin/base64
+    run ln -s /usr/local/bin/gunlink    bin/unlink
+    run ln -s /usr/local/bin/ginstall   bin/install
+    run ln -s /usr/local/bin/grealpath  bin/realpath
+    run ln -s /usr/local/bin/gsha256sum bin/sha256sum
+    run ln -s /usr/local/bin/pkgconf    bin/pkg-config
 
     # tree package in system's package manager is too old
     printf '%s\n' '#!/bin/sh' > bin/tree
@@ -8555,30 +8553,30 @@ __setup_netbsd() {
     run $sudo ln -sf /usr/pkg/bin/gas /usr/bin/as
     run $sudo ln -sf /usr/pkg/bin/gld /usr/bin/ld
 
-    run ln -sf /usr/pkg/go122/bin/go   bin/go
-    run ln -sf /usr/pkg/gcc13/bin/gcc  bin/gcc
-    run ln -sf /usr/pkg/gcc13/bin/g++  bin/g++
-    run ln -sf /usr/pkg/gcc13/bin/gfortran bin/gfortran
+    run ln -s /usr/pkg/go122/bin/go   bin/go
+    run ln -s /usr/pkg/gcc13/bin/gcc  bin/gcc
+    run ln -s /usr/pkg/gcc13/bin/g++  bin/g++
+    run ln -s /usr/pkg/gcc13/bin/gfortran bin/gfortran
 
-    run ln -sf /usr/pkg/bin/gln        bin/ln
-    run ln -sf /usr/pkg/bin/gld        bin/ld
-    run ln -sf /usr/pkg/bin/gas        bin/as
-    run ln -sf /usr/pkg/bin/gm4        bin/m4
-    run ln -sf /usr/pkg/bin/gsed       bin/sed
-    run ln -sf /usr/pkg/bin/gawk       bin/awk
-    run ln -sf /usr/pkg/bin/ggrep      bin/grep
-    run ln -sf /usr/pkg/bin/gfind      bin/find
-    run ln -sf /usr/pkg/bin/gmake      bin/make
-    run ln -sf /usr/pkg/bin/gstat      bin/stat
-    run ln -sf /usr/pkg/bin/getopt     bin/getopt
-    run ln -sf /usr/pkg/bin/grmdir     bin/rmdir
-    run ln -sf /usr/pkg/bin/gnproc     bin/nproc
-    run ln -sf /usr/pkg/bin/gbase64    bin/base64
-    run ln -sf /usr/pkg/bin/gprintf    bin/printf
-    run ln -sf /usr/pkg/bin/gunlink    bin/unlink
-    run ln -sf /usr/pkg/bin/ginstall   bin/install
-    run ln -sf /usr/pkg/bin/grealpath  bin/realpath
-    run ln -sf /usr/pkg/bin/gsha256sum bin/sha256sum
+    run ln -s /usr/pkg/bin/gln        bin/ln
+    run ln -s /usr/pkg/bin/gld        bin/ld
+    run ln -s /usr/pkg/bin/gas        bin/as
+    run ln -s /usr/pkg/bin/gm4        bin/m4
+    run ln -s /usr/pkg/bin/gsed       bin/sed
+    run ln -s /usr/pkg/bin/gawk       bin/awk
+    run ln -s /usr/pkg/bin/ggrep      bin/grep
+    run ln -s /usr/pkg/bin/gfind      bin/find
+    run ln -s /usr/pkg/bin/gmake      bin/make
+    run ln -s /usr/pkg/bin/gstat      bin/stat
+    run ln -s /usr/pkg/bin/getopt     bin/getopt
+    run ln -s /usr/pkg/bin/grmdir     bin/rmdir
+    run ln -s /usr/pkg/bin/gnproc     bin/nproc
+    run ln -s /usr/pkg/bin/gbase64    bin/base64
+    run ln -s /usr/pkg/bin/gprintf    bin/printf
+    run ln -s /usr/pkg/bin/gunlink    bin/unlink
+    run ln -s /usr/pkg/bin/ginstall   bin/install
+    run ln -s /usr/pkg/bin/grealpath  bin/realpath
+    run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
 
     cat > init.rc <<EOF
 export PATH="/usr/pkg/bin:\$PATH"
