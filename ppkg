@@ -6557,8 +6557,6 @@ $PACKAGE_DOPATCH
     case $PACKAGE_BSYSTEM_MASTER in
         autogen)
             if [ -f configure ] ; then
-                echo $PATH | tr ':' '\n'
-                command -v stat
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
                 if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
@@ -6572,8 +6570,6 @@ $PACKAGE_DOPATCH
             ;;
         autotools)
             if [ -f configure ] ; then
-                echo $PATH | tr ':' '\n'
-                command -v stat
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
                 if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
@@ -8485,7 +8481,7 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/ggrep      bin/grep
     run ln -s /usr/local/bin/gfind      bin/find
     run ln -s /usr/local/bin/gmake      bin/make
-    run ln -s /usr/local/bin/gstat      bin/stat
+    run ln -s /usr/local/bin/gnustat    bin/stat
     run ln -s /usr/local/bin/gdate      bin/date
     run ln -s /usr/local/bin/gnproc     bin/nproc
     run ln -s /usr/local/bin/gbase64    bin/base64
