@@ -6557,6 +6557,7 @@ $PACKAGE_DOPATCH
     case $PACKAGE_BSYSTEM_MASTER in
         autogen)
             if [ -f configure ] ; then
+                echo $PATH | tr ':' '\n'
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
                 if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
