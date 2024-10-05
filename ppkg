@@ -6558,6 +6558,7 @@ $PACKAGE_DOPATCH
         autogen)
             if [ -f configure ] ; then
                 echo $PATH | tr ':' '\n'
+                command -v stat
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
                 if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
@@ -6571,6 +6572,8 @@ $PACKAGE_DOPATCH
             ;;
         autotools)
             if [ -f configure ] ; then
+                echo $PATH | tr ':' '\n'
+                command -v stat
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
                 if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
