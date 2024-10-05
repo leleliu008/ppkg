@@ -48,7 +48,7 @@ main() {
             shift 1
             case $2 in
                 installed-dir)
-                    printf '%s\n' '/usr/local'
+                    #printf '%s\n' '/usr/local'
                     ;;
             esac
             ;;
