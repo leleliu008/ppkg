@@ -3233,136 +3233,149 @@ configure() {
 
     CONFIGURE_ARGS="--prefix=$PACKAGE_INSTALL_DIR --disable-option-checking"
 
-    if [ "$CROSS_COMPILING" = 1 ] ; then
-        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
-            case $TARGET_PLATFORM_VERS in
-                glibc) TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-gnu"  ;;
-                musl)  TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-musl" ;;
-                *)     TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux"
-            esac
-        elif [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-            TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-apple-darwin"
+    if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
+        if run "$PACKAGE_BSCRIPT_DIR"/configure $CONFIGURE_ARGS $@ ; then
+            echo
         else
-            TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
-        fi
-
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --host=$TARGET_TRIPLE"
-    fi
-
-    CONFIGURE_ARG_ENABLE_NLS=0
-    CONFIGURE_ARG_ENABLE_RPATH=0
-    CONFIGURE_ARG_ENABLE_LARGEFILE=1
-
-    CONFIGURE_ARG_ENABLE_DEBUG=
-    CONFIGURE_ARG_ENABLE_STATIC=
-    CONFIGURE_ARG_ENABLE_SHARED=
-
-    for arg in "$@"
-    do
-        case $arg in
-            --enable-nls)      CONFIGURE_ARG_ENABLE_NLS=1 ;;
-            --enable-nls=yes)  CONFIGURE_ARG_ENABLE_NLS=1 ;;
-            --enable-nls=no)   CONFIGURE_ARG_ENABLE_NLS=0 ;;
-            --disable-nls)     CONFIGURE_ARG_ENABLE_NLS=0 ;;
-
-            --enable-rpath)     CONFIGURE_ARG_ENABLE_RPATH=1 ;;
-            --enable-rpath=yes) CONFIGURE_ARG_ENABLE_RPATH=1 ;;
-            --enable-rpath=no)  CONFIGURE_ARG_ENABLE_RPATH=0 ;;
-            --disable-rpath)    CONFIGURE_ARG_ENABLE_RPATH=0 ;;
-
-            --enable-largefile)     CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
-            --enable-largefile=yes) CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
-            --enable-largefile=no)  CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
-            --disable-largefile)    CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
-
-            --enable-debug)     CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
-            --enable-debug=yes) CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
-            --enable-debug=no)  CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
-            --disable-debug)    CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
-
-            --enable-static)     CONFIGURE_ARG_ENABLE_STATIC=1 ;;
-            --enable-static=yes) CONFIGURE_ARG_ENABLE_STATIC=1 ;;
-            --enable-static=no)  CONFIGURE_ARG_ENABLE_STATIC=0 ;;
-            --disable-static)    CONFIGURE_ARG_ENABLE_STATIC=0 ;;
-
-            --enable-shared)     CONFIGURE_ARG_ENABLE_SHARED=1 ;;
-            --enable-shared=yes) CONFIGURE_ARG_ENABLE_SHARED=1 ;;
-            --enable-shared=no)  CONFIGURE_ARG_ENABLE_SHARED=0 ;;
-            --disable-shared)    CONFIGURE_ARG_ENABLE_SHARED=0 ;;
-        esac
-    done
-
-    if [ "$CONFIGURE_ARG_ENABLE_NLS" = 1 ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-nls"
-    else
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-nls"
-    fi
-
-    if [ "$CONFIGURE_ARG_ENABLE_RPATH" = 1 ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-rpath"
-    else
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-rpath"
-    fi
-
-    if [ "$CONFIGURE_ARG_ENABLE_LARGEFILE" = 1 ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-largefile"
-    else
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-largefile"
-    fi
-
-    if [ -z "$CONFIGURE_ARG_ENABLE_DEBUG" ] ; then
-        case $PROFILE in
-            debug)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"  ;;
-            release) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug" ;;
-        esac
-    fi
-
-    if [ -z "$CONFIGURE_ARG_ENABLE_STATIC" ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"
-    fi
-
-    if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
-    fi
-
-    # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
-    if [ "$TARGET_PLATFORM_NBIT" = 32 ] ; then
-        CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-year2038"
-    fi
-
-    CONFIGURE_ENVS="$CONFIGURE_ENVS
-        CC='$CC'
-        CFLAGS='$CFLAGS'
-        CXX='$CXX'
-        CXXFLAGS='$CXXFLAGS'
-        CPP='$CPP'
-        CPPFLAGS='$CPPFLAGS'
-        LDFLAGS='$LDFLAGS'
-        AR='$AR'
-        RANLIB='$RANLIB'
-        PKG_CONFIG='$PKG_CONFIG'
-        PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
-        PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
-        CC_FOR_BUILD='$CC_FOR_BUILD'"
-
-    CONFIGURE="$PACKAGE_BSCRIPT_DIR/configure"
-
-    if [ "$CROSS_COMPILING" = 1 ] ; then
-        gsed -i 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
-    fi
-
-    if run $CONFIGURE $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
-        echo
-    else
-        # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-        if [ "$GITHUB_ACTIONS" = true ] ; then
             if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
                 run cat "$PACKAGE_BCACHED_DIR/config.log"
             elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
                 run cat "$PACKAGE_BSCRIPT_DIR/config.log"
             fi
+            return 1
         fi
-        return 1
+    else
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+                case $TARGET_PLATFORM_VERS in
+                    glibc) TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-gnu"  ;;
+                    musl)  TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux-musl" ;;
+                    *)     TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-linux"
+                esac
+            elif [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+                TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-apple-darwin"
+            else
+                TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+            fi
+
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --host=$TARGET_TRIPLE"
+        fi
+
+        CONFIGURE_ARG_ENABLE_NLS=0
+        CONFIGURE_ARG_ENABLE_RPATH=0
+        CONFIGURE_ARG_ENABLE_LARGEFILE=1
+
+        CONFIGURE_ARG_ENABLE_DEBUG=
+        CONFIGURE_ARG_ENABLE_STATIC=
+        CONFIGURE_ARG_ENABLE_SHARED=
+
+        for arg in "$@"
+        do
+            case $arg in
+                --enable-nls)      CONFIGURE_ARG_ENABLE_NLS=1 ;;
+                --enable-nls=yes)  CONFIGURE_ARG_ENABLE_NLS=1 ;;
+                --enable-nls=no)   CONFIGURE_ARG_ENABLE_NLS=0 ;;
+                --disable-nls)     CONFIGURE_ARG_ENABLE_NLS=0 ;;
+
+                --enable-rpath)     CONFIGURE_ARG_ENABLE_RPATH=1 ;;
+                --enable-rpath=yes) CONFIGURE_ARG_ENABLE_RPATH=1 ;;
+                --enable-rpath=no)  CONFIGURE_ARG_ENABLE_RPATH=0 ;;
+                --disable-rpath)    CONFIGURE_ARG_ENABLE_RPATH=0 ;;
+
+                --enable-largefile)     CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
+                --enable-largefile=yes) CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
+                --enable-largefile=no)  CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
+                --disable-largefile)    CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
+
+                --enable-debug)     CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
+                --enable-debug=yes) CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
+                --enable-debug=no)  CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
+                --disable-debug)    CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
+
+                --enable-static)     CONFIGURE_ARG_ENABLE_STATIC=1 ;;
+                --enable-static=yes) CONFIGURE_ARG_ENABLE_STATIC=1 ;;
+                --enable-static=no)  CONFIGURE_ARG_ENABLE_STATIC=0 ;;
+                --disable-static)    CONFIGURE_ARG_ENABLE_STATIC=0 ;;
+
+                --enable-shared)     CONFIGURE_ARG_ENABLE_SHARED=1 ;;
+                --enable-shared=yes) CONFIGURE_ARG_ENABLE_SHARED=1 ;;
+                --enable-shared=no)  CONFIGURE_ARG_ENABLE_SHARED=0 ;;
+                --disable-shared)    CONFIGURE_ARG_ENABLE_SHARED=0 ;;
+            esac
+        done
+
+        if [ "$CONFIGURE_ARG_ENABLE_NLS" = 1 ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-nls"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-nls"
+        fi
+
+        if [ "$CONFIGURE_ARG_ENABLE_RPATH" = 1 ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-rpath"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-rpath"
+        fi
+
+        if [ "$CONFIGURE_ARG_ENABLE_LARGEFILE" = 1 ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-largefile"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-largefile"
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_DEBUG" ] ; then
+            case $PROFILE in
+                debug)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"  ;;
+                release) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug" ;;
+            esac
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_STATIC" ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
+        fi
+
+        # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
+        if [ "$TARGET_PLATFORM_NBIT" = 32 ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-year2038"
+        fi
+
+        CONFIGURE_ENVS="$CONFIGURE_ENVS
+            CC='$CC'
+            CFLAGS='$CFLAGS'
+            CXX='$CXX'
+            CXXFLAGS='$CXXFLAGS'
+            CPP='$CPP'
+            CPPFLAGS='$CPPFLAGS'
+            LDFLAGS='$LDFLAGS'
+            AR='$AR'
+            RANLIB='$RANLIB'
+            PKG_CONFIG='$PKG_CONFIG'
+            PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
+            PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
+            CC_FOR_BUILD='$CC_FOR_BUILD'"
+
+        CONFIGURE="$PACKAGE_BSCRIPT_DIR/configure"
+
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            gsed -i 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
+        fi
+
+        if run $CONFIGURE $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
+            echo
+        else
+            # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+            if [ "$GITHUB_ACTIONS" = true ] ; then
+                if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_BCACHED_DIR/config.log"
+                elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+                fi
+            fi
+            return 1
+        fi
     fi
 
     if [ "$VERBOSE_GMAKE" = 1 ] ; then
@@ -9255,7 +9268,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.10.1
+PPKG_VERSION=0.11.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
