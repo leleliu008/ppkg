@@ -18,6 +18,9 @@ package_name_transform_from_uppm_to_pkg_add() {
         patch)    printf '%s\n' 'gpatch'    ;;
         unzip)    printf '%s\n' 'unzip--'   ;;
         golang)   printf '%s\n' 'go'        ;;
+        bsdtar)   printf '%s\n' 'libarchive';;
+        pkg-config)
+                  printf '%s\n' 'pkgconfig' ;;
         *)        printf '%s\n' "$1"
     esac
 }
