@@ -942,8 +942,8 @@ package_info_perl() {
 }
 
 package_info_openssl() {
-    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
-    PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
+    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
+    PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
     PACKAGE_DEP_PKG='perl'
     PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
     # https://github.com/openssl/openssl/blob/master/INSTALL.md
