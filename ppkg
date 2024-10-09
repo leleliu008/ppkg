@@ -8514,12 +8514,9 @@ __setup_openbsd() {
     SYSPM=pkg_add
 
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
-    #
+
     # https://man.openbsd.org/pkg_add
-    case $(uname -r) in
-        6.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep libarchive gpatch pkgconf metaauto go git curl cmake ninja gmake gcc flex bison m4 jq ;;
-        7.[0-9]) run $sudo pkg_add bash coreutils findutils gawk gsed ggrep libarchive gpatch pkgconf metaauto go git curl cmake ninja gmake gcc%11 patchelf bison m4 jq
-    esac
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive cmake ninja gmake gpatch pkgconf metaauto m4 go gcc%11 patchelf bison
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4

@@ -689,41 +689,38 @@ cmakew() {
 }
 
 configure() {
+    for FILENAME in config.sub config.guess
+    do
+        FILEPATH="$SESSION_DIR/$FILENAME"
+
+        [ -f "$FILEPATH" ] || {
+            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
+
+            run chmod a+x "$FILEPATH"
+
+            if [ "$FILENAME" = 'config.sub' ] ; then
+                sed -i.bak 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+            fi
+        }
+
+        find . -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+    done
+
     run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
     run "$GMAKE" "--jobs=$BUILD_NJOBS"
     run "$GMAKE" install
 }
 
-Configure() {
-    run ./Configure "-Dprefix=$PACKAGE_INSTALL_DIR" "$@"
-    run "$GMAKE" "--jobs=$BUILD_NJOBS"
-    run "$GMAKE" install
-}
-
-config() {
-    run ./config "--prefix=$PACKAGE_INSTALL_DIR" "$@"
-    run "$GMAKE" "--jobs=$BUILD_NJOBS"
-    run "$GMAKE" install_sw
-}
-
-Makefile_PL() {
-    run perl Makefile.PL "$@"
-    run install -d "$PACKAGE_INSTALL_DIR"
-    run "$GMAKE" "--jobs=$BUILD_NJOBS"
-    run "$GMAKE" install
-}
-
-is_build_system_configure() {
-    [ "$1" = configure ]
-}
-
 install_the_given_package() {
     [ -z "$1" ] && abort 1 "install_the_given_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
 
+    unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_URI
+    unset PACKAGE_SRC_SHA
     unset PACKAGE_DEP_PKG
     unset PACKAGE_DOPATCH
     unset PACKAGE_INSTALL
+    unset PACKAGE_DOTWEAK
 
     if [ "$1" = 'perl-XML-Parser' ] ; then
         package_info_perl_XML_Parser
@@ -828,27 +825,6 @@ EOF
 
     #########################################################################################
 
-    if is_build_system_configure $PACKAGE_INSTALL ; then
-        for FILENAME in config.sub config.guess
-        do
-            FILEPATH="$SESSION_DIR/$FILENAME"
-
-            [ -f "$FILEPATH" ] || {
-                wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
-
-                run chmod a+x "$FILEPATH"
-
-                if [ "$FILENAME" = 'config.sub' ] ; then
-                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
-                fi
-            }
-
-            find . -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
-        done
-    fi
-
-    #########################################################################################
-
     if [ -z "$GMAKE" ] ; then
         GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
     fi
@@ -873,10 +849,8 @@ EOF
 
     #########################################################################################
 
-    # TO FIX: glibtoolize: command not found
-    if [ "$1" = 'libtool' ] ; then
-        run ln -s libtool    bin/glibtool
-        run ln -s libtoolize bin/glibtoolize
+    if [ -n  "$PACKAGE_DOTWEAK" ] ; then
+        eval "$PACKAGE_DOTWEAK"
     fi
 
     #########################################################################################
@@ -906,7 +880,7 @@ EOF
     #########################################################################################
 
     run cd "$PACKAGE_INSTALL_ROOT"
-    run ln -s -r -f -T "$PACKAGE_INSTALL_SHA" "$1"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
 }
 
 package_info_libz() {
@@ -934,19 +908,50 @@ package_info_libexpat() {
     PACKAGE_INSTALL='cmakew -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
 }
 
-package_info_perl() {
-    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
-    PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
-    PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
-    PACKAGE_INSTALL='Configure -Dman1dir=none -Dman3dir=none -des -Dcc="$CC" -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true'
+package_info_liblzma() {
+    PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
+    PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
+}
+
+package_info_libgdbm() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+    PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
+}
+
+package_info_libsqlite3() {
+    PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz'
+    PACKAGE_SRC_SHA='6f8e6a7b335273748816f9b3b62bbdc372a889de8782d7f048c653a447417a7d'
+    PACKAGE_DEP_PKG='libz'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
+}
+
+package_info_libffi() {
+    PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
+    PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
+}
+
+package_info_libyaml() {
+    PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
+    PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
 }
 
 package_info_openssl() {
     PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
     PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
     PACKAGE_DEP_PKG='perl'
-    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
+    PACKAGE_INSTALL='run ./config "--prefix=$PACKAGE_INSTALL_DIR" no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl && run "$GMAKE" "--jobs=$BUILD_NJOBS" && run "$GMAKE" install_sw'
     # https://github.com/openssl/openssl/blob/master/INSTALL.md
+}
+
+package_info_perl() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/P/PE/PEVANS/perl-5.38.2.tar.xz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz'
+    PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
+    PACKAGE_INSTALL='run ./Configure "-Dprefix=$PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true && run "$GMAKE" "--jobs=$BUILD_NJOBS" && run "$GMAKE" install'
 }
 
 package_info_texinfo() {
@@ -975,6 +980,10 @@ package_info_libtool() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
     PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
     PACKAGE_INSTALL='configure --enable-ltdl-install'
+    PACKAGE_DOTWEAK='
+run ln -s libtool    bin/glibtool
+run ln -s libtoolize bin/glibtoolize
+'
 }
 
 package_info_autoconf() {
@@ -991,37 +1000,6 @@ package_info_automake() {
     PACKAGE_INSTALL='configure'
 }
 
-package_info_liblzma() {
-    PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
-    PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
-}
-
-package_info_libgdbm() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
-    PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
-}
-
-package_info_sqlite3() {
-    PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz'
-    PACKAGE_SRC_SHA='6f8e6a7b335273748816f9b3b62bbdc372a889de8782d7f048c653a447417a7d'
-    PACKAGE_DEP_PKG='libz'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
-}
-
-package_info_libffi() {
-    PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
-    PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
-}
-
-package_info_libyaml() {
-    PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
-    PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
-}
-
 package_info_ruby() {
     PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
     PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
@@ -1032,7 +1010,7 @@ package_info_ruby() {
 package_info_python3() {
     PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
     PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
-    PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat sqlite3 libffi openssl perl'
+    PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat libsqlite3 libffi openssl perl'
     PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
     PACKAGE_DOPATCH='
 unset PYTHONHOME
@@ -1047,8 +1025,8 @@ export BZIP2_LIBS="-L$PACKAGE_INSTALL_ROOT/libbz2/lib -lbz2"
 export LIBLZMA_CFLAGS="-I$PACKAGE_INSTALL_ROOT/liblzma/include"
 export LIBLZMA_LIBS="-L$PACKAGE_INSTALL_ROOT/liblzma/lib -llzma"
 
-export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/sqlite3/include"
-export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/sqlite3/lib -lsqlite3"
+export LIBSQLITE3_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libsqlite3/include"
+export LIBSQLITE3_LIBS="-L$PACKAGE_INSTALL_ROOT/libsqlite3/lib -lsqlite3"
 
 export GDBM_CFLAGS="-I$PACKAGE_INSTALL_ROOT/libgdbm/include"
 export GDBM_LIBS="-L$PACKAGE_INSTALL_ROOT/libgdbm/lib -lgdbm -lgdbm_compat"
@@ -1060,7 +1038,7 @@ package_info_perl_XML_Parser() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
     PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
     PACKAGE_DEP_PKG='perl libexpat'
-    PACKAGE_INSTALL="Makefile_PL EXPATLIBPATH=$PACKAGE_INSTALL_ROOT/libexpat/lib EXPATINCPATH=$PACKAGE_INSTALL_ROOT/libexpat/include"
+    PACKAGE_INSTALL="run perl Makefile.PL EXPATLIBPATH=$PACKAGE_INSTALL_ROOT/libexpat/lib EXPATINCPATH=$PACKAGE_INSTALL_ROOT/libexpat/include"
 }
 
 package_info_swig() {
@@ -1163,7 +1141,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=4.0.0
+RUNTIME_BUILDER_VERSION=5.0.0
 
 case $1 in
     ''|--help|-h)
@@ -1173,15 +1151,18 @@ case $1 in
         printf '%s\n' "$RUNTIME_BUILDER_VERSION"
         ;;
     ls-available)
-        PACKAGE_NAMES='libz libbz2 liblzma libpcre2 libexpat libgdbm libffi libyaml ruby perl python3 sqlite3 openssl texinfo help2man intltool libtool autoconf automake swig perl-XML-Parser'
+        PACKAGE_NAMES='libz libbz2 liblzma libffi libgdbm libyaml libpcre2 libsqlite3 openssl ruby perl python3 autoconf automake texinfo help2man intltool libtool swig perl-XML-Parser'
 
         if [ "$2" = -v ] ; then
             for PACKAGE_NAME in $PACKAGE_NAMES
             do
+                unset PACKAGE_SRC_URL
                 unset PACKAGE_SRC_URI
+                unset PACKAGE_SRC_SHA
                 unset PACKAGE_DEP_PKG
                 unset PACKAGE_DOPATCH
                 unset PACKAGE_INSTALL
+                unset PACKAGE_DOTWEAK
 
                 if [ "$PACKAGE_NAME" = 'perl-XML-Parser' ] ; then
                     package_info_perl_XML_Parser
@@ -1189,7 +1170,12 @@ case $1 in
                     package_info_$PACKAGE_NAME
                 fi
 
-                printf '%-10s: %s\n' "$PACKAGE_NAME" "$PACKAGE_SRC_URL"
+                cat <<EOF
+$PACKAGE_NAME:
+    src-url: $PACKAGE_SRC_URL
+    src-sha: $PACKAGE_SRC_SHA
+
+EOF
             done
         else
             printf '%s\n' $PACKAGE_NAMES
