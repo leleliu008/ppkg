@@ -5258,10 +5258,7 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
             if [ "$NATIVE_OS_NAME" = macos ] ; then
-                X="${NATIVE_OS_VERS%%.*}"
-                Y="${NATIVE_OS_VERS#*.}"
-                Y="${Y%%.*}"
-                T="macos-$X.$Y-$NATIVE_OS_ARCH"
+                T="macos-${NATIVE_OS_VERS%%.*}.0-$NATIVE_OS_ARCH"
             else
                 T="$NATIVE_OS_SPEC"
             fi
