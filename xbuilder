@@ -408,13 +408,42 @@ inspect_install_arguments() {
                 ;;
             --session-dir=*)
                 SESSION_DIR="${1#*=}"
+
+                case $SESSION_DIR in
+                    '')  abort 1 "--session-dir=<DIR> , <DIR> must be a non-empty string." ;;
+                    /*)  ;;
+                    ~)   SESSION_DIR="$HOME" ;;
+                    ~/)  SESSION_DIR="$HOME" ;;
+                    ~/.) SESSION_DIR="$HOME" ;;
+                    ~/*) SESSION_DIR="$HOME/${SESSION_DIR#~/}" ;;
+                    *)   SESSION_DIR="$PWD/$SESSION_DIR"
+                esac
                 ;;
             --download-dir=*)
                 DOWNLOAD_DIR="${1#*=}"
+
+                case $DOWNLOAD_DIR in
+                    '')  abort 1 "--download-dir=<DIR> , <DIR> must be a non-empty string." ;;
+                    /*)  ;;
+                    ~)   DOWNLOAD_DIR="$HOME" ;;
+                    ~/)  DOWNLOAD_DIR="$HOME" ;;
+                    ~/.) DOWNLOAD_DIR="$HOME" ;;
+                    ~/*) DOWNLOAD_DIR="$HOME/${DOWNLOAD_DIR#~/}" ;;
+                    *)   DOWNLOAD_DIR="$PWD/$DOWNLOAD_DIR"
+                esac
                 ;;
             --prefix=*)
                 PACKAGE_INSTALL_ROOT="${1#*=}"
-                PACKAGE_INSTALL_ROOT="$(realpath "$PACKAGE_INSTALL_ROOT")"
+
+                case $PACKAGE_INSTALL_ROOT in
+                    '')  abort 1 "--prefix=<DIR> , <DIR> must be a non-empty string." ;;
+                    /*)  ;;
+                    ~)   PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/)  PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/.) PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/*) PACKAGE_INSTALL_ROOT="$HOME/${PACKAGE_INSTALL_ROOT#~/}" ;;
+                    *)   PACKAGE_INSTALL_ROOT="$PWD/$PACKAGE_INSTALL_ROOT"
+                esac
                 ;;
             -j) shift
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
@@ -1141,7 +1170,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=5.0.0
+RUNTIME_BUILDER_VERSION=6.0.0
 
 case $1 in
     ''|--help|-h)
@@ -1199,7 +1228,16 @@ EOF
                 ;;
             --prefix=*)
                 PACKAGE_INSTALL_ROOT="${1#*=}"
-                PACKAGE_INSTALL_ROOT="$(realpath "$PACKAGE_INSTALL_ROOT")"
+
+                case $PACKAGE_INSTALL_ROOT in
+                    '')  abort 1 "--prefix=<DIR> , <DIR> must be a non-empty string." ;;
+                    /*)  ;;
+                    ~)   PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/)  PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/.) PACKAGE_INSTALL_ROOT="$HOME" ;;
+                    ~/*) PACKAGE_INSTALL_ROOT="$HOME/${PACKAGE_INSTALL_ROOT#~/}" ;;
+                    *)   PACKAGE_INSTALL_ROOT="$PWD/$PACKAGE_INSTALL_ROOT"
+                esac
 
                 [ -d "$PACKAGE_INSTALL_ROOT" ] && abort 1 "directory $PACKAGE_INSTALL_ROOT does not exist."
 
