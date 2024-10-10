@@ -5257,13 +5257,12 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
-            if [ "$NATIVE_OS_NAME" = macos ] ; then
+            if [ "$NATIVE_OS_TYPE" = macos ] ; then
                 T="macos-${NATIVE_OS_VERS%%.*}.0-$NATIVE_OS_ARCH"
             else
                 T="$NATIVE_OS_SPEC"
             fi
 
-            echo "T=$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.09-$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
