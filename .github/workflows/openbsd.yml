@@ -46,21 +46,21 @@ jobs:
             run ./ppkg update
 
             run ./ppkg search lib
-            run ./ppkg search libzip
+            run ./ppkg search uctags
 
-            run ./ppkg info-available libzip
-            run ./ppkg info-available libzip summary
-            run ./ppkg info-available libzip web-url
-            run ./ppkg info-available libzip version
+            run ./ppkg info-available uctags
+            run ./ppkg info-available uctags summary
+            run ./ppkg info-available uctags web-url
+            run ./ppkg info-available uctags version
 
-            run ./ppkg depends libzip
-
-
-            run ./ppkg install libzip --jobs=1
+            run ./ppkg depends uctags
 
 
-            run ./ppkg tree libzip
-            run ./ppkg pack libzip -t tar.xz
+            run ./ppkg install uctags --jobs=1
+
+
+            run ./ppkg tree uctags
+            run ./ppkg pack uctags -t tar.xz
 
             run ./ppkg formula-repo-list
 
@@ -69,11 +69,11 @@ jobs:
             run ./ppkg ls-installed
             run ./ppkg ls-outdated
 
-            run ./ppkg is-available libzip
-            run ./ppkg is-installed libzip
-            run ./ppkg is-outdated libzip || echo "not outdated"
+            run ./ppkg is-available uctags
+            run ./ppkg is-installed uctags
+            run ./ppkg is-outdated uctags || echo "not outdated"
 
-            run ./ppkg uninstall libzip
+            run ./ppkg uninstall uctags
 
             run ./ppkg fetch curl
 
