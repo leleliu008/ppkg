@@ -5263,11 +5263,11 @@ $DOT_CONTENT
                 T="$NATIVE_OS_SPEC"
             fi
 
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.09-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.11-$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
             if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.09/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.11/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
                 run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
