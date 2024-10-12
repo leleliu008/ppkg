@@ -8446,7 +8446,7 @@ __setup_alpine() {
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
 
-    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > _init.rc
+    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.rc
 }
 
 __setup_darwin() {
@@ -8503,7 +8503,7 @@ __setup_darwin() {
     run ln -s $BREW_BIN_DIR/ginstall bin/install
     run ln -s $BREW_BIN_DIR/gsha256sum bin/sha256sum
 
-    cat > _init.rc <<EOF
+    cat > init.rc <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
@@ -8531,7 +8531,7 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > _init.rc
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.rc
 }
 
 __setup_dragonfly() {
@@ -8568,7 +8568,7 @@ __setup_openbsd() {
     printf '%s\n' '#!/bin/sh' > bin/tree
     chmod +x                    bin/tree
 
-    cat > _init.rc <<EOF
+    cat > init.rc <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 
 PPFLAGS=-I/usr/local/include
@@ -8616,7 +8616,7 @@ __setup_netbsd() {
     run ln -s /usr/pkg/bin/grealpath  bin/realpath
     run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
 
-    cat > _init.rc <<EOF
+    cat > init.rc <<EOF
 export PATH="/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
@@ -8636,11 +8636,11 @@ __setup() {
     NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
     NATIVE_OS_ARCH="$(uname -m)"
 
-    if [ "$(id -u)" -ne 0 ] ; then
-        sudo=sudo
-    else
-        unset sudo
-    fi
+    #################################################################################
+
+    unset sudo
+
+    [ "$(id -u)" -eq 0 ] || sudo=sudo
 
     #################################################################################
 
@@ -8659,7 +8659,7 @@ __setup() {
             NATIVE_OS_NAME="$NATIVE_OS_KIND"
         fi
 
-        eval "__setup_$NATIVE_OS_NAME"
+        __setup_$NATIVE_OS_NAME
 
         export PATH="$PWD/bin:$PATH"
 
@@ -8670,29 +8670,22 @@ __setup() {
 
         for f in ppkg/*.c
         do
-            F="${f#*/}"
-            F="${F%.c}"
+            o="${f#*/}"
+            o="${o%.c}"
 
-            run cc -flto -Os -std=c99 -o "$F" "$f"
-            run strip "$F"
+            run cc -flto -Os -std=c99 -o "$o" "$f"
+            run strip "$o"
         done
 
+        run mv ppkg/uppm-shim-$SYSPM uppm
+        run mv ppkg/xbuilder .
         run mv ppkg/fonts.conf .
-        run sed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
+
+        run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
+
+        #################################################################################
 
         wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' --no-buffer
-
-        #################################################################################
-
-        step "install uppm shim"
-        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg/master/uppm-shim-$SYSPM" -o uppm --no-buffer
-        run chmod +x uppm
-
-        #################################################################################
-
-        step "install xbuilder"
-        wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' --no-buffer
-        run chmod +x xbuilder
 
         #################################################################################
 
@@ -8715,7 +8708,8 @@ __setup() {
 
         step "install xxd"
         wfetch 'https://raw.githubusercontent.com/vim/vim/master/src/xxd/xxd.c' --no-buffer
-        run cc -DUNIX -Os -Wl,-s -o bin/xxd xxd.c
+        run cc -DUNIX -Os -flto -o bin/xxd xxd.c
+        run strip bin/xxd
 
         #################################################################################
 
@@ -8754,8 +8748,7 @@ __setup() {
         # https://curl.se/docs/caextract.html
         wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
-        printf 'SYSPM=%s\n' "$SYSPM" >> _init.rc
-        mv _init.rc init.rc
+        printf 'SYSPM=%s\n' "$SYSPM" >> init.rc
     else
         __setup_uppm
     fi
