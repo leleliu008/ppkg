@@ -5177,29 +5177,35 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    # these native packages would be installed by uppm
-    PACKAGE_DEP_UPP_T1='pkg-config patchelf tree'
+    if [ -n "$SYSPM" ] ; then
+        # using system's package manager to install these packages rather than uppm
+        PACKAGE_DEP_UPP_T1="pkg-config patchelf tree $PACKAGE_DEP_UPP"
+        PACKAGE_DEP_UPP_T2=
+    else
+        # these native packages would be installed via uppm
+        PACKAGE_DEP_UPP_T1='pkg-config patchelf tree'
 
-    # these native packages are not relocatable, we should build them from source locally at build time.
-    PACKAGE_DEP_UPP_T2=
+        # these native packages are non-relocatable and can not be installed via uppm, we should build them from source locally at build time.
+        PACKAGE_DEP_UPP_T2=
 
-    for item in $PACKAGE_DEP_UPP
-    do
-        case $item in
-            perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
-        esac
-    done
+        for item in $PACKAGE_DEP_UPP
+        do
+            case $item in
+                perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
+            esac
+        done
+    fi
 
     #########################################################################################
 
@@ -8440,7 +8446,7 @@ __setup_alpine() {
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
 
-    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.rc
+    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > _init.rc
 }
 
 __setup_darwin() {
@@ -8497,7 +8503,7 @@ __setup_darwin() {
     run ln -s $BREW_BIN_DIR/ginstall bin/install
     run ln -s $BREW_BIN_DIR/gsha256sum bin/sha256sum
 
-    cat > init.rc <<EOF
+    cat > _init.rc <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
@@ -8525,7 +8531,7 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.rc
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > _init.rc
 }
 
 __setup_dragonfly() {
@@ -8562,7 +8568,7 @@ __setup_openbsd() {
     printf '%s\n' '#!/bin/sh' > bin/tree
     chmod +x                    bin/tree
 
-    cat > init.rc <<EOF
+    cat > _init.rc <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 
 PPFLAGS=-I/usr/local/include
@@ -8610,7 +8616,7 @@ __setup_netbsd() {
     run ln -s /usr/pkg/bin/grealpath  bin/realpath
     run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
 
-    cat > init.rc <<EOF
+    cat > _init.rc <<EOF
 export PATH="/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
@@ -8747,6 +8753,9 @@ __setup() {
 
         # https://curl.se/docs/caextract.html
         wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
+
+        printf 'SYSPM=%s\n' "$SYSPM" >> _init.rc
+        mv _init.rc init.rc
     else
         __setup_uppm
     fi
@@ -9287,7 +9296,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.12.0
+PPKG_VERSION=0.13.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9343,6 +9352,10 @@ TIMESTAMP_UNIX="$(date +%s)"
 ##################################################################################
 
 export BAT_THEME=Dracula
+
+##################################################################################
+
+unset SYSPM
 
 ##################################################################################
 
