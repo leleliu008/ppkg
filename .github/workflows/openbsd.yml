@@ -56,7 +56,7 @@ jobs:
             run ./ppkg depends uctags
 
 
-            run ./ppkg install uctags --jobs=1
+            run ./ppkg install uctags
 
 
             run ./ppkg tree uctags
