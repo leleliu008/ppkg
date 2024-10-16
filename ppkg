@@ -4210,13 +4210,13 @@ gow() {
 
                 case $PPKG_DEFAULT_TARGET in
                     '')
-                        TARGET_PLATFORM_NAME="$NATIVE_OS_TYPE"
-                        TARGET_PLATFORM_ARCH="$NATIVE_OS_ARCH"
+                        TARGET_PLATFORM_NAME="$NATIVE_PLATFORM_TYPE"
+                        TARGET_PLATFORM_ARCH="$NATIVE_PLATFORM_ARCH"
 
-                        if [ "$NATIVE_OS_TYPE" = linux ] ; then
-                            TARGET_PLATFORM_VERS="$NATIVE_OS_LIBC"
+                        if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+                            TARGET_PLATFORM_VERS="$NATIVE_PLATFORM_LIBC"
                         else
-                            TARGET_PLATFORM_VERS="$NATIVE_OS_VERS"
+                            TARGET_PLATFORM_VERS="$NATIVE_PLATFORM_VERS"
                         fi
 
                         TARGET_PLATFORM_SPEC="$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH"
@@ -4583,7 +4583,7 @@ $FORMULA_SEARCH_DIR"
     unset READELF_FOR_BUILD
     unset SYSROOT_FOR_BUILD
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+    if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
              CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
            OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
             CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
@@ -4625,12 +4625,12 @@ $FORMULA_SEARCH_DIR"
 
     #########################################################################################
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-          CFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-       OBJCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-        CXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+    if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
+          CFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
+       OBJCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
+        CXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
         CPPFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -Qunused-arguments"
-         LDFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
+         LDFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH"
     else
           CFLAGS_FOR_BUILD="-fPIC -fno-common"
        OBJCFLAGS_FOR_BUILD="-fPIC -fno-common"
@@ -4657,7 +4657,7 @@ $FORMULA_SEARCH_DIR"
          LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
     fi
 
-    case $NATIVE_OS_KIND in
+    case $NATIVE_PLATFORM_KIND in
         netbsd)  LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
         openbsd) LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
     esac
@@ -4802,13 +4802,13 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$NATIVE_OS_KIND" = linux ] ; then
-        NATIVE_OS_SPEC="$NATIVE_OS_TYPE-$NATIVE_OS_LIBC-$NATIVE_OS_ARCH"
+    if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
+        NATIVE_PLATFORM_SPEC="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
     else
-        NATIVE_OS_SPEC="$NATIVE_OS_TYPE-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+        NATIVE_PLATFORM_SPEC="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
     fi
 
-    if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_OS_SPEC" ] ; then
+    if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_PLATFORM_SPEC" ] ; then
         CROSS_COMPILING=0
     else
         CROSS_COMPILING=1
@@ -4817,37 +4817,37 @@ __install_the_given_package() {
     #########################################################################################
 
     cat <<EOF
-     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+      TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
-     NATIVE_OS_KIND = $NATIVE_OS_KIND
-     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-     NATIVE_OS_CODE = $NATIVE_OS_CODE
-     NATIVE_OS_NAME = $NATIVE_OS_NAME
-     NATIVE_OS_VERS = $NATIVE_OS_VERS
-     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_EUID = $NATIVE_OS_EUID
-     NATIVE_OS_EGID = $NATIVE_OS_EGID
+NATIVE_PLATFORM_KIND = $NATIVE_PLATFORM_KIND
+NATIVE_PLATFORM_TYPE = $NATIVE_PLATFORM_TYPE
+NATIVE_PLATFORM_CODE = $NATIVE_PLATFORM_CODE
+NATIVE_PLATFORM_NAME = $NATIVE_PLATFORM_NAME
+NATIVE_PLATFORM_VERS = $NATIVE_PLATFORM_VERS
+NATIVE_PLATFORM_ARCH = $NATIVE_PLATFORM_ARCH
+NATIVE_PLATFORM_NCPU = $NATIVE_PLATFORM_NCPU
+NATIVE_PLATFORM_LIBC = $NATIVE_PLATFORM_LIBC
+NATIVE_PLATFORM_EUID = $NATIVE_PLATFORM_EUID
+NATIVE_PLATFORM_EGID = $NATIVE_PLATFORM_EGID
 
-TARGET_PLATFORM_NAME= $TARGET_PLATFORM_NAME
-TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
-TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
+TARGET_PLATFORM_NAME = $TARGET_PLATFORM_NAME
+TARGET_PLATFORM_VERS = $TARGET_PLATFORM_VERS
+TARGET_PLATFORM_ARCH = $TARGET_PLATFORM_ARCH
 
-PPKG_ARG0           = $PPKG_ARG0
-PPKG_ARG1           = $PPKG_ARG1
-PPKG_ARGV           = $PPKG_ARGV
-PPKG_PATH           = $PPKG_PATH
-PPKG_HOME           = $PPKG_HOME
-PPKG_VERSION        = $PPKG_VERSION
-PPKG_URL_TRANSFORM  = $PPKG_URL_TRANSFORM
+PPKG_ARG0            = $PPKG_ARG0
+PPKG_ARG1            = $PPKG_ARG1
+PPKG_ARGV            = $PPKG_ARGV
+PPKG_PATH            = $PPKG_PATH
+PPKG_HOME            = $PPKG_HOME
+PPKG_VERSION         = $PPKG_VERSION
+PPKG_URL_TRANSFORM   = $PPKG_URL_TRANSFORM
 
-    CROSS_COMPILING = $CROSS_COMPILING
+     CROSS_COMPILING = $CROSS_COMPILING
 
-          LOG_LEVEL = $LOG_LEVEL
-            PROFILE = $PROFILE
+           LOG_LEVEL = $LOG_LEVEL
+             PROFILE = $PROFILE
 
-      ENABLE_CCACHE = $ENABLE_CCACHE
+       ENABLE_CCACHE = $ENABLE_CCACHE
 REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
 REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE = $REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
@@ -4898,7 +4898,7 @@ EOF
     #########################################################################################
 
     if [ "$PACKAGE_PARALLEL" = 1 ] ; then
-        BUILD_NJOBS="$NATIVE_OS_NCPU"
+        BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
     else
         BUILD_NJOBS=1
     fi
@@ -5231,7 +5231,7 @@ $DOT_CONTENT
 
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
         do
-            if [ "$UPPM_PACKAGE_NAME" = cmake ] && [ "$NATIVE_OS_KIND" = netbsd ] ; then
+            if [ "$UPPM_PACKAGE_NAME" = cmake ] && [ "$NATIVE_PLATFORM_KIND" = netbsd ] ; then
                 run $sudo pkgin -y update
                 run $sudo pkgin -y install cmake
                 continue
@@ -5263,10 +5263,10 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
-            if [ "$NATIVE_OS_TYPE" = macos ] ; then
-                T="macos-${NATIVE_OS_VERS%%.*}.0-$NATIVE_OS_ARCH"
+            if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+                T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
             else
-                T="$NATIVE_OS_SPEC"
+                T="$NATIVE_PLATFORM_SPEC"
             fi
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.12-$T"
@@ -6422,7 +6422,7 @@ EOF
 
         # https://docs.rs/openssl/latest/openssl/
         [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
-            case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
+            case "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" in
                 linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
                 macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
                 macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
@@ -7592,16 +7592,16 @@ builtfor: $TARGET_PLATFORM_SPEC
 builtby: ppkg-$PPKG_VERSION
 builtat: $TIMESTAMP_UNIX
 builton:
-    os-arch: $NATIVE_OS_ARCH
-    os-kind: $NATIVE_OS_KIND
-    os-type: $NATIVE_OS_TYPE
-    os-libc: $NATIVE_OS_LIBC
-    os-code: $NATIVE_OS_CODE
-    os-name: $NATIVE_OS_NAME
-    os-vers: $NATIVE_OS_VERS
-    os-ncpu: $NATIVE_OS_NCPU
-    os-euid: $NATIVE_OS_EUID
-    os-egid: $NATIVE_OS_EGID
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-libc: $NATIVE_PLATFORM_LIBC
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
 EOF
 }
 
@@ -8486,7 +8486,7 @@ __setup_darwin() {
 
     BREW_PACKAGE_EXEFIND_PATH="${BREW_PACKAGE_EXEFIND_PATH#':'}"
 
-    if [ "$NATIVE_OS_ARCH" = x86_64 ] ; then
+    if [ "$NATIVE_PLATFORM_ARCH" = x86_64 ] ; then
         BREW_BIN_DIR='/usr/local/bin'
     else
         BREW_BIN_DIR='/opt/homebrew/bin'
@@ -8632,8 +8632,8 @@ __setup() {
 
     ##################################################################################
 
-    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_OS_ARCH="$(uname -m)"
+    NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_PLATFORM_ARCH="$(uname -m)"
 
     #################################################################################
 
@@ -8646,19 +8646,19 @@ __setup() {
     if [ "$1" = '--syspm' ] ; then
         step "install needed packages via your system's package manager"
 
-        if [ "$NATIVE_OS_KIND" = linux ] ; then
+        if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
             unset ID
 
             if [ -f /etc/os-release ] ; then
                 .   /etc/os-release
             fi
 
-            NATIVE_OS_NAME="$ID"
+            NATIVE_PLATFORM_NAME="$ID"
         else
-            NATIVE_OS_NAME="$NATIVE_OS_KIND"
+            NATIVE_PLATFORM_NAME="$NATIVE_PLATFORM_KIND"
         fi
 
-        __setup_$NATIVE_OS_NAME
+        __setup_$NATIVE_PLATFORM_NAME
 
         export PATH="$PWD/bin:$PATH"
 
@@ -8696,7 +8696,7 @@ __setup() {
 
         #################################################################################
 
-        [ "$NATIVE_OS_KIND" = darwin ] || {
+        [ "$NATIVE_PLATFORM_KIND" = darwin ] || {
             step "install patchelf"
             wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
             run bsdtar xf patchelf-0.17.2.zip --no-same-owner
@@ -8718,7 +8718,7 @@ __setup() {
         unset YQ_SHA
 
         # https://github.com/mikefarah/yq/releases
-        case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        case $NATIVE_PLATFORM_KIND-$NATIVE_PLATFORM_ARCH in
             linux-x86_64)
                 YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
                 YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
@@ -8765,55 +8765,55 @@ __setup() {
 
 # use commands: uname curl|wget tar xz cut
 __setup_uppm() {
-    unset NATIVE_OS_TYPE
-    unset NATIVE_OS_VERS
+    unset NATIVE_PLATFORM_TYPE
+    unset NATIVE_PLATFORM_VERS
 
-    case $NATIVE_OS_KIND in
+    case $NATIVE_PLATFORM_KIND in
         darwin)
-            NATIVE_OS_TYPE='macos'
+            NATIVE_PLATFORM_TYPE='macos'
 
             case $(sw_vers -productVersion | cut -d. -f1) in
-                10) NATIVE_OS_VERS='10.15' ;;
-                11) NATIVE_OS_VERS='11.0'  ;;
-                12) NATIVE_OS_VERS='12.0'  ;;
-                13) NATIVE_OS_VERS='13.0'  ;;
-                *)  NATIVE_OS_VERS='14.0'  ;;
+                10) NATIVE_PLATFORM_VERS='10.15' ;;
+                11) NATIVE_PLATFORM_VERS='11.0'  ;;
+                12) NATIVE_PLATFORM_VERS='12.0'  ;;
+                13) NATIVE_PLATFORM_VERS='13.0'  ;;
+                *)  NATIVE_PLATFORM_VERS='14.0'  ;;
             esac
             ;;
         freebsd)
             case $(freebsd-version) in
-                13.0) NATIVE_OS_VERS='13.0' ;;
-                13.1) NATIVE_OS_VERS='13.1' ;;
-                *)    NATIVE_OS_VERS='13.2' ;;
+                13.0) NATIVE_PLATFORM_VERS='13.0' ;;
+                13.1) NATIVE_PLATFORM_VERS='13.1' ;;
+                *)    NATIVE_PLATFORM_VERS='13.2' ;;
             esac
             ;;
         openbsd)
             case $(uname -r) in
-                7.3) NATIVE_OS_VERS='7.3' ;;
-                *)   NATIVE_OS_VERS='7.4' ;;
+                7.3) NATIVE_PLATFORM_VERS='7.3' ;;
+                *)   NATIVE_PLATFORM_VERS='7.4' ;;
             esac
             ;;
         netbsd)
             case $(uname -r) in
-                9.1) NATIVE_OS_VERS='9.1' ;;
-                9.2) NATIVE_OS_VERS='9.2' ;;
-                *)   NATIVE_OS_VERS='9.3' ;;
+                9.1) NATIVE_PLATFORM_VERS='9.1' ;;
+                9.2) NATIVE_PLATFORM_VERS='9.2' ;;
+                *)   NATIVE_PLATFORM_VERS='9.3' ;;
             esac
             ;;
     esac
 
     ##################################################################################
 
-    if [ -z "$NATIVE_OS_TYPE" ] ; then
-        NATIVE_OS_TYPE="$NATIVE_OS_KIND"
+    if [ -z "$NATIVE_PLATFORM_TYPE" ] ; then
+        NATIVE_PLATFORM_TYPE="$NATIVE_PLATFORM_KIND"
     fi
 
     ##################################################################################
 
-    if [ -z "$NATIVE_OS_VERS" ] ; then
-        NATIVE_OS_TARGET="$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
+    if [ -z "$NATIVE_PLATFORM_VERS" ] ; then
+        NATIVE_PLATFORM_TARGET="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH"
     else
-        NATIVE_OS_TARGET="$NATIVE_OS_TYPE-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+        NATIVE_PLATFORM_TARGET="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
     fi
 
     ##################################################################################
@@ -8832,7 +8832,7 @@ __setup_uppm() {
 
     PPKG_CORE_RELEASE_VERSION='2024.08.18'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
-    PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_OS_TARGET.tar.xz"
+    PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     PPKG_CORE_RELEASE_TARBALL_URL="https://github.com/leleliu008/ppkg/releases/download/$PPKG_CORE_RELEASE_TAG/$PPKG_CORE_RELEASE_TARBALL_FILENAME"
 
     wfetch "$PPKG_CORE_RELEASE_TARBALL_URL" --no-buffer
@@ -9288,7 +9288,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.13.0
+PPKG_VERSION=0.14.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9436,21 +9436,21 @@ bppend_to_PATH "$PPKG_CORE_DIR/bin"
 
 #########################################################################################
 
-NATIVE_OS_KIND="$(sysinfo kind)"
-NATIVE_OS_TYPE="$(sysinfo type)"
-NATIVE_OS_CODE="$(sysinfo code)"
-NATIVE_OS_NAME="$(sysinfo name)"
-NATIVE_OS_VERS="$(sysinfo vers)"
-NATIVE_OS_ARCH="$(sysinfo arch)"
-NATIVE_OS_NCPU="$(sysinfo ncpu)"
-NATIVE_OS_LIBC="$(sysinfo libc)"
-NATIVE_OS_EUID="$(id -u)"
-NATIVE_OS_EGID="$(id -g)"
+NATIVE_PLATFORM_KIND="$(sysinfo kind)"
+NATIVE_PLATFORM_TYPE="$(sysinfo type)"
+NATIVE_PLATFORM_CODE="$(sysinfo code)"
+NATIVE_PLATFORM_NAME="$(sysinfo name)"
+NATIVE_PLATFORM_VERS="$(sysinfo vers)"
+NATIVE_PLATFORM_ARCH="$(sysinfo arch)"
+NATIVE_PLATFORM_NCPU="$(sysinfo ncpu)"
+NATIVE_PLATFORM_LIBC="$(sysinfo libc)"
+NATIVE_PLATFORM_EUID="$(id -u)"
+NATIVE_PLATFORM_EGID="$(id -g)"
 
-TARGET_PLATFORM_NAME="$NATIVE_OS_TYPE"
-TARGET_PLATFORM_ARCH="$NATIVE_OS_ARCH"
+TARGET_PLATFORM_NAME="$NATIVE_PLATFORM_TYPE"
+TARGET_PLATFORM_ARCH="$NATIVE_PLATFORM_ARCH"
 
-if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
+if [ "$NATIVE_PLATFORM_EUID" -ne 0 ] ; then
     sudo=sudo
 fi
 
@@ -9563,7 +9563,7 @@ case $1 in
 
         ROOT1="$UPPM_HOME/installed"
         ROOT2="$NATIVE_PACKAGE_INSTALLED_ROOT"
-        ROOT3="$PPKG_PACKAGE_INSTALLED_ROOT/$NATIVE_OS_NAME-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+        ROOT3="$PPKG_PACKAGE_INSTALLED_ROOT/$NATIVE_PLATFORM_NAME-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
 
         [ -n "$ROOT1" ] && DIRS1="$(find "$ROOT1" -maxdepth 1 -mindepth 1 -type d)"
         [ -n "$ROOT2" ] && DIRS2="$(find "$ROOT2" -maxdepth 1 -mindepth 1 -type l)"
