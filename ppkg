@@ -8750,6 +8750,7 @@ __setup() {
         wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
         printf 'SYSPM=%s\n' "$SYSPM" >> init.sh
+        cat init.sh >&2
     else
         __setup_uppm
     fi
@@ -9421,6 +9422,7 @@ unset LDFLAGS
 
 if [ -f "$PPKG_CORE_DIR/init.sh" ] ; then
     .   "$PPKG_CORE_DIR/init.sh"
+    cat "$PPKG_CORE_DIR/init.sh" >&2
 else
     abort 1 "please run ${COLOR_GREEN}$PPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
