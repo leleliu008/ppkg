@@ -5191,18 +5191,15 @@ $DOT_CONTENT
         for item in $PACKAGE_DEP_UPP
         do
             case $item in
-                perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
+                perl|texinfo|help2man|libopenssl|libz|intltool|python3|ruby|swig)
+                    PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"
+                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item"
+                    ;;
+                autoconf|automake|libtool)
+                    PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"
+                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item"
+                    ;;
+                *)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
             esac
         done
     fi
@@ -9288,7 +9285,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.14.0
+PPKG_VERSION=0.14.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

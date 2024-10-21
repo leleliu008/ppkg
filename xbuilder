@@ -314,14 +314,12 @@ inspect_install_arguments() {
     unset DUMP_UPPM
 
     unset VERBOSE_GMAKE
-    unset VERBOSE_CMAKE
 
     unset DEBUG_CC
     unset DEBUG_LD
     unset DEBUG_GO
     unset DEBUG_CARGO
     unset DEBUG_GMAKE
-    unset DEBUG_CMAKE
     unset DEBUG_XMAKE
     unset DEBUG_PKG_CONFIG
 
@@ -336,7 +334,6 @@ inspect_install_arguments() {
                 DUMP_UPPM=1
 
                 VERBOSE_GMAKE=1
-                VERBOSE_CMAKE=1
                 ;;
             -x) LOG_LEVEL=3
 
@@ -345,12 +342,10 @@ inspect_install_arguments() {
                 DUMP_UPPM=1
 
                 VERBOSE_GMAKE=1
-                VERBOSE_CMAKE=1
 
                 DEBUG_CC=1
                 DEBUG_LD=1
                 DEBUG_GMAKE=1
-                DEBUG_CMAKE=1
                 DEBUG_PKG_CONFIG=1
                 ;;
             -v-env)
@@ -365,9 +360,6 @@ inspect_install_arguments() {
             -v-gmake)
                 VERBOSE_GMAKE=1
                 ;;
-            -v-cmake)
-                VERBOSE_CMAKE=1
-                ;;
             -x-sh)
                 set -x
                 ;;
@@ -379,9 +371,6 @@ inspect_install_arguments() {
                 ;;
             -x-gmake)
                 DEBUG_GMAKE=1
-                ;;
-            -x-cmake)
-                DEBUG_CMAKE=1
                 ;;
             -x-pkg-config)
                 DEBUG_PKG_CONFIG=1
@@ -624,7 +613,6 @@ inspect_install_arguments() {
     unset M4
     unset MAKE
 
-    # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
     unset   MACOSX_DEPLOYMENT_TARGET
     unset IPHONEOS_DEPLOYMENT_TARGET
     unset  WATCHOS_DEPLOYMENT_TARGET
@@ -633,88 +621,7 @@ inspect_install_arguments() {
     unset TARGET_ARCH
 
     # https://keith.github.io/xcode-man-pages/xcrun.1.html
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
     unset SDKROOT
-
-    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
-
-    unset CMAKE_APPBUNDLE_PATH
-    unset CMAKE_FRAMEWORK_PATH
-    unset CMAKE_PROGRAM_PATH
-    unset CMAKE_INCLUDE_PATH
-    unset CMAKE_LIBRARY_PATH
-    unset CMAKE_PREFIX_PATH
-    unset CMAKE_MAXIMUM_RECURSION_DEPTH
-    unset CMAKE_APPLE_SILICON_PROCESSOR
-    unset CMAKE_BUILD_PARALLEL_LEVEL
-    unset CMAKE_BUILD_TYPE
-    unset CMAKE_CONFIGURATION_TYPES
-    unset CMAKE_CONFIG_TYPE
-    unset CMAKE_EXPORT_COMPILE_COMMANDS
-    unset CMAKE_GENERATOR
-    unset CMAKE_GENERATOR_INSTANCE
-    unset CMAKE_GENERATOR_PLATFORM
-    unset CMAKE_GENERATOR_TOOLSET
-    unset CMAKE_INSTALL_MODE
-    unset CMAKE_C_COMPILER_LAUNCHER
-    unset CMAKE_C_LINKER_LAUNCHER
-    unset CMAKE_CXX_COMPILER_LAUNCHER
-    unset CMAKE_CXX_LINKER_LAUNCHER
-    unset CMAKE_MSVCIDE_RUN_PATH
-    unset CMAKE_NO_VERBOSE
-    unset CMAKE_OSX_ARCHITECTURES
-    unset CMAKE_TOOLCHAIN_FILE
-    unset DESTDIR
-    unset VERBOSE
-    unset CTEST_INTERACTIVE_DEBUG_MODE
-    unset CTEST_OUTPUT_ON_FAILURE
-    unset CTEST_PARALLEL_LEVEL
-    unset CTEST_PROGRESS_OUTPUT
-    unset CTEST_USE_LAUNCHERS_DEFAULT
-    unset DASHBOARD_TEST_FROM_CTEST
-
-    # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
-    export CMAKE_GENERATOR='Unix Makefiles'
-
-    # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
-    export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
-
-    # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
-        export CMAKE_EXPORT_COMPILE_COMMANDS=ON
-    else
-        export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
-    fi
-
-    case $PROFILE in
-        debug)   CMAKE_BUILD_TYPE=Debug   ;;
-        release) CMAKE_BUILD_TYPE=Release ;;
-    esac
-
-    if [ "$VERBOSE_CMAKE" = 1 ] ; then
-        CMAKE_VERBOSE_MAKEFILE=ON
-        CMAKE_COLOR_MAKEFILE=ON
-    else
-        CMAKE_VERBOSE_MAKEFILE=OFF
-        CMAKE_COLOR_MAKEFILE=OFF
-    fi
-
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-    if [ "$DEBUG_CMAKE" = 1 ] ; then
-        CMAKE_FIND_DEBUG_MODE=ON
-    else
-        CMAKE_FIND_DEBUG_MODE=OFF
-    fi
-}
-
-cmakew() {
-    if [ -z "$CMAKE" ] ; then
-        CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
-    fi
-
-    run "$CMAKE" -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE -DCMAKE_COLOR_MAKEFILE=$CMAKE_COLOR_MAKEFILE -DCMAKE_FIND_DEBUG_MODE=$CMAKE_FIND_DEBUG_MODE -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$*" -S . -B build.d
-    run "$CMAKE" --build   build.d
-    run "$CMAKE" --install build.d
 }
 
 configure() {
@@ -844,13 +751,14 @@ EOF
 
     wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
 
-    SRCDIR="$PACKAGE_WORKING_DIR/src"
+    #########################################################################################
 
-    run install -d "$SRCDIR"
+    run install -d "$PACKAGE_WORKING_DIR/src"
+    run cd         "$PACKAGE_WORKING_DIR/src"
 
-    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C "$SRCDIR"
+    #########################################################################################
 
-    run cd "$SRCDIR"
+    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
 
     #########################################################################################
 
@@ -881,6 +789,10 @@ EOF
     if [ -n  "$PACKAGE_DOTWEAK" ] ; then
         eval "$PACKAGE_DOTWEAK"
     fi
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
@@ -915,26 +827,38 @@ EOF
 package_info_libz() {
     PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
     PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
-    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
-    PACKAGE_INSTALL='cmakew'
+    PACKAGE_INSTALL='configure --static'
 }
 
 package_info_libbz2() {
-    PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-    PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
-    PACKAGE_INSTALL='cmakew -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
+    PACKAGE_SRC_URL='https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz'
+    PACKAGE_SRC_SHA='ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269'
+    PACKAGE_INSTALL='
+    for f in blocksort.c huffman.c crctable.c randtable.c compress.c decompress.c bzlib.c
+    do
+        o="${f%.c}.o"
+        run "$CC" -c "$CFLAGS" "$CPPFLAGS" -D_FILE_OFFSET_BITS=64 -o "$o" "$f"
+    done
+
+    run "$AR" crs libbz2.a *.o
+
+    run install -d     "$PACKAGE_INSTALL_DIR/include/"
+    run install -d     "$PACKAGE_INSTALL_DIR/lib/"
+    run cp -L bzlib.h  "$PACKAGE_INSTALL_DIR/include/"
+    run cp -L libbz2.a "$PACKAGE_INSTALL_DIR/lib/"
+    '
 }
 
 package_info_libpcre2() {
-    PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
-    PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
-    PACKAGE_INSTALL='cmakew -DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+    PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.bz2'
+    PACKAGE_SRC_SHA='d34f02e113cf7193a1ebf2770d3ac527088d485d4e047ed10e5d217c6ef5de96'
+    PACKAGE_INSTALL='configure --enable-pcre2-16 --enable-pcre2-32 --disable-pcre2grep-libz --disable-pcre2grep-libbz2 --disable-pcre2test-libedit --disable-pcre2test-libreadline --disable-fuzz-support --disable-valgrind --enable-jit --enable-static --disable-shared'
 }
 
 package_info_libexpat() {
-    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-    PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-    PACKAGE_INSTALL='cmakew -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz'
+    PACKAGE_SRC_SHA='274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
 }
 
 package_info_liblzma() {
@@ -968,7 +892,7 @@ package_info_libyaml() {
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
 }
 
-package_info_openssl() {
+package_info_libopenssl() {
     PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
     PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
     PACKAGE_DEP_PKG='perl'
@@ -1039,8 +963,8 @@ package_info_ruby() {
 package_info_python3() {
     PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz'
     PACKAGE_SRC_SHA='e7de3240a8bc2b1e1ba5c81bf943f06861ff494b69fda990ce2722a504c6153d'
-    PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat libsqlite3 libffi openssl perl'
-    PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+    PACKAGE_DEP_PKG='libz libbz2 liblzma libgdbm libexpat libsqlite3 libffi libopenssl perl'
+    PACKAGE_INSTALL="configure --with-system-expat --with-system-ffi --with-openssl=$PACKAGE_INSTALL_ROOT/libopenssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
     PACKAGE_DOPATCH='
 unset PYTHONHOME
 unset PYTHONPATH
@@ -1079,7 +1003,7 @@ package_info_swig() {
 
 help() {
     printf '%b\n' "\
-${COLOR_GREEN}A package builder to build non-relocatable packages such as automake, autoconf, libtool, ruby, perl, python3, etc.${COLOR_OFF}
+${COLOR_GREEN}A package builder to build non-relocatable packages such as automake, autoconf, libtool, texinfo, etc.${COLOR_OFF}
 
 ${COLOR_GREEN}xbuilder --help${COLOR_OFF}
 ${COLOR_GREEN}xbuilder -h${COLOR_OFF}
@@ -1095,7 +1019,7 @@ ${COLOR_GREEN}xbuilder ls-available [-v]${COLOR_OFF}
 ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
     install the specified packages.
 
-    Influential environment variables: CC, CXX, CPP, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS, AS, LD, AR, RANLIB, CMAKE, GMAKE, PKG_CONFIG, URL_TRANSFORM
+    Influential environment variables: URL_TRANSFORM, GMAKE, PKG_CONFIG, CC, CXX, CPP, AS, LD, AR, RANLIB, CFLAGS, CXXFLAGS, CPPFLAGS, LDFLAGS
 
     OPTIONS:
         ${COLOR_BLUE}--prefix=<DIR>${COLOR_OFF}
@@ -1144,9 +1068,6 @@ ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}-v-gmake${COLOR_OFF}
             pass V=1 argument to gmake command.
 
-        ${COLOR_BLUE}-v-cmake${COLOR_OFF}
-            pass -DCMAKE_VERBOSE_MAKEFILE=ON argument to cmake command.
-
         ${COLOR_BLUE}-x-sh${COLOR_OFF}
             set -x to debug current running shell.
 
@@ -1159,9 +1080,6 @@ ${COLOR_GREEN}xbuilder install <PACKAGE-NAME>... [OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}-x-gmake${COLOR_OFF}
             pass --debug argument to gmake command.
 
-        ${COLOR_BLUE}-x-cmake${COLOR_OFF}
-            pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command.
-
         ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
             export PKG_CONFIG_DEBUG_SPEW=1
 
@@ -1170,7 +1088,7 @@ ${COLOR_GREEN}xbuilder exec [--prefix=<DIR>] <CMD>${COLOR_OFF}
 "
 }
 
-RUNTIME_BUILDER_VERSION=6.0.0
+RUNTIME_BUILDER_VERSION=7.0.0
 
 case $1 in
     ''|--help|-h)
@@ -1180,7 +1098,7 @@ case $1 in
         printf '%s\n' "$RUNTIME_BUILDER_VERSION"
         ;;
     ls-available)
-        PACKAGE_NAMES='libz libbz2 liblzma libffi libgdbm libyaml libpcre2 libsqlite3 openssl ruby perl python3 autoconf automake texinfo help2man intltool libtool swig perl-XML-Parser'
+        PACKAGE_NAMES='libz libbz2 liblzma libffi libgdbm libyaml libpcre2 libsqlite3 libopenssl ruby perl python3 autoconf automake texinfo help2man intltool libtool swig perl-XML-Parser'
 
         if [ "$2" = -v ] ; then
             for PACKAGE_NAME in $PACKAGE_NAMES
