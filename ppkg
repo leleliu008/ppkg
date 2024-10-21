@@ -8444,7 +8444,7 @@ __setup_alpine() {
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
 
-    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.sh
+    printf 'export ACLOCAL_PATH=/usr/share/aclocal\n' > init.sh
 }
 
 __setup_darwin() {
@@ -8529,7 +8529,7 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.sh
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
 
 __setup_dragonfly() {
