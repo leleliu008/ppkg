@@ -21,6 +21,8 @@ package_name_transform_from_uppm_to_pkg_add() {
         bsdtar)   printf '%s\n' 'libarchive';;
         pkg-config)
                   printf '%s\n' 'pkgconfig' ;;
+        autoconf) printf '%s\n' 'autoconf%2.69' ;;
+        automake) printf '%s\n' 'automake%1.16' ;;
         *)        printf '%s\n' "$1"
     esac
 }
