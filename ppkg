@@ -8565,6 +8565,9 @@ __setup_openbsd() {
     chmod +x                    bin/tree
 
     cat > init.rc <<EOF
+export AUTOCONF_VERSION=2.69
+export AUTOMAKE_VERSION=1.16
+
 export ACLOCAL_PATH=/usr/local/share/aclocal
 
 PPFLAGS=-I/usr/local/include
