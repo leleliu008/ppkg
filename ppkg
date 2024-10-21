@@ -5260,6 +5260,8 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
+            echo "SYSPM=$SYSPM"
+            echo "PACKAGE_DEP_UPP_T2=$PACKAGE_DEP_UPP_T2"
             if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
                 T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
             else
@@ -8442,7 +8444,7 @@ __setup_alpine() {
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
 
-    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.rc
+    printf 'export ACLOCAL_PATH=/usr/share/aclocal' > init.sh
 }
 
 __setup_darwin() {
@@ -8499,7 +8501,7 @@ __setup_darwin() {
     run ln -s $BREW_BIN_DIR/ginstall bin/install
     run ln -s $BREW_BIN_DIR/gsha256sum bin/sha256sum
 
-    cat > init.rc <<EOF
+    cat > init.sh <<EOF
 export ACLOCAL_PATH=/usr/local/share/aclocal
 export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
@@ -8527,7 +8529,7 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.rc
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal' > init.sh
 }
 
 __setup_dragonfly() {
@@ -8564,7 +8566,7 @@ __setup_openbsd() {
     printf '%s\n' '#!/bin/sh' > bin/tree
     chmod +x                    bin/tree
 
-    cat > init.rc <<EOF
+    cat > init.sh <<EOF
 export AUTOCONF_VERSION=2.69
 export AUTOMAKE_VERSION=1.16
 
@@ -8615,7 +8617,7 @@ __setup_netbsd() {
     run ln -s /usr/pkg/bin/grealpath  bin/realpath
     run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
 
-    cat > init.rc <<EOF
+    cat > init.sh <<EOF
 export PATH="/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
@@ -8747,7 +8749,7 @@ __setup() {
         # https://curl.se/docs/caextract.html
         wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
-        printf 'SYSPM=%s\n' "$SYSPM" >> init.rc
+        printf 'SYSPM=%s\n' "$SYSPM" >> init.sh
     else
         __setup_uppm
     fi
@@ -8881,7 +8883,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    cat > init.rc <<EOF
+    cat > init.sh <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -9288,7 +9290,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.14.1
+PPKG_VERSION=0.14.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9417,8 +9419,8 @@ unset LDFLAGS
 
 #########################################################################################
 
-if [ -f "$PPKG_CORE_DIR/init.rc" ] ; then
-    .   "$PPKG_CORE_DIR/init.rc"
+if [ -f "$PPKG_CORE_DIR/init.sh" ] ; then
+    .   "$PPKG_CORE_DIR/init.sh"
 else
     abort 1 "please run ${COLOR_GREEN}$PPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
