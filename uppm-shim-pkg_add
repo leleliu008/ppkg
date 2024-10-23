@@ -20,7 +20,7 @@ package_name_transform_from_uppm_to_pkg_add() {
         golang)   printf '%s\n' 'go'        ;;
         bsdtar)   printf '%s\n' 'libarchive';;
         pkg-config)
-                  printf '%s\n' 'pkgconfig' ;;
+                  printf '%s\n' 'pkgconf'   ;;
         autoconf) printf '%s\n' 'autoconf%2.69' ;;
         automake) printf '%s\n' 'automake%1.16' ;;
         *)        printf '%s\n' "$1"
