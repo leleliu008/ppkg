@@ -31,7 +31,7 @@ jobs:
               eval "$@"
             }
 
-            run sudo pkg install -y curl gcc
+            run pkg install -y curl gcc
 
             run ./ppkg --help
             run ./ppkg --version
