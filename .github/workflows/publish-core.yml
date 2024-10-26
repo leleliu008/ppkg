@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0']
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0']
         target-arch: [x86_64, arm64]
 
     steps:
@@ -247,7 +247,7 @@ jobs:
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
       - run: mv *.otf out/
 
-      - uses: cross-platform-actions/action@v0.25.0
+      - uses: cross-platform-actions/action@master
         with:
           operating_system: freebsd
           version: ${{ matrix.freebsd-version }}
@@ -306,7 +306,7 @@ jobs:
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
       - run: mv *.otf out/
 
-      - uses: cross-platform-actions/action@v0.25.0
+      - uses: cross-platform-actions/action@master
         with:
           operating_system: openbsd
           version: ${{ matrix.openbsd-version }}
