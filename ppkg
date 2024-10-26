@@ -6131,7 +6131,8 @@ EOF
         # both --static and -static flag should be given.
         #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
         # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
-        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
+        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections $LDFLAGS"
+        #-Wl,--no-dynamic-linker
     fi
 
     ##################################################################################
