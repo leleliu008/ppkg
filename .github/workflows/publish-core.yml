@@ -224,8 +224,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ppkg-core---dragonflybsd-${{ matrix.freebsd-version }}-x86_64.tar.xz
-          path: ppkg-core-*-dragonflybsd-${{ matrix.freebsd-version }}-x86_64.tar.xz
+          name: ppkg-core---dragonflybsd-${{ matrix.dragonflybsd-version }}-x86_64.tar.xz
+          path: ppkg-core-*-dragonflybsd-${{ matrix.dragonflybsd-version }}-x86_64.tar.xz
 
 
   freebsd:
@@ -236,7 +236,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        freebsd-version: ['14.1', '14.0', '13.4', '13.3', '13.2']
+        freebsd-version: ['14.1', '14.0', '13.3', '13.2']
         # https://archive.freebsd.org/old-releases/amd64/
 
     steps:
@@ -249,7 +249,7 @@ jobs:
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
       - run: mv *.otf out/
 
-      - uses: cross-platform-actions/action@master
+      - uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: freebsd
           version: ${{ matrix.freebsd-version }}
