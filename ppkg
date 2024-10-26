@@ -8510,7 +8510,7 @@ __setup_freebsd() {
     SYSPM=pkg
 
     run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go go-yq jq git curl cmake ninja gmake gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go go-yq jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
