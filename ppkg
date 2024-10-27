@@ -8531,7 +8531,7 @@ __setup_freebsd() {
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
 
-__setup_dragonfly() {
+__setup_dragonflybsd() {
 __setup_freebsd
 }
 
@@ -8635,6 +8635,10 @@ __setup() {
 
     NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
     NATIVE_PLATFORM_ARCH="$(uname -m)"
+
+    if [ "$NATIVE_PLATFORM_KIND" = dragonfly ] ; then
+        NATIVE_PLATFORM_KIND=dragonflybsd
+    fi
 
     #################################################################################
 
@@ -8778,7 +8782,8 @@ __setup_uppm() {
                 11) NATIVE_PLATFORM_VERS='11.0'  ;;
                 12) NATIVE_PLATFORM_VERS='12.0'  ;;
                 13) NATIVE_PLATFORM_VERS='13.0'  ;;
-                *)  NATIVE_PLATFORM_VERS='14.0'  ;;
+                14) NATIVE_PLATFORM_VERS='14.0'  ;;
+                *)  NATIVE_PLATFORM_VERS='15.0'  ;;
             esac
             ;;
         freebsd)
@@ -9289,7 +9294,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.14.2
+PPKG_VERSION=0.15.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
