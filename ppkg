@@ -3563,7 +3563,7 @@ EOF
             openbsd)  CMAKE_SYSTEM_NAME=OpenBSD ;;
             netbsd)   CMAKE_SYSTEM_NAME=NetBSD  ;;
             dragonflybsd)
-                      CMAKE_SYSTEM_NAME=FreeBSD ;;
+                      CMAKE_SYSTEM_NAME=DragonFly ;;
             *)        CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
         esac
 
