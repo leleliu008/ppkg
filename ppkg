@@ -8788,24 +8788,32 @@ __setup_uppm() {
             ;;
         freebsd)
             case $(freebsd-version) in
-                13.0) NATIVE_PLATFORM_VERS='13.0' ;;
-                13.1) NATIVE_PLATFORM_VERS='13.1' ;;
-                *)    NATIVE_PLATFORM_VERS='13.2' ;;
+                13.2) NATIVE_PLATFORM_VERS='13.2' ;;
+                13.3) NATIVE_PLATFORM_VERS='13.3' ;;
+                13.4) NATIVE_PLATFORM_VERS='13.4' ;;
+                14.0) NATIVE_PLATFORM_VERS='14.0' ;;
+                *)    NATIVE_PLATFORM_VERS='14.1' ;;
             esac
             ;;
         openbsd)
             case $(uname -r) in
+                7.2) NATIVE_PLATFORM_VERS='7.2' ;;
                 7.3) NATIVE_PLATFORM_VERS='7.3' ;;
-                *)   NATIVE_PLATFORM_VERS='7.4' ;;
+                7.4) NATIVE_PLATFORM_VERS='7.4' ;;
+                7.5) NATIVE_PLATFORM_VERS='7.5' ;;
+                *)   NATIVE_PLATFORM_VERS='7.6' ;;
             esac
             ;;
         netbsd)
             case $(uname -r) in
-                9.1) NATIVE_PLATFORM_VERS='9.1' ;;
                 9.2) NATIVE_PLATFORM_VERS='9.2' ;;
-                *)   NATIVE_PLATFORM_VERS='9.3' ;;
+                9.3) NATIVE_PLATFORM_VERS='9.3' ;;
+                9.4) NATIVE_PLATFORM_VERS='9.4' ;;
+                *)   NATIVE_PLATFORM_VERS='10.0' ;;
             esac
             ;;
+        dragonflybsd)
+            NATIVE_PLATFORM_VERS='6.4'
     esac
 
     ##################################################################################
