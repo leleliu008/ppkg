@@ -2287,7 +2287,7 @@ __show_packages_depended_by_the_given_package() {
         elif command -v d2 > /dev/null ; then
             ENGIN=d2
         else
-            abort 1 'none of dot, dot_static, d2 commands was found. please install graphviz or d2 package, then try again.'
+            abort 1 'none of dot, dot_static, d2 command was found. please install graphviz or d2 package, then try again.'
         fi
     fi
 
@@ -8851,7 +8851,11 @@ __setup_uppm() {
 
     wfetch "$PPKG_CORE_RELEASE_TARBALL_URL" --no-buffer
 
-    run tar xvf "$PPKG_CORE_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
+    ##################################################################################
+
+    TAR="$(command -v bsdtar || command -v gtar || command -v tar)" || abort 1 'none of bsdtar, gtar, tar command was found.'
+
+    run "$TAR" xvf "$PPKG_CORE_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
