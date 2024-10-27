@@ -6533,11 +6533,15 @@ EOF
         # https://golang.org/doc/install/source#environment
 
         if [ "$CROSS_COMPILING" = 1 ] ; then
-            if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-                export GOOS='darwin'
-            else
-                export GOOS="$TARGET_PLATFORM_NAME"
-            fi
+            case $TARGET_PLATFORM_NAME in
+                dragonflybsd)
+                    export GOOS='dragonfly'
+                    ;;
+                macos)
+                    export GOOS='darwin'
+                    ;;
+                *)  export GOOS="$TARGET_PLATFORM_NAME"
+            esac
 
             if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] ; then
                 export GOARCH='amd64'
@@ -8506,6 +8510,33 @@ export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
 }
 
+__setup_dragonflybsd() {
+    SYSPM=pkg
+
+    #run $sudo pkg update || true
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go121 go-yq jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
+
+    run ln -s /usr/local/go121/bin/go   bin/go
+
+    run ln -s /usr/local/bin/gln        bin/ln
+    run ln -s /usr/local/bin/gm4        bin/m4
+    run ln -s /usr/local/bin/gsed       bin/sed
+    run ln -s /usr/local/bin/gawk       bin/awk
+    run ln -s /usr/local/bin/ggrep      bin/grep
+    run ln -s /usr/local/bin/gfind      bin/find
+    run ln -s /usr/local/bin/gmake      bin/make
+    run ln -s /usr/local/bin/gnustat    bin/stat
+    run ln -s /usr/local/bin/gdate      bin/date
+    run ln -s /usr/local/bin/gnproc     bin/nproc
+    run ln -s /usr/local/bin/gbase64    bin/base64
+    run ln -s /usr/local/bin/gunlink    bin/unlink
+    run ln -s /usr/local/bin/ginstall   bin/install
+    run ln -s /usr/local/bin/grealpath  bin/realpath
+    run ln -s /usr/local/bin/gsha256sum bin/sha256sum
+
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
+}
+
 __setup_freebsd() {
     SYSPM=pkg
 
@@ -8529,10 +8560,6 @@ __setup_freebsd() {
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
-}
-
-__setup_dragonflybsd() {
-__setup_freebsd
 }
 
 __setup_openbsd() {
