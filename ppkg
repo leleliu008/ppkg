@@ -5234,6 +5234,12 @@ $DOT_CONTENT
                     PACKAGE_DEP_UPP_PYTHON3=1
                     continue
                     ;;
+                cmake)
+                    if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
+                        run $sudo pkgin -y update
+                        run $sudo pkgin -y install cmake
+                        continue
+                    fi
             esac
 
             run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
@@ -5930,13 +5936,18 @@ $PACKAGE_DO12345
                         run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
                     done
 
+                    cd "$TARGET_PLATFORM_SPEC/usr/lib"
+
                     #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
                     #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
                     #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
                     #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
 
-                    printf '%s\n' 'INPUT(-lc)'      > "$TARGET_PLATFORM_SPEC/usr/lib/libdl.a"
-                    printf '%s\n' 'INPUT(-lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
+                    printf '%s\n' 'INPUT(-lstdc++)' > libc++.a
+                    printf '%s\n' 'INPUT(-lc)'      > libdl.a
+                    printf '%s\n' 'INPUT(-lgcc_eh)' > libgcc_s.a
+
+                    cd -
 
                     run touch "$TARGET_PLATFORM_SPEC/ok"
                     ;;
@@ -6043,8 +6054,16 @@ $PACKAGE_DO12345
 
             PROXIED_CC_ARGS="--target=$CLANG_TARGET $PROXIED_CC_ARGS"
 
-            PPFLAGS="$PPFLAGS -I$SYSROOT/usr/include/c++/v1"
-            XXFLAGS="$XXFLAGS -I$SYSROOT/usr/include/c++/v1"
+            for x in c++/v1 g++
+            do
+                y="$SYSROOT/usr/include/$x"
+
+                if [ -d "$y" ] ; then
+                    PPFLAGS="$PPFLAGS -I$y"
+                    XXFLAGS="$XXFLAGS -I$y"
+                    break
+                fi
+            done
 
             if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
                 # https://github.com/llvm/llvm-project/issues/74917
@@ -9372,7 +9391,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.16.1
+PPKG_VERSION=0.16.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
