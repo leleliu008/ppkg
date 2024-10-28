@@ -5177,64 +5177,66 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ -n "$SYSPM" ] ; then
-        # using system's package manager to install these packages rather than uppm
-        PACKAGE_DEP_UPP_T1="pkg-config patchelf tree $PACKAGE_DEP_UPP"
-        PACKAGE_DEP_UPP_T2=
-    else
-        # these native packages would be installed via uppm
-        PACKAGE_DEP_UPP_T1='pkg-config patchelf tree'
-
-        # these native packages are non-relocatable and can not be installed via uppm, we should build them from source locally at build time.
-        PACKAGE_DEP_UPP_T2=
-
-        for item in $PACKAGE_DEP_UPP
-        do
-            case $item in
-                perl|texinfo|help2man|libopenssl|libz|intltool|python3|ruby|swig)
-                    PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"
-                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item"
-                    ;;
-                autoconf|automake|libtool)
-                    PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"
-                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item"
-                    ;;
-                *)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
-            esac
-        done
-    fi
-
-    #########################################################################################
-
     if [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
-        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 bear"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
     fi
 
     if [ "$CCACHE_ENABLED" = 1 ] ; then
-        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 ccache"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
-
-    PACKAGE_DEP_UPP_T1="${PACKAGE_DEP_UPP_T1#' '}"
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_UPP_T1" ] && {
-        PACKAGE_DEP_UPP_T1="$(printf '%s\n' $PACKAGE_DEP_UPP_T1 | sort | uniq)"
+    unset PACKAGE_DEP_UPP_LIBZ
+    unset PACKAGE_DEP_UPP_LIBOPENSSL
+    unset PACKAGE_DEP_UPP_PYTHON3
 
-        step "install needed packages via uppm"
+    # these native packages are not relocatable
+    # they would be fetched to a fixed location /opt/non-relocatable-* or built from source locally
+    unset PACKAGE_DEP_UPP_T2
 
-        uppm about
-        uppm update
+    unset PACKAGE_DEP_XBUILDER
 
-        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
+    #########################################################################################
+
+    step "install needed packages via uppm"
+
+    run "$UPPM" about
+    run "$UPPM" update
+
+    if [ -n "$SYSPM" ] ; then
+        run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
+    else
+        unset UPPM_INSTALL_ARGS
+
+        if [ "$DUMP_UPPM" = 1 ] ; then
+            UPPM_INSTALL_ARGS=-v
+        fi
+
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
         do
-            if [ "$UPPM_PACKAGE_NAME" = cmake ] && [ "$NATIVE_PLATFORM_KIND" = netbsd ] ; then
-                run $sudo pkgin -y update
-                run $sudo pkgin -y install cmake
-                continue
-            fi
+            case $UPPM_PACKAGE_NAME in
+                libz)
+                    PACKAGE_DEP_UPP_LIBZ=1
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libz"
+                    UPPM_PACKAGE_NAME=gmake
+                    ;;
+                libopenssl)
+                    PACKAGE_DEP_UPP_LIBOPENSSL=1
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
+                    UPPM_PACKAGE_NAME=gmake
+                    ;;
+                perl|autoconf|automake|libtool|texinfo|help2man|intltool)
+                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $UPPM_PACKAGE_NAME"
+                    continue
+                    ;;
+                python3)
+                    PACKAGE_DEP_UPP_PYTHON3=1
+                    continue
+                    ;;
+            esac
 
-            uppm install "$UPPM_PACKAGE_NAME"
+            run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
             UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -5250,13 +5252,24 @@ $DOT_CONTENT
                 ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
             fi
 
-            if [ "$UPPM_PACKAGE_NAME" = 'docbook-xsl' ] ; then
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
-                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-            fi
+            case $UPPM_PACKAGE_NAME in
+                swig)
+                    # https://www.swig.org/Doc4.0/Library.html
+                    X="$(ls $UPPM_PACKAGE_INSTALLED_DIR/share/swig/*/swig.swg)"
+                    export SWIG_LIB="${X%/*}"
+                    ;;
+                file)
+                    export MAGIC="$UPPM_PACKAGE_INSTALLED_DIR/share/misc/magic.mgc"
+                    ;;
+                docbook-xsl)
+                    # http://xmlsoft.org/xslt/xsltproc.html
+                    export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+                    printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            esac
         done
-    }
+    fi
+
+    #########################################################################################
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
@@ -5266,11 +5279,11 @@ $DOT_CONTENT
                 T="$NATIVE_PLATFORM_SPEC"
             fi
 
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.12-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
             if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.12/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
                 run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
@@ -5307,6 +5320,28 @@ $DOT_CONTENT
                 fi
             done
         fi
+    }
+
+    #########################################################################################
+
+    [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
+        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+            T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
+        else
+            T="$NATIVE_PLATFORM_SPEC"
+        fi
+
+        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
+        PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
+
+        if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
+            wfetch "https://github.com/leleliu008/python-distribution/releases/download/2024.10.27/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
+            run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
+            run bsdtar xf  "$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components=1
+            run touch "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok"
+        fi
+
+        export PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
     }
 
     #########################################################################################
@@ -6419,7 +6454,7 @@ EOF
         #########################################################################
 
         # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
+        [ "$PACKAGE_DEP_UPP_LIBZOPENSSL" = 1 ] && {
             case "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" in
                 linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
                 macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
@@ -9333,7 +9368,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.15.0
+PPKG_VERSION=0.16.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9377,10 +9412,6 @@ if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
     export      URL_TRANSFORM="$PPKG_URL_TRANSFORM"
 fi
-
-uppm() {
-    run "$UPPM" "$@"
-}
 
 ##################################################################################
 
