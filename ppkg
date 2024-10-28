@@ -8944,7 +8944,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    run ./uppm about
+    #run ./uppm about
     run ./uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
