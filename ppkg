@@ -5293,7 +5293,11 @@ $DOT_CONTENT
         else
             PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
 
-            run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+            XBUILDER="$SESSION_DIR/xbuilder"
+
+            wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' -o "$XBUILDER" --no-buffer
+
+            run sh "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 
             for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
             do
@@ -5374,7 +5378,13 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            run "$XBUILDER" install perl-XML-Parser --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+            XBUILDER="$SESSION_DIR/xbuilder"
+
+            if [ ! -f "$XBUILDER" ] ; then
+                wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' -o "$XBUILDER" --no-buffer
+            fi
+
+            run sh "$XBUILDER" install perl-XML-Parser --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 
         fi
 
@@ -8744,7 +8754,6 @@ __setup() {
         done
 
         run mv ppkg/uppm-shim-$SYSPM uppm
-        run mv ppkg/xbuilder .
         run mv ppkg/fonts.conf .
 
         run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
@@ -8898,11 +8907,6 @@ __setup_uppm() {
     wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
     export SSL_CERT_FILE="$PWD/cacert.pem"
-
-    ##################################################################################
-
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' --no-buffer
-    run chmod +x xbuilder
 
     ##################################################################################
 
@@ -9368,7 +9372,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.16.0
+PPKG_VERSION=0.16.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9392,8 +9396,6 @@ PPKG_CORE_DIR="$PPKG_HOME/core"
 PPKG_SYSROOT="$PPKG_HOME/sysroot"
 
 NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
-
-XBUILDER="$PPKG_CORE_DIR/xbuilder"
 
 ##################################################################################
 
