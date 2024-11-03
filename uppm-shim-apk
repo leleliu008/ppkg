@@ -10,6 +10,7 @@ package_name_transform_from_uppm_to_apk() {
         gmake)    printf '%s\n' 'make'      ;;
         gindent)  printf '%s\n' 'indent'    ;;
         golang)   printf '%s\n' 'go'        ;;
+        python3)  printf '%s\n' 'python3 python3-dev' ;;
         xsltproc) printf '%s\n' 'libxslt'   ;;
         bsdtar)   printf '%s\n' 'libarchive-tools' ;;
         pkg-config) printf '%s\n' 'pkgconf' ;;
@@ -33,7 +34,7 @@ main() {
             for UPPM_PACKAGE_NAME in "$@"
             do
                 APK_PACKAGE_NAME="$(package_name_transform_from_uppm_to_apk "$UPPM_PACKAGE_NAME")"
-                apk add "$APK_PACKAGE_NAME"
+                apk add $APK_PACKAGE_NAME
             done
             ;;
         is-installed)
