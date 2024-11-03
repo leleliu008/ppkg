@@ -5364,7 +5364,7 @@ $DOT_CONTENT
         if [ -n "$SYSPM" ] ; then
             wfetch 'https://bootstrap.pypa.io/pip/pip.pyz'
             run "$PYTHON3" --version
-            run "$PYTHON3" pip.pyz install --user --upgrade "$PACKAGE_DEP_PYM"
+            run "$PYTHON3" pip.pyz install --user --upgrade --break-system-packages "$PACKAGE_DEP_PYM"
         else
             run "$PYTHON3" --version
             run "$PYTHON3" -m pip install --upgrade pip
