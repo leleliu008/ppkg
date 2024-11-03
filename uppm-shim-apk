@@ -10,7 +10,6 @@ package_name_transform_from_uppm_to_apk() {
         gmake)    printf '%s\n' 'make'      ;;
         gindent)  printf '%s\n' 'indent'    ;;
         golang)   printf '%s\n' 'go'        ;;
-        python3)  printf '%s\n' 'py3-pip'   ;;
         xsltproc) printf '%s\n' 'libxslt'   ;;
         bsdtar)   printf '%s\n' 'libarchive-tools' ;;
         pkg-config) printf '%s\n' 'pkgconf' ;;

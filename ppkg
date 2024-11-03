@@ -5361,9 +5361,15 @@ $DOT_CONTENT
 
         PYTHON3="$(command -v python3)" || abort 1 "command not found: python3"
 
-        run "$PYTHON3" --version
-        run "$PYTHON3" -m pip install --upgrade pip
-        run "$PYTHON3" -m pip install --upgrade "$PACKAGE_DEP_PYM"
+        if [ -n "$SYSPM" ] ; then
+            wfetch 'https://bootstrap.pypa.io/pip/pip.pyz'
+            run "$PYTHON3" --version
+            run "$PYTHON3" pip.pyz install --user --upgrade "$PACKAGE_DEP_PYM"
+        else
+            run "$PYTHON3" --version
+            run "$PYTHON3" -m pip install --upgrade pip
+            run "$PYTHON3" -m pip install --upgrade "$PACKAGE_DEP_PYM"
+        fi
     }
 
     #########################################################################################
