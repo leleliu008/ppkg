@@ -708,7 +708,7 @@ EOF
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
     export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
     export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
     export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
     export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
@@ -742,7 +742,7 @@ EOF
             DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
 
             if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
+                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
             fi
         done
     done
@@ -999,6 +999,40 @@ package_info_swig() {
     PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
     PACKAGE_DEP_PKG='libpcre2'
     PACKAGE_INSTALL='configure --enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
+}
+
+package_info_libiconv() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    PACKAGE_SRC_SHA='8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
+}
+
+package_info_libxml2() {
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.6.tar.xz'
+    PACKAGE_SRC_SHA='889c593a881a3db5fdd96cc9318c87df34eb648edfc458272ad46fd607353fbb'
+    PACKAGE_DEP_PKG='libz libiconv'
+    PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$PACKAGE_INSTALL_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
+}
+
+package_info_itstool() {
+    PACKAGE_SRC_URL='https://github.com/itstool/itstool/archive/2.0.7.tar.gz'
+    PACKAGE_SRC_SHA='fba78a37dc3535e4686c7f57407b97d03c676e3a57beac5fb2315162b0cc3176'
+    PACKAGE_DEP_PKG='libxml2 perl autoconf automake'
+    PACKAGE_INSTALL='configure'
+    PACKAGE_DOPATCH='
+    run autoreconf -ivf
+    export PYTHON="$(command -v python3)"
+    export PYTHONPATH="$PACKAGE_INSTALL_ROOT/libxml2/lib/python3.11/site-packages"
+    '
+    PACKAGE_DOTWEAK='
+run mv bin/itstool bin/itstool.py
+cat > bin/itstool <<EOF
+#!/bin/sh
+export PYTHONPATH="$PYTHONPATH"
+exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
+EOF
+run chmod +x bin/itstool
+    '
 }
 
 help() {

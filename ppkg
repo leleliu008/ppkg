@@ -4770,6 +4770,17 @@ $FORMULA_SEARCH_DIR"
     fi
 }
 
+xbuilder() {
+    XBUILDER="$SESSION_DIR/xbuilder"
+
+    if [ ! -f "$XBUILDER" ] ; then
+        wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/refs/heads/master/xbuilder' -o "$XBUILDER" --no-buffer
+    fi
+
+    run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+}
+
+
 # }}}
 ##############################################################################
 # {{{ __install_the_given_package
@@ -5234,6 +5245,11 @@ $DOT_CONTENT
                     PACKAGE_DEP_UPP_PYTHON3=1
                     continue
                     ;;
+                itstool)
+                    PACKAGE_DEP_UPP_PYTHON3=1
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER itstool"
+                    UPPM_PACKAGE_NAME=gm4
+                    ;;
                 cmake)
                     if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
                         run $sudo pkgin -y update
@@ -5277,63 +5293,6 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        if [ "$GITHUB_ACTIONS" = true ] ; then
-            if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-                T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
-            else
-                T="$NATIVE_PLATFORM_SPEC"
-            fi
-
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
-            NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
-
-            if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
-                run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
-            fi
-
-            export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
-        else
-            PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
-
-            XBUILDER="$SESSION_DIR/xbuilder"
-
-            wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' -o "$XBUILDER" --no-buffer
-
-            run sh "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
-
-            for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
-            do
-                NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-                    CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-                    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-                fi
-
-                if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-                fi
-            done
-        fi
-    }
-
-    #########################################################################################
-
     [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
         if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
             T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
@@ -5352,6 +5311,79 @@ $DOT_CONTENT
         fi
 
         export PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
+        export PKG_CONFIG_PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_UPP_T2" ] && {
+        if [ "$GITHUB_ACTIONS" = true ] ; then
+            case $NATIVE_PLATFORM_TYPE in
+                macos)
+                    NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+
+                    if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                        X='10.15'
+                    elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                        X='15.0'
+                    else
+                        X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+                    fi
+
+                    T="macos-$X-$NATIVE_PLATFORM_ARCH"
+                    ;;
+                *)  T="linux-$NATIVE_PLATFORM_TARGET"
+            esac
+
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
+
+            if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
+                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
+                run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
+            fi
+
+            export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
+        else
+            PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER $PACKAGE_DEP_UPP_T2"
+        fi
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_XBUILDER" ] && {
+        run "$UPPM" install gmake
+
+        export PATH="$UPPM_HOME/installed/gmake/bin:$PATH"
+
+        xbuilder "$PACKAGE_DEP_XBUILDER"
+
+        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_XBUILDER
+        do
+            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
     }
 
     #########################################################################################
@@ -7267,26 +7299,24 @@ EOF
 
 # __find_needed_dylibs <MACH-O-FILE-NAME>
   __find_needed_dylibs() {
-      set -x
     NEEDED_FILEPATH="$PACKAGE_LIBRARY_DIR/$1"
     NEEDED_FILEPATH_TYPE=1
 
-    if [ ! -f "$NEEDED_FILEPATH" ] ; then
-        NEEDED_FILEPATH=
-        NEEDED_FILEPATH_TYPE=2
+    [ -f "$NEEDED_FILEPATH" ] && return 0
 
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            NEEDED_FILEPATH="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/$1"
+    NEEDED_FILEPATH=
+    NEEDED_FILEPATH_TYPE=2
 
-            if [ -f "$NEEDED_FILEPATH" ] ; then
-                break
-            else
-                NEEDED_FILEPATH=
-            fi
-        done
-    fi
-      set +x
+    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    do
+        NEEDED_FILEPATH="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/$1"
+
+        if [ -f "$NEEDED_FILEPATH" ] ; then
+            break
+        else
+            NEEDED_FILEPATH=
+        fi
+    done
 }
 
 # __check_needed_dylibs <MACH-O-FILE-PATH> <IS-EXECUTABLE>
