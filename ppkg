@@ -5332,7 +5332,7 @@ $DOT_CONTENT
 
                     T="macos-$X-$NATIVE_PLATFORM_ARCH"
                     ;;
-                *)  T="linux-$NATIVE_PLATFORM_TARGET"
+                *)  T="linux-$NATIVE_PLATFORM_SPEC"
             esac
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
@@ -9427,7 +9427,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.16.2
+PPKG_VERSION=0.16.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
