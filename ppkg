@@ -5332,7 +5332,7 @@ $DOT_CONTENT
 
                     T="macos-$X-$NATIVE_PLATFORM_ARCH"
                     ;;
-                *)  T="linux-$NATIVE_PLATFORM_SPEC"
+                *)  T="$NATIVE_PLATFORM_SPEC"
             esac
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
