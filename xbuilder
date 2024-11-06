@@ -451,33 +451,37 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ -z "$SESSION_DIR" ] ; then
-        SESSION_DIR="$HOME/.xbuilder/run/$$"
-    fi
+    : ${PROFILE:=release}
+    : ${ENABLE_LTO:=1}
 
-    if [ -z "$DOWNLOAD_DIR" ] ; then
-        DOWNLOAD_DIR="$HOME/.xbuilder/downloads"
-    fi
+    : ${SESSION_DIR:="$HOME/.xbuilder/run/$$"}
+    : ${DOWNLOAD_DIR:="$HOME/.xbuilder/downloads"}
+    : ${PACKAGE_INSTALL_ROOT:="$HOME/.xbuilder/installed"}
 
-    if [ -z "$PACKAGE_INSTALL_ROOT" ] ; then
-        PACKAGE_INSTALL_ROOT="$HOME/.xbuilder/installed"
+    #########################################################################################
+
+    if [ -z "$ENABLE_STRIP" ] ; then
+        case $PROFILE in
+            debug)   ENABLE_STRIP=no  ;;
+            release) ENABLE_STRIP=all ;;
+        esac
     fi
 
     #########################################################################################
 
-    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_OS_ARCH="$(uname -m)"
+    NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_PLATFORM_ARCH="$(uname -m)"
 
     #########################################################################################
 
     if [ -z "$BUILD_NJOBS" ] ; then
-        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-            NATIVE_OS_NCPU="$(sysctl -n machdep.cpu.thread_count)"
+        if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+            NATIVE_PLATFORM_NCPU="$(sysctl -n machdep.cpu.thread_count)"
         else
-            NATIVE_OS_NCPU="$(nproc)"
+            NATIVE_PLATFORM_NCPU="$(nproc)"
         fi
 
-        BUILD_NJOBS="$NATIVE_OS_NCPU"
+        BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
     fi
 
     #########################################################################################
@@ -493,22 +497,11 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ -z "$PROFILE" ] ; then
-        PROFILE=release
-    fi
+    unset CC_ARGS
+    unset PP_ARGS
+    unset LD_ARGS
 
-    #########################################################################################
-
-    if [ -z "$ENABLE_STRIP" ] ; then
-        case $PROFILE in
-            debug)   ENABLE_STRIP=no  ;;
-            release) ENABLE_STRIP=all ;;
-        esac
-    fi
-
-    #########################################################################################
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
         [ -z "$CC"      ] &&      CC="$(xcrun --sdk macosx --find clang)"
         [ -z "$CXX"     ] &&     CXX="$(xcrun --sdk macosx --find clang++)"
         [ -z "$AS"      ] &&      AS="$(xcrun --sdk macosx --find as)"
@@ -517,19 +510,18 @@ inspect_install_arguments() {
         [ -z "$RANLIB"  ] &&  RANLIB="$(xcrun --sdk macosx --find ranlib)"
         [ -z "$SYSROOT" ] && SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
 
-        NATIVE_OS_VERS="$(sw_vers -productVersion)"
+        MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
 
-          CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-        CXXFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-        CPPFLAGS="-isysroot $SYSROOT -Qunused-arguments"
-         LDFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
+        CC_ARGS="-isysroot $SYSROOT -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
+        PP_ARGS="-isysroot $SYSROOT -Qunused-arguments"
+        LD_ARGS="-isysroot $SYSROOT -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -arch $NATIVE_PLATFORM_ARCH"
     else
         [ -z "$CC" ] && {
-             CC="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler not found."
+             CC="$(command -v cc  || command -v clang   || command -v gcc)" || abort 1 "C Compiler not found."
         }
 
         [ -z "$CXX" ] && {
-            CXX="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler not found."
+            CXX="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler not found."
         }
 
         [ -z "$AS" ] && {
@@ -548,11 +540,10 @@ inspect_install_arguments() {
             RANLIB="$(command -v ranlib)" || abort 1 "command not found: ranlib"
         }
 
-          CFLAGS="-fPIC -fno-common"
-        CXXFLAGS="-fPIC -fno-common"
-        CPPFLAGS=
+        CC_ARGS="-fPIC -fno-common"
+
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-         LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+        LD_ARGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
     #########################################################################################
@@ -561,30 +552,38 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ "$DEBUG_CC" = 1 ] ; then
-          CFLAGS="$CFLAGS -v"
-        CXXFLAGS="$CXXFLAGS -v"
-    fi
+    [ "$DEBUG_CC" = 1 ] && CC_ARGS="$CC_ARGS -v"
+    [ "$DEBUG_LD" = 1 ] && LD_ARGS="$LD_ARGS -Wl,-v"
 
-    if [ "$DEBUG_LD" = 1 ] ; then
-         LDFLAGS="$LDFLAGS -Wl,-v"
-    fi
+    case $PROFILE in
+        debug)
+            CC_ARGS="$CC_ARGS -O0 -g"
+            ;;
+        release)
+            CC_ARGS="$CC_ARGS -Os"
 
-    if [ "$PROFILE" = release ] ; then
-          CFLAGS="$CFLAGS -Os"
-        CXXFLAGS="$CXXFLAGS -Os"
-        
-        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-            LDFLAGS="$LDFLAGS -Wl,-S"
-        else
-            LDFLAGS="$LDFLAGS -Wl,-s"
-        fi
-    fi
+            if [ "$ENABLE_LTO" = 1 ] ; then
+                LD_ARGS="$LD_ARGS -flto"
+            fi
 
-    case $NATIVE_OS_KIND in
-        netbsd)  LDFLAGS="$LDFLAGS -lpthread" ;;
-        openbsd) LDFLAGS="$LDFLAGS -lpthread" ;;
+            if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+                LD_ARGS="$LD_ARGS -Wl,-S"
+            else
+                LD_ARGS="$LD_ARGS -Wl,-s"
+            fi
     esac
+
+    case $NATIVE_PLATFORM_KIND in
+         netbsd) LD_ARGS="$LD_ARGS -lpthread" ;;
+        openbsd) LD_ARGS="$LD_ARGS -lpthread" ;;
+    esac
+
+    #########################################################################################
+
+      CFLAGS="$CC_ARGS"
+    CXXFLAGS="$CC_ARGS"
+    CPPFLAGS="$PP_ARGS"
+     LDFLAGS="$LD_ARGS"
 
     #########################################################################################
 
@@ -594,8 +593,6 @@ inspect_install_arguments() {
     done
 
     #########################################################################################
-
-    # DO NOT use these environment variables
 
     unset LIBS
 
@@ -991,7 +988,16 @@ package_info_perl_XML_Parser() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
     PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
     PACKAGE_DEP_PKG='perl libexpat'
-    PACKAGE_INSTALL="run perl Makefile.PL EXPATLIBPATH=$PACKAGE_INSTALL_ROOT/libexpat/lib EXPATINCPATH=$PACKAGE_INSTALL_ROOT/libexpat/include"
+    PACKAGE_DOPATCH='
+run export EXPATLIBPATH="$PACKAGE_INSTALL_DIR/lib"
+run export EXPATINCPATH="$PACKAGE_INSTALL_DIR/include"
+run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
+'
+    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+        PACKAGE_INSTALL='run perl Makefile.PL && run "$GMAKE" "--jobs=$BUILD_NJOBS" && run "$GMAKE" install'
+    else
+        PACKAGE_INSTALL='run perl Makefile.PL LDDLFLAGS="\"-shared -L$PACKAGE_INSTALL_ROOT/libexpat/lib -Wl,-rpath,$PACKAGE_INSTALL_ROOT/libexpat/lib\"" && run "$GMAKE" "--jobs=$BUILD_NJOBS" && run "$GMAKE" install && install -d "$PACKAGE_INSTALL_DIR"'
+    fi
 }
 
 package_info_swig() {

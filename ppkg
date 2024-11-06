@@ -5307,7 +5307,10 @@ $DOT_CONTENT
             wfetch "https://github.com/leleliu008/python-distribution/releases/download/2024.10.27/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
             run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
             run bsdtar xf  "$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components=1
-            run touch "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok"
+            cd "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
+            gsed -i '/^prefix=/c prefix=${pcfiledir}/../..' lib/pkgconfig/*.pc
+            run touch ok
+            cd -
         fi
 
         export PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
@@ -9427,7 +9430,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.16.3
+PPKG_VERSION=0.16.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
