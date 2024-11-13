@@ -5300,16 +5300,15 @@ $DOT_CONTENT
             T="$NATIVE_PLATFORM_SPEC"
         fi
 
-        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
+        PYTHON3_DISTRIBUTION_VERSION='2024.11.08'
+        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-$PYTHON3_DISTRIBUTION_VERSION-$T"
         PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
 
         if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
-            wfetch "https://github.com/leleliu008/python-distribution/releases/download/2024.10.27/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
+            wfetch "https://github.com/leleliu008/python-distribution/releases/download/$PYTHON3_DISTRIBUTION_VERSION/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
             run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
             run bsdtar xf  "$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components=1
-            cd "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
-            gsed -i '/^prefix=/c prefix=${pcfiledir}/../..' lib/pkgconfig/*.pc
-            run touch ok
+            run touch "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok"
             cd -
         fi
 
@@ -5425,14 +5424,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            XBUILDER="$SESSION_DIR/xbuilder"
-
-            if [ ! -f "$XBUILDER" ] ; then
-                wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' -o "$XBUILDER" --no-buffer
-            fi
-
-            run sh "$XBUILDER" install perl-XML-Parser --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
-
+            xbuilder perl-XML-Parser
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
