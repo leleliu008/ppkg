@@ -7366,6 +7366,8 @@ $1|$NEEDED_FILEPATH_TYPE"
                 ;;
             /System/Library/Frameworks/*)
                 ;;
+            /System/Library/PrivateFrameworks/*)
+                ;;
             /*)
                 NEEDED_DYLIB_FILENAME="${NEEDED##*/}"
 
