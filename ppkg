@@ -2781,6 +2781,8 @@ __fetch_resources_of_the_given_package() {
             PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
     fi
 
+    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
+
     ###########################################################################################
 
     if [ -z "$OUTPUT_TYPE" ] ; then
@@ -7717,6 +7719,9 @@ EOF
 
     unset RECEIPT_PACKAGE_PKGNAME
     unset RECEIPT_PACKAGE_PKGTYPE
+
+    unset RECEIPT_PACKAGE_PROFILE
+
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
     unset RECEIPT_PACKAGE_LICENSE
@@ -7781,6 +7786,9 @@ EOF
 
     RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_PROFILE="$(yq '.profile | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -9424,7 +9432,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.16.4
+PPKG_VERSION=0.17.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
