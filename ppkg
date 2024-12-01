@@ -6834,6 +6834,50 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    cat > "$PACKAGE_METAINFO_DIR/toolchain-native.sh" <<EOF
+     CC_FOR_BUILD='$CC_FOR_BUILD'
+   OBJC_FOR_BUILD='$OBJC_FOR_BUILD'
+    CXX_FOR_BUILD='$CXX_FOR_BUILD'
+     AS_FOR_BUILD='$AS_FOR_BUILD'
+     AR_FOR_BUILD='$AR_FOR_BUILD'
+ RANLIB_FOR_BUILD='$RANLIB_FOR_BUILD'
+     LD_FOR_BUILD='$LD_FOR_BUILD'
+     NM_FOR_BUILD='$NM_FOR_BUILD'
+   SIZE_FOR_BUILD='$SIZE_FOR_BUILD'
+  STRIP_FOR_BUILD='$STRIP_FOR_BUILD'
+STRINGS_FOR_BUILD='$STRINGS_FOR_BUILD'
+OBJDUMP_FOR_BUILD='$OBJDUMP_FOR_BUILD'
+OBJCOPY_FOR_BUILD='$OBJCOPY_FOR_BUILD'
+READELF_FOR_BUILD='$READELF_FOR_BUILD'
+SYSROOT_FOR_BUILD='$SYSROOT_FOR_BUILD'
+
+CCFLAGS_FOR_BUILD='$CCFLAGS_FOR_BUILD'
+LDFLAGS_FOR_BUILD='$LDFLAGS_FOR_BUILD'
+EOF
+
+    cat > "$PACKAGE_METAINFO_DIR/toolchain-target.sh" <<EOF
+     CC='$CC'
+   OBJC='$OBJC'
+    CXX='$CXX'
+     AS='$AS'
+     AR='$AR'
+ RANLIB='$RANLIB'
+     LD='$LD'
+     NM='$NM'
+   SIZE='$SIZE'
+  STRIP='$STRIP'
+STRINGS='$STRINGS'
+OBJDUMP='$OBJDUMP'
+OBJCOPY='$OBJCOPY'
+READELF='$READELF'
+SYSROOT='$SYSROOT'
+
+CCFLAGS='$CCFLAGS'
+LDFLAGS='$LDFLAGS'
+EOF
+
+    #########################################################################################
+
     step "docheck for target"
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
@@ -9432,7 +9476,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.0
+PPKG_VERSION=0.17.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
