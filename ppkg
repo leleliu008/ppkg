@@ -2773,12 +2773,12 @@ __fetch_resources_of_the_given_package() {
         fi
 
         if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-            PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
         else
-            PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
         fi
     else
-            PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
     fi
 
     PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
@@ -6495,7 +6495,7 @@ EOF
         #########################################################
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC"
+        export RUSTFLAGS="-Clinker=$CC -L native=$PACKAGE_INSTALLING_LIB_DIR"
 
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
@@ -7091,7 +7091,7 @@ $PACKAGE_ONFINAL
 __check_elf_files() {
     cd "$PACKAGE_INSTALL_DIR"
 
-    FILEPATHs="$(find -not -name . -type f)"
+    FILEPATHs="$(find -type f)"
 
     export IFS='
 '
@@ -7229,7 +7229,7 @@ $1"
 __check_mach_o_files() {
     cd "$PACKAGE_INSTALL_DIR"
 
-    FILEPATHs="$(find -not -name . -type f)"
+    FILEPATHs="$(find -type f)"
 
     export IFS='
 '
@@ -9080,6 +9080,130 @@ if [ -d "\$UPPM_HOME/installed/git/libexec/git-core" ] ; then
     export GIT_CONFIG_NOSYSTEM=1
 fi
 EOF
+    if false ; then
+        run install -d gcc
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.3.0-linux-glibc-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf gcc-*.tar.xz -C gcc --strip-components=1
+
+        run install -d binutils
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.43.1-linux-glibc-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf binutils-*.tar.xz -C binutils --strip-components=1
+
+        run install -d mold
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/mold-2.34.1-linux-glibc-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf mold-*.tar.xz -C mold --strip-components=1
+
+        install -d bin
+        #ln -sf ../mold/bin/mold bin/ld
+
+        for item in addr2line ar as ld nm objdump readelf strip objcopy ranlib size strings
+        do
+            ln -sf ../binutils/bin/$item bin/$item
+        done
+
+        run install -d sysroot
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
+        run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
+
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
+        run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
+
+        ln -s gcc/x86_64-pc-linux-gnu/13.1.0/libgcc.a gcc/lib/libgcc.a
+
+        "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$PPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
+
+        mv gcc/bin/gcc gcc/bin/gcc.exe
+        mv gcc/bin/g++ gcc/bin/g++.exe
+
+        cat > gcc/bin/gcc <<EOF
+#!/bin/sh
+exec "$PPKG_HOME/core/gcc/bin/gcc.exe" "\$@" -specs "$PPKG_HOME/core/gcc.specs"
+EOF
+        cat > gcc/bin/g++ <<EOF
+#!/bin/sh
+exec "$PPKG_HOME/core/gcc/bin/g++.exe" "\$@" -specs "$PPKG_HOME/core/g++.specs"
+EOF
+        chmod +x gcc/bin/gcc
+        chmod +x gcc/bin/g++
+
+        # https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html
+        cat > gcc.specs <<EOF
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem $PPKG_HOME/core/sysroot/include -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem $PPKG_HOME/core/sysroot/include -isystem include%s
+
+*link_libgcc:
+-L$PPKG_HOME/core/sysroot/lib -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{!shared: $PPKG_HOME/core/sysroot/lib/Scrt1.o} $PPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
+
+*endfile:
+crtendS.o%s $PPKG_HOME/core/sysroot/lib/crtn.o
+
+*link:
+-dynamic-linker $PPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $PPKG_HOME/core/sysroot/lib -rpath $PPKG_HOME/core/gcc/lib -L $PPKG_HOME/core/sysroot/lib -L $PPKG_HOME/core/gcc/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+EOF
+
+        cat > g++.specs <<EOF
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem $PPKG_HOME/core/sysroot/include -I $PPKG_HOME/core/include/c++/13.1.0 -I $PPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem $PPKG_HOME/core/sysroot/include -I $PPKG_HOME/core/include/c++/13.1.0 -I $PPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s
+
+*link_libgcc:
+-L$PPKG_HOME/core/sysroot/lib -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{!shared: $PPKG_HOME/core/sysroot/lib/Scrt1.o} $PPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
+
+*endfile:
+crtendS.o%s $PPKG_HOME/core/sysroot/lib/crtn.o
+
+*link:
+-dynamic-linker $PPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $PPKG_HOME/core/sysroot/lib -rpath $PPKG_HOME/core/gcc/lib -L $PPKG_HOME/core/sysroot/lib -L $PPKG_HOME/core/gcc/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+EOF
+
+        for item in gcc g++ c++ cpp
+        do
+            ln -sf ../gcc/bin/$item bin/$item
+        done
+
+        ln -s ../wrapper-native-cc bin/cc
+    fi
 }
 
 # }}}
@@ -9476,7 +9600,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.1
+PPKG_VERSION=0.17.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
