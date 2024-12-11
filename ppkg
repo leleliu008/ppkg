@@ -4782,6 +4782,36 @@ xbuilder() {
     run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 }
 
+install_non_relocatable_binary_package_if_needed() {
+    case $NATIVE_PLATFORM_TYPE in
+        macos)
+            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                X='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                X='15.0'
+            else
+                X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+            fi
+
+            T="macos-$X-$NATIVE_PLATFORM_ARCH"
+            ;;
+        *)  T="$NATIVE_PLATFORM_SPEC"
+    esac
+
+    NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
+    NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
+
+    if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
+        wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+        run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
+        run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+        run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
+    fi
+
+    export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
+}
 
 # }}}
 ##############################################################################
@@ -5322,34 +5352,7 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
-            case $NATIVE_PLATFORM_TYPE in
-                macos)
-                    NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
-
-                    if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                        X='10.15'
-                    elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                        X='15.0'
-                    else
-                        X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-                    fi
-
-                    T="macos-$X-$NATIVE_PLATFORM_ARCH"
-                    ;;
-                *)  T="$NATIVE_PLATFORM_SPEC"
-            esac
-
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
-            NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
-
-            if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
-                run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
-            fi
-
-            export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
+            install_non_relocatable_binary_package_if_needed
         else
             PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER $PACKAGE_DEP_UPP_T2"
         fi
@@ -5426,7 +5429,11 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            xbuilder perl-XML-Parser
+            if [ "$GITHUB_ACTIONS" = true ] ; then
+                install_non_relocatable_binary_package_if_needed
+            else
+                xbuilder perl-XML-Parser
+            fi
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -9600,7 +9607,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.2
+PPKG_VERSION=0.17.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
