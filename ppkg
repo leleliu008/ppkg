@@ -5970,10 +5970,16 @@ $PACKAGE_DO12345
                 netbsd)
                     run install -d "$TARGET_PLATFORM_SPEC"
 
+                    case $TARGET_PLATFORM_VERS in
+                        [1-8].*)  NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
+                        9.[0-2])  NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
+                        *)        NETBSD_DOWNLOAD_SERVER='https://ftp.netbsd.org/pub/NetBSD' ;;
+                    esac
+
                     for item in base comp
                     do
                         FILENAME="$TARGET_PLATFORM_SPEC-$item.txz"
-                        URL="https://ftp.netbsd.org/pub/NetBSD/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
+                        URL="$NETBSD_DOWNLOAD_SERVER/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
                         wfetch "$URL" -o "$FILENAME"
                         run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
                     done
@@ -9607,7 +9613,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.3
+PPKG_VERSION=0.17.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
