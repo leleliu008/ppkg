@@ -6507,7 +6507,8 @@ EOF
 
         #########################################################
 
-        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+        # https://doc.rust-lang.org/rustc/command-line-arguments.html
+        # https://doc.rust-lang.org/rustc/codegen-options/index.html
         export RUSTFLAGS="-Clinker=$CC -L native=$PACKAGE_INSTALLING_LIB_DIR"
 
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
@@ -6936,62 +6937,47 @@ EOF
             done
         }
     else
-        # ELF files that need to be set rpath : $ORIGIN/../lib
-        unset PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
-
-        # ELF files that need to be set rpath : $ORIGIN/../.ppkg/dependencies/lib
-        unset PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
-
-        unset PACKAGE_NEEDED_SHARED_LIBS
+        unset PACKAGE_NEEDED_EXTERNAL_DYLIBS
+        unset PACKAGE_ELF_FILES_NEED_SET_RPATH
 
         __check_elf_files
 
-        [ -n "$PACKAGE_NEEDED_SHARED_LIBS" ] && {
+        [ -n "$PACKAGE_NEEDED_EXTERNAL_DYLIBS" ] && {
             step "copy dependent shared libs"
 
-            PACKAGE_NEEDED_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
+            PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
 
-            install -d -v "$PACKAGE_NEEDED_SHARED_LIBS_DIR"
+            install -d -v "$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR"
 
-            for f in $PACKAGE_NEEDED_SHARED_LIBS
+            for f in $PACKAGE_NEEDED_EXTERNAL_DYLIBS
             do
-                F="$PACKAGE_NEEDED_SHARED_LIBS_DIR/${f##*/}"
+                F="$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR/${f##*/}"
 
-                if [ ! -f "$F" ] ; then
-                    cp -L -v "$f" "$PACKAGE_NEEDED_SHARED_LIBS_DIR/"
-                    run patchelf --add-rpath "'\$ORIGIN'" "$F"
-                fi
+                [ -f "$F" ] || {
+                    cp -L -v "$f" "$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR/"
+                    run patchelf --set-rpath "'\$ORIGIN'" "$F"
+                }
             done
         }
 
-        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1" ] && {
+        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH" ] && {
             step "set rpath for ELF files"
 
-            PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1" | sort | uniq)"
+            KVs="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH" | sort | uniq)"
 
-            for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
+            for KV in $KVs
             do
-                DIRNAME="${f%/*}"
+                K="${KV%|*}"
+                V="${KV#*|}"
 
-                if [ "$DIRNAME" = './lib' ] ; then
-                    run patchelf --add-rpath "'\$ORIGIN'" "$f"
-                else
-                    RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" lib)"
-                    run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$f"
-                fi
-            done
-        }
+                case $V in
+                    1)  X='.ppkg/dependencies/lib' ;;
+                    *)  X="${V%/*}"
+                esac
 
-        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2" ] && {
-            step "set rpath for ELF files"
+                RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$X")"
 
-            PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2" | sort | uniq)"
-
-            for f in $PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
-            do
-                DIRNAME="${f%/*}"
-                RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ppkg/dependencies/lib)"
-                run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$f"
+                run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
             done
         }
     fi
@@ -7187,23 +7173,20 @@ __check_elf_files() {
             *)  unset NEEDED_SHARED_LIBRARY_FILEPATH
 
                 case $1 in
-                    ./*)
+                    /*) ;;
+                    *)
                         if [ -d lib ] ; then
-                            NEEDED_SHARED_LIBRARY_FILEPATH="./lib/$NEEDED"
+                            NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED"
 
-                            if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                                PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
-$1"
-                            else
-                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find ./lib \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
+                            [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                                unset NEEDED_SHARED_LIBRARY_FILEPATH
+                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
+                            }
 
-                                if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                                    PACKAGE_ELF_FILES_NEED_SET_RPATH_S1="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S1
-$1"
-                                else
-                                    unset NEEDED_SHARED_LIBRARY_FILEPATH
-                                fi
-                            fi
+                            [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                                PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
+$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+                            }
                         fi
                 esac
 
@@ -7213,21 +7196,28 @@ $1"
 
                         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
                         do
-                            NEEDED_SHARED_LIBRARY_FILEPATH="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$NEEDED"
+                            NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
 
-                            if [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                                PACKAGE_NEEDED_SHARED_LIBS="$PACKAGE_NEEDED_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
+                            [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
 
+                            NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED"
+
+                            [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                                unset NEEDED_SHARED_LIBRARY_FILEPATH
+                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
+                            }
+
+                            [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                                 case $1 in
-                                    ./*) PACKAGE_ELF_FILES_NEED_SET_RPATH_S2="$PACKAGE_ELF_FILES_NEED_SET_RPATH_S2
-$1"
+                                    /*) ;;
+                                    *)  PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
+$1|1"
                                 esac
 
+                                PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
                                 break
-                            else
-                                unset NEEDED_SHARED_LIBRARY_FILEPATH
-                            fi
+                            }
                         done
                     fi
                 fi
@@ -9613,7 +9603,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.4
+PPKG_VERSION=0.17.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
