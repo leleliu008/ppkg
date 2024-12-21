@@ -3150,7 +3150,13 @@ EOF
 
     #######################################################
 
-    __export_the_given_installed_package_as_$OUTPUT_TYPE
+    if [ "$OUTPUT_TYPE" = .pkg.tar.xz ] ; then
+        OUTPUT_KIND=pkg
+    else
+        OUTPUT_KIND="${OUTPUT_TYPE#.}"
+    fi
+
+    __export_the_given_installed_package_as_$OUTPUT_KIND
 
     #######################################################
 
