@@ -40,7 +40,7 @@ _ppkg_actions=(
     'tree:list the installed files of the given installed package in a tree-like format.'
     'logs:show logs of the given installed package.'
     'bundle:bundle the given installed package into a single archive file.'
-    'export:export the given installed package as another package format e.g. deb, rpm, apk, pkg, AppImage, etc.'
+    'export:export the given installed package as another package format e.g. .deb, .rpm, .apk, .pkg.tar.xz, .AppImage, etc.'
     'util:common used utilities.'
 )
 

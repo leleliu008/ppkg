@@ -3160,7 +3160,7 @@ EOF
 
     #######################################################
 
-    run du -sh *.$OUTPUT_TYPE
+    run du -sh *$OUTPUT_TYPE
 
     #######################################################
 
@@ -3170,7 +3170,7 @@ EOF
         run install -d "$OUTPUT_DIR"
     fi
 
-    run mv "$SESSION_DIR/*.$OUTPUT_TYPE" "$OUTPUT_PATH"
+    run mv "$SESSION_DIR/*$OUTPUT_TYPE" "$OUTPUT_PATH"
 
     #######################################################
 
