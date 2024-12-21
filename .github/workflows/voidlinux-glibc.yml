@@ -2,9 +2,9 @@ name: VoidLinux-glibc
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
 
 jobs:
   test:
@@ -49,7 +49,7 @@ jobs:
 
 
       - run: ./ppkg tree uctags
-      - run: ./ppkg pack uctags -t tar.xz
+      - run: ./ppkg export uctags tar.xz
 
       - run: ./ppkg formula-repo-list
 

@@ -555,42 +555,37 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg logs curl
     ```
 
-- **pack the given installed package**
+- **export the given installed package as another package format (e.g. tar.gz, tar.xz, tar.lz, tar.bz2, zip, deb, rpm, apk, pkg, etc)**
 
     ```bash
-    ppkg pack curl
-    ppkg pack curl -t tar.xz
-    ppkg pack curl -t tar.gz
-    ppkg pack curl -t tar.lz
-    ppkg pack curl -t tar.bz2
-    ppkg pack curl -t zip
+    ppkg export curl tar.gz
+    ppkg export curl tar.xz
+    ppkg export curl tar.lz
+    ppkg export curl tar.bz2
 
-    ppkg pack curl -t zip -o a/
-    ppkg pack curl -o a/xx.zip
-    ```
+    ppkg export curl zip
+    ppkg export curl zip -o a/
+    ppkg export curl zip -o a/xx.zip
 
-- **export the given installed package as anthoer package format (e.g. deb, rpm, pkg, apk, etc)**
+    ppkg export curl deb
+    ppkg export curl deb -o .
+    ppkg export curl deb -o a/
+    ppkg export curl deb -o curl-8.1.2-linux-x86_64.deb
 
-    ```bash
-    ppkg export.deb curl
-    ppkg export.deb curl -o .
-    ppkg export.deb curl -o a/
-    ppkg export.deb curl -o curl-8.1.2-linux-x86_64.deb
+    ppkg export curl rpm
+    ppkg export curl rpm -o .
+    ppkg export curl rpm -o a/
+    ppkg export curl rpm -o curl-8.1.2-linux-x86_64.rpm
 
-    ppkg export.rpm curl
-    ppkg export.rpm curl -o .
-    ppkg export.rpm curl -o a/
-    ppkg export.rpm curl -o curl-8.1.2-linux-x86_64.rpm
+    ppkg export curl pkg
+    ppkg export curl pkg -o .
+    ppkg export curl pkg -o a/
+    ppkg export curl pkg -o curl-8.1.2-linux-x86_64.pkg.tar.xz
 
-    ppkg export.pkg curl
-    ppkg export.pkg curl -o .
-    ppkg export.pkg curl -o a/
-    ppkg export.pkg curl -o curl-8.1.2-linux-x86_64.pkg.tar.xz
-
-    ppkg export.apk curl
-    ppkg export.apk curl -o .
-    ppkg export.apk curl -o a/
-    ppkg export.apk curl -o curl-8.1.2-linux-x86_64.apk
+    ppkg export curl apk
+    ppkg export curl apk -o .
+    ppkg export curl apk -o a/
+    ppkg export curl apk -o curl-8.1.2-linux-x86_64.apk
     ```
 
 - **delete the unused cached files**

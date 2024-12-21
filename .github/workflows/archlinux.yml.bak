@@ -2,9 +2,9 @@ name: ArchLinux
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
 
 jobs:
   test:
@@ -80,9 +80,9 @@ jobs:
           run ./ppkg setup
           run ./ppkg update
           run ./ppkg install    libzip
-          run ./ppkg export.pkg libzip
-          run ./ppkg export.pkg libzip -o ~/
-          run ./ppkg export.pkg libzip -o a/b.pkg
+          run ./ppkg export libzip pkg
+          run ./ppkg export libzip pkg -o ~/
+          run ./ppkg export libzip pkg -o a/b.pkg
 
           run sudo pacman -U --noconfirm *.pkg.tar.xz
           run pacman -Qi libzip

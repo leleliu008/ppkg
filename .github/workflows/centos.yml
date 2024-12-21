@@ -2,9 +2,9 @@ name: CentOS Linux
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
 
 jobs:
   test:
@@ -61,7 +61,7 @@ jobs:
 
       - run: ./ppkg tree uctags
 
-      - run: ./ppkg pack uctags -t tar.xz
+      - run: ./ppkg export uctags tar.xz
 
       - run: yum -y install rpmdevtools rpmlint
         if: ${{ matrix.tag == 7 }}
@@ -69,8 +69,8 @@ jobs:
       - run: dnf -y install rpmdevtools rpmlint
         if: ${{ matrix.tag == 8 }}
 
-      - run: ./ppkg export.rpm uctags -o ~/
-      - run: ./ppkg export.rpm uctags -o a/b.rpm
+      - run: ./ppkg export uctags rpm -o ~/
+      - run: ./ppkg export uctags rpm -o a/b.rpm
 
       - run: rpm -i a/b.rpm
       - run: rpm -ql uctags

@@ -39,11 +39,7 @@ _ppkg_actions=(
     'upgrade:upgrade the outdated packages.'
     'tree:list the installed files of the given installed package in a tree-like format.'
     'logs:show logs of the given installed package.'
-    'pack:pack the given installed package.'
-    'export.deb:export the given installed package as deb.'
-    'export.rpm:export the given installed package as rpm.'
-    'export.pkg:export the given installed package as pkg.'
-    'export.apk:export the given installed package as apk.'
+    'export:export the given installed package as another package format.'
     'util:common used utilities.'
 )
 
@@ -144,20 +140,14 @@ function _ppkg() {
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
-                export.deb|export.rpm|export.pkg|export.apk)
+                export)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '-o[specify output filepath or directory]:output-path:_files' \
-                        '--keep-session-dir[do not delete the session directory even if exported success]'
-                    ;;
-
-                pack)
-                    _arguments \
-                        '1:package-name:_ppkg_installed_packages' \
-                        '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '2:output-type:(tar.gz tar.xz tar.lz tar.bz2 zip deb rpm apk pkg)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '--exclude[specify exclude path]:exclude-path:_path_files -/' \
-                        '--keep-session-dir[do not delete the session directory even if packed success]'
+                        '-K[do not delete the session directory even if exported successfully]' \
+                        '--portable[make it portable]'
                     ;;
                 tree)
                     _arguments \

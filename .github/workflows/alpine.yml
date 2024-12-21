@@ -2,9 +2,9 @@ name: AlpineLinux
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
 
 jobs:
   test:
@@ -67,11 +67,11 @@ jobs:
       - run: ./ppkg info-installed uctags builtat-rfc-3339-utc
 
       - run: ./ppkg pack uctags
-      - run: ./ppkg pack uctags -t tar.gz
-      - run: ./ppkg pack uctags -t tar.lz
-      - run: ./ppkg pack uctags -t tar.xz
-      - run: ./ppkg pack uctags -t tar.bz2
-      - run: ./ppkg pack uctags -t zip
+      - run: ./ppkg export uctags tar.gz
+      - run: ./ppkg export uctags tar.lz
+      - run: ./ppkg export uctags tar.xz
+      - run: ./ppkg export uctags tar.bz2
+      - run: ./ppkg export uctags zip
 
       - run: apk add alpine-sdk
 
@@ -85,9 +85,9 @@ jobs:
       - run: install -d ~/.abuild/
       - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/leleliu008@gmail.com.rsa" > ~/.abuild/abuild.conf
 
-      - run: ./ppkg export.apk uctags
-      - run: ./ppkg export.apk uctags -o ~/
-      - run: ./ppkg export.apk uctags -o a/b.apk
+      - run: ./ppkg export uctags apk
+      - run: ./ppkg export uctags apk -o ~/
+      - run: ./ppkg export uctags apk -o a/b.apk
 
       - run: apk add a/b.apk
       - run: apk info -L uctags

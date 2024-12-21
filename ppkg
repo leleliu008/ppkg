@@ -1614,16 +1614,16 @@ __list_available_package_names() {
             FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$TARGET_PLATFORM_NAME"
 
             if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
             fi
 
             FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
 
             if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
+                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
             fi
         done
-    } | sort | uniq
+    } | sed 's|\.yml$||' | sort | uniq
 }
 
 # }}}
@@ -2045,7 +2045,7 @@ EOF
             PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
-                cut -d '|' -f3 "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ppkg/MANIFEST.txt"
+                cat "$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ppkg/MANIFEST.txt"
             else
                 abort 1 "package '$PACKAGE_SPEC' is not installed."
             fi
@@ -2653,22 +2653,41 @@ __fetch_resources_of_the_given_package() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg pack
+# {{{ ppkg export
 
-# examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]
-# __pack_the_given_installed_package    autoconf     -t tar.xz
-  __pack_the_given_installed_package() {
+# __export_the_given_installed_package export <PACKAGE-SPEC> <EXPORT-TYPE> [-o <OUTPUT-PATH>] [--exclude <EXCLUDE-PATH>] [-K] [--portable]
+  __export_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
-    shift
+    #######################################################
 
-    ###########################################################################################
+    unset EXPORT_KIND
+    unset EXPORT_TYPE
+
+    case $2 in
+        zip|tar.gz|tar.xz|tar.lz|tar.bz2)
+            EXPORT_KIND=tarball
+            ;;
+        deb|rpm|apk|pkg)
+            EXPORT_KIND="$2"
+            ;;
+        '') abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> <EXPORT-TYPE>, <EXPORT-TYPE> is unspecified." ;;
+        *)  abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> <EXPORT-TYPE>, unsupported <EXPORT-TYPE>: $2, <EXPORT-TYPE> must be any one of tar.gz|tar.xz|tar.lz|tar.bz2|zip|deb|rpm|apk|pkg"
+    esac
+
+    EXPORT_TYPE="$2"
+
+    #######################################################
+
+    shift 2
+
+    unset REQUEST_TO_KEEP_SESSION_DIR
 
     unset OUTPUT_PATH
-    unset OUTPUT_TYPE
 
     unset EXCLUDES
+
+    unset PORTABLE
 
     while [ -n "$1" ]
     do
@@ -2676,22 +2695,9 @@ __fetch_resources_of_the_given_package() {
             -K)
                 REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
-            -t) shift
-
-                if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
-                else
-                    OUTPUT_TYPE="$1"
-                fi
-
-                case $OUTPUT_TYPE in
-                    zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
-                esac
-                ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
@@ -2699,17 +2705,22 @@ __fetch_resources_of_the_given_package() {
             --exclude)
                 shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                    abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
                 else
                     EXCLUDES="$EXCLUDES $1"
                 fi
                 ;;
-            *)  abort 1 "$PPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
+            --portable)
+                PORTABLE=1
+                ;;
+            *)  abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K] [--portable], unrecognized option: $1"
         esac
         shift
     done
 
-    ###########################################################################################
+    #######################################################
+
+    OLDCWD="$PWD"
 
     SESSION_DIR="$PPKG_HOME/run/$$"
 
@@ -2717,126 +2728,33 @@ __fetch_resources_of_the_given_package() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    if [ -z "$EXCLUDES" ] ; then
-        run ln -s "$PACKAGE_INSTALLED_DIR" packed
-    else
-        run install -d packed
+    #######################################################
 
-        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
+    __export_the_given_installed_package_as_$EXPORT_KIND
 
-        for EXCLUDE in $EXCLUDES
-        do
-            run rm -rf "packed/$EXCLUDE"
-        done
-    fi
+    #######################################################
 
-    ###########################################################################################
+    [ "$EXPORT_TYPE" = pkg ] && EXPORT_TYPE='pkg.tar.xz'
 
-    if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
-        unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+    run du -sh *.$EXPORT_TYPE
 
-        if [ -d packed/lib ] ; then
-            for FILEPATH in $(find packed/lib -type f)
-            do
-                case $FILEPATH in
-                    */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-                    */lib*.so*) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-                    */*.o)      OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-                esac
-            done
-        fi
-
-        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-            if [ -d packed/bin ] ; then
-                for FILEPATH in $(find packed/bin -type f)
-                do
-                    FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
-
-                    if [ "$FILEMAGIC" = '7F454C46' ] ; then
-                        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                        PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                        if [ -n "$PT_INTERP" ] ; then
-                            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                            break
-                        fi
-                    fi
-                done
-            fi
-        fi
-
-        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-            for FILEPATH in $(find packed -type f -name '*.a' -print -quit)
-            do
-                OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-            done
-        fi
-
-        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
-        else
-            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
-        fi
-    else
-            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
-    fi
-
-    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
-
-    ###########################################################################################
-
-    if [ -z "$OUTPUT_TYPE" ] ; then
-        case $OUTPUT_PATH in
-            *.tar.gz|*.tgz)
-                OUTPUT_TYPE=tar.gz
-                ;;
-            *.tar.xz|*.txz)
-                OUTPUT_TYPE=tar.xz
-                ;;
-            *.tar.lz|*.tlz)
-                OUTPUT_TYPE=tar.lz
-                ;;
-            *.tar.bz2|*.tbz2)
-                OUTPUT_TYPE=tar.bz2
-                ;;
-            *.zip)
-                OUTPUT_TYPE=zip
-                ;;
-            *.7z)
-                OUTPUT_TYPE=7z
-                ;;
-            *)  OUTPUT_TYPE=tar.xz
-        esac
-    fi
-
-    ###########################################################################################
-
-    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_TYPE"
-
-    run mv packed "$PACKED_DIR_NAME"
-
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
-
-    run du -sh "$OUTPUT_FILENAME"
-
-    run cd -
-
-    ###########################################################################################
+    #######################################################
 
     case $OUTPUT_PATH in
         '') OUTPUT_PATH=.
             ;;
         */*)
             OUTPUT_DIR="${OUTPUT_PATH%/*}"
-
+            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
             [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
+            ;;
+        *)  OUTPUT_PATH=.
     esac
 
-    ###########################################################################################
+    run cd "$OLDCWD"
+    run mv "$SESSION_DIR/*.$EXPORT_TYPE" "$OUTPUT_PATH"
 
-    run mv "$SESSION_DIR/$OUTPUT_FILENAME" "$OUTPUT_PATH"
-
-    ###########################################################################################
+    #######################################################
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
@@ -2846,113 +2764,317 @@ __fetch_resources_of_the_given_package() {
     fi
 }
 
-# }}}
-##############################################################################
-# {{{ ppkg export.<TYPE>
+__export_the_given_installed_package_as_tarball() {
+    if [ -n "$EXCLUDES" ] || ( [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] && [ "$PORTABLE" = 1 ] ) ; then
+        run install -d packed
 
-# examples:
-# __export_the_given_installed_package <CMD> <PACKAGE-NAME> [-o <OUTPUT-PATH>] [-K]
-# __export_the_given_installed_package          autoconf
-  __export_the_given_installed_package() {
-    unset OUTPUT_PATH
-    unset OUTPUT_TYPE
+        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
 
-    case $1 in
-        export.deb)
-            OUTPUT_TYPE=deb
-            ;;
-        export.rpm)
-            OUTPUT_TYPE=rpm
-            ;;
-        export.pkg)
-            OUTPUT_TYPE=pkg
-            ;;
-        export.apk)
-            OUTPUT_TYPE=apk
-            ;;
-        '') abort 1 "$PPKG_ARG0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , export.<OUTPUT-TYPE> is unspecified." ;;
-        *)  abort 1 "$PPKG_ARG0 export.<OUTPUT-TYPE> <PACKAGE-NAME> , unsupported type: $1, <OUTPUT-TYPE> must be any one of deb|rpm|pkg|apk"
-    esac
-
-    __load_receipt_of_the_given_package "$2"
-
-    if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" != linux ] ; then
-        abort 1 "package $PACKAGE_SPEC was not built for Linux."
-    fi
-
-    shift 2
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            -K)
-                REQUEST_TO_KEEP_SESSION_DIR=1
-                ;;
-            -o) shift
-                if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
-                else
-                    OUTPUT_PATH="$1"
-                fi
-                ;;
-            *)  abort 1 "$PPKG_ARG0 export <PACKAGE-NAME> <OUTPUT-TYPE> [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
-        esac
-        shift
-    done
-
-    ###########################################################################################
-
-    case $OUTPUT_PATH in
-        '')
-            OUTPUT_DIR="$PWD"
-            OUTPUT_PATH="$OUTPUT_DIR/"
-            ;;
-        .|./)
-            OUTPUT_DIR="$PWD"
-            OUTPUT_PATH="$OUTPUT_DIR/"
-            ;;
-        ..|../)
-            OUTPUT_DIR="$PWD/.."
-            OUTPUT_PATH="$OUTPUT_DIR/"
-            ;;
-        /*/)
-            OUTPUT_DIR="$OUTPUT_PATH"
-            ;;
-        */) OUTPUT_PATH="$PWD/$OUTPUT_PATH"
-            OUTPUT_DIR="$OUTPUT_PATH"
-            ;;
-        /*) OUTPUT_DIR="$(dirname "$OUTPUT_PATH")"
-            ;;
-        *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
-            OUTPUT_PATH="$PWD/$OUTPUT_PATH"
-    esac
-
-    ###########################################################################################
-
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
-
-    unset TEPPUT_FILEPATH
-
-    eval "__export_the_given_installed_package_as_$OUTPUT_TYPE"
-
-    run du -sh "$TEPPUT_FILEPATH"
-
-    if [ !          -d "$OUTPUT_DIR" ] ; then
-        run install -d "$OUTPUT_DIR"
-    fi
-
-    run mv "$TEPPUT_FILEPATH" "$OUTPUT_PATH"
-
-    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
-        echo
-        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
+        for EXCLUDE in $EXCLUDES
+        do
+            run rm -rf "packed/$EXCLUDE"
+        done
     else
-        run rm -rf "$SESSION_DIR"
+        run ln -s "$PACKAGE_INSTALLED_DIR" packed
     fi
+
+    ###########################################################################################
+
+    unset PACKED_DIR_NAME
+
+    ###########################################################################################
+
+    if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
+        if [ "$PORTABLE" = 1 ] ; then
+            unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+
+            unset EXECUTABLES
+
+            unset DYNAMIC_LOADER_FILENAME
+
+            cd packed/
+
+            for FILEPATH in $(find -type f -not -path './.ppkg/*')
+            do
+                FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+
+                if [ "$FILEMAGIC" = '7F454C46' ] ; then
+                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                    if [ -n "$PT_INTERP" ] ; then
+                        EXECUTABLES="$EXECUTABLES $FILEPATH"
+
+                        [ -z "$DYNAMIC_LOADER_FILENAME" ] && DYNAMIC_LOADER_FILENAME="${PT_INTERP##*/}"
+                    fi
+                fi
+            done
+
+            if [ -n "$EXECUTABLES" ] ; then
+                for FILEPATH in $EXECUTABLES
+                do
+                    RELATIVE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" .ppkg/dependencies/lib)"
+
+                    chmod -x "$FILEPATH"
+
+                    run mv "$FILEPATH" "$FILEPATH.exe"
+
+                    cat > "$FILEPATH.c" <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
+
+int main(int argc, char* argv[]) {
+    char buf[PATH_MAX];
+
+    int ret = readlink("/proc/self/exe", buf, PATH_MAX);
+
+    if (ret == -1) {
+        perror("/proc/self/exe");
+        return 1;
+    }
+
+    ////////////////////////////////////////////////////
+
+    int slashIndex = -1;
+
+    char realExePath[ret + 5];
+
+    for (int i = 0; i < ret; i++) {
+        realExePath[i] = buf[i];
+
+        if (buf[i] == '/') {
+            slashIndex = i;
+        }
+    }
+
+    realExePath[ret    ] = '.';
+    realExePath[ret + 1] = 'e';
+    realExePath[ret + 2] = 'x';
+    realExePath[ret + 3] = 'e';
+    realExePath[ret + 4] = '\\0';
+
+    ////////////////////////////////////////////////////
+
+    const char * relativePath = "/$RELATIVE_PATH";
+    const char * dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
+
+    ////////////////////////////////////////////////////
+
+    for (int i = 1; ; i++) {
+        buf[slashIndex + i] = relativePath[i];
+
+        if (relativePath[i] == '\\0') {
+            break;
+        }
+    }
+
+    ////////////////////////////////////////////////////
+
+    char dynamicLoaderPath[PATH_MAX];
+
+    ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", buf, dynamicLoaderName);
+
+    if (ret < 0) {
+        perror(NULL);
+        return 2;
+    }
+
+    ////////////////////////////////////////////////////
+
+    char* argv2[argc + 4];
+
+    argv2[0] = dynamicLoaderPath;
+    argv2[1] = (char*)"--library-path";
+    argv2[2] = buf;
+    argv2[3] = realExePath;
+
+    for (int i = 1; i < argc; i++) {
+        argv2[i + 3] = argv[i];
+    }
+
+    argv2[argc + 3] = NULL;
+
+    execv (dynamicLoaderPath, argv2);
+    perror(dynamicLoaderPath);
+    return 255;
+}
+EOF
+                    run gcc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
+                done
+
+                GLIBC_INSTALL_DIR="$PPKG_HOME/runtime/glibc"
+                  GCC_INSTALL_DIR="$PPKG_HOME/runtime/gcc"
+
+                NEEDED_SYSTEM_DYLIBS="$(cat .ppkg/needed-system-libs.txt)"
+                NEEDED_SYSTEM_DYLIBS="$DYNAMIC_LOADER_FILENAME $NEEDED_SYSTEM_DYLIBS"
+
+                install -d .ppkg/dependencies/lib/
+
+                for NEEDED_FILENAME in $NEEDED_SYSTEM_DYLIBS
+                do
+                    if [ -f ".ppkg/dependencies/lib/$NEEDED_FILENAME" ] ; then
+                        continue
+                    fi
+
+                    ###############################################################
+
+                    [ -f "$GLIBC_INSTALL_DIR/ok" ] || {
+                        if [ -d "$GLIBC_INSTALL_DIR" ] ; then
+                            run rm -rf "$GLIBC_INSTALL_DIR"
+                        fi
+
+                        run install -d "$GLIBC_INSTALL_DIR"
+
+                        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
+                        run bsdtar xf glibc-*.tar.xz -C "$GLIBC_INSTALL_DIR" --strip-components=1
+                        touch "$GLIBC_INSTALL_DIR/ok"
+                    }
+
+                    NEEDED_FILEPATH="$GLIBC_INSTALL_DIR/lib/$NEEDED_FILENAME"
+
+                    if [ -f "$NEEDED_FILEPATH" ] ; then
+                        run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/
+                        continue
+                    fi
+
+                    ###############################################################
+
+                    [ -f "$GCC_INSTALL_DIR/ok" ] || {
+                        if [ -d "$GCC_INSTALL_DIR" ] ; then
+                            run rm -rf "$GCC_INSTALL_DIR"
+                        fi
+
+                        run install -d "$GCC_INSTALL_DIR"
+
+                        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.3.0-linux-glibc-x86_64.release.tar.xz' --no-buffer
+                        run bsdtar xf gcc-*.tar.xz -C "$GCC_INSTALL_DIR" --strip-components=1
+                        touch "$GCC_INSTALL_DIR/ok"
+                    }
+
+                    NEEDED_FILEPATH="$GCC_INSTALL_DIR/lib/$NEEDED_FILENAME"
+
+                    if [ -f "$NEEDED_FILEPATH" ] ; then
+                        run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/
+                        continue
+                    fi
+
+                    ###############################################################
+
+                    abort 1 "system library '$NEEDED_FILENAME' could not be found."
+                done
+            fi
+
+            cd -
+
+            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-any-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+        fi
+
+        if [ -z "$PACKED_DIR_NAME" ] ; then
+            unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+
+            if [ -f packed/.ppkg/needed-system-libs.txt ] ; then
+                OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+            fi
+
+            if [ -d packed/lib ] ; then
+                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+                    for FILEPATH in $(find packed/lib -type f -name 'lib*.a' -print -quit)
+                    do
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                    done
+                fi
+
+                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+                    for FILEPATH in $(find packed/lib -type f -name 'lib*.so' -print -quit)
+                    do
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                    done
+                fi
+
+                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+                    for FILEPATH in $(find packed/lib -type f -name '*.o' -print -quit)
+                    do
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                    done
+                fi
+            fi
+
+            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+                for d in bin sbin libexec
+                do
+                    if [ -d "packed/$d" ] ; then
+                        for FILEPATH in $(find "packed/$d" -type f)
+                        do
+                            FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+
+                            if [ "$FILEMAGIC" = '7F454C46' ] ; then
+                                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                                if [ -n "$PT_INTERP" ] ; then
+                                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                                    break
+                                fi
+                            fi
+                        done
+                    fi
+                done
+            fi
+
+            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+                for FILEPATH in $(find packed/ -type f -name '*.a' -print -quit)
+                do
+                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                done
+            fi
+
+            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
+                PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+            else
+                PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+            fi
+        fi
+    else
+        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+    fi
+
+    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
+
+    ###########################################################################################
+
+    if [ -z "$EXPORT_TYPE" ] ; then
+        case $OUTPUT_PATH in
+            *.tar.gz|*.tgz)
+                EXPORT_TYPE=tar.gz
+                ;;
+            *.tar.xz|*.txz)
+                EXPORT_TYPE=tar.xz
+                ;;
+            *.tar.lz|*.tlz)
+                EXPORT_TYPE=tar.lz
+                ;;
+            *.tar.bz2|*.tbz2)
+                EXPORT_TYPE=tar.bz2
+                ;;
+            *.zip)
+                EXPORT_TYPE=zip
+                ;;
+            *.7z)
+                EXPORT_TYPE=7z
+                ;;
+            *)  EXPORT_TYPE=tar.xz
+        esac
+    fi
+
+    ###########################################################################################
+
+    OUTPUT_FILENAME="$PACKED_DIR_NAME.$EXPORT_TYPE"
+
+    run mv packed "$PACKED_DIR_NAME"
+
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
 }
 
 __export_the_given_installed_package_as_deb() {
@@ -2996,9 +3118,7 @@ EOF
     run dpkg-deb --show pkg.deb
     run dpkg-deb --info pkg.deb
 
-    TEPPUT_FILEPATH="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH.deb"
-
-    run mv pkg.deb "$TEPPUT_FILEPATH"
+    run mv pkg.deb "$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH.deb"
 }
 
 __export_the_given_installed_package_as_rpm() {
@@ -3044,16 +3164,16 @@ EOF
 
     # https://rpmfind.net/linux/RPM/opensuse/ports/tumbleweed/aarch64/filesystem-84.87-15.3.aarch64.html
     # these directories belong to filesystem package, it can't be included in %files
-    cut -d '|' -f3 < "$PACKAGE_INSTALLED_DIR/.ppkg/MANIFEST.txt" | sed -e '/^src\/$/d' -e '/^bin\/$/d' -e '/^sbin\/$/d' -e '/^lib\/$/d' -e '/^lib64\/$/d' -e '/^libexec\/$/d' -e '/^include\/$/d' -e '/^share\/$/d' -e '/^man\/$/d' -e '/^man\/man1\/$/d' -e '/^man\/man2\/$/d' -e '/^man\/man3\/$/d' -e '/^man\/man4\/$/d' -e '/^man\/man5\/$/d' -e '/^man\/man6\/$/d' -e '/^man\/man7\/$/d' -e '/^man\/man8\/$/d' -e '/^man\/man9\/$/d' -e '/^man\/mann\/$/d' -e 's|^share/man/|/man/|' -e 's|^|/usr/local/|' >> SPECS/pkg.spec
+    cut -c3- < "$PACKAGE_INSTALLED_DIR/.ppkg/MANIFEST.txt" | sed -e '/^src\/$/d' -e '/^bin\/$/d' -e '/^sbin\/$/d' -e '/^lib\/$/d' -e '/^lib64\/$/d' -e '/^libexec\/$/d' -e '/^include\/$/d' -e '/^share\/$/d' -e '/^man\/$/d' -e '/^man\/man1\/$/d' -e '/^man\/man2\/$/d' -e '/^man\/man3\/$/d' -e '/^man\/man4\/$/d' -e '/^man\/man5\/$/d' -e '/^man\/man6\/$/d' -e '/^man\/man7\/$/d' -e '/^man\/man8\/$/d' -e '/^man\/man9\/$/d' -e '/^man\/mann\/$/d' -e 's|^share/man/|/man/|' -e 's|^|/usr/local/|' >> SPECS/pkg.spec
 
     run cat SPECS/pkg.spec
 
     #run rpmlint      SPECS/pkg.spec
     run rpmbuild --define "'_topdir $PWD'" -bb SPECS/pkg.spec
 
-    TEPPUT_FILEPATH="RPMS/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.rpm"
+    run mv "RPMS/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.rpm" .
 
-    run rpm -qlpv "$TEPPUT_FILEPATH"
+    run rpm -qlpv *.rpm
 }
 
 __export_the_given_installed_package_as_pkg() {
@@ -3097,8 +3217,6 @@ EOF
     export PACKAGER="leleliu008 <leleliu008@gmail.com>"
 
     run makepkg --nodeps --noextract --noprepare --nocheck
-
-    TEPPUT_FILEPATH='*.pkg.tar.xz'
 }
 
 __export_the_given_installed_package_as_apk() {
@@ -3142,9 +3260,9 @@ EOF
 
     run abuild -F
 
-    TEPPUT_FILEPATH="$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk"
+    run mv "$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk" .
 
-    run bsdtar tf "$TEPPUT_FILEPATH"
+    run bsdtar tf *.apk
 }
 
 # }}}
@@ -6895,6 +7013,7 @@ EOF
     step "docheck for target"
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        unset PACKAGE_NEEDED_SYSTEM_DYLIBS
         unset PACKAGE_NEEDED_EXTERNAL_DYLIBS
         unset PACKAGE_EXECUTABLES_NEED_SET_RPATH
 
@@ -6937,6 +7056,7 @@ EOF
             done
         }
     else
+        unset PACKAGE_NEEDED_SYSTEM_DYLIBS
         unset PACKAGE_NEEDED_EXTERNAL_DYLIBS
         unset PACKAGE_ELF_FILES_NEED_SET_RPATH
 
@@ -6979,6 +7099,10 @@ EOF
 
                 run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
             done
+        }
+
+        [ -n "$PACKAGE_NEEDED_SYSTEM_DYLIBS" ] && {
+            printf '%s\n' $PACKAGE_NEEDED_SYSTEM_DYLIBS | sort | uniq > "$PACKAGE_METAINFO_DIR/needed-system-libs.txt"
         }
     fi
 
@@ -7050,7 +7174,7 @@ $PACKAGE_ONFINAL
     cd "$PACKAGE_INSTALL_DIR"
 
     step "generate MANIFEST.txt"
-    __generate_manifest_of_the_given_package "$1"
+    find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > "$PACKAGE_MANIFEST_FILEPATH"
 
     step "generate RECEIPT.yml"
     __generate_receipt_of_the_given_package "$1"
@@ -7090,7 +7214,7 @@ $PACKAGE_ONFINAL
 __check_elf_files() {
     cd "$PACKAGE_INSTALL_DIR"
 
-    FILEPATHs="$(find -type f)"
+    FILEPATHs="$(find -type f -not -path './.ppkg/*')"
 
     export IFS='
 '
@@ -7124,12 +7248,13 @@ __check_elf_files() {
 
 # __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
-    # a \n-separated list
-    DT_NEEDED="$(patchelf --print-needed "$1")"
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
 
-    for NEEDED in $DT_NEEDED
+    for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
-        case "${NEEDED%.so*}" in
+        NEEDED_UNKOWN=
+
+        case "${NEEDED_SHARED_LIBRARY_FILENAME%.so*}" in
             libc)
                 ;;
             libm)
@@ -7139,8 +7264,6 @@ __check_elf_files() {
             libdl)
                 ;;
             libomp)
-                ;;
-            libgomp)
                 ;;
             libc++)
                 ;;
@@ -7158,6 +7281,8 @@ __check_elf_files() {
                 ;;
             libpthread)
                 ;;
+            libgomp)
+                ;;
             libgfortran)
                 ;;
             libgcc_s)
@@ -7170,69 +7295,80 @@ __check_elf_files() {
                 ;;
             libtinfo)
                 ;;
-            *)  unset NEEDED_SHARED_LIBRARY_FILEPATH
+            *)  NEEDED_UNKOWN=1
+        esac
 
-                case $1 in
-                    /*) ;;
-                    *)
-                        if [ -d lib ] ; then
-                            NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED"
+        if [ -z "$NEEDED_UNKOWN" ] ; then
+            PACKAGE_NEEDED_SYSTEM_DYLIBS="$PACKAGE_NEEDED_SYSTEM_DYLIBS
+$NEEDED_SHARED_LIBRARY_FILENAME"
+            continue
+        fi
 
-                            [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-                                unset NEEDED_SHARED_LIBRARY_FILEPATH
-                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
-                            }
+        unset NEEDED_SHARED_LIBRARY_FILEPATH
 
-                            [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                                PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
+        case $1 in
+            /*) ;;
+            *)
+                if [ -d lib ] ; then
+                    NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                        unset NEEDED_SHARED_LIBRARY_FILEPATH
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                    }
+
+                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                        PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
 $1|$NEEDED_SHARED_LIBRARY_FILEPATH"
-                            }
-                        fi
-                esac
-
-                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                    if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-                        RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
-
-                        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
-                        do
-                            NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
-
-                            [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
-
-                            NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED"
-
-                            [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-                                unset NEEDED_SHARED_LIBRARY_FILEPATH
-                                NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED" -print -quit)"
-                            }
-
-                            [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                                case $1 in
-                                    /*) ;;
-                                    *)  PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
-$1|1"
-                                esac
-
-                                PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
-                                break
-                            }
-                        done
-                    fi
-                fi
-
-                if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-                    __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
+                    }
                 fi
         esac
+
+        if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+            if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
+                RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
+
+                for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
+                do
+                    NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
+
+                    [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
+
+                    NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                        unset NEEDED_SHARED_LIBRARY_FILEPATH
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                    }
+
+                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                        case $1 in
+                            /*) ;;
+                            *)  PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
+$1|1"
+                        esac
+
+                        PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        break
+                    }
+                done
+            fi
+        fi
+
+        if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+            __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
+        else
+            PACKAGE_NEEDED_SYSTEM_DYLIBS="$PACKAGE_NEEDED_SYSTEM_DYLIBS
+$NEEDED_SHARED_LIBRARY_FILENAME"
+        fi
     done
 }
 
 __check_mach_o_files() {
     cd "$PACKAGE_INSTALL_DIR"
 
-    FILEPATHs="$(find -type f)"
+    FILEPATHs="$(find -type f -not -path './.ppkg/*')"
 
     export IFS='
 '
@@ -7656,39 +7792,6 @@ install_mans() {
     done < "$PACKAGE_MANIFEST_FILEPATH"
 
     exec 7>&-
-}
-
-# __generate_manifest_of_the_given_package <PACKAGE-NAME>
-  __generate_manifest_of_the_given_package() {
-    # fuck, some package's filename has space
-    export IFS='
-'
-
-    exec 7> "$PACKAGE_MANIFEST_FILEPATH"
-
-    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -not -name .ppkg -printf '%P\n')
-    do
-        for item in $(find "$dirname" -printf '%y:%p\n')
-        do
-            X=$(printf '%s\n' "$item" | cut -c1)
-            Y=${item#"$X":}
-
-            case $X in
-                l)  if [ -d "$Y" ] ; then
-                        printf 'D|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7
-                    else
-                        printf 'l|%s|%s\n' "$(sha256sum "$Y" | cut -d ' ' -f1)"                           "$Y" >&7
-                    fi
-                    ;;
-                d)  printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
-                *)  printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
-            esac
-        done
-    done
-
-    exec 7>&-
-
-    unset IFS
 }
 
 # }}}
@@ -9521,61 +9624,40 @@ ${COLOR_GREEN}ppkg logs <PACKAGE-SPEC>${COLOR_OFF}
 
     This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ppkg pack <PACKAGE-SPEC> [OPTIONS]${COLOR_OFF}
-    pack the given installed package.
-
-    ${COLOR_BLUE}-t <OUTPUT-TYPE>${COLOR_OFF}
-        must be any one of tar.gz tar.xz tar.lz tar.bz2 zip
-
-        If this option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
-
-    ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
-        specify where the packed archive file would be written to.
-
-        <OUTPUT-PATH> can be either the filepath or directory.
-
-        If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
-
-        If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
-
-        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
-
-        If this option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
-
-    ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
-        exclude file that isn't mean to packed into the archive file.
-
-        <PATH> is relative to the installed root directory.
-
-        this option can be used multiple times.
-
-    ${COLOR_BLUE}-K${COLOR_OFF}
-        keep the session directory even if this package is successfully packed.
-
-${COLOR_GREEN}ppkg export.<OUTPUT-TYPE> <PACKAGE-SPEC> [-o <OUTPUT-PATH>] [-K]${COLOR_OFF}
+${COLOR_GREEN}ppkg export <PACKAGE-SPEC> [-t <EXPORT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K] [--portable]${COLOR_OFF}
     export the given installed package as another package format.
 
-    ${COLOR_BLUE}<OUTPUT-TYPE>${COLOR_OFF}
-        must be any one of deb, rpm, pkg, apk
+    ${COLOR_BLUE}<EXPORT-TYPE>${COLOR_OFF}
+        <EXPORT-TYPE> must be any one of tar.gz, tar.xz, tar.lz, tar.bz2, zip, deb, rpm, apk, pkg
 
     ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
         <OUTPUT-PATH> can be either the filepath or directory which indicates where the final file would be written to.
 
         If <OUTPUT-PATH> is . .. or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
 
-        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><EXPORT-TYPE>
 
         If -o <OUTPUT-PATH> option is unspecified, the final file would be written to current directory.
+
+    ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
+        exclude file that isn't mean to be packed into the final file.
+
+        <PATH> is relative to the installed root directory.
+
+        this option can be used multiple times.
 
     ${COLOR_BLUE}-K${COLOR_OFF}
         keep the session directory even if this package is successfully exported.
 
+    ${COLOR_BLUE}--portable${COLOR_OFF}
+        this option only has effect for linux to pack libc into the final file to make it portable to run on any linux.
+
 
     ${COLOR_RED}Caveats:${COLOR_OFF}
-        export.deb command only can be run on Debian GNU Linux and it's derivatives.
-        export.rpm command only can be run on RHEL/CentOS/Fedora/openSUSE Linux and their derivatives.
-        export.pkg command only can be run on Arch Linux and it's derivative.
-        export.apk command only can be run on Alpine Linux.
+        deb format only can be run on Debian GNU Linux and it's derivatives.
+        rpm format only can be run on RHEL/CentOS/Fedora/openSUSE Linux and their derivatives.
+        pkg format only can be run on Arch Linux and it's derivative.
+        apk format only can be run on Alpine Linux and it's derivative.
 "
 }
 
@@ -9603,7 +9685,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.17.5
+PPKG_VERSION=0.18.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9833,10 +9915,9 @@ case $1 in
     upgrade-self)
              shift; __upgrade_self "$PPKG_UPGRAGE_URL" "$@" ;;
 
-    logs) shift; __logs_the_given_installed_package "$@" ;;
-    tree) shift; __tree_the_given_installed_package "$@" ;;
-    pack) shift; __pack_the_given_installed_package "$@" ;;
-    export.*)  __export_the_given_installed_package "$@" ;;
+    logs)   shift;   __logs_the_given_installed_package "$@" ;;
+    tree)   shift;   __tree_the_given_installed_package "$@" ;;
+    export) shift; __export_the_given_installed_package "$@" ;;
 
     integrate)
         shift
