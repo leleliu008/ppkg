@@ -2740,6 +2740,8 @@ __fetch_resources_of_the_given_package() {
 
     #######################################################
 
+    run cd "$OLDCWD"
+
     case $OUTPUT_PATH in
         '') OUTPUT_PATH=.
             ;;
@@ -2751,7 +2753,6 @@ __fetch_resources_of_the_given_package() {
         *)  OUTPUT_PATH=.
     esac
 
-    run cd "$OLDCWD"
     run mv "$SESSION_DIR/*.$EXPORT_TYPE" "$OUTPUT_PATH"
 
     #######################################################
