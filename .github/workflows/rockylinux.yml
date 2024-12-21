@@ -90,7 +90,6 @@ jobs:
       - run: ./ppkg info-installed uctags builtat-rfc-3339-utc
 
 
-      - run: ./ppkg pack uctags
       - run: ./ppkg export uctags tar.gz
       - run: ./ppkg export uctags tar.lz
       - run: ./ppkg export uctags tar.xz

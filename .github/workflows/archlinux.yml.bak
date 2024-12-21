@@ -43,7 +43,7 @@ jobs:
 
       - run: ./ppkg tree libzip
 
-      - run: ./ppkg pack libzip -t tar.xz
+      - run: ./ppkg export libzip tar.xz
 
       - run: ./ppkg formula-repo-list
 

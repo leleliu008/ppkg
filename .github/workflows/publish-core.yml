@@ -129,7 +129,7 @@ jobs:
           run ./ppkg setup --syspm
           run ./ppkg update
           run ./ppkg install uppm@0.15.4 --static
-          run ./ppkg pack    uppm@0.15.4
+          run ./ppkg export    uppm@0.15.4
           EOF
 
       - name: start container
@@ -204,7 +204,7 @@ jobs:
             run ./ppkg setup --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static
-            run ./ppkg pack    uppm@0.15.4
+            run ./ppkg export    uppm@0.15.4
 
             for item in *.c
             do
@@ -263,7 +263,7 @@ jobs:
             run ./ppkg setup --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static --profile=debug
-            run ./ppkg pack    uppm@0.15.4
+            run ./ppkg export    uppm@0.15.4
 
             for item in *.c
             do
@@ -322,7 +322,7 @@ jobs:
             run ./ppkg setup  --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4
-            run ./ppkg pack    uppm@0.15.4
+            run ./ppkg export    uppm@0.15.4
 
             for item in *.c
             do
@@ -385,7 +385,7 @@ jobs:
             run ./ppkg setup --syspm
             run ./ppkg update
             run ./ppkg install uppm@0.15.4 --static
-            run ./ppkg pack    uppm@0.15.4
+            run ./ppkg export    uppm@0.15.4
 
             for item in *.c
             do
