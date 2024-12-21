@@ -66,11 +66,11 @@ jobs:
       - run: ./ppkg info-installed uctags builtat-iso-8601-utc
       - run: ./ppkg info-installed uctags builtat-rfc-3339-utc
 
-      - run: ./ppkg export uctags tar.gz
-      - run: ./ppkg export uctags tar.lz
-      - run: ./ppkg export uctags tar.xz
-      - run: ./ppkg export uctags tar.bz2
-      - run: ./ppkg export uctags zip
+      - run: ./ppkg bundle uctags .tar.gz
+      - run: ./ppkg bundle uctags .tar.lz
+      - run: ./ppkg bundle uctags .tar.xz
+      - run: ./ppkg bundle uctags .tar.bz2
+      - run: ./ppkg bundle uctags .zip
 
       - run: apk add alpine-sdk
 
@@ -84,9 +84,9 @@ jobs:
       - run: install -d ~/.abuild/
       - run: printf 'PACKAGER_PRIVKEY="%s"\n' "$PWD/leleliu008@gmail.com.rsa" > ~/.abuild/abuild.conf
 
-      - run: ./ppkg export uctags apk
-      - run: ./ppkg export uctags apk -o ~/
-      - run: ./ppkg export uctags apk -o a/b.apk
+      - run: ./ppkg export uctags .apk
+      - run: ./ppkg export uctags ~/.apk
+      - run: ./ppkg export uctags a/b.apk
 
       - run: apk add a/b.apk
       - run: apk info -L uctags

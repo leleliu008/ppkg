@@ -555,37 +555,41 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg logs curl
     ```
 
-- **export the given installed package as another package format (e.g. tar.gz, tar.xz, tar.lz, tar.bz2, zip, deb, rpm, apk, pkg, etc)**
+- **bundle the given installed package into a single archive file**
 
     ```bash
-    ppkg export curl tar.gz
-    ppkg export curl tar.xz
-    ppkg export curl tar.lz
-    ppkg export curl tar.bz2
+    ppkg bundle curl .tar.gz
+    ppkg bundle curl .tar.xz
+    ppkg bundle curl .tar.lz
+    ppkg bundle curl .tar.bz2
+    ppkg bundle curl .zip
+    ppkg bundle curl xx.zip
+    ppkg bundle curl a/.zip
+    ppkg bundle curl a/xx.zip
+    ```
 
-    ppkg export curl zip
-    ppkg export curl zip -o a/
-    ppkg export curl zip -o a/xx.zip
+- **export the given installed package as another package format (e.g. .deb, .rpm, .apk, .pkg.tar.xz, etc)**
 
-    ppkg export curl deb
-    ppkg export curl deb -o .
-    ppkg export curl deb -o a/
-    ppkg export curl deb -o curl-8.1.2-linux-x86_64.deb
+    ```bash
+    ppkg export curl .deb
+    ppkg export curl curl-8.1.2-linux-x86_64.deb
+    ppkg export curl a/curl-8.1.2-linux-x86_64.deb
+    ppkg export curl a/.deb
 
-    ppkg export curl rpm
-    ppkg export curl rpm -o .
-    ppkg export curl rpm -o a/
-    ppkg export curl rpm -o curl-8.1.2-linux-x86_64.rpm
+    ppkg export curl .rpm
+    ppkg export curl curl-8.1.2-linux-x86_64.rpm
+    ppkg export curl a/curl-8.1.2-linux-x86_64.rpm
+    ppkg export curl a/.rpm
 
-    ppkg export curl pkg
-    ppkg export curl pkg -o .
-    ppkg export curl pkg -o a/
-    ppkg export curl pkg -o curl-8.1.2-linux-x86_64.pkg.tar.xz
+    ppkg export curl .apk
+    ppkg export curl curl-8.1.2-linux-x86_64.apk
+    ppkg export curl a/curl-8.1.2-linux-x86_64.apk
+    ppkg export curl a/.apk
 
-    ppkg export curl apk
-    ppkg export curl apk -o .
-    ppkg export curl apk -o a/
-    ppkg export curl apk -o curl-8.1.2-linux-x86_64.apk
+    ppkg export curl .pkg.tar.xz
+    ppkg export curl curl-8.1.2-linux-x86_64.pkg.tar.xz
+    ppkg export curl a/curl-8.1.2-linux-x86_64.pkg.tar.xz
+    ppkg export curl a/*.pkg.tar.xz
     ```
 
 - **delete the unused cached files**

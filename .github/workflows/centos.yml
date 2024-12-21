@@ -61,7 +61,7 @@ jobs:
 
       - run: ./ppkg tree uctags
 
-      - run: ./ppkg export uctags tar.xz
+      - run: ./ppkg bundle uctags .tar.xz
 
       - run: yum -y install rpmdevtools rpmlint
         if: ${{ matrix.tag == 7 }}
@@ -69,8 +69,9 @@ jobs:
       - run: dnf -y install rpmdevtools rpmlint
         if: ${{ matrix.tag == 8 }}
 
-      - run: ./ppkg export uctags rpm -o ~/
-      - run: ./ppkg export uctags rpm -o a/b.rpm
+      - run: ./ppkg export uctags .rpm
+      - run: ./ppkg export uctags ~/.rpm
+      - run: ./ppkg export uctags a/b.rpm
 
       - run: rpm -i a/b.rpm
       - run: rpm -ql uctags

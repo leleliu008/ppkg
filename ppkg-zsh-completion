@@ -39,7 +39,8 @@ _ppkg_actions=(
     'upgrade:upgrade the outdated packages.'
     'tree:list the installed files of the given installed package in a tree-like format.'
     'logs:show logs of the given installed package.'
-    'export:export the given installed package as another package format.'
+    'bundle:bundle the given installed package into a single archive file.'
+    'export:export the given installed package as another package format e.g. deb, rpm, apk, pkg, AppImage, etc.'
     'util:common used utilities.'
 )
 
@@ -140,14 +141,20 @@ function _ppkg() {
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '-p[specify target platform name]:platform:(linux macos freebsd openbsd netbsd dragonflybsd)'
                     ;;
-                export)
+                bundle)
                     _arguments \
                         '1:package-name:_ppkg_installed_packages' \
-                        '2:output-type:(tar.gz tar.xz tar.lz tar.bz2 zip deb rpm apk pkg)' \
-                        '-o[specify output filepath or directory]:output-path:_files' \
+                        ':output-path:_files' \
                         '--exclude[specify exclude path]:exclude-path:_path_files -/' \
                         '-K[do not delete the session directory even if exported successfully]' \
                         '--portable[make it portable]'
+                    ;;
+                export)
+                    _arguments \
+                        '1:package-name:_ppkg_installed_packages' \
+                        ':output-path:_files' \
+                        '--exclude[specify exclude path]:exclude-path:_path_files -/' \
+                        '-K[do not delete the session directory even if exported successfully]'
                     ;;
                 tree)
                     _arguments \

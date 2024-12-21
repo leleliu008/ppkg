@@ -347,7 +347,7 @@ wfetch() {
 
     unset NOT_BUFFER
 
-    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> should be non-empty."
 
     if [ -z "$PPKG_URL_TRANSFORM" ] ; then
         FETCH_URL="$1"
@@ -368,7 +368,7 @@ wfetch() {
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                    abort 1 "wfetch <URL> -o <PATH> , <PATH> should be non-empty."
                 else
                     FETCH_PATH="$1"
                 fi
@@ -2653,37 +2653,66 @@ __fetch_resources_of_the_given_package() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg export
+# {{{ ppkg bundle
 
-# __export_the_given_installed_package export <PACKAGE-SPEC> <EXPORT-TYPE> [-o <OUTPUT-PATH>] [--exclude <EXCLUDE-PATH>] [-K] [--portable]
-  __export_the_given_installed_package() {
+# __bundle_the_given_installed_package <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <EXCLUDE-PATH>] [-K] [--portable]
+  __bundle_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
     #######################################################
 
-    unset EXPORT_KIND
-    unset EXPORT_TYPE
+    unset OUTPUT_DIR
+    unset OUTPUT_PATH
+    unset OUTPUT_TYPE
+    unset OUTPUT_NAME
 
     case $2 in
-        zip|tar.gz|tar.xz|tar.lz|tar.bz2)
-            EXPORT_KIND=tarball
+        '') abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], forth argument is unspecified."
             ;;
-        deb|rpm|apk|pkg)
-            EXPORT_KIND="$2"
+        */*)
+            OUTPUT_DIR="${2%/*}"
+            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
+            OUTPUT_NAME="${2##*/}"
             ;;
-        '') abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> <EXPORT-TYPE>, <EXPORT-TYPE> is unspecified." ;;
-        *)  abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> <EXPORT-TYPE>, unsupported <EXPORT-TYPE>: $2, <EXPORT-TYPE> must be any one of tar.gz|tar.xz|tar.lz|tar.bz2|zip|deb|rpm|apk|pkg"
+        *)  OUTPUT_NAME="$2"
     esac
 
-    EXPORT_TYPE="$2"
+    case $OUTPUT_NAME in
+        '') abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, <BUNDLE-TYPE> is unspecified."
+            ;;
+        *.tar.gz)
+            OUTPUT_TYPE=.tar.gz
+            ;;
+        *.tar.xz)
+            OUTPUT_TYPE=.tar.xz
+            ;;
+        *.tar.lz)
+            OUTPUT_TYPE=.tar.lz
+            ;;
+        *.tar.bz2)
+            OUTPUT_TYPE=.tar.bz2
+            ;;
+        *.zip)
+            OUTPUT_TYPE=.zip
+            ;;
+        *)  abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, invalid forth argument: $2"
+    esac
+
+    if [ "$OUTPUT_NAME" = "$OUTPUT_TYPE" ] ; then
+        if [ -z "$OUTPUT_DIR"  ] ; then
+            OUTPUT_PATH=.
+        else
+            OUTPUT_PATH="$OUTPUT_DIR/"
+        fi
+    else
+        OUTPUT_PATH="$2"
+    fi
 
     #######################################################
 
     shift 2
 
     unset REQUEST_TO_KEEP_SESSION_DIR
-
-    unset OUTPUT_PATH
 
     unset EXCLUDES
 
@@ -2695,17 +2724,10 @@ __fetch_resources_of_the_given_package() {
             -K)
                 REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
-            -o) shift
-                if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
-                else
-                    OUTPUT_PATH="$1"
-                fi
-                ;;
             --exclude)
                 shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                    abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
                 else
                     EXCLUDES="$EXCLUDES $1"
                 fi
@@ -2713,7 +2735,7 @@ __fetch_resources_of_the_given_package() {
             --portable)
                 PORTABLE=1
                 ;;
-            *)  abort 1 "$PPKG_ARG0 $PPKG_ARG1 <PACKAGE-NAME> [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K] [--portable], unrecognized option: $1"
+            *)  abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--portable], unrecognized option: $1"
         esac
         shift
     done
@@ -2730,58 +2752,22 @@ __fetch_resources_of_the_given_package() {
 
     #######################################################
 
-    __export_the_given_installed_package_as_$EXPORT_KIND
-
-    #######################################################
-
-    [ "$EXPORT_TYPE" = pkg ] && EXPORT_TYPE='pkg.tar.xz'
-
-    run du -sh *.$EXPORT_TYPE
-
-    #######################################################
-
-    run cd "$OLDCWD"
-
-    case $OUTPUT_PATH in
-        '') OUTPUT_PATH=.
-            ;;
-        */*)
-            OUTPUT_DIR="${OUTPUT_PATH%/*}"
-            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
-            [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
-            ;;
-        *)  OUTPUT_PATH=.
-    esac
-
-    run mv "$SESSION_DIR/*.$EXPORT_TYPE" "$OUTPUT_PATH"
-
-    #######################################################
-
-    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
-        echo
-        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
-    else
-        run rm -rf "$SESSION_DIR"
-    fi
-}
-
-__export_the_given_installed_package_as_tarball() {
     if [ -n "$EXCLUDES" ] || ( [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] && [ "$PORTABLE" = 1 ] ) ; then
-        run install -d packed
+        run install -d bundle.d/
 
-        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
+        run cp -r "$PACKAGE_INSTALLED_DIR/." bundle.d/
 
         for EXCLUDE in $EXCLUDES
         do
-            run rm -rf "packed/$EXCLUDE"
+            run rm -rf "bundle.d/$EXCLUDE"
         done
     else
-        run ln -s "$PACKAGE_INSTALLED_DIR" packed
+        run ln -s "$PACKAGE_INSTALLED_DIR" bundle.d
     fi
 
     ###########################################################################################
 
-    unset PACKED_DIR_NAME
+    unset BUNDLE_DIR_NAME
 
     ###########################################################################################
 
@@ -2793,7 +2779,7 @@ __export_the_given_installed_package_as_tarball() {
 
             unset DYNAMIC_LOADER_FILENAME
 
-            cd packed/
+            cd bundle.d/
 
             for FILEPATH in $(find -type f -not -path './.ppkg/*')
             do
@@ -2816,7 +2802,7 @@ __export_the_given_installed_package_as_tarball() {
                 do
                     RELATIVE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" .ppkg/dependencies/lib)"
 
-                    chmod -x "$FILEPATH"
+                    run chmod -x "$FILEPATH"
 
                     run mv "$FILEPATH" "$FILEPATH.exe"
 
@@ -2969,33 +2955,33 @@ EOF
 
             cd -
 
-            PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-any-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+            BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-any-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
         fi
 
-        if [ -z "$PACKED_DIR_NAME" ] ; then
+        if [ -z "$BUNDLE_DIR_NAME" ] ; then
             unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
 
-            if [ -f packed/.ppkg/needed-system-libs.txt ] ; then
+            if [ -f bundle.d/.ppkg/needed-system-libs.txt ] ; then
                 OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
             fi
 
-            if [ -d packed/lib ] ; then
+            if [ -d bundle.d/lib ] ; then
                 if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find packed/lib -type f -name 'lib*.a' -print -quit)
+                    for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.a' -print -quit)
                     do
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                     done
                 fi
 
                 if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find packed/lib -type f -name 'lib*.so' -print -quit)
+                    for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.so' -print -quit)
                     do
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                     done
                 fi
 
                 if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find packed/lib -type f -name '*.o' -print -quit)
+                    for FILEPATH in $(find bundle.d/lib -type f -name '*.o' -print -quit)
                     do
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                     done
@@ -3005,8 +2991,8 @@ EOF
             if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
                 for d in bin sbin libexec
                 do
-                    if [ -d "packed/$d" ] ; then
-                        for FILEPATH in $(find "packed/$d" -type f)
+                    if [ -d "bundle.d/$d" ] ; then
+                        for FILEPATH in $(find "bundle.d/$d" -type f)
                         do
                             FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
 
@@ -3025,57 +3011,169 @@ EOF
             fi
 
             if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                for FILEPATH in $(find packed/ -type f -name '*.a' -print -quit)
+                for FILEPATH in $(find bundle.d/ -type f -name '*.a' -print -quit)
                 do
                     OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                 done
             fi
 
             if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-                PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+                BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
             else
-                PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+                BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
             fi
         fi
     else
-        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+        BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
     fi
 
-    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
+    BUNDLE_DIR_NAME="$BUNDLE_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
 
-    ###########################################################################################
+    OUTPUT_FILENAME="$BUNDLE_DIR_NAME$OUTPUT_TYPE"
 
-    if [ -z "$EXPORT_TYPE" ] ; then
-        case $OUTPUT_PATH in
-            *.tar.gz|*.tgz)
-                EXPORT_TYPE=tar.gz
+    #######################################################
+
+    run mv bundle.d "$BUNDLE_DIR_NAME"
+
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$BUNDLE_DIR_NAME/*" "$BUNDLE_DIR_NAME/.ppkg"
+
+    run du -sh "$OUTPUT_FILENAME"
+
+    run cd "$OLDCWD"
+
+    if [ -n "$OUTPUT_DIR" ] && [ "$OUTPUT_DIR" != . ] && [ "$OUTPUT_DIR" != .. ] && [ "$OUTPUT_DIR" != / ] && [ ! -d "$OUTPUT_DIR" ] ; then
+        run install -d "$OUTPUT_DIR"
+    fi
+
+    run mv "$SESSION_DIR/$OUTPUT_FILENAME" "$OUTPUT_PATH"
+
+    #######################################################
+
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
+        echo
+        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
+    else
+        run rm -rf "$SESSION_DIR"
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ ppkg export
+
+# __export_the_given_installed_package <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE> [--exclude <EXCLUDE-PATH>] [-K]
+  __export_the_given_installed_package() {
+    __load_receipt_of_the_given_package "$1"
+
+    #######################################################
+
+    unset OUTPUT_DIR
+    unset OUTPUT_PATH
+    unset OUTPUT_TYPE
+    unset OUTPUT_NAME
+
+    case $2 in
+        '') abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], forth argument is unspecified."
+            ;;
+        */*)
+            OUTPUT_DIR="${2%/*}"
+            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
+            OUTPUT_NAME="${2##*/}"
+            ;;
+        *)  OUTPUT_NAME="$2"
+    esac
+
+    case $OUTPUT_NAME in
+        '') abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE>, <BUNDLE-TYPE> is unspecified."
+            ;;
+        *.deb)
+            OUTPUT_TYPE=.deb
+            ;;
+        *.rpm)
+            OUTPUT_TYPE=.rpm
+            ;;
+        *.apk)
+            OUTPUT_TYPE=.apk
+            ;;
+        *.pkg.tar.xz)
+            OUTPUT_TYPE=.pkg.tar.xz
+            ;;
+        *)  abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE>, invalid forth argument: $2"
+    esac
+
+    if [ "$OUTPUT_NAME" = "$OUTPUT_TYPE" ] ; then
+        if [ -z "$OUTPUT_DIR"  ] ; then
+            OUTPUT_PATH=.
+        else
+            OUTPUT_PATH="$OUTPUT_DIR/"
+        fi
+    else
+        OUTPUT_PATH="$2"
+    fi
+
+    #######################################################
+
+    shift 2
+
+    unset REQUEST_TO_KEEP_SESSION_DIR
+
+    unset EXCLUDES
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -K)
+                REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
-            *.tar.xz|*.txz)
-                EXPORT_TYPE=tar.xz
+            --exclude)
+                shift
+                if [ -z "$1" ] ; then
+                    abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE>] [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                else
+                    EXCLUDES="$EXCLUDES $1"
+                fi
                 ;;
-            *.tar.lz|*.tlz)
-                EXPORT_TYPE=tar.lz
-                ;;
-            *.tar.bz2|*.tbz2)
-                EXPORT_TYPE=tar.bz2
-                ;;
-            *.zip)
-                EXPORT_TYPE=zip
-                ;;
-            *.7z)
-                EXPORT_TYPE=7z
-                ;;
-            *)  EXPORT_TYPE=tar.xz
+            *)  abort 1 "$PPKG_ARG0 export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE>] [--portable], unrecognized option: $1"
         esac
+        shift
+    done
+
+    #######################################################
+
+    OLDCWD="$PWD"
+
+    SESSION_DIR="$PPKG_HOME/run/$$"
+
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    #######################################################
+
+    __export_the_given_installed_package_as_$OUTPUT_TYPE
+
+    #######################################################
+
+    run du -sh *.$OUTPUT_TYPE
+
+    #######################################################
+
+    run cd "$OLDCWD"
+
+    if [ -n "$OUTPUT_DIR" ] && [ "$OUTPUT_DIR" != . ] && [ "$OUTPUT_DIR" != .. ] && [ "$OUTPUT_DIR" != / ] && [ ! -d "$OUTPUT_DIR" ] ; then
+        run install -d "$OUTPUT_DIR"
     fi
 
-    ###########################################################################################
+    run mv "$SESSION_DIR/*.$OUTPUT_TYPE" "$OUTPUT_PATH"
 
-    OUTPUT_FILENAME="$PACKED_DIR_NAME.$EXPORT_TYPE"
+    #######################################################
 
-    run mv packed "$PACKED_DIR_NAME"
-
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ppkg"
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
+        echo
+        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
+    else
+        run rm -rf "$SESSION_DIR"
+    fi
 }
 
 __export_the_given_installed_package_as_deb() {
@@ -4600,7 +4698,7 @@ __inspect_install_arguments() {
                 ENABLE_STRIP="${1#*=}"
                 case $ENABLE_STRIP in
                     no|all|debug|unneeded) ;;
-                    *)  abort 1 "--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded"
+                    *)  abort 1 "--strip=<VALUE>, VALUE should be one of no, all, debug, unneeded"
                 esac
                 ;;
             --target=*)
@@ -4613,7 +4711,7 @@ __inspect_install_arguments() {
                 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
             -j) shift
-                isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
+                isInteger "$1" || abort 1 "-j <N>, <N> should be an integer."
                 BUILD_NJOBS="$1"
                 ;;
             -I) shift
@@ -8012,7 +8110,7 @@ EOF
     [ -z "$RECEIPT_PACKAGE_BUILTBY" ] && abort 1 "receipt scheme error. builtby mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
     [ -z "$RECEIPT_PACKAGE_BUILTAT" ] && abort 1 "receipt scheme error. builtat mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
 
-    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length must be 10."
+    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length should be 10."
 
     if [ "${PACKAGE_SPEC#*/}" != "$RECEIPT_PACKAGE_PKGNAME" ] ; then
         error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
@@ -8499,7 +8597,7 @@ __uninstall_the_given_packages() {
 
 # __upgrade_self <URL>
   __upgrade_self() {
-    [ -z "$1" ] && abort 1 "__upgrade_self <URL> , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 "__upgrade_self <URL> , <URL> should be non-empty."
 
     unset CURRENT_SCRIPT_REALPATH
 
@@ -8542,7 +8640,7 @@ __uninstall_the_given_packages() {
 
 # __integrate_zsh_completions <URL> [--output-dir=<DIR>]
   __integrate_zsh_completions() {
-    [ -z "$1" ] && abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> should be non-empty."
 
     ZSH_COMPLETIONS_SCRIPT_URL="$1"
 
@@ -8557,7 +8655,7 @@ __uninstall_the_given_packages() {
                 OUTPUT_DIR="${1#*=}"
 
                 case $OUTPUT_DIR in
-                    '')  abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must be a non-empty string." ;;
+                    '')  abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> should be a non-empty string." ;;
                     /*)  ;;
                     ~)   OUTPUT_DIR="$HOME" ;;
                     ~/)  OUTPUT_DIR="$HOME" ;;
@@ -9424,7 +9522,7 @@ ${COLOR_GREEN}ppkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLO
 ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
-    <OUTPUT-TYPE> must be any one of d2 dot box svg png
+    <OUTPUT-TYPE> should be any one of d2 dot box svg png
 
     <OUTPUT-PATH> can be either the filepath or directory.
 
@@ -9446,7 +9544,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-NAME|PACKAGE-SPEC>... [INSTALL-OPTIONS]${COL
 
     ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
-    <PACKAGE-NAME> must match the regular expression pattern ${COLOR_RED}^[A-Za-z0-9+-_.@]{1,50}$ ${COLOR_OFF}
+    <PACKAGE-NAME> should match the regular expression pattern ${COLOR_RED}^[A-Za-z0-9+-_.@]{1,50}$ ${COLOR_OFF}
 
     <PACKAGE-SPEC> is a formatted string that has form ${COLOR_RED}<TARGET>/<PACKAGE-NAME>${COLOR_OFF}
 
@@ -9625,40 +9723,59 @@ ${COLOR_GREEN}ppkg logs <PACKAGE-SPEC>${COLOR_OFF}
 
     This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ppkg export <PACKAGE-SPEC> [-t <EXPORT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K] [--portable]${COLOR_OFF}
-    export the given installed package as another package format.
+${COLOR_GREEN}ppkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE> [--exclude <PATH>] [-K] [--portable]${COLOR_OFF}
+    bundle the given installed package into a single archive file.
 
-    ${COLOR_BLUE}<EXPORT-TYPE>${COLOR_OFF}
-        <EXPORT-TYPE> must be any one of tar.gz, tar.xz, tar.lz, tar.bz2, zip, deb, rpm, apk, pkg
+    ${COLOR_BLUE}<OUTPUT-DIR>${COLOR_OFF}
+        If specified, should end with slash.
 
-    ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
-        <OUTPUT-PATH> can be either the filepath or directory which indicates where the final file would be written to.
+    ${COLOR_BLUE}<OUTPUT-FILENAME-PREFIX>${COLOR_OFF}
+        If unspecified, use <PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH> as default.
 
-        If <OUTPUT-PATH> is . .. or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
-
-        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><EXPORT-TYPE>
-
-        If -o <OUTPUT-PATH> option is unspecified, the final file would be written to current directory.
+    ${COLOR_BLUE}<BUNDLE-TYPE>${COLOR_OFF}
+        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip
 
     ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
-        exclude file that isn't mean to be packed into the final file.
+        exclude file that is not mean to be bundled into the final file.
 
         <PATH> is relative to the installed root directory.
 
         this option can be used multiple times.
 
     ${COLOR_BLUE}-K${COLOR_OFF}
-        keep the session directory even if this package is successfully exported.
+        keep the session directory even if this package is successfully bundled.
 
     ${COLOR_BLUE}--portable${COLOR_OFF}
-        this option only has effect for linux to pack libc into the final file to make it portable to run on any linux.
+        this option only has effect for linux to bundle libc and dynamic loader into the final file to make it portable to run on any linux.
 
+
+${COLOR_GREEN}ppkg export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE> [--exclude <PATH>] [-K]${COLOR_OFF}
+    export the given installed package as another package format.
+
+    ${COLOR_BLUE}<OUTPUT-DIR>${COLOR_OFF}
+        If specified, should end with slash.
+
+    ${COLOR_BLUE}<OUTPUT-FILENAME-PREFIX>${COLOR_OFF}
+        If unspecified, use <PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH> as default.
+
+    ${COLOR_BLUE}<EXPORT-TYPE>${COLOR_OFF}
+        should be any one of .deb .rpm .apk .pkg.tar.xz
+
+    ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
+        exclude file that is not mean to be bundled into the final file.
+
+        <PATH> is relative to the installed root directory.
+
+        this option can be used multiple times.
+
+    ${COLOR_BLUE}-K${COLOR_OFF}
+        keep the session directory even if this package is successfully bundled.
 
     ${COLOR_RED}Caveats:${COLOR_OFF}
-        deb format only can be run on Debian GNU Linux and it's derivatives.
-        rpm format only can be run on RHEL/CentOS/Fedora/openSUSE Linux and their derivatives.
-        pkg format only can be run on Arch Linux and it's derivative.
-        apk format only can be run on Alpine Linux and it's derivative.
+        .deb format only can be run on Debian GNU Linux and it's derivatives.
+        .rpm format only can be run on RHEL/CentOS/Fedora/openSUSE Linux and their derivatives.
+        .pkg format only can be run on Arch Linux and it's derivative.
+        .apk format only can be run on Alpine Linux and it's derivative.
 "
 }
 
@@ -9918,6 +10035,7 @@ case $1 in
 
     logs)   shift;   __logs_the_given_installed_package "$@" ;;
     tree)   shift;   __tree_the_given_installed_package "$@" ;;
+    bundle) shift; __bundle_the_given_installed_package "$@" ;;
     export) shift; __export_the_given_installed_package "$@" ;;
 
     integrate)

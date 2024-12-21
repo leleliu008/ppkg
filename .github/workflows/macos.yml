@@ -47,10 +47,10 @@ jobs:
 
       - run: ./ppkg tree uctags
 
-      - run: ./ppkg export uctags tar.gz
-      - run: ./ppkg export uctags tar.xz
-      - run: ./ppkg export uctags tar.bz2
-      - run: ./ppkg export uctags zip
+      - run: ./ppkg bundle uctags .tar.gz
+      - run: ./ppkg bundle uctags .tar.xz
+      - run: ./ppkg bundle uctags .tar.bz2
+      - run: ./ppkg bundle uctags .zip
 
       - run: ./ppkg formula-repo-list
 

@@ -43,7 +43,7 @@ jobs:
 
       - run: ./ppkg tree libzip
 
-      - run: ./ppkg export libzip tar.xz
+      - run: ./ppkg bundle libzip .tar.xz
 
       - run: ./ppkg formula-repo-list
 
@@ -79,10 +79,10 @@ jobs:
 
           run ./ppkg setup
           run ./ppkg update
-          run ./ppkg install    libzip
-          run ./ppkg export libzip pkg
-          run ./ppkg export libzip pkg -o ~/
-          run ./ppkg export libzip pkg -o a/b.pkg
+          run ./ppkg install libzip
+          run ./ppkg export  libzip .pkg.tar.xz
+          run ./ppkg export  libzip ~/.pkg.tar.xz
+          run ./ppkg export  libzip a/b.pkg.tar.xz
 
           run sudo pacman -U --noconfirm *.pkg.tar.xz
           run pacman -Qi libzip

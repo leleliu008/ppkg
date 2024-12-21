@@ -90,17 +90,18 @@ jobs:
       - run: ./ppkg info-installed uctags builtat-rfc-3339-utc
 
 
-      - run: ./ppkg export uctags tar.gz
-      - run: ./ppkg export uctags tar.lz
-      - run: ./ppkg export uctags tar.xz
-      - run: ./ppkg export uctags tar.bz2
-      - run: ./ppkg export uctags zip
+      - run: ./ppkg bundle uctags .tar.gz
+      - run: ./ppkg bundle uctags .tar.lz
+      - run: ./ppkg bundle uctags .tar.xz
+      - run: ./ppkg bundle uctags .tar.bz2
+      - run: ./ppkg bundle uctags .zip
 
 
       - run: dnf -y install rpmdevtools rpmlint
 
-      - run: ./ppkg export uctags rpm -o ~/
-      - run: ./ppkg export uctags rpm -o a/b.rpm
+      - run: ./ppkg export uctags .rpm
+      - run: ./ppkg export uctags ~/.rpm
+      - run: ./ppkg export uctags a/b.rpm
 
       - run: rpm -i a/b.rpm
       - run: rpm -ql uctags

@@ -62,7 +62,7 @@ jobs:
 
             run ./ppkg tree uctags
 
-            run ./ppkg export uctags tar.xz
+            run ./ppkg bundle uctags .tar.xz
 
             run ./ppkg formula-repo-list
 

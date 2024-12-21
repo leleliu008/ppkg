@@ -49,14 +49,14 @@ jobs:
 
       - run: ./ppkg tree uctags
 
-      - run: ./ppkg export uctags tar.gz
-      - run: ./ppkg export uctags tar.xz
-      - run: ./ppkg export uctags tar.bz2
-      - run: ./ppkg export uctags zip
+      - run: ./ppkg bundle uctags .tar.gz
+      - run: ./ppkg bundle uctags .tar.xz
+      - run: ./ppkg bundle uctags .tar.bz2
+      - run: ./ppkg bundle uctags .zip
 
-      - run: ./ppkg export uctags deb
-      - run: ./ppkg export uctags deb -o ~/
-      - run: ./ppkg export uctags deb -o a/b.deb
+      - run: ./ppkg export uctags .deb
+      - run: ./ppkg export uctags ~/.deb
+      - run: ./ppkg export uctags a/b.deb
 
       - run: dpkg -i a/b.deb
       - run: dpkg -L uctags
