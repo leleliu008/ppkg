@@ -3365,6 +3365,7 @@ EOF
 
     run abuild -F
 
+    run cd -
     run mv "$REPODEST/community/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH/*.apk" .
 
     run bsdtar tf *.apk
