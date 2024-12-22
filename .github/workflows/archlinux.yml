@@ -67,6 +67,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
       - run: |
           cat > run.sh <<EOF
           run() {
@@ -75,9 +77,6 @@ jobs:
           }
 
           set -e
-
-          run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-          run chmod a+x ppkg
 
           run ./ppkg setup
           run ./ppkg update
@@ -104,4 +103,4 @@ jobs:
           EOF
 
       - run: docker build -t myarchlinux .
-      - run: docker run -v $PWD:/home/leleliu008/bin -w /home/leleliu008 --name myarchlinux myarchlinux sh bin/run.sh
+      - run: docker run -v $PWD:/home/leleliu008 -w /home/leleliu008 --name myarchlinux myarchlinux sh run.sh
