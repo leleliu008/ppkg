@@ -35,15 +35,15 @@ int main(int argc, char* argv[]) {
 
     ////////////////////////////////////////////////////
 
-    const char * relativePath = "/../.ppkg/dependencies/lib";
+    const char * relativeToLibPath = "/../.ppkg/dependencies/lib";
     const char * dynamicLoaderName = "ld-linux-x86-64.so.2";
 
     ////////////////////////////////////////////////////
 
     for (int i = 1; ; i++) {
-        buf[slashIndex + i] = relativePath[i];
+        buf[slashIndex + i] = relativeToLibPath[i];
 
-        if (relativePath[i] == '\0') {
+        if (relativeToLibPath[i] == '\0') {
             break;
         }
     }
