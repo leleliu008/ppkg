@@ -90,17 +90,20 @@ jobs:
           EOF
 
       - run: |
+          _GID=$(id -g)
+          _UID=$(id -u)
+
           cat > Dockerfile <<EOF
           FROM archlinux
 
           RUN pacman -Syy --noconfirm && \
               pacman -S sudo curl gcc fakeroot --noconfirm && \
-              groupadd --gid 1000 leleliu008 && \
-              useradd  --gid 1000 --uid 1000 -m leleliu008 && \
+              groupadd --gid $_GID leleliu008 && \
+              useradd  --gid $_GID --uid $_UID -m leleliu008 && \
               echo 'leleliu008 ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
           USER leleliu008
           EOF
 
       - run: docker build -t myarchlinux .
-      - run: docker run -v $PWD:/home/leleliu008/workdir -w /home/leleliu008/workdir --name myarchlinux myarchlinux sh run.sh
+      - run: docker run -v $PWD:/home/leleliu008/w -w /home/leleliu008/w --name myarchlinux myarchlinux sh run.sh
