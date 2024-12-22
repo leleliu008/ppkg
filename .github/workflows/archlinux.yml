@@ -103,4 +103,4 @@ jobs:
           EOF
 
       - run: docker build -t myarchlinux .
-      - run: docker run -v $PWD:/home/leleliu008 -w /home/leleliu008 --name myarchlinux myarchlinux sh run.sh
+      - run: docker run -v $PWD:/home/leleliu008/workdir -w /home/leleliu008/workdir --name myarchlinux myarchlinux sh run.sh
