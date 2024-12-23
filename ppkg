@@ -3738,9 +3738,9 @@ cmakew_internal() {
 
 cmakew_for_native() {
     if [ "$PACKAGE_USE_BSYSTEM_NINJA" = 1 ] ; then
-        CMAKE_GENERATOR='Ninja'
+        export CMAKE_GENERATOR='Ninja'
     else
-        CMAKE_GENERATOR='Unix Makefiles'
+        export CMAKE_GENERATOR='Unix Makefiles'
     fi
 
     if [ "$VERBOSE_CMAKE" = 1 ] ; then
