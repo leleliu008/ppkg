@@ -4900,6 +4900,8 @@ $FORMULA_SEARCH_DIR"
 
     # DO NOT use these environment variables
 
+    unset DESTDIR
+
     unset LIBS
 
     # autoreconf --help
@@ -7750,17 +7752,20 @@ __tweak_pc_files() {
             gsed -i "s|--sysroot=$SYSROOT||"   "$pcfile"
         fi
 
-        if grep -q 'Libs.private:' "$pcfile" ; then
-            LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
-            LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            gsed -i "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            gsed -i '/Libs.private/d' "$pcfile"
+        if grep -q '^Libs.private:' "$pcfile" ; then
+            if grep -q '^Libs:' "$pcfile" ; then
+                LIBS_PRIVATE=$(gsed -n '/^Libs.private:/p' "$pcfile" | cut -c14-)
+                gsed -i "/Libs:/s|\$|$LIBS_PRIVATE|" "$pcfile"
+                gsed -i '/Libs.private/d' "$pcfile"
+            else
+                gsed -i 's|Libs.private:|Libs:|' "$pcfile"
+            fi
         fi
 
-        if grep -q 'Requires.private:' "$pcfile" ; then
-            if grep -q 'Requires:' "$pcfile" ; then
-                REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+        if grep -q '^Requires.private:' "$pcfile" ; then
+            if grep -q '^Requires:' "$pcfile" ; then
+                REQUIRES_PRIVATE=$(gsed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
+                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE|" "$pcfile"
                 gsed -i '/Requires.private:/d' "$pcfile"
             else
                 gsed -i 's|Requires.private:|Requires:|' "$pcfile"
@@ -9810,7 +9815,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.0
+PPKG_VERSION=0.18.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
