@@ -68,7 +68,7 @@ abort() {
 }
 
 step() {
-    STEP_NUM=$(expr ${STEP_NUM-0} + 1)
+    STEP_NUM=$((${STEP_NUM-0} + 1))
     STEP_MESSAGE="$*"
     printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
 }
@@ -106,20 +106,6 @@ bppend_to_ACLOCAL_PATH() {
         *:"$1":*) ;;
         *) export ACLOCAL_PATH="$1:$ACLOCAL_PATH" ;;
     esac
-}
-
-sedInPlace() {
-    if [ "${DUMP_SED:-0}" = 1 ] ; then
-        sed -i "$@"
-    else
-        if [ -z "$SED" ] ; then
-            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
-        fi
-
-        export SED
-
-        "$PPKG_CORE_DIR/sed-in-place" "$@"
-    fi
 }
 
 git() {
@@ -878,7 +864,7 @@ __list_available_formula_repositories() {
     for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
     do
         if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
-            I="$(expr "$I" + 1)"
+            I="$(("$I" + 1))"
 
             [ "$I" -gt 1 ] && printf '\n'
 
@@ -1057,7 +1043,7 @@ filetype_from_url() {
 
     unset PACKAGE_ONSTART
     unset PACKAGE_ONREADY
-    unset PACKAGE_ONFINAL
+    unset PACKAGE_DOEXTRA
 
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
@@ -1142,7 +1128,7 @@ filetype_from_url() {
 
     PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1730,7 +1716,7 @@ __search_packages() {
         --arg dep_plm "$PACKAGE_DEP_PLM" \
         --arg onstart "$PACKAGE_ONSTART" \
         --arg onready "$PACKAGE_ONREADY" \
-        --arg onfinal "$PACKAGE_ONFINAL" \
+        --arg doextra "$PACKAGE_DOEXTRA" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
@@ -1782,7 +1768,7 @@ __search_packages() {
     "developer":$developer,
     "onstart":$onstart,
     "onready":$onready,
-    "onfinal":$onfinal,
+    "doextra":$doextra,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
@@ -1936,9 +1922,9 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_ONREADY"
             ;;
-        onfinal)
+        doextra)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONFINAL"
+            printf '%s\n' "$PACKAGE_DOEXTRA"
             ;;
         do12345)
             __load_formula_of_the_given_package "$1"
@@ -2109,7 +2095,7 @@ EOF
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
         --arg onstart "$RECEIPT_PACKAGE_ONSTART" \
         --arg onready "$RECEIPT_PACKAGE_ONREADY" \
-        --arg onfinal "$RECEIPT_PACKAGE_ONFINAL" \
+        --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
@@ -2164,7 +2150,7 @@ EOF
     "developer":$developer,
     "onstart":$onstart,
     "onready":$onready,
-    "onfinal":$onfinal,
+    "doextra":$doextra,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
@@ -2813,14 +2799,16 @@ __fetch_resources_of_the_given_package() {
 #include <limits.h>
 
 int main(int argc, char* argv[]) {
-    char buf[PATH_MAX];
+    char selfExecPath[PATH_MAX];
 
-    int ret = readlink("/proc/self/exe", buf, PATH_MAX);
+    int ret = readlink("/proc/self/exe", selfExecPath, PATH_MAX);
 
     if (ret == -1) {
         perror("/proc/self/exe");
         return 1;
     }
+
+    selfExecPath[ret] = '\\0';
 
     ////////////////////////////////////////////////////
 
@@ -2829,9 +2817,9 @@ int main(int argc, char* argv[]) {
     char realExePath[ret + 5];
 
     for (int i = 0; i < ret; i++) {
-        realExePath[i] = buf[i];
+        realExePath[i] = selfExecPath[i];
 
-        if (buf[i] == '/') {
+        if (selfExecPath[i] == '/') {
             slashIndex = i;
         }
     }
@@ -2844,15 +2832,21 @@ int main(int argc, char* argv[]) {
 
     ////////////////////////////////////////////////////
 
-    const char * relativePath = "/$RELATIVE_PATH";
     const char * dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
+    const char * libraryPathRelativeToSelfExePath = "/$RELATIVE_PATH";
 
     ////////////////////////////////////////////////////
 
-    for (int i = 1; ; i++) {
-        buf[slashIndex + i] = relativePath[i];
+    char libraryPath[PATH_MAX];
 
-        if (relativePath[i] == '\\0') {
+    for (int i = 0; i <= slashIndex; i++) {
+        libraryPath[i] = selfExecPath[i];
+    }
+
+    for (int i = 1; ; i++) {
+        libraryPath[slashIndex + i] = libraryPathRelativeToSelfExePath[i];
+
+        if (libraryPathRelativeToSelfExePath[i] == '\\0') {
             break;
         }
     }
@@ -2861,7 +2855,7 @@ int main(int argc, char* argv[]) {
 
     char dynamicLoaderPath[PATH_MAX];
 
-    ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", buf, dynamicLoaderName);
+    ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", libraryPath, dynamicLoaderName);
 
     if (ret < 0) {
         perror(NULL);
@@ -2870,18 +2864,20 @@ int main(int argc, char* argv[]) {
 
     ////////////////////////////////////////////////////
 
-    char* argv2[argc + 4];
+    char* argv2[argc + 6];
 
     argv2[0] = dynamicLoaderPath;
     argv2[1] = (char*)"--library-path";
-    argv2[2] = buf;
-    argv2[3] = realExePath;
+    argv2[2] = libraryPath;
+    argv2[3] = (char*)"--argv0";
+    argv2[4] = selfExecPath;
+    argv2[5] = realExePath;
 
     for (int i = 1; i < argc; i++) {
-        argv2[i + 3] = argv[i];
+        argv2[i + 5] = argv[i];
     }
 
-    argv2[argc + 3] = NULL;
+    argv2[argc + 5] = NULL;
 
     execv (dynamicLoaderPath, argv2);
     perror(dynamicLoaderPath);
@@ -5196,7 +5192,6 @@ EOF
     PACKAGE_BSCRIPT_DIR="$PACKAGE_WORKING_DIR/src/$PACKAGE_BSCRIPT"
     PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
     PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_UUID"
-    PACKAGE_LINKAGE_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
     #########################################################################################
 
@@ -5555,11 +5550,11 @@ $DOT_CONTENT
         if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
             T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
         else
-            T="$NATIVE_PLATFORM_SPEC"
+            T="linux-any-$NATIVE_PLATFORM_ARCH"
         fi
 
-        PYTHON3_DISTRIBUTION_VERSION='2024.11.08'
-        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-$PYTHON3_DISTRIBUTION_VERSION-$T"
+        PYTHON3_DISTRIBUTION_VERSION='3.11.11'
+        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-$PYTHON3_DISTRIBUTION_VERSION-$T"
         PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
 
         if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
@@ -7032,49 +7027,7 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
-    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
-
-    step "change to the installed directory"
-    run cd "$PACKAGE_INSTALL_DIR"
-
-    [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
-
-    #########################################################################################
-
-    step "dotweak for target"
-
-    __tweak_pc_files
-
-    [ -n "$PACKAGE_DOTWEAK" ] && {
-        eval "
-dotweak() {
-$PACKAGE_DOTWEAK
-}"
-        dotweak
-    }
-
-    #########################################################################################
-
-    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
-
-    if [ -d  "$PACKAGE_LIBRARY_DIR" ] ; then
-        # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
-        # remove Libtool Archive (.la) files
-        find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm '{}' \;
-    fi
-
-    #########################################################################################
-
-    PACKAGE_METAINFO_DIR="$PACKAGE_INSTALL_DIR/.ppkg"
-
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
-
-    install -d "$PACKAGE_METAINFO_DIR"
-
-    #########################################################################################
-
-    cat > "$PACKAGE_METAINFO_DIR/toolchain-native.sh" <<EOF
+    cat > "$PACKAGE_WORKING_DIR/toolchain-native.sh" <<EOF
      CC_FOR_BUILD='$CC_FOR_BUILD'
    OBJC_FOR_BUILD='$OBJC_FOR_BUILD'
     CXX_FOR_BUILD='$CXX_FOR_BUILD'
@@ -7095,7 +7048,7 @@ CCFLAGS_FOR_BUILD='$CCFLAGS_FOR_BUILD'
 LDFLAGS_FOR_BUILD='$LDFLAGS_FOR_BUILD'
 EOF
 
-    cat > "$PACKAGE_METAINFO_DIR/toolchain-target.sh" <<EOF
+    cat > "$PACKAGE_WORKING_DIR/toolchain-target.sh" <<EOF
      CC='$CC'
    OBJC='$OBJC'
     CXX='$CXX'
@@ -7118,114 +7071,172 @@ EOF
 
     #########################################################################################
 
-    step "docheck for target"
+    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
+
+    step "change to the installed directory"
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DOEXTRA" ] && {
+        step "doextra"
+
+        eval "
+doextra() {
+$PACKAGE_DOEXTRA
+}"
+        doextra
+    }
+
+    #########################################################################################
+
+    __tweak_pc_files
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DOTWEAK" ] && {
+        step "dotweak"
+
+        cd "$PACKAGE_INSTALL_DIR"
+
+        eval "
+dotweak() {
+$PACKAGE_DOTWEAK
+}"
+        dotweak
+    }
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    if [ -d  lib ] ; then
+        # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
+        # remove Libtool Archive (.la) files
+        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} +
+    fi
+
+    #########################################################################################
+
+    step "generate MANIFEST.txt"
+    run install -d .ppkg
+    find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > .ppkg/MANIFEST.txt
+
+    #########################################################################################
+
+    step "docheck"
+
+    unset NEEDED_SYSTEM_SHARED_LIBS
+    unset NEEDED_EXTERN_SHARED_LIBS
+
+    unset FILES_NEED_TO_SET_RPATH
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-        unset PACKAGE_NEEDED_SYSTEM_DYLIBS
-        unset PACKAGE_NEEDED_EXTERNAL_DYLIBS
-        unset PACKAGE_EXECUTABLES_NEED_SET_RPATH
-
         __check_mach_o_files
 
-        [ -n "$PACKAGE_NEEDED_EXTERNAL_DYLIBS" ] && {
+        [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
             step "copy dependent external shared libraries"
 
-            echo "PACKAGE_NEEDED_EXTERNAL_DYLIBS=$PACKAGE_NEEDED_EXTERNAL_DYLIBS"
+            echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
 
-            install -d .ppkg/dependencies/lib
+            install -d -v .ppkg/dependencies/lib
 
-            for f in $PACKAGE_NEEDED_EXTERNAL_DYLIBS
+            for f in $NEEDED_EXTERN_SHARED_LIBS
             do
-                cp -L -v "$f" .ppkg/dependencies/lib/
-            done
-        }
-
-        [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH" ] && {
-            step "set rpath for executables"
-
-            PACKAGE_EXECUTABLES_NEED_SET_RPATH="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH | sort | uniq)"
-
-            echo "PACKAGE_EXECUTABLES_NEED_SET_RPATH=$PACKAGE_EXECUTABLES_NEED_SET_RPATH"
-
-            for item in $PACKAGE_EXECUTABLES_NEED_SET_RPATH
-            do
-                f="$(printf '%s\n' "$item" | cut -d '|' -f1)"
-                r="$(printf '%s\n' "$item" | cut -d '|' -f2)"
-
-                case $r in
-                    1) X='lib' ;;
-                    2) X='.ppkg/dependencies/lib' ;;
-                    *) X="$r"  ;;
-                esac
-
-                RELATIVE_PATH="$(realpath -m --relative-to="${f%/*}" "$X")"
-
-                run install_name_tool -add_rpath "@executable_path/$RELATIVE_PATH" "$f" || true
-            done
-        }
-    else
-        unset PACKAGE_NEEDED_SYSTEM_DYLIBS
-        unset PACKAGE_NEEDED_EXTERNAL_DYLIBS
-        unset PACKAGE_ELF_FILES_NEED_SET_RPATH
-
-        __check_elf_files
-
-        [ -n "$PACKAGE_NEEDED_EXTERNAL_DYLIBS" ] && {
-            step "copy dependent shared libs"
-
-            PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
-
-            install -d -v "$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR"
-
-            for f in $PACKAGE_NEEDED_EXTERNAL_DYLIBS
-            do
-                F="$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR/${f##*/}"
+                n="${f##*/}"
+                F=".ppkg/dependencies/lib/$n"
 
                 [ -f "$F" ] || {
-                    cp -L -v "$f" "$PACKAGE_NEEDED_EXTERNAL_DYLIBS_DIR/"
-                    run patchelf --set-rpath "'\$ORIGIN'" "$F"
+                    cp -L -v "$f" .ppkg/dependencies/lib/
                 }
             done
         }
 
-        [ -n "$PACKAGE_ELF_FILES_NEED_SET_RPATH" ] && {
-            step "set rpath for ELF files"
+        [ -n "$FILES_NEED_TO_SET_RPATH" ] && {
+            step "set rpath for executables"
 
-            KVs="$(printf '%s\n' "$PACKAGE_ELF_FILES_NEED_SET_RPATH" | sort | uniq)"
+            KVs="$(printf '%s\n' "$FILES_NEED_TO_SET_RPATH" | sort | uniq)"
 
             for KV in $KVs
             do
                 K="${KV%|*}"
                 V="${KV#*|}"
 
-                case $V in
-                    1)  X='.ppkg/dependencies/lib' ;;
-                    *)  X="${V%/*}"
-                esac
+                [ "$V" = 1 ] && V='.ppkg/dependencies/lib'
 
-                RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$X")"
+                RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$V")"
+
+                run install_name_tool -add_rpath "@executable_path/$RELATIVE_PATH" "$K" || true
+            done
+        }
+    else
+        __check_elf_files
+
+        [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
+            step "copy dependent external shared libraries"
+
+            echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
+
+            install -d -v .ppkg/dependencies/lib
+
+            for f in $NEEDED_EXTERN_SHARED_LIBS
+            do
+                n="${f##*/}"
+                F=".ppkg/dependencies/lib/$n"
+
+                [ -f "$F" ] || {
+                    cp -L -v "$f" .ppkg/dependencies/lib/
+                    run patchelf --set-rpath "'\$ORIGIN'" "$F"
+                }
+            done
+        }
+
+        [ -n "$FILES_NEED_TO_SET_RPATH" ] && {
+            step "set rpath for ELF files"
+
+            KVs="$(printf '%s\n' "$FILES_NEED_TO_SET_RPATH" | sort | uniq)"
+
+            for KV in $KVs
+            do
+                K="${KV%|*}"
+                V="${KV#*|}"
+
+                [ "$V" = 1 ] && V='.ppkg/dependencies/lib'
+
+                RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$V")"
 
                 run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
             done
         }
 
-        [ -n "$PACKAGE_NEEDED_SYSTEM_DYLIBS" ] && {
-            printf '%s\n' $PACKAGE_NEEDED_SYSTEM_DYLIBS | sort | uniq > "$PACKAGE_METAINFO_DIR/needed-system-libs.txt"
+        [ -n "$NEEDED_SYSTEM_SHARED_LIBS" ] && {
+            printf '%s\n' $NEEDED_SYSTEM_SHARED_LIBS | sort | uniq > .ppkg/needed-system-libs.txt
         }
     fi
 
     #########################################################################################
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
-        rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
+        run rm -f .crates.toml
+        run rm -f .crates2.json
     }
+
+    #########################################################################################
+
+    run cd .ppkg
+
+    #########################################################################################
+
+    run mv "$PACKAGE_WORKING_DIR/toolchain-native.sh" .
+    run mv "$PACKAGE_WORKING_DIR/toolchain-target.sh" .
 
     #########################################################################################
 
     for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
-        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} . \;
     done
 
     #########################################################################################
@@ -7233,15 +7244,15 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "install dependency graph files"
 
-        run mv "$PACKAGE_WORKING_DIR/dependencies.*" "$PACKAGE_METAINFO_DIR/"
+        run mv "$PACKAGE_WORKING_DIR/dependencies.*" .
 
         step "install dependency formulas"
 
-        install -d "$PACKAGE_METAINFO_DIR/dependencies"
+        install -d dependencies/
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINFO_DIR/dependencies/"
+            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" dependencies/
         done
     }
 
@@ -7250,45 +7261,81 @@ EOF
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
-            mv  "$dir/config.log" "$PACKAGE_METAINFO_DIR/"
+            mv  "$dir/config.log" .
         fi
-    done
-
-    #########################################################################################
-
-    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
-    do
         if [ -f "$dir/compile_commands.json" ] ; then
-            mv  "$dir/compile_commands.json" "$PACKAGE_METAINFO_DIR/"
+            mv  "$dir/compile_commands.json" .
         fi
     done
 
     #########################################################################################
-
-    [ -n "$PACKAGE_ONFINAL" ] && {
-        step "onfinal"
-
-        cd "$PACKAGE_INSTALL_DIR"
-
-        eval "
-onfinal() {
-$PACKAGE_ONFINAL
-}"
-        onfinal
-    }
-
-    #########################################################################################
-
-    cd "$PACKAGE_INSTALL_DIR"
-
-    step "generate MANIFEST.txt"
-    find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > "$PACKAGE_MANIFEST_FILEPATH"
 
     step "generate RECEIPT.yml"
-    __generate_receipt_of_the_given_package "$1"
+
+    cp "$PACKAGE_FORMULA_FILEPATH" RECEIPT.yml
+
+    gsed -i '/^#src-url: dir:/d' RECEIPT.yml
+
+    gsed -i "1i pkgname: $PACKAGE_NAME" RECEIPT.yml
+
+    grep -q '^pkgtype: ' RECEIPT.yml || gsed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" RECEIPT.yml
+    grep -q '^version: ' RECEIPT.yml || gsed -i "/^pkgtype:/a version: $PACKAGE_VERSION" RECEIPT.yml
+    grep -q '^web-url: ' RECEIPT.yml || gsed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    grep -q '^git-url: ' RECEIPT.yml || gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
+    grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
+    grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_PARALLEL" >> RECEIPT.yml
+
+    [ -n "$PACKAGE_GIT_SHA" ] && {
+        grep -q '^git-sha: ' RECEIPT.yml || {
+            gsed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
+        }
+
+        grep -q '^git-sha: ' RECEIPT.yml || {
+            gsed -i "3i git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
+        }
+    }
+
+    [ -n "$PACKAGE_DEP_UPP" ] && {
+        if grep -q '^dep-upp: ' RECEIPT.yml ; then
+            gsed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" RECEIPT.yml
+        else
+            gsed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" RECEIPT.yml
+        fi
+    }
+
+    cat >> RECEIPT.yml <<EOF
+profile: $PROFILE
+builtfor: $TARGET_PLATFORM_SPEC
+builtby: ppkg-$PPKG_VERSION
+builtat: $TIMESTAMP_UNIX
+builton:
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-libc: $NATIVE_PLATFORM_LIBC
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
+EOF
+
+    if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+        if command -v getconf > /dev/null ; then
+            NATIVE_PLATFORM_LIBC_VERSION="$(getconf GNU_LIBC_VERSION | cut -d ' ' -f2)"
+            if [ -n "$NATIVE_PLATFORM_LIBC_VERSION" ] ; then
+                gsed -i "/os-libc: /s|$|-$NATIVE_PLATFORM_LIBC_VERSION|" RECEIPT.yml
+            fi
+        fi
+    fi
+
+    #########################################################################################
 
     step "generate index"
-    run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$PACKAGE_LINKAGE_DIR"
+    run cd "$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$PACKAGE_NAME"
 
     #########################################################################################
 
@@ -7315,20 +7362,17 @@ $PACKAGE_ONFINAL
     printf '\n%b\n' "${COLOR_PURPLE}✅️  ${COLOR_OFF}${COLOR_GREEN}${1} was successfully installed.${COLOR_OFF}${COLOR_PURPLE}${COLOR_OFF}"
 
     if [ -n "$PACKAGE_CAVEATS" ] ; then
-        printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
+        printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:${COLOR_OFF}\n\n$PACKAGE_CAVEATS" >&2
     fi
 }
 
 __check_elf_files() {
-    cd "$PACKAGE_INSTALL_DIR"
-
-    FILEPATHs="$(find -type f -not -path './.ppkg/*')"
-
-    export IFS='
-'
-
-    for FILEPATH in $FILEPATHs
+    while read -r LINE
     do
+        FILETYPE="${LINE%%|*}"
+        FILEPATH="${LINE##*|}"
+
+        [ "$FILETYPE" = f ] || continue
         [ -f "$FILEPATH" ] || continue
 
         FILE_MAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
@@ -7349,9 +7393,7 @@ __check_elf_files() {
                     __check_DT_NEEDED "$FILEPATH"
             esac
         fi
-    done
-
-    unset IFS
+    done < .ppkg/MANIFEST.txt
 }
 
 # __check_DT_NEEDED <ELF-FILE-PATH>
@@ -7360,6 +7402,28 @@ __check_elf_files() {
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
+        NEEDED_SHARED_LIBRARY_FILEPATH=
+
+        case $1 in
+            /*) ;;
+            *)
+                if [ -d lib ] ; then
+                    NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                        unset NEEDED_SHARED_LIBRARY_FILEPATH
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                    }
+
+                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                        FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+                    }
+                fi
+        esac
+
+        #####################################################
+
         NEEDED_UNKOWN=
 
         case "${NEEDED_SHARED_LIBRARY_FILENAME%.so*}" in
@@ -7407,36 +7471,16 @@ __check_elf_files() {
         esac
 
         if [ -z "$NEEDED_UNKOWN" ] ; then
-            PACKAGE_NEEDED_SYSTEM_DYLIBS="$PACKAGE_NEEDED_SYSTEM_DYLIBS
+            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
 $NEEDED_SHARED_LIBRARY_FILENAME"
             continue
         fi
 
-        unset NEEDED_SHARED_LIBRARY_FILEPATH
-
-        case $1 in
-            /*) ;;
-            *)
-                if [ -d lib ] ; then
-                    NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
-
-                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-                        unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
-                    }
-
-                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                        PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
-$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
-                    }
-                fi
-        esac
+        #####################################################
 
         if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
             if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-                RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
-
-                for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
+                for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
                 do
                     NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
 
@@ -7452,11 +7496,11 @@ $1|$NEEDED_SHARED_LIBRARY_FILEPATH"
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         case $1 in
                             /*) ;;
-                            *)  PACKAGE_ELF_FILES_NEED_SET_RPATH="$PACKAGE_ELF_FILES_NEED_SET_RPATH
+                            *)  FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
 $1|1"
                         esac
 
-                        PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
+                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
 $NEEDED_SHARED_LIBRARY_FILEPATH"
                         break
                     }
@@ -7467,22 +7511,19 @@ $NEEDED_SHARED_LIBRARY_FILEPATH"
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
             __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
         else
-            PACKAGE_NEEDED_SYSTEM_DYLIBS="$PACKAGE_NEEDED_SYSTEM_DYLIBS
+            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
 $NEEDED_SHARED_LIBRARY_FILENAME"
         fi
     done
 }
 
 __check_mach_o_files() {
-    cd "$PACKAGE_INSTALL_DIR"
-
-    FILEPATHs="$(find -type f -not -path './.ppkg/*')"
-
-    export IFS='
-'
-
-    for FILEPATH in $FILEPATHs
+    while read -r LINE
     do
+        FILETYPE="${LINE%%|*}"
+        FILEPATH="${LINE##*|}"
+
+        [ "$FILETYPE" = f ] || continue
         [ -f "$FILEPATH" ] || continue
 
         FILE_HEADER_ACTUAL=
@@ -7526,6 +7567,8 @@ __check_mach_o_files() {
         DYLIB_ID=$(otool -l "$FILEPATH" | grep LC_ID_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
         RUNPATHs=$(otool -l "$FILEPATH" | grep LC_RPATH    -A2 | grep path | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+
+        #######################################################################
 
         if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
             cat <<EOF
@@ -7580,42 +7623,47 @@ EOF
         #######################################################################
 
         __check_needed_dylibs "$FILEPATH" "$EXECUTABLE"
-    done
-
-    unset IFS
+    done < .ppkg/MANIFEST.txt
 }
 
-# __find_needed_dylibs <MACH-O-FILE-NAME>
-  __find_needed_dylibs() {
-    NEEDED_FILEPATH="$PACKAGE_LIBRARY_DIR/$1"
-    NEEDED_FILEPATH_TYPE=1
+# __find_needed_shared_library <NEEDED_SHARED_LIBRARY_FILENAME>
+  __find_needed_shared_library() {
+    unset NEEDED_SHARED_LIBRARY_FILEPATH
 
-    [ -f "$NEEDED_FILEPATH" ] && return 0
+    if [ -d lib ] ; then
+        NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
 
-    NEEDED_FILEPATH=
-    NEEDED_FILEPATH_TYPE=2
+        [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+            unset NEEDED_SHARED_LIBRARY_FILEPATH
+            NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+        }
+    fi
 
-    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+        return 0
+    fi
+
+    for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
-        NEEDED_FILEPATH="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/$1"
+        NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
 
-        if [ -f "$NEEDED_FILEPATH" ] ; then
-            break
-        else
-            NEEDED_FILEPATH=
-        fi
+        [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
+
+        NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+        [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+            unset NEEDED_SHARED_LIBRARY_FILEPATH
+            NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+        }
     done
 }
 
 # __check_needed_dylibs <MACH-O-FILE-PATH> <IS-EXECUTABLE>
   __check_needed_dylibs() {
-    # a \n-separated list
     NEEDEDs=$(otool -l "$1" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
     if [ -z "$NEEDEDs" ] ; then
-        abort 1 "no dependent shared libraries found in $1"
-        #warn "no dependent shared libraries found in $1"
-        #return 0
+        abort 1 "no needed shared libraries set for $1"
     fi
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
@@ -7628,31 +7676,6 @@ EOF
     for NEEDED in $NEEDEDs
     do
         case $NEEDED in
-            @rpath/libclang_rt*)
-                ;;
-            @rpath/*)
-                __find_needed_dylibs "${NEEDED#*/}"
-
-                if [ -z "$NEEDED_FILEPATH" ] ; then
-                    abort 1 "$NEEDED was not found, which is needed by $1"
-                fi
-
-                if [ "$NEEDED_FILEPATH_TYPE" = 2 ] ; then
-                    PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
-$NEEDED_FILEPATH"
-                fi
-
-                if [ "$2" = 1 ] ; then
-                    PACKAGE_EXECUTABLES_NEED_SET_RPATH="$PACKAGE_EXECUTABLES_NEED_SET_RPATH
-$1|$NEEDED_FILEPATH_TYPE"
-                fi
-
-                __check_needed_dylibs "$NEEDED_FILEPATH" 0
-                ;;
-            @loader_path/*)
-                ;;
-            @executable_path/*)
-                ;;
             /usr/lib/lib*.dylib)
                 ;;
             /usr/lib/swift/lib*.dylib)
@@ -7662,49 +7685,78 @@ $1|$NEEDED_FILEPATH_TYPE"
             /System/Library/PrivateFrameworks/*)
                 ;;
             /*)
-                NEEDED_DYLIB_FILENAME="${NEEDED##*/}"
+                NEEDED_SHARED_LIBRARY_FILENAME="${NEEDED##*/}"
 
-                run install_name_tool -change "$NEEDED" "@rpath/$NEEDED_DYLIB_FILENAME" "$1"
+                run install_name_tool -change "$NEEDED" "@rpath/$NEEDED_SHARED_LIBRARY_FILENAME" "$1"
 
-                NEEDED_DYLIB_DIR="${NEEDED%/*}"
-
-                case "$NEEDED_DYLIB_DIR" in
-                    "$PACKAGE_INSTALL_DIR"/*)
-                        if [ "$EXECUTABLE" = 1 ] ; then
-                            RELATIVE_PATH="${NEEDED_DYLIB_DIR#$PACKAGE_INSTALL_DIR/}"
-                            PACKAGE_EXECUTABLES_NEED_SET_RPATH="$PACKAGE_EXECUTABLES_NEED_SET_RPATH
-$1|$RELATIVE_PATH"
-                        fi
-                        ;;
-                    *)  PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
+                NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
 $NEEDED"
-                        if [ "$EXECUTABLE" = 1 ] ; then
-                            PACKAGE_EXECUTABLES_NEED_SET_RPATH="$PACKAGE_EXECUTABLES_NEED_SET_RPATH
-$1|2"
-                        fi
-                        ;;
-                esac
+                if [ "$EXECUTABLE" = 1 ] ; then
+                    FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|1"
+                fi
                 ;;
             lib*.dylib)
                 run install_name_tool -change "$NEEDED" "@rpath/$NEEDED" "$1"
 
-                __find_needed_dylibs "$NEEDED"
+                __find_needed_shared_library "$NEEDED"
 
-                if [ -z "$NEEDED_FILEPATH" ] ; then
+                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
                     abort 1 "$NEEDED was not found, which is needed by $1"
                 fi
 
-                if [ "$NEEDED_FILEPATH_TYPE" = 2 ] ; then
-                    PACKAGE_NEEDED_EXTERNAL_DYLIBS="$PACKAGE_NEEDED_EXTERNAL_DYLIBS
-$NEEDED_FILEPATH"
+                case $NEEDED_SHARED_LIBRARY_FILEPATH in
+                    /*)
+                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
+
+                        if [ "$2" = 1 ] ; then
+                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|1"
+                        fi
+                        ;;
+                    *)
+                        if [ "$2" = 1 ] ; then
+                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        fi
+                esac
+
+                __check_needed_dylibs "$NEEDED_SHARED_LIBRARY_FILEPATH" 0
+                ;;
+            @rpath/libclang_rt*)
+                ;;
+            @rpath/*)
+                NEEDED_SHARED_LIBRARY_FILENAME="${NEEDED#*/}"
+
+                __find_needed_shared_library "$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+                    abort 1 "$NEEDED was not found, which is needed by $1"
                 fi
 
-                if [ "$2" = 1 ] ; then
-                    PACKAGE_EXECUTABLES_NEED_SET_RPATH="$PACKAGE_EXECUTABLES_NEED_SET_RPATH
-$1|$NEEDED_FILEPATH_TYPE"
-                fi
+                case $NEEDED_SHARED_LIBRARY_FILEPATH in
+                    /*)
+                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
 
-                __check_needed_dylibs "$NEEDED_FILEPATH" 0
+                        if [ "$2" = 1 ] ; then
+                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|1"
+                        fi
+                        ;;
+                    *)
+                        if [ "$2" = 1 ] ; then
+                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        fi
+                esac
+
+                __check_needed_dylibs "$NEEDED_SHARED_LIBRARY_FILEPATH" 0
+                ;;
+            @loader_path/*)
+                ;;
+            @executable_path/*)
                 ;;
             #*)  abort 1 "unexpected runtime dependency: $NEEDED , which is needed by $1"
         esac
@@ -7712,22 +7764,26 @@ $1|$NEEDED_FILEPATH_TYPE"
 }
 
 __tweak_pc_files() {
-    unset PC_FILES
+    unset pcfiles
 
     for item in lib share
     do
-        PC_FILES_LIVEDIR="$PACKAGE_INSTALL_DIR/$item/pkgconfig"
+        pcfiles_LIVEDIR="$PACKAGE_INSTALL_DIR/$item/pkgconfig"
 
-        if [ -d        "$PC_FILES_LIVEDIR" ] ; then
-            fs="$(find "$PC_FILES_LIVEDIR" -type f -name '*.pc')"
+        if [ -d        "$pcfiles_LIVEDIR" ] ; then
+            fs="$(find "$pcfiles_LIVEDIR" -type f -name '*.pc')"
 
             if [ -n "$fs" ] ; then
-                PC_FILES="$PC_FILES $fs"
+                pcfiles="$pcfiles $fs"
             fi
         fi
     done
 
-    for pcfile in $PC_FILES
+    [ -z "$pcfiles" ] && return 0
+
+    step "tweak .pc files"
+
+    for pcfile in $pcfiles
     do
         gsed -i "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
 
@@ -7909,64 +7965,6 @@ install_mans() {
 ##############################################################################
 # {{{ operation of receipt
 
-# __generate_receipt_of_the_given_package <PACKAGE-NAME>
-  __generate_receipt_of_the_given_package() {
-    [ -z "$1" ] && {
-        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-        return 1
-    }
-
-    cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
-
-    sed -i '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
-
-    sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
-
-    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
-
-    [ -n "$PACKAGE_GIT_SHA" ] && {
-        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-        }
-
-        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed -i "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-        }
-    }
-
-    [ -n "$PACKAGE_DEP_UPP" ] && {
-        if grep -q '^dep-upp: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            sed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
-        else
-            sed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
-        fi
-    }
-
-    cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
-profile: $PROFILE
-builtfor: $TARGET_PLATFORM_SPEC
-builtby: ppkg-$PPKG_VERSION
-builtat: $TIMESTAMP_UNIX
-builton:
-    os-arch: $NATIVE_PLATFORM_ARCH
-    os-kind: $NATIVE_PLATFORM_KIND
-    os-type: $NATIVE_PLATFORM_TYPE
-    os-libc: $NATIVE_PLATFORM_LIBC
-    os-code: $NATIVE_PLATFORM_CODE
-    os-name: $NATIVE_PLATFORM_NAME
-    os-vers: $NATIVE_PLATFORM_VERS
-    os-ncpu: $NATIVE_PLATFORM_NCPU
-    os-euid: $NATIVE_PLATFORM_EUID
-    os-egid: $NATIVE_PLATFORM_EGID
-EOF
-}
-
 # __load_receipt_of_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
   __load_receipt_of_the_given_package() {
     PACKAGE_SPEC=
@@ -8021,7 +8019,7 @@ EOF
 
     unset RECEIPT_PACKAGE_ONSTART
     unset RECEIPT_PACKAGE_ONREADY
-    unset RECEIPT_PACKAGE_ONFINAL
+    unset RECEIPT_PACKAGE_DOEXTRA
 
     unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
@@ -8093,13 +8091,13 @@ EOF
 
     RECEIPT_PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -9815,7 +9813,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.1
+PPKG_VERSION=0.18.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9869,6 +9867,8 @@ export BAT_THEME=Dracula
 ##################################################################################
 
 unset SYSPM
+
+unset STEP_NUM
 
 ##################################################################################
 
