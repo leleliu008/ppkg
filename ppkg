@@ -864,7 +864,7 @@ __list_available_formula_repositories() {
     for item in $(cd "$PPKG_FORMULA_REPO_ROOT" && ls)
     do
         if [ -f "$PPKG_FORMULA_REPO_ROOT/$item/.ppkg-formula-repo.yml" ] ; then
-            I="$(("$I" + 1))"
+            I="$(($I + 1))"
 
             [ "$I" -gt 1 ] && printf '\n'
 
