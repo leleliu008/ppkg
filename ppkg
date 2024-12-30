@@ -7384,7 +7384,7 @@ __check_elf_files() {
             case $ELF_TYPE in
                 03)
                     # 03 means it is a shared library or dynamically linked executable
-                    patchelf --remove-rpath "$FILEPATH"
+                    patchelf --remove-rpath "$FILEPATH" &&
                     __check_DT_NEEDED "$FILEPATH"
                     ;;
                 02)
@@ -7651,10 +7651,11 @@ EOF
 
         NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
 
-        [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-            unset NEEDED_SHARED_LIBRARY_FILEPATH
-            NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
-        }
+        [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && break
+
+        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+
+        [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && break
     done
 }
 
@@ -7683,6 +7684,19 @@ EOF
             /System/Library/Frameworks/*)
                 ;;
             /System/Library/PrivateFrameworks/*)
+                ;;
+            $PACKAGE_INSTALL_DIR/*)
+                NEEDED_SHARED_LIBRARY_FILENAME="${NEEDED##*/}"
+
+                run install_name_tool -change "$NEEDED" "@rpath/$NEEDED_SHARED_LIBRARY_FILENAME" "$1"
+
+                NEEDED_SHARED_LIBRARY_DIR="${NEEDED%/*}"
+
+                if [ "$EXECUTABLE" = 1 ] ; then
+                    RELATIVE_PATH="${NEEDED_SHARED_LIBRARY_DIR#$PACKAGE_INSTALL_DIR/}"
+                    FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+$1|$RELATIVE_PATH"
+                fi
                 ;;
             /*)
                 NEEDED_SHARED_LIBRARY_FILENAME="${NEEDED##*/}"
