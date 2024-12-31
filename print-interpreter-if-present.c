@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -15,64 +16,63 @@ int handle_elf32(const int fd, const char * const fp) {
 
     if (ret == -1) {
         perror(fp);
-        close(fd);
         return 11;
     }
 
     if (ret != sizeof(Elf32_Ehdr)) {
         perror(fp);
-        close(fd);
         return 12;
     }
 
     ///////////////////////////////////////////////////////////
 
-    Elf32_Shdr shdr;
+    Elf32_Phdr phdr;
 
-    // .shstrtab section header offset in elf file, it usually is the last section header
-    off_t offset = ehdr.e_shoff + ehdr.e_shstrndx * ehdr.e_shentsize;
+    int hasPT_INTERP = 0;
 
-    ret = pread(fd, &shdr, sizeof(Elf32_Shdr), offset);
+    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+        ret = pread(fd, &phdr, sizeof(Elf32_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+
+        if (ret == -1) {
+            perror(fp);
+            return 17;
+        }
+
+        if ((size_t)ret != sizeof(Elf32_Phdr)) {
+            perror(fp);
+            fprintf(stderr, "not fully read.\n");
+            return 18;
+        }
+
+        if (phdr.p_type == PT_INTERP) {
+            hasPT_INTERP = 1;
+            break;
+        }
+    }
+
+    if (hasPT_INTERP == 0) {
+        fprintf(stderr, "no PT_INTERP in ELF file: %s\n", fp);
+        return 1;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    char interp[phdr.p_filesz];
+
+    ret = pread(fd, interp, phdr.p_filesz, phdr.p_offset);
 
     if (ret == -1) {
         perror(fp);
-        close(fd);
-        return 13;
-    }
-
-    if (ret != sizeof(Elf32_Shdr)) {
-        perror(fp);
-        close(fd);
-        fprintf(stderr, "not fully read.\n");
-        return 14;
-    }
-
-    char strings[shdr.sh_size];
-
-    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
-
-    if (ret == -1) {
-        perror(fp);
-        close(fd);
         return 15;
     }
 
-    if ((size_t)ret != shdr.sh_size) {
+    if ((size_t)ret != phdr.p_filesz) {
         perror(fp);
-        close(fd);
         fprintf(stderr, "not fully read.\n");
         return 16;
     }
 
-    char * p = &strings[1];
-
-    // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-73709.html
-    for (unsigned int i = 1; i < shdr.sh_size; i++) {
-        if (strings[i] == '\0') {
-            puts(p);
-            p = &strings[i + 1];
-        }
-    }
+    puts(interp);
 
     return 0;
 }
@@ -84,64 +84,63 @@ int handle_elf64(const int fd, const char * const fp) {
 
     if (ret == -1) {
         perror(fp);
-        close(fd);
         return 11;
     }
 
     if (ret != sizeof(Elf64_Ehdr)) {
         perror(fp);
-        close(fd);
         return 12;
     }
 
     ///////////////////////////////////////////////////////////
 
-    Elf64_Shdr shdr;
+    Elf64_Phdr phdr;
 
-    // .shstrtab section header offset in elf file, it usually is the last section header
-    off_t offset = ehdr.e_shoff + ehdr.e_shstrndx * ehdr.e_shentsize;
+    int hasPT_INTERP = 0;
 
-    ret = pread(fd, &shdr, sizeof(Elf64_Shdr), offset);
+    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+        ret = pread(fd, &phdr, sizeof(Elf64_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+
+        if (ret == -1) {
+            perror(fp);
+            return 17;
+        }
+
+        if ((size_t)ret != sizeof(Elf64_Phdr)) {
+            perror(fp);
+            fprintf(stderr, "not fully read.\n");
+            return 18;
+        }
+
+        if (phdr.p_type == PT_INTERP) {
+            hasPT_INTERP = 1;
+            break;
+        }
+    }
+
+    if (hasPT_INTERP == 0) {
+        fprintf(stderr, "no PT_INTERP in ELF file: %s\n", fp);
+        return 1;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    char interp[phdr.p_filesz];
+
+    ret = pread(fd, interp, phdr.p_filesz, phdr.p_offset);
 
     if (ret == -1) {
         perror(fp);
-        close(fd);
-        return 13;
-    }
-
-    if (ret != sizeof(Elf64_Shdr)) {
-        perror(fp);
-        close(fd);
-        fprintf(stderr, "not fully read.\n");
-        return 14;
-    }
-
-    char strings[shdr.sh_size];
-
-    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
-
-    if (ret == -1) {
-        perror(fp);
-        close(fd);
         return 15;
     }
 
-    if ((size_t)ret != shdr.sh_size) {
+    if ((size_t)ret != phdr.p_filesz) {
         perror(fp);
-        close(fd);
         fprintf(stderr, "not fully read.\n");
         return 16;
     }
 
-    char * p = &strings[1];
-
-    // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-73709.html
-    for (unsigned int i = 1; i < shdr.sh_size; i++) {
-        if (strings[i] == '\0') {
-            puts(p);
-            p = &strings[i + 1];
-        }
-    }
+    puts(interp);
 
     return 0;
 }
@@ -174,26 +173,26 @@ int main(int argc, const char *argv[]) {
 
     if (st.st_size < 5) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
-        return 5;
+        return 100;
     }
 
     ///////////////////////////////////////////////////////////
 
     unsigned char a[5];
 
-    ssize_t readCount = read(fd, a, 5);
+    ssize_t readBytes = read(fd, a, 5);
 
-    if (readCount == -1) {
+    if (readBytes == -1) {
         perror(argv[0]);
         close(fd);
-        return 6;
+        return 5;
     }
 
-    if (readCount != 5) {
+    if (readBytes != 5) {
         perror(argv[0]);
         close(fd);
         fprintf(stderr, "not fully read.\n");
-        return 7;
+        return 6;
     }
 
     ///////////////////////////////////////////////////////////
@@ -201,7 +200,7 @@ int main(int argc, const char *argv[]) {
     // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
     if ((a[0] != 0x7F) || (a[1] != 0x45) || (a[2] != 0x4C) || (a[3] != 0x46)) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
-        return 8;
+        return 100;
     }
 
     ///////////////////////////////////////////////////////////
@@ -211,16 +210,22 @@ int main(int argc, const char *argv[]) {
     if (offset == -1) {
         perror(argv[0]);
         close(fd);
-        return 9;
+        return 7;
     }
 
     ///////////////////////////////////////////////////////////
 
+    int ret;
+
     switch (a[4]) {
-        case 1: return handle_elf32(fd, argv[1]);
-        case 2: return handle_elf64(fd, argv[1]);
+        case 1: ret = handle_elf32(fd, argv[1]); break;
+        case 2: ret = handle_elf64(fd, argv[1]); break;
         default: 
             fprintf(stderr, "Invalid ELF file: %s\n", argv[1]);
-            return 10;
+            ret = 101;
     }
+
+    close(fd);
+
+    return ret;
 }

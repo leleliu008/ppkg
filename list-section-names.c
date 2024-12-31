@@ -25,29 +25,50 @@ int handle_elf32(const int fd, const char * const fp) {
 
     ///////////////////////////////////////////////////////////
 
-    Elf32_Phdr phdr;
+    Elf32_Shdr shdr;
 
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
-        ret = pread(fd, &phdr, sizeof(Elf32_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+    // .shstrtab section header offset in elf file, it usually is the last section header
+    off_t offset = ehdr.e_shoff + ehdr.e_shstrndx * ehdr.e_shentsize;
 
-        if (ret == -1) {
-            perror(fp);
-            return 17;
-        }
+    ret = pread(fd, &shdr, sizeof(Elf32_Shdr), offset);
 
-        if ((size_t)ret != sizeof(Elf32_Phdr)) {
-            perror(fp);
-            fprintf(stderr, "not fully read.\n");
-            return 18;
-        }
+    if (ret == -1) {
+        perror(fp);
+        return 13;
+    }
 
-        if (phdr.p_type == PT_DYNAMIC) {
-            return 0;
+    if (ret != sizeof(Elf32_Shdr)) {
+        perror(fp);
+        fprintf(stderr, "not fully read.\n");
+        return 14;
+    }
+
+    char strings[shdr.sh_size];
+
+    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
+
+    if (ret == -1) {
+        perror(fp);
+        return 15;
+    }
+
+    if ((size_t)ret != shdr.sh_size) {
+        perror(fp);
+        fprintf(stderr, "not fully read.\n");
+        return 16;
+    }
+
+    char * p = &strings[1];
+
+    // https://www.sco.com/developers/gabi/latest/ch4.strtab.html
+    for (unsigned int i = 1; i < shdr.sh_size; i++) {
+        if (strings[i] == '\0') {
+            puts(p);
+            p = &strings[i + 1];
         }
     }
 
-    fprintf(stderr, "no .dynamic section in file: %s\n", fp);
-    return 200;
+    return 0;
 }
 
 int handle_elf64(const int fd, const char * const fp) {
@@ -67,29 +88,50 @@ int handle_elf64(const int fd, const char * const fp) {
 
     ///////////////////////////////////////////////////////////
 
-    Elf64_Phdr phdr;
+    Elf64_Shdr shdr;
 
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
-        ret = pread(fd, &phdr, sizeof(Elf64_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+    // .shstrtab section header offset in elf file, it usually is the last section header
+    off_t offset = ehdr.e_shoff + ehdr.e_shstrndx * ehdr.e_shentsize;
 
-        if (ret == -1) {
-            perror(fp);
-            return 17;
-        }
+    ret = pread(fd, &shdr, sizeof(Elf64_Shdr), offset);
 
-        if ((size_t)ret != sizeof(Elf64_Phdr)) {
-            perror(fp);
-            fprintf(stderr, "not fully read.\n");
-            return 18;
-        }
+    if (ret == -1) {
+        perror(fp);
+        return 13;
+    }
 
-        if (phdr.p_type == PT_DYNAMIC) {
-            return 0;
+    if (ret != sizeof(Elf64_Shdr)) {
+        perror(fp);
+        fprintf(stderr, "not fully read.\n");
+        return 14;
+    }
+
+    char strings[shdr.sh_size];
+
+    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
+
+    if (ret == -1) {
+        perror(fp);
+        return 15;
+    }
+
+    if ((size_t)ret != shdr.sh_size) {
+        perror(fp);
+        fprintf(stderr, "not fully read.\n");
+        return 16;
+    }
+
+    char * p = &strings[1];
+
+    // https://www.sco.com/developers/gabi/latest/ch4.strtab.html
+    for (unsigned int i = 1; i < shdr.sh_size; i++) {
+        if (strings[i] == '\0') {
+            puts(p);
+            p = &strings[i + 1];
         }
     }
 
-    fprintf(stderr, "no .dynamic section in file: %s\n", fp);
-    return 200;
+    return 0;
 }
 
 int main(int argc, const char *argv[]) {
