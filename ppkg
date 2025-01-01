@@ -7339,6 +7339,11 @@ EOF
 
     #########################################################################################
 
+    step "show installed files in tree-like format"
+    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
     [ "$ENABLE_CCACHE" = 1 ] && {
         step "show ccache statistics summary"
         note "Before Build:"
@@ -7351,11 +7356,6 @@ EOF
         step "delete the working directory"
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
-
-    #########################################################################################
-
-    step "show installed files in tree-like format"
-    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
@@ -7585,7 +7585,7 @@ EOF
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
-$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+$1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                     }
                 fi
         esac
@@ -7900,7 +7900,7 @@ $1|1"
                     *)
                         if [ "$2" = 1 ] ; then
                             FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
-$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+$1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                         fi
                 esac
 
@@ -7930,7 +7930,7 @@ $1|1"
                     *)
                         if [ "$2" = 1 ] ; then
                             FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
-$1|$NEEDED_SHARED_LIBRARY_FILEPATH"
+$1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                         fi
                 esac
 
