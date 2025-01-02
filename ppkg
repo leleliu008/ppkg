@@ -6259,6 +6259,12 @@ $PACKAGE_DO12345
                 printf 'INPUT(%s/usr/lib/libstdc++.a -lgcc_s)\n' "$SYSROOT" >  "$PACKAGE_WORKING_DIR/lib/libstdc++.a"
             fi
         fi
+
+        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+            if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
+                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+            fi
+        fi
     fi
 
     #########################################################################################
@@ -6733,11 +6739,7 @@ EOF
         export RUSTFLAGS="-Clinker=$CC -L native=$PACKAGE_INSTALLING_LIB_DIR"
 
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-            if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
-                if [ "$TARGET_PLATFORM_VERS" = 'musl' ] ; then
-                    printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
-                fi
-            else
+            if [ "$TARGET_PLATFORM_NAME" != linux ] ; then
                 if [ "$CROSS_COMPILING" = 1 ] ; then
                     LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
                     RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
@@ -9998,7 +10000,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.2
+PPKG_VERSION=0.18.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
