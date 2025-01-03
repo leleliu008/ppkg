@@ -79,25 +79,70 @@ jobs:
           path: ppkg-core-*.tar.xz
 
 
-  linux:
+  linux-x86_64:
     needs: base
 
     strategy:
       fail-fast: false
       matrix:
-        target-arch: [x86_64, aarch64, riscv64, ppc64le, s390x]
-          #target-arch: [x86_64, aarch64, riscv64]
+        target-arch: [x86_64]
 
     runs-on: ubuntu-latest
 
+    container: alpine
+
     steps:
       - uses: actions/checkout@v4
+
+      - run: apk update
+      - run: apk add curl xz g++ libc-dev linux-headers
+
+      - run: ./ppkg setup --syspm
+      - run: ./ppkg update
+      - run: ./ppkg install uppm@0.15.4 --static
+      - run: ./ppkg bundle  uppm@0.15.4 .tar.xz
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
       - run: install -d    out/
       - run: mv *.otf      out/
       - run: mv fonts.conf out/
+
+      - run: |
+          for item in *.c
+          do
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
+          done
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/share
+      - run: rm -rf out/.ppkg
+
+      - run: |
+          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppkg-core---linux-${{ matrix.target-arch }}.tar.xz
+          path: ppkg-core-*-linux-${{ matrix.target-arch }}.tar.xz
+
+
+  linux-other:
+    needs: base
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target-arch: [aarch64, riscv64, ppc64le, s390x]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
 
       - run: |
           cat > run.sh <<EOF
@@ -119,12 +164,14 @@ jobs:
           run uname -a
 
           run apk update
-          run apk add curl xz g++ libc-dev linux-headers
+          run apk add curl tar xz g++ libc-dev linux-headers
 
           for item in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
+            gcc -std=gnu99 -Os -flto -Wl,-s -s -static -o "\${item%.c}.exe" "\$item"
           done
+
+          export GITHUB_ACTIONS=true
 
           run ./ppkg setup --syspm
           run ./ppkg update
@@ -132,31 +179,29 @@ jobs:
           run ./ppkg bundle  uppm@0.15.4 .tar.xz
           EOF
 
-      - name: start container
-        run: |
-          set -x
+      - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
+      - run: chmod +x alpine-chroot-install
+      - run: sudo ./alpine-chroot-install -d /alpine-rootfs -a ${{ matrix.target-arch }}
+      - run: mv run.sh *.c /alpine-rootfs/
+      - run: /alpine-rootfs/enter-chroot sh run.sh
 
-          case ${{ matrix.target-arch }} in
-            x86_64)  IMAGE=alpine ;;
-            aarch64) IMAGE=arm64v8/alpine ;;
-            riscv64) IMAGE=riscv64/alpine:edge ;;
-            *)       IMAGE=${{ matrix.target-arch }}/alpine ;;
-          esac
+      - run: mv alpine-rootfs/uppm-*.tar.xz alpine-rootfs/*.exe .
+ 
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
-          if [ ${{ matrix.target-arch }} != x86_64 ] ; then
-            # https://github.com/multiarch/qemu-user-static
-            docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          fi
+      - run: install -d    out/
+      - run: mv *.otf      out/
+      - run: mv fonts.conf out/
 
-          docker run -v $PWD:$PWD -w $PWD $IMAGE sh run.sh
-
-      - run: ls
+      - run: |
+          for item in *.exe
+          do
+            mv "$item" "${item%.exe}"
+          done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
-      - run: rm -rf out/bin
-      - run: rm -rf out/share
-      - run: rm -rf out/.ppkg
+      - run: rm -rf out/bin/ out/share/ out/.ppkg/
 
       - run: |
           DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}"
@@ -236,7 +281,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        freebsd-version: ['14.1', '14.0', '13.4', '13.3', '13.2']
+        freebsd-version: ['14.2', '14.1', '14.0', '13.4', '13.3', '13.2']
         # https://archive.freebsd.org/old-releases/amd64/
 
     steps:
@@ -411,7 +456,7 @@ jobs:
 
   publish:
 
-    needs: [base, macos, linux, dragonflybsd, freebsd, openbsd, netbsd]
+    needs: [base, macos, linux-x86_64, linux-other, dragonflybsd, freebsd, openbsd, netbsd]
 
     runs-on: ubuntu-latest
 

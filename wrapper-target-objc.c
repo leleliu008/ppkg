@@ -129,13 +129,12 @@ int main(int argc, char * argv[]) {
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i] = (char*)"-static";
             } else if (argv[i][0] == '/') {
-                int len = 0;
+                int nulIndex = 0;
+                int slashIndex = 0;
 
-                int slashIndex = -1;
-
-                for (int j = 0; ; j++) {
+                for (int j = 1; ; j++) {
                     if (argv[i][j] == '\0') {
-                        len = j;
+                        nulIndex = j;
                         break;
                     } else if (argv[i][j] == '/') {
                         slashIndex = j;
@@ -158,15 +157,15 @@ int main(int argc, char * argv[]) {
                     argv[i][3] = 'l';
                     argv[i][4] = '\0';
                 } else {
-                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
-                        argv[i][len - 2] = 'a';
-                        argv[i][len - 1] = '\0';
+                    if ((argv[i][nulIndex - 3] == '.') && (argv[i][nulIndex - 2] == 's') && (argv[i][nulIndex - 1] == 'o')) {
+                        argv[i][nulIndex - 2] = 'a';
+                        argv[i][nulIndex - 1] = '\0';
 
                         struct stat st;
 
                         if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                            argv[i][len - 2] = 's';
-                            argv[i][len - 1] = 'o';
+                            argv[i][nulIndex - 2] = 's';
+                            argv[i][nulIndex - 1] = 'o';
                         }
                     }
                 }
@@ -182,12 +181,13 @@ int main(int argc, char * argv[]) {
         if (msle != NULL && strcmp(msle, "1") == 0) {
             for (int i = 1; i < argc; i++) {
                 if (argv[i][0] == '/') {
-                    int len = 0;
+                    int nulIndex = 0;
                     int dotIndex = -1;
+                    int slashIndex = 0;
 
-                    for (int j = 0; ; j++) {
+                    for (int j = 1; ; j++) {
                         if (argv[i][j] == '\0') {
-                            len = j;
+                            nulIndex = j;
                             break;
                         }
 
@@ -196,37 +196,76 @@ int main(int argc, char * argv[]) {
                         }
                     }
 
-                    if (dotIndex > 0) {
-#if defined (__APPLE__)
-                        if (len - dotIndex == 6) {
-                            if (strcmp(&argv[i][dotIndex], ".dylib") == 0) {
-                                argv[i][dotIndex + 1] = 'a' ;
-                                argv[i][dotIndex + 2] = '\0';
-
-                                struct stat st;
-
-                                if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                                    argv[i][dotIndex + 1] = 'd';
-                                    argv[i][dotIndex + 2] = 'y';
-                                }
-                            }
-                        }
-#else
-                        if (len - dotIndex == 3) {
-                            if (strcmp(&argv[i][dotIndex], ".so") == 0) {
-                                argv[i][dotIndex + 1] = 'a' ;
-                                argv[i][dotIndex + 2] = '\0';
-
-                                struct stat st;
-
-                                if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                                    argv[i][dotIndex + 1] = 's';
-                                    argv[i][dotIndex + 2] = 'o';
-                                }
-                            }
-                        }
-#endif
+                    if (dotIndex == -1) {
+                        argv2[i] = argv[i];
+                        continue;
                     }
+
+#if defined (__APPLE__)
+                    if (nulIndex - dotIndex == 6) {
+                        if (strcmp(&argv[i][dotIndex], ".dylib") == 0) {
+                            argv[i][dotIndex + 1] = 'a' ;
+                            argv[i][dotIndex + 2] = '\0';
+
+                            struct stat st;
+
+                            if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                argv[i][dotIndex + 1] = 'd';
+                                argv[i][dotIndex + 2] = 'y';
+                            }
+                        }
+                    }
+#else
+                    int len = nulIndex - dotIndex - 1;
+
+                    if ((len == 1) && (argv[i][dotIndex + 1] == 'a')) {
+                        int filenameLen = nulIndex - slashIndex - 1;
+
+                        if (filenameLen >= 6) {
+                            if ((argv[i][slashIndex + 1] == 'l') && (argv[i][slashIndex + 2] == 'i') && (argv[i][slashIndex + 3] == 'b')) {
+                                if (argv[i][slashIndex + 4] == 'm') {
+                                    if (filenameLen == 6) {
+                                        argv[i][0] = '-';
+                                        argv[i][1] = 'l';
+                                        argv[i][2] = 'm';
+                                        argv[i][3] = '\0';
+                                    } else {
+                                        if ((filenameLen == 11) && (argv[i][slashIndex + 5] == '-') && (argv[i][slashIndex + 6] == '2') && (argv[i][slashIndex + 7] == '.') && (argv[i][slashIndex + 8] > '0') && (argv[i][slashIndex + 8] <= '9') && (argv[i][slashIndex + 9] > '0') && (argv[i][slashIndex + 9] <= '9')) {
+                                            argv[i][0] = '-';
+                                            argv[i][1] = 'l';
+                                            argv[i][2] = 'm';
+                                            argv[i][3] = '\0';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if ((len == 2) && (argv[i][dotIndex - 2] == 's') && (argv[i][dotIndex - 1] == 'o')) {
+                        argv[i][dotIndex + 1] = 'a' ;
+                        argv[i][dotIndex + 2] = '\0';
+
+                        struct stat st;
+
+                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                            argv[i][dotIndex + 1] = 's';
+                            argv[i][dotIndex + 2] = 'o';
+                        }
+                    } else {
+                        char * p = strstr(argv[i], ".so");
+
+                        if (p != NULL) {
+                            p[1] = 'a' ;
+                            p[2] = '\0';
+
+                            struct stat st;
+
+                            if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                p[1] = 's' ;
+                                p[2] = 'o';
+                            }
+                        }
+                    }
+#endif
                 }
 
                 argv2[i] = argv[i];
