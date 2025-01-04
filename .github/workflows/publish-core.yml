@@ -45,6 +45,8 @@ jobs:
           SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
           CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=${{ matrix.target-version }} -arch ${{ matrix.target-arch }} -Qunused-arguments"
 
+          rm check-if-has-dynamic-section.c print-*-if-present.c wrapper-template.c
+
           for f in *.c
           do
             o="out/${f%.c}"
@@ -111,7 +113,7 @@ jobs:
       - run: |
           for item in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
+            gcc -std=gnu99 -Os -flto -Wl,-s -static -o "out/\${item%.c}" "\$item"
           done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
@@ -182,10 +184,10 @@ jobs:
       - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
       - run: chmod +x alpine-chroot-install
       - run: sudo ./alpine-chroot-install -d /alpine-rootfs -a ${{ matrix.target-arch }}
-      - run: mv run.sh *.c /alpine-rootfs/
+      - run: sudo mv run.sh *.c /alpine-rootfs/
       - run: /alpine-rootfs/enter-chroot sh run.sh
 
-      - run: mv alpine-rootfs/uppm-*.tar.xz alpine-rootfs/*.exe .
+      - run: sudo install -g `id -g` -o `id -u` alpine-rootfs/uppm-*.tar.xz alpine-rootfs/*.exe .
  
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
