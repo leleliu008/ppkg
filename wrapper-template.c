@@ -1,7 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <unistd.h>
+
+#if defined (__linux__)
+#include <linux/limits.h>
+#else
 #include <limits.h>
+#endif
 
 int main(int argc, char* argv[]) {
     char selfExecPath[PATH_MAX];
