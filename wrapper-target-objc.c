@@ -193,6 +193,8 @@ int main(int argc, char * argv[]) {
 
                         if (argv[i][j] == '.') {
                             dotIndex = j;
+                        } else if (argv[i][j] == '/') {
+                            slashIndex = j;
                         }
                     }
 
@@ -251,7 +253,7 @@ int main(int argc, char * argv[]) {
                             argv[i][dotIndex + 2] = 'o';
                         }
                     } else {
-                        char * p = strstr(argv[i], ".so");
+                        char * p = strstr(&argv[i][slashIndex + 1], ".so");
 
                         if (p != NULL) {
                             p[1] = 'a' ;
