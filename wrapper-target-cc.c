@@ -141,7 +141,7 @@ int main(int argc, char * argv[]) {
                     }
                 }
 
-                const char * filename = argv[i] + slashIndex + 1;
+                char * filename = argv[i] + slashIndex + 1;
 
                 fprintf(stderr, "filename=%s\n", filename);
 
@@ -166,6 +166,20 @@ int main(int argc, char * argv[]) {
                         if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
                             argv[i][nulIndex - 2] = 's';
                             argv[i][nulIndex - 1] = 'o';
+                        }
+                    } else {
+                        char * p = strstr(filename, ".so");
+
+                        if (p != NULL) {
+                            p[1] = 'a' ;
+                            p[2] = '\0';
+
+                            struct stat st;
+
+                            if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                p[1] = 's' ;
+                                p[2] = 'o';
+                            }
                         }
                     }
                 }
