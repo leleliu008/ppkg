@@ -93,14 +93,14 @@ int handle_elf64(const int fd, const char * const fp) {
 }
 
 int main(int argc, const char *argv[]) {
-	if (argc != 2) {
-		printf("Usage: %s <ELF-FILEPATH>\n", argv[0]);
-		return 1;
-	}
+    if (argc != 2) {
+        printf("Usage: %s <ELF-FILEPATH>\n", argv[0]);
+        return 1;
+    }
 
     if (argv[1][0] == '\0') {
-		printf("Usage: %s <ELF-FILEPATH>, <ELF-FILEPATH> is unspecified.\n", argv[0]);
-		return 2;
+        printf("Usage: %s <ELF-FILEPATH>, <ELF-FILEPATH> is unspecified.\n", argv[0]);
+        return 2;
     }
 
     int fd = open(argv[1], O_RDONLY);
