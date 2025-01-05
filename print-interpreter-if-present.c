@@ -173,6 +173,7 @@ int main(int argc, const char *argv[]) {
 
     if (st.st_size < 5) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
+        close(fd);
         return 100;
     }
 
@@ -200,6 +201,7 @@ int main(int argc, const char *argv[]) {
     // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
     if ((a[0] != 0x7F) || (a[1] != 0x45) || (a[2] != 0x4C) || (a[3] != 0x46)) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
+        close(fd);
         return 100;
     }
 
