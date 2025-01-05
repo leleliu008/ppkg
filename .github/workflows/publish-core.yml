@@ -56,18 +56,16 @@ jobs:
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
-      - run: chmod a+x xcpkg
-      - run: ./xcpkg setup
-      - run: ./xcpkg update
-      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
-      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+      - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
       - run: rm -rf out/bin
       - run: rm -rf out/share
-      - run: rm -rf out/.xcpkg
+      - run: rm -rf out/.ppkg
       - run: mv *.otf out/
 
       - run: |
