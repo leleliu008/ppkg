@@ -9232,7 +9232,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    PPKG_CORE_RELEASE_VERSION='2025.01.05'
+    PPKG_CORE_RELEASE_VERSION='2025.01.06'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
     PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     PPKG_CORE_RELEASE_TARBALL_URL="https://github.com/leleliu008/ppkg/releases/download/$PPKG_CORE_RELEASE_TAG/$PPKG_CORE_RELEASE_TARBALL_FILENAME"
@@ -9819,7 +9819,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.4
+PPKG_VERSION=0.18.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
