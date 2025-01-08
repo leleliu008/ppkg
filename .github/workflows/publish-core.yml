@@ -79,65 +79,13 @@ jobs:
           path: ppkg-core-*.tar.xz
 
 
-  linux-x86_64:
+  linux:
     needs: base
 
     strategy:
       fail-fast: false
       matrix:
-        target-arch: [x86_64]
-
-    runs-on: ubuntu-latest
-
-    container: alpine
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: apk update
-      - run: apk add curl xz g++ libc-dev linux-headers
-
-      - run: ./ppkg setup --syspm
-      - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --static
-      - run: ./ppkg bundle  uppm@0.15.4 .tar.xz
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-
-      - run: install -d    out/
-      - run: mv *.otf      out/
-      - run: mv fonts.conf out/
-
-      - run: |
-          for item in *.c
-          do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
-          done
-
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
-      - run: mv out/bin/uppm out/
-      - run: rm -rf out/bin
-      - run: rm -rf out/share
-      - run: rm -rf out/.ppkg
-
-      - run: |
-          DIRNAME="ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}"
-          mv out "$DIRNAME"
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ppkg-core---linux-${{ matrix.target-arch }}.tar.xz
-          path: ppkg-core-*-linux-${{ matrix.target-arch }}.tar.xz
-
-
-  linux-other:
-    needs: base
-
-    strategy:
-      fail-fast: false
-      matrix:
-        target-arch: [aarch64, riscv64, ppc64le, s390x]
+        target-arch: [loongarch64, x86_64, aarch64, riscv64, ppc64le, s390x]
 
     runs-on: ubuntu-latest
 
@@ -175,6 +123,7 @@ jobs:
 
           run ./ppkg setup --syspm
           run ./ppkg update
+          run ./build-core.sh
           run ./ppkg install uppm@0.15.4 --static
           run ./ppkg bundle  uppm@0.15.4 .tar.xz
           EOF
@@ -190,10 +139,12 @@ jobs:
       - run: mv *.otf      out/
       - run: mv fonts.conf out/
 
+      - run: ls
+
       - run: |
           for item in *.exe
           do
-            mv "$item" "${item%.exe}"
+            mv "$item" "out/${item%.exe}"
           done
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
@@ -453,7 +404,7 @@ jobs:
 
   publish:
 
-    needs: [base, macos, linux-x86_64, linux-other, dragonflybsd, freebsd, openbsd, netbsd]
+    needs: [base, linux, macos, dragonflybsd, freebsd, openbsd, netbsd]
 
     runs-on: ubuntu-latest
 
