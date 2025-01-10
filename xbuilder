@@ -543,7 +543,7 @@ inspect_install_arguments() {
         CC_ARGS="-fPIC -fno-common"
 
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-        LD_ARGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+        LD_ARGS="-Wl,--as-needed"
     fi
 
     #########################################################################################

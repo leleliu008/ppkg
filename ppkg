@@ -7376,6 +7376,7 @@ __check_elf_files() {
         "$CHECKER" "$FILEPATH" || continue
 
         patchelf --remove-rpath "$FILEPATH"
+
         __check_DT_NEEDED "$FILEPATH"
     done < .ppkg/MANIFEST.txt
 }
