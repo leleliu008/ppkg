@@ -2887,65 +2887,20 @@ EOF
                     run gcc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
                 done
 
-                GLIBC_INSTALL_DIR="$PPKG_HOME/runtime/glibc"
-                  GCC_INSTALL_DIR="$PPKG_HOME/runtime/gcc"
-
-                NEEDED_SYSTEM_DYLIBS="$(cat .ppkg/needed-system-libs.txt)"
-                NEEDED_SYSTEM_DYLIBS="$DYNAMIC_LOADER_FILENAME $NEEDED_SYSTEM_DYLIBS"
-
                 install -d .ppkg/dependencies/lib/
 
-                for NEEDED_FILENAME in $NEEDED_SYSTEM_DYLIBS
+                NEEDED_SYSTEM_DYLIBS="$(cat .ppkg/needed-system-libs.txt)"
+
+                for NEEDED_FILENAME in $DYNAMIC_LOADER_FILENAME $NEEDED_SYSTEM_DYLIBS
                 do
-                    if [ -f ".ppkg/dependencies/lib/$NEEDED_FILENAME" ] ; then
-                        continue
-                    fi
+                    [ -f ".ppkg/dependencies/lib/$NEEDED_FILENAME" ] && continue
 
-                    ###############################################################
+                    NEEDED_FILEPATH="$(gcc -print-file-name="$NEEDED_FILENAME")"
 
-                    [ -f "$GLIBC_INSTALL_DIR/ok" ] || {
-                        if [ -d "$GLIBC_INSTALL_DIR" ] ; then
-                            run rm -rf "$GLIBC_INSTALL_DIR"
-                        fi
-
-                        run install -d "$GLIBC_INSTALL_DIR"
-
-                        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
-                        run bsdtar xf glibc-*.tar.xz -C "$GLIBC_INSTALL_DIR" --strip-components=1
-                        touch "$GLIBC_INSTALL_DIR/ok"
-                    }
-
-                    NEEDED_FILEPATH="$GLIBC_INSTALL_DIR/lib/$NEEDED_FILENAME"
-
-                    if [ -f "$NEEDED_FILEPATH" ] ; then
-                        run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/
-                        continue
-                    fi
-
-                    ###############################################################
-
-                    [ -f "$GCC_INSTALL_DIR/ok" ] || {
-                        if [ -d "$GCC_INSTALL_DIR" ] ; then
-                            run rm -rf "$GCC_INSTALL_DIR"
-                        fi
-
-                        run install -d "$GCC_INSTALL_DIR"
-
-                        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.3.0-linux-glibc-x86_64.release.tar.xz' --no-buffer
-                        run bsdtar xf gcc-*.tar.xz -C "$GCC_INSTALL_DIR" --strip-components=1
-                        touch "$GCC_INSTALL_DIR/ok"
-                    }
-
-                    NEEDED_FILEPATH="$GCC_INSTALL_DIR/lib/$NEEDED_FILENAME"
-
-                    if [ -f "$NEEDED_FILEPATH" ] ; then
-                        run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/
-                        continue
-                    fi
-
-                    ###############################################################
-
-                    abort 1 "system library '$NEEDED_FILENAME' could not be found."
+                    case $NEEDED_FILEPATH in
+                        /*) run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/ ;;
+                        *)  abort 1 "required system library '$NEEDED_FILENAME' could not be found."
+                    esac
                 done
             fi
 
@@ -6865,20 +6820,16 @@ EOF
 
         if [ "$CROSS_COMPILING" = 1 ] ; then
             case $TARGET_PLATFORM_NAME in
-                dragonflybsd)
-                    export GOOS='dragonfly'
-                    ;;
-                macos)
-                    export GOOS='darwin'
-                    ;;
-                *)  export GOOS="$TARGET_PLATFORM_NAME"
+                dragonflybsd) export GOOS='dragonfly' ;;
+                macos)        export GOOS='darwin'    ;;
+                *)            export GOOS="$TARGET_PLATFORM_NAME"
             esac
 
-            if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] ; then
-                export GOARCH='amd64'
-            else
-                export GOARCH="$TARGET_PLATFORM_ARCH"
-            fi
+            case $TARGET_PLATFORM_ARCH in
+                x86_64)       export GOARCH='amd64'   ;;
+                loongarch64)  export GOARCH='loong64' ;;
+                *)            export GOARCH="$TARGET_PLATFORM_ARCH"
+            esac
         else
             unset GOOS
             unset GOARCH
@@ -9815,7 +9766,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.7
+PPKG_VERSION=0.18.8
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
