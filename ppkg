@@ -4944,45 +4944,357 @@ $FORMULA_SEARCH_DIR"
     fi
 }
 
-xbuilder() {
-    XBUILDER="$SESSION_DIR/xbuilder"
+# https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+# https://git.savannah.gnu.org/cgit/config.git/tree/
+# __update_config_sub_guess <ROOT_DIR>
+  __update_config_sub_guess() {
+    CONFIG_FILE_DIR="$SESSION_DIR/config.git"
 
-    if [ ! -f "$XBUILDER" ] ; then
-        wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/refs/heads/master/xbuilder' -o "$XBUILDER" --no-buffer
+    if [ ! -d "$CONFIG_FILE_DIR" ] ; then
+        if [ -f "$SESSION_DIR/config.sub" ] && [ -f "$SESSION_DIR/config.guess" ] ; then
+            CONFIG_FILE_DIR="$SESSION_DIR"
+        else
+            if ! run git clone --depth 1 https://git.savannah.gnu.org/git/config.git "$CONFIG_FILE_DIR" ; then
+                if  run curl -L -o "$SESSION_DIR/_config.sub"   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   &&
+                    run curl -L -o "$SESSION_DIR/_config.guess" 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' ; then
+                    run chmod +x   "$SESSION_DIR/_config.guess"
+                    run chmod +x   "$SESSION_DIR/_config.sub"
+                    run mv "$SESSION_DIR/_config.guess" "$SESSION_DIR/config.guess"
+                    run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
+                    CONFIG_FILE_DIR="$SESSION_DIR"
+                else
+                    CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
+                fi
+            fi
+        fi
     fi
 
-    run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$PPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+    find "$1" -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
+    find "$1" -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
 }
 
-install_non_relocatable_binary_package_if_needed() {
-    case $NATIVE_PLATFORM_TYPE in
-        macos)
-            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+# should run in subshell
+install_the_given_native_package() {
+    [ -z "$1" ] && abort 1 "install_the_given_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
 
-            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                X='10.15'
-            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                X='15.0'
-            else
-                X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-            fi
+    unset PACKAGE_SRC_URL
+    unset PACKAGE_SRC_URI
+    unset PACKAGE_SRC_SHA
 
-            T="macos-$X-$NATIVE_PLATFORM_ARCH"
-            ;;
-        *)  T="$NATIVE_PLATFORM_SPEC"
-    esac
+    unset PACKAGE_DEP_BIN
+    unset PACKAGE_DEP_PKG
 
-    NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
-    NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
+    unset PACKAGE_DOPATCH
+    unset PACKAGE_INSTALL
+    unset PACKAGE_DOTWEAK
 
-    if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-        wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-        run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
-        run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-        run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        native_package_info_perl_XML_Parser
+    else
+        native_package_info_$1
     fi
 
-    export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
+    #########################################################################################
+
+    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
+    do
+        (install_the_given_native_package "$PACKAGE_DEPENDENCY")
+    done
+
+    #########################################################################################
+
+    printf '\n%b\n' "${COLOR_PURPLE}=>> install native package : $1${COLOR_OFF}"
+
+    if [ -f "$NATIVE_PACKAGE_INSTALLED_ROOT/$1/receipt.txt" ] ; then
+        note "native package '$1' already has been installed, skipped."
+        return 0
+    fi
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_UTS=
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA=
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+    PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
+
+    #########################################################################################
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
+    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
+    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
+        do
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+            fi
+        done
+    done
+
+    #########################################################################################
+
+    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+    #########################################################################################
+
+    run install -d "$PACKAGE_WORKING_DIR/src"
+    run cd         "$PACKAGE_WORKING_DIR/src"
+
+    #########################################################################################
+
+    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
+
+    #########################################################################################
+
+    if [ -n  "$PACKAGE_DOPATCH" ] ; then
+        eval "$PACKAGE_DOPATCH"
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PACKAGE_INSTALL" ] ; then
+        abort 1 "PACKAGE_INSTALL variable is not set for native package '$1'"
+    fi
+
+    case "${PACKAGE_INSTALL%% *}" in
+        configure)
+            __update_config_sub_guess .
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
+            ;;
+        config)
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install_sw"
+            ;;
+        perl)
+            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
+            ;;
+        cmake)
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -G Ninja -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
+            ;;
+    esac
+
+    eval "$PACKAGE_INSTALL"
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    if [ -n  "$PACKAGE_DOTWEAK" ] ; then
+        eval "$PACKAGE_DOTWEAK"
+    fi
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    cat > toolchain.txt <<EOF
+     CC='$CC'
+    CXX='$CXX'
+     AS='$AS'
+     LD='$LD'
+     AR='$AR'
+ RANLIB='$RANLIB'
+SYSROOT='$SYSROOT'
+EOF
+
+    #########################################################################################
+
+    cat > receipt.txt <<EOF
+src-url: $PACKAGE_SRC_URL
+src-uri: $PACKAGE_SRC_URI
+src-sha: $PACKAGE_SRC_SHA
+dep-pkg: $PACKAGE_DEP_PKG
+install: $PACKAGE_INSTALL
+builtat: $PACKAGE_INSTALL_UTS
+builton:
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-libc: $NATIVE_PLATFORM_LIBC
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
+EOF
+
+    #########################################################################################
+
+    run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
+}
+
+native_package_info_libz() {
+    PACKAGE_SRC_URL='https://zlib.net/zlib-1.3.1.tar.gz'
+    PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
+    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_EXAMPLES=OFF'
+}
+
+native_package_info_libopenssl() {
+    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
+    PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
+    # https://github.com/openssl/openssl/blob/master/INSTALL.md
+}
+
+native_package_info_libtool() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+    PACKAGE_INSTALL='configure --enable-ltdl-install'
+    PACKAGE_DEP_BIN='gm4'
+    PACKAGE_DOTWEAK='
+run ln -s libtool    bin/glibtool
+run ln -s libtoolize bin/glibtoolize
+'
+}
+
+native_package_info_autoconf() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+    PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_automake() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+    PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='autoconf'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_texinfo() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.2.tar.xz'
+    PACKAGE_SRC_SHA='0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DOPATCH='gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
+    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+}
+
+native_package_info_help2man() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+    PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_libexpat() {
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.xz'
+    PACKAGE_SRC_SHA='a695629dae047055b37d50a0ff4776d1d45d0a4c842cf4ccee158441f55ff7ee'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
+}
+
+native_package_info_intltool() {
+    PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_URI='https://fossies.org/linux/privat/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='libexpat perl-XML-Parser'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_perl_XML_Parser() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+    PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='libexpat'
+    PACKAGE_DOPATCH='
+run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
+run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
+run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
+'
+    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+        PACKAGE_INSTALL='perl Makefile.PL'
+    else
+        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
+    fi
+}
+
+native_package_info_libiconv() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    PACKAGE_SRC_SHA='8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
+}
+
+native_package_info_libxml2() {
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.6.tar.xz'
+    PACKAGE_SRC_SHA='889c593a881a3db5fdd96cc9318c87df34eb648edfc458272ad46fd607353fbb'
+    PACKAGE_DEP_PKG='libz libiconv'
+    PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
+}
+
+native_package_info_itstool() {
+    PACKAGE_SRC_URL='https://github.com/itstool/itstool/archive/2.0.7.tar.gz'
+    PACKAGE_SRC_SHA='fba78a37dc3535e4686c7f57407b97d03c676e3a57beac5fb2315162b0cc3176'
+    PACKAGE_DEP_BIN='perl python3'
+    PACKAGE_DEP_PKG='libxml2 autoconf automake'
+    PACKAGE_INSTALL='configure'
+    PACKAGE_DOPATCH='
+    run autoreconf -ivf
+    export PYTHON="$(command -v python3)"
+    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python3.11/site-packages"
+    '
+    PACKAGE_DOTWEAK='
+run mv bin/itstool bin/itstool.py
+cat > bin/itstool <<EOF
+#!/bin/sh
+export PYTHONPATH="$PYTHONPATH"
+exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
+EOF
+run chmod +x bin/itstool
+    '
 }
 
 # }}}
@@ -5238,49 +5550,42 @@ $PACKAGE_ONSTART
 
     #########################################################################################
 
-    unset RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+    # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
+    export ACLOCAL_PATH="$PPKG_CORE_DIR/share/aclocal"
+
+    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    export XDG_DATA_DIRS="$PPKG_CORE_DIR/share/mime"
+
+    export PKG_CONFIG_PATH="$PPKG_CORE_DIR/lib/pkgconfig"
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    export PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
+
+    if [ "$DEBUG_PKG_CONFIG" = 1 ] ; then
+        export PKG_CONFIG_DEBUG_SPEW='set'
+    fi
+
+    #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            ROOTDIR="$NATIVE_PACKAGE_INSTALLED_ROOT"
+        else
+            ROOTDIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC"
+        fi
+
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$ROOTDIR/$DEPENDENT_PACKAGE_NAME"
 
-            if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
-                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
-            else
-                RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-$DEPENDENT_PACKAGE_INSTALL_DIR"
-            fi
+            for d in bin sbin
+            do
+                BINDIR="$DEPENDENT_PACKAGE_INSTALL_DIR/$d"
 
-            if [ "$CROSS_COMPILING" = 1 ] ; then
-                DEPENDENT_PACKAGE_BINARY__DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/bin"
-
-                if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                    PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+                if [ -d  "$BINDIR" ] ; then
+                    PATH="$BINDIR:$PATH"
                 fi
-
-                DEPENDENT_PACKAGE_BINARY__DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/sbin"
-
-                if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                    PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-                fi
-
-                if [ -d          "$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/share/aclocal:$ACLOCAL_PATH"
-                fi
-            else
-                DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
-
-                if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                    PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-                fi
-
-                DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/sbin"
-
-                if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                    PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
-                fi
-            fi
+            done
 
             if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
                 # http://xmlsoft.org/xslt/xsltproc.html
@@ -5401,15 +5706,11 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    unset PACKAGE_DEP_UPP_LIBZ
-    unset PACKAGE_DEP_UPP_LIBOPENSSL
-    unset PACKAGE_DEP_UPP_PYTHON3
+    unset PACKAGE_DEP_AUX_LIBZ
+    unset PACKAGE_DEP_AUX_LIBOPENSSL
 
-    # these native packages are not relocatable
-    # they would be fetched to a fixed location /opt/non-relocatable-* or built from source locally
-    unset PACKAGE_DEP_UPP_T2
-
-    unset PACKAGE_DEP_XBUILDER
+    # these native packages would be built from source locally due to they are not relocatable or libraries
+    unset PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
 
     #########################################################################################
 
@@ -5421,46 +5722,57 @@ $DOT_CONTENT
     if [ -n "$SYSPM" ] ; then
         run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
     else
+        PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
+        PACKAGE_DEP_UPP=
+
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
+        do
+            case $UPPM_PACKAGE_NAME in
+                libz)
+                    PACKAGE_DEP_AUX_LIBZ=1
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
+                    ;;
+                libopenssl)
+                    PACKAGE_DEP_AUX_LIBOPENSSL=1
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
+                    ;;
+                automake)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake gm4"
+                    ;;
+                autoconf|libtool|texinfo|help2man|intltool)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake gm4"
+                    ;;
+                itstool)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl python3 gmake gm4"
+                    ;;
+                cmake)
+                    if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
+                        run $sudo pkgin -y update
+                        run $sudo pkgin -y install cmake
+                    else
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
+                    fi
+                    ;;
+                *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
+            esac
+        done
+
+        ####################################################################
+
         unset UPPM_INSTALL_ARGS
 
         if [ "$DUMP_UPPM" = 1 ] ; then
             UPPM_INSTALL_ARGS=-v
         fi
 
+        ####################################################################
+
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
         do
-            case $UPPM_PACKAGE_NAME in
-                libz)
-                    PACKAGE_DEP_UPP_LIBZ=1
-                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libz"
-                    UPPM_PACKAGE_NAME=gmake
-                    ;;
-                libopenssl)
-                    PACKAGE_DEP_UPP_LIBOPENSSL=1
-                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
-                    UPPM_PACKAGE_NAME=gmake
-                    ;;
-                perl|autoconf|automake|libtool|texinfo|help2man|intltool)
-                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $UPPM_PACKAGE_NAME"
-                    continue
-                    ;;
-                python3)
-                    PACKAGE_DEP_UPP_PYTHON3=1
-                    continue
-                    ;;
-                itstool)
-                    PACKAGE_DEP_UPP_PYTHON3=1
-                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER itstool"
-                    UPPM_PACKAGE_NAME=gm4
-                    ;;
-                cmake)
-                    if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
-                        run $sudo pkgin -y update
-                        run $sudo pkgin -y install cmake
-                        continue
-                    fi
-            esac
-
             run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
             UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
@@ -5476,6 +5788,16 @@ $DOT_CONTENT
             if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
                 ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
             fi
+
+            for d in lib share
+            do
+                UPPM_PACKAGE_PKGCONF_DIR="$UPPM_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+                if [ -d "$UPPM_PACKAGE_PKGCONF_DIR" ] ; then
+                    PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$UPPM_PACKAGE_PKGCONF_DIR"
+                    break
+                fi
+            done
 
             case $UPPM_PACKAGE_NAME in
                 swig)
@@ -5496,73 +5818,42 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
-        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-            T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
-        else
-            T="linux-any-$NATIVE_PLATFORM_ARCH"
+    for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
+    do
+        (install_the_given_native_package "$NATIVE_PACKAGE_NAME")
+
+        NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
         fi
 
-        PYTHON3_DISTRIBUTION_VERSION='3.11.11'
-        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-$PYTHON3_DISTRIBUTION_VERSION-$T"
-        PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
-
-        if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
-            wfetch "https://github.com/leleliu008/python-distribution/releases/download/$PYTHON3_DISTRIBUTION_VERSION/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
-            run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
-            run bsdtar xf  "$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components=1
-            run touch "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok"
-            cd -
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
         fi
 
-        export PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
-        export PKG_CONFIG_PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        if [ "$GITHUB_ACTIONS" = true ] ; then
-            install_non_relocatable_binary_package_if_needed
-        else
-            PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER $PACKAGE_DEP_UPP_T2"
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
         fi
-    }
 
-    #########################################################################################
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
 
-    [ -n "$PACKAGE_DEP_XBUILDER" ] && {
-        run "$UPPM" install gmake
+        if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
 
-        export PATH="$UPPM_HOME/installed/gmake/bin:$PATH"
-
-        xbuilder "$PACKAGE_DEP_XBUILDER"
-
-        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_XBUILDER
+        for d in lib share
         do
-            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+            NATIVE_PACKAGE_PKGCONF_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
-            fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
-            fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
-
-            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            if [ -d "$NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$NATIVE_PACKAGE_PKGCONF_DIR"
+                break
             fi
         done
-    }
+    done
 
     #########################################################################################
 
@@ -5600,11 +5891,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            if [ "$GITHUB_ACTIONS" = true ] ; then
-                install_non_relocatable_binary_package_if_needed
-            else
-                xbuilder perl-XML-Parser
-            fi
+            (install_the_given_native_package perl_XML_Parser)
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -6223,9 +6510,9 @@ $PACKAGE_DO12345
         if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
             step "copy dependent libraries to linker first search dir"
 
-            for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+            for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
             do
-                DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+                DEPENDENT_PACKAGE_LIBRARY_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
 
                 if [  -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
                     find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name 'lib*.a' -exec cp -L -v '{}' "$PACKAGE_WORKING_DIR/lib/" \;
@@ -6389,6 +6676,10 @@ EOF
         error "NO"
     fi
 
+    #########################################################################################
+
+    PKG_CONFIG_PATH=
+
     ##################################################################################
 
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
@@ -6398,7 +6689,6 @@ EOF
         DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-        DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
 
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INCLUDE_DIR'"
@@ -6411,42 +6701,29 @@ EOF
         if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
             LDFLAGS="-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $LDFLAGS"
         fi
-    done
 
-    PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
-    LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+        for d in lib share
+        do
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/$d/pkgconfig"
 
-    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-        # both --static and -static flag should be given.
-        #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
-        # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
-        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections $LDFLAGS"
-        #-Wl,--no-dynamic-linker
-    fi
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
+                break
+            fi
+        done
 
-    ##################################################################################
+        DEPENDENT_PACKAGE_ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALL_DIR/share/aclocal"
 
-    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
-    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
-    PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
-    LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+        if [ -d "$DEPENDENT_PACKAGE_ACLOCAL_PATH" ] ; then
+            if [ -z "$ACLOCAL_PATH" ] ; then
+                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH"
+            else
+                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH:$ACLOCAL_PATH"
+            fi
+        fi
 
-    export   CFLAGS="$CCFLAGS"
-    export CXXFLAGS="$XXFLAGS"
-    export CPPFLAGS="$PPFLAGS"
-    export  LDFLAGS="$LDFLAGS"
+        ###################################################################################
 
-    export PROXIED_CC_ARGS
-    export PROXIED_CXX_ARGS="$PROXIED_CC_ARGS"
-    export PROXIED_OBJC_ARGS="$PROXIED_CC_ARGS"
-
-    #########################################################################################
-
-    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-    export XDG_DATA_DIRS
-
-    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-    do
         # https://gi.readthedocs.io/en/latest/tools/g-ir-scanner.html#environment-variables
         if [ -d "$DEPENDENT_PACKAGE_INSTALL_DIR/share/gir-1.0" ] ; then
             if [ -z "$XDG_DATA_DIRS" ] ; then
@@ -6468,55 +6745,49 @@ EOF
 
     #########################################################################################
 
-    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-    do
-        DEPENDENT_PACKAGE_ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALL_DIR/share/aclocal"
-
-        if [ -d "$DEPENDENT_PACKAGE_ACLOCAL_PATH" ] ; then
-            if [ -z "$ACLOCAL_PATH" ] ; then
-                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH"
-            else
-                ACLOCAL_PATH="$DEPENDENT_PACKAGE_ACLOCAL_PATH:$ACLOCAL_PATH"
-            fi
-        fi
-    done
+    export PATH="$PACKAGE_WORKING_DIR/bin:$PATH"
 
     # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
     export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal:$ACLOCAL_PATH"
 
-    #########################################################################################
+    # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    export XDG_DATA_DIRS="$PACKAGE_WORKING_DIR/share/mime:$XDG_DATA_DIRS"
 
-    PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
-
-    #########################################################################################
-
-    for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-    do
-        DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
-
-        if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
-            PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
-        else
-            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/share/pkgconfig"
-
-            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
-            fi
-        fi
-    done
-
-    if [ -z "$PKG_CONFIG_PATH" ] ; then
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    else
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-    fi
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
 
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    export PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
 
     if [ "$DEBUG_PKG_CONFIG" = 1 ] ; then
         export PKG_CONFIG_DEBUG_SPEW='set'
     fi
+
+    #########################################################################################
+
+    PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
+    LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
+
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        # both --static and -static flag should be given.
+        #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
+        # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
+        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections $LDFLAGS"
+        #-Wl,--no-dynamic-linker
+    fi
+
+    CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
+    XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
+    PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
+    LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+
+    export   CFLAGS="$CCFLAGS"
+    export CXXFLAGS="$XXFLAGS"
+    export CPPFLAGS="$PPFLAGS"
+    export  LDFLAGS="$LDFLAGS"
+
+    export PROXIED_CC_ARGS
+    export PROXIED_CXX_ARGS="$PROXIED_CC_ARGS"
+    export PROXIED_OBJC_ARGS="$PROXIED_CC_ARGS"
 
     #########################################################################################
 
@@ -6608,8 +6879,10 @@ EOF
 
         CMAKE_FIND_ROOT_PATH="$PACKAGE_WORKING_DIR"
 
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
+            DEPENDENT_PACKAGE_INSTALL_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME"
+
             if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
                 CMAKE_FIND_ROOT_PATH="$DEPENDENT_PACKAGE_INSTALL_DIR"
             else
@@ -6637,7 +6910,62 @@ EOF
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
-        #########################################################
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
+        #########################################################################
+
+        if [ "$CROSS_COMPILING" = 1 ] ; then
+            RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
+
+            # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
+            # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+            export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_AR"="$AR_FOR_BUILD"
+            export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_LINKER"="$CC_FOR_BUILD"
+
+            # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+            RUSTFLAGS_FOR_BUILD="-Clinker=$CC_FOR_BUILD"
+
+            for LDARG in $LDFLAGS_FOR_BUILD
+            do
+                RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -Clink-arg=$LDARG"
+            done
+
+            [ "$PACKAGE_DEP_AUX_LIBZ" = 1 ] && {
+                RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -L native=$NATIVE_PACKAGE_INSTALLED_ROOT/libz"
+            }
+
+            export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_RUSTFLAGS"="$RUSTFLAGS_FOR_BUILD"
+
+            # https://libraries.io/cargo/pkg-config
+            # https://crates.io/crates/pkg-config
+            # https://docs.rs/pkg-config/latest/pkg_config/
+            # https://github.com/rust-lang/pkg-config-rs
+            export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
+            export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
+
+            # https://libraries.io/cargo/cc
+            # https://crates.io/crates/cc
+            # https://docs.rs/cc/latest/cc/
+            # https://github.com/alexcrichton/cc-rs
+            export HOST_CC="$CC_FOR_BUILD"
+            export HOST_CFLAGS="$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
+
+            export HOST_CXX="$CXX_FOR_BUILD"
+            export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
+
+            export HOST_AR="$AR_FOR_BUILD"
+
+            #########################################################################
+
+            # https://docs.rs/openssl/latest/openssl/
+            [ "$PACKAGE_DEP_AUX_LIBOPENSSL" = 1 ] && {
+                eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/libopenssl'"
+                eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_NO_VENDOR=1"
+                export OPENSSL_NO_VENDOR=1
+            }
+        fi
+
+        #########################################################################
 
         unset RUST_TARGET
 
@@ -6680,8 +7008,6 @@ EOF
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
 
-        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
-
         #########################################################
 
         # https://doc.rust-lang.org/rustc/command-line-arguments.html
@@ -6701,19 +7027,6 @@ EOF
         do
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
-
-        #########################################################################
-
-        # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_UPP_LIBZOPENSSL" = 1 ] && {
-            case "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" in
-                linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
-                macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
-                macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
-            esac
-
-            eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
-        }
 
         #########################################################################
 
@@ -6907,32 +7220,13 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-    # https://git.savannah.gnu.org/cgit/config.git/tree/
-
-    step "update config.{sub,guess}"
-
     {
         [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
-        for FILENAME in config.sub config.guess
-        do
-            FILEPATH="$SESSION_DIR/$FILENAME"
-
-            [ -f "$FILEPATH" ] || {
-                wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
-
-                run chmod a+x "$FILEPATH"
-
-                if [ "$FILENAME" = 'config.sub' ] ; then
-                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
-                fi
-            }
-
-            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
-        done
+        step "update config.{sub,guess}"
+        __update_config_sub_guess "$PACKAGE_BSCRIPT_DIR"
     }
 
     #########################################################################################
@@ -9766,7 +10060,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.8
+PPKG_VERSION=0.18.9
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -9883,6 +10177,9 @@ bppend_to_PATH "$HOME/perl5/bin"
 #########################################################################################
 
 unset ACLOCAL_PATH
+
+unset PKG_CONFIG_PATH
+unset PKG_CONFIG_LIBDIR
 
 unset CCFLAGS
 unset XXFLAGS
