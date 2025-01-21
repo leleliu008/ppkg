@@ -4963,7 +4963,7 @@ $FORMULA_SEARCH_DIR"
                     run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
                     CONFIG_FILE_DIR="$SESSION_DIR"
                 else
-                    CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
+                    CONFIG_FILE_DIR="$PPKG_CORE_DIR"
                 fi
             fi
         fi
@@ -5029,7 +5029,7 @@ EOF
 
     PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
     PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
-    PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+    PACKAGE_SRC_FILEPATH="$PPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
 
@@ -6941,7 +6941,7 @@ EOF
             # https://docs.rs/pkg-config/latest/pkg_config/
             # https://github.com/rust-lang/pkg-config-rs
             export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
-            export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
+            export HOST_PKG_CONFIG_LIBDIR="$PPKG_CORE_DIR/lib/pkgconfig"
 
             # https://libraries.io/cargo/cc
             # https://crates.io/crates/cc
