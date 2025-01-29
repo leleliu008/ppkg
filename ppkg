@@ -6778,16 +6778,20 @@ EOF
     PPFLAGS="-I$PACKAGE_INSTALLING_INC_DIR $PPFLAGS"
     LDFLAGS="-L$PACKAGE_INSTALLING_LIB_DIR $LDFLAGS"
 
+    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        if [ "$TARGET_PLATFORM_NAME" != macos ] ; then
+            LDFLAGS="-static-libgcc $LDFLAGS"
+        fi
+
+        LDFLAGS="-static-libstdc++ $LDFLAGS"
+    fi
+
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         # both --static and -static flag should be given.
         #  -static flag will be filtered out by libtool, libtool recognize this flag as prefer to link static library.
         # --static flag will be passed to the linker, although this flag was not documented, but it indeed works.
         LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections $LDFLAGS"
         #-Wl,--no-dynamic-linker
-    fi
-
-    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-        LDFLAGS="-static-libstdc++ -static-libgcc $LDFLAGS"
     fi
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
