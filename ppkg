@@ -3355,8 +3355,8 @@ EOF
 
     cat >> cabal.project <<EOF
 package *
-    extra-include-dirs: $libffi_INCLUDE_DIR,$libz_INCLUDE_DIR
-    extra-lib-dirs: $PACKAGE_WORKING_DIR/lib
+    extra-include-dirs: $libgmp_INCLUDE_DIR,$libffi_INCLUDE_DIR,$libz_INCLUDE_DIR
+    extra-lib-dirs: $PACKAGE_WORKING_DIR/lib,$libgmp_LIBRARY_DIR,$libffi_LIBRARY_DIR,$libz_LIBRARY_DIR
 EOF
 
     if [ "$ENABLE_STRIP" = 1 ] ; then
@@ -5759,7 +5759,7 @@ $DOT_CONTENT
                     ;;
                 itstool)
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl python3 gmake gm4"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl python3 cmake gmake gm4"
                     ;;
                 cmake)
                     if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
@@ -10080,7 +10080,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.10
+PPKG_VERSION=0.18.11
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
