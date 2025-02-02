@@ -5742,6 +5742,7 @@ $DOT_CONTENT
                 libz)
                     PACKAGE_DEP_AUX_LIBZ=1
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"
                     ;;
                 libopenssl)
                     PACKAGE_DEP_AUX_LIBOPENSSL=1
