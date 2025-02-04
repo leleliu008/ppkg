@@ -5248,8 +5248,8 @@ run ln -s libtoolize bin/glibtoolize
 native_package_info_autoconf() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
     PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl gm4 gmake'
+    PACKAGE_DEP_RUN='perl gm4'
     PACKAGE_INSTALL='configure'
 }
 
