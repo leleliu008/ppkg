@@ -2751,48 +2751,63 @@ __fetch_resources_of_the_given_package() {
         run ln -s "$PACKAGE_INSTALLED_DIR" bundle.d
     fi
 
-    ###########################################################################################
-
-    unset BUNDLE_DIR_NAME
-
-    ###########################################################################################
+    #######################################################
 
     if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
+        find bundle.d/ -type f -not -path 'bundle.d/.ppkg/*' > ts.txt
+
+        unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+
         if [ "$PORTABLE" = 1 ] ; then
-            unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
-
-            unset EXECUTABLES
-
+            unset DYNAMIC_LOADER_FILEPATH
             unset DYNAMIC_LOADER_FILENAME
 
-            cd bundle.d/
-
-            for FILEPATH in $(find -type f -not -path './.ppkg/*')
+            while read -r FILEPATH
             do
-                FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
 
-                if [ "$FILEMAGIC" = '7F454C46' ] ; then
-                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                case $FILEMAGIC in
+                    7F454C46*)
+                        ;;
+                    213C61726368)
+                        # static library file
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        continue
+                        ;;
+                    *)  continue
+                esac
 
-                    if [ -n "$PT_INTERP" ] ; then
-                        EXECUTABLES="$EXECUTABLES $FILEPATH"
+                ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
 
-                        [ -z "$DYNAMIC_LOADER_FILENAME" ] && DYNAMIC_LOADER_FILENAME="${PT_INTERP##*/}"
-                    fi
-                fi
-            done
+                case $ELFTYPE in
+                        # object file
+                    01) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        continue
+                        ;;
+                    03) ;;
+                    *)  continue
+                esac
 
-            if [ -n "$EXECUTABLES" ] ; then
-                for FILEPATH in $EXECUTABLES
-                do
-                    RELATIVE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" .ppkg/dependencies/lib)"
+                DYNAMIC_LOADER_FILEPATH="$(patchelf --print-interpreter "$FILEPATH")" || {
+                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                    continue
+                }
 
-                    run chmod -x "$FILEPATH"
+                [ -z "$DYNAMIC_LOADER_FILEPATH" ] && {
+                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                    continue
+                }
 
-                    run mv "$FILEPATH" "$FILEPATH.exe"
+                DYNAMIC_LOADER_FILENAME="${DYNAMIC_LOADER_FILEPATH##*/}"
 
-                    cat > "$FILEPATH.c" <<EOF
+                RELATIVE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
+
+                run chmod -x "$FILEPATH"
+
+                run mv "$FILEPATH" "$FILEPATH.exe"
+
+                cat > "$FILEPATH.c" <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -2884,95 +2899,63 @@ int main(int argc, char* argv[]) {
     return 255;
 }
 EOF
-                    run gcc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
-                done
+                run gcc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
+            done < ts.txt
 
-                install -d .ppkg/dependencies/lib/
+            if [ -n "$DYNAMIC_LOADER_FILENAME" ] ; then
+                install -d bundle.d/.ppkg/dependencies/lib/
 
-                NEEDED_SYSTEM_DYLIBS="$(cat .ppkg/needed-system-libs.txt)"
+                NEEDED_SYSTEM_DYLIBS="$(cat bundle.d/.ppkg/needed-system-libs.txt)"
 
                 for NEEDED_FILENAME in $DYNAMIC_LOADER_FILENAME $NEEDED_SYSTEM_DYLIBS
                 do
-                    [ -f ".ppkg/dependencies/lib/$NEEDED_FILENAME" ] && continue
+                    [ -f "bundle.d/.ppkg/dependencies/lib/$NEEDED_FILENAME" ] && continue
 
                     NEEDED_FILEPATH="$(gcc -print-file-name="$NEEDED_FILENAME")"
 
                     case $NEEDED_FILEPATH in
-                        /*) run cp -L "$NEEDED_FILEPATH" .ppkg/dependencies/lib/ ;;
+                        /*) run cp -L "$NEEDED_FILEPATH" bundle.d/.ppkg/dependencies/lib/ ;;
                         *)  abort 1 "required system library '$NEEDED_FILENAME' could not be found."
                     esac
                 done
             fi
+        else
+            while read -r FILEPATH
+            do
+                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
 
-            cd -
+                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                case $FILEMAGIC in
+                    7F454C46*)
+                        ;;
+                    213C61726368)
+                        # static library file
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        break
+                        ;;
+                    *)  continue
+                esac
 
-            BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-any-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+                ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
+
+                case $ELFTYPE in
+                        # object file
+                    01) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        break
+                        ;;
+                        # dynamically linked library or executable
+                    03) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        break
+                        ;;
+                    *)  continue
+                esac
+            done < ts.txt
         fi
 
-        if [ -z "$BUNDLE_DIR_NAME" ] ; then
-            unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
-
-            if [ -f bundle.d/.ppkg/needed-system-libs.txt ] ; then
-                OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-            fi
-
-            if [ -d bundle.d/lib ] ; then
-                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.a' -print -quit)
-                    do
-                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                    done
-                fi
-
-                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.so' -print -quit)
-                    do
-                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                    done
-                fi
-
-                if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                    for FILEPATH in $(find bundle.d/lib -type f -name '*.o' -print -quit)
-                    do
-                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                    done
-                fi
-            fi
-
-            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                for d in bin sbin libexec
-                do
-                    if [ -d "bundle.d/$d" ] ; then
-                        for FILEPATH in $(find "bundle.d/$d" -type f)
-                        do
-                            FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
-
-                            if [ "$FILEMAGIC" = '7F454C46' ] ; then
-                                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                                if [ -n "$PT_INTERP" ] ; then
-                                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                                    break
-                                fi
-                            fi
-                        done
-                    fi
-                done
-            fi
-
-            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-                for FILEPATH in $(find bundle.d/ -type f -name '*.a' -print -quit)
-                do
-                    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                done
-            fi
-
-            if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-                BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
-            else
-                BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
-            fi
+        if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
+            BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+        else
+            BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
         fi
     else
         BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
@@ -10117,7 +10100,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.12
+PPKG_VERSION=0.18.13
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
