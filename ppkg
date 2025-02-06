@@ -9368,10 +9368,9 @@ __setup() {
         #################################################################################
 
         step "install sysinfo"
-        run git clone --depth=1 https://github.com/leleliu008/C-examples
-        run cmake -S C-examples/utils/sysinfo -B C-examples/utils/sysinfo/build.d -DCMAKE_INSTALL_PREFIX="$PWD" -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON
-        run cmake --build   C-examples/utils/sysinfo/build.d
-        run cmake --install C-examples/utils/sysinfo/build.d
+        run git clone --depth=1 https://github.com/leleliu008/sysinfo
+        run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
+        run strip bin/sysinfo
 
         #################################################################################
 
@@ -10100,7 +10099,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.13
+PPKG_VERSION=0.18.14
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
