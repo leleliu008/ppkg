@@ -9371,6 +9371,7 @@ __setup() {
         run git clone --depth=1 https://github.com/leleliu008/sysinfo
         run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
         run strip bin/sysinfo
+        run bin/sysinfo
 
         #################################################################################
 
