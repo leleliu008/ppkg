@@ -757,6 +757,8 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`doextra`|optional|POSIX shell code to be run to do some extra works immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 |`dotweak`|optional|POSIX shell code to be run to do some tweaks after `doextra`.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
+|`bindenv`|optional|bind environment variables to executables. multiple lines of formatted string `<KEY>=<VALUE>`. `%s` represents the install directory.|
+||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
 |phases|

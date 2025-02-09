@@ -1054,6 +1054,7 @@ filetype_from_url() {
     unset PACKAGE_PATCHES
     unset PACKAGE_RESLIST
 
+    unset PACKAGE_BINDENV
     unset PACKAGE_CAVEATS
 
     unset PACKAGE_BSYSTEM
@@ -1139,6 +1140,7 @@ filetype_from_url() {
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1722,6 +1724,7 @@ __search_packages() {
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
+        --arg bindenv "$PACKAGE_BINDENV" \
         --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
@@ -1774,6 +1777,7 @@ __search_packages() {
     "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak,
+    "bindenv":$bindenv,
     "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
 }
@@ -1946,6 +1950,10 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOTWEAK"
             ;;
+        bindenv)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_BINDENV"
+            ;;
         caveats)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_CAVEATS"
@@ -2101,6 +2109,7 @@ EOF
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
+        --arg bindenv "$RECEIPT_PACKAGE_BINDENV" \
         --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
         --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
         --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
@@ -2156,6 +2165,7 @@ EOF
     "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak,
+    "bindenv":$bindenv,
     "caveats":$caveats,
     "builtby":$builtby,
     "builtat":$builtat,
@@ -2815,11 +2825,13 @@ __fetch_resources_of_the_given_package() {
 
                 DYNAMIC_LOADER_FILENAME="${DYNAMIC_LOADER_FILEPATH##*/}"
 
-                RELATIVE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
+                LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
 
                 run chmod -x "$FILEPATH"
 
                 run mv "$FILEPATH" "$FILEPATH.exe"
+
+                ####################################
 
                 cat > "$FILEPATH.c" <<EOF
 #include <stdio.h>
@@ -2859,10 +2871,67 @@ int main(int argc, char* argv[]) {
     realExePath[ret + 3] = 'e';
     realExePath[ret + 4] = '\\0';
 
+EOF
+
+                ####################################
+
+                [ -n "$RECEIPT_PACKAGE_BINDENV" ] && {
+                    I=0
+
+                    for LINE in $RECEIPT_PACKAGE_BINDENV
+                    do
+                        VALUE="${LINE#*=}"
+
+                        case $VALUE in
+                            %s/*)
+                                I="$(($I + 1))"
+                                KEY="${LINE%%=*}"
+                                VALUE="$(printf "$VALUE\n" 'bundle.d')"
+                                VALUE_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" "$VALUE")"
+
+                                cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    selfExecPath[slashIndex] = '\0';
+
+    char kv$I[PATH_MAX];
+
+    if (snprintf(kv$I, PATH_MAX, "%s/$VALUE_RELATIVE_TO_SELF_EXE_PATH", selfExecPath) < 0) {
+        perror(NULL);
+        return 11;
+    }
+
+    if (setenv("$KEY", kv$I, 1) != 0) {
+        perror(NULL);
+        return 10;
+    }
+
+    selfExecPath[slashIndex] = '/';
+EOF
+                                ;;
+                            *)  cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    if (putenv("$LINE") != 0) {
+        perror(NULL);
+        return 10;
+    }
+EOF
+                        esac
+
+                    done
+                }
+
+                ####################################
+
+                cat >> "$FILEPATH.c" <<EOF
+
     ////////////////////////////////////////////////////
 
     const char * dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
-    const char * libraryPathRelativeToSelfExePath = "/$RELATIVE_PATH";
+    const char * libraryPathRelativeToSelfExePath = "/$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH";
 
     ////////////////////////////////////////////////////
 
@@ -8639,6 +8708,7 @@ install_mans() {
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_BUILTBY="$(yq '.builtby | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -10365,7 +10435,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.19.2
+PPKG_VERSION=0.20.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
