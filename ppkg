@@ -4209,7 +4209,7 @@ to_meson_array() {
 # {{{ cargow
 
 cargow() {
-    run rustup target add "$RUST_TARGET"
+    command -v rustup > /dev/null && run rustup target add "$RUST_TARGET"
 
     case $1 in
         build)
@@ -6198,17 +6198,19 @@ $DOT_CONTENT
     #########################################################################################
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        command -v rustup > /dev/null || {
+        if command -v cargo > /dev/null && command -v rustc > /dev/null ; then
+            :
+        else
             # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
+            note "${COLOR_GREEN}cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
             wfetch 'https://sh.rustup.rs' -o rustup-init.sh
 
-            run bash rustup-init.sh -y
-
-            export CARGO_HOME="$HOME/.cargo"
-            export PATH="$CARGO_HOME/bin:$PATH"
-        }
+            run bash rustup-init.sh -y && {
+                export CARGO_HOME="$HOME/.cargo"
+                export PATH="$CARGO_HOME/bin:$PATH"
+            }
+        fi
     }
 
     #########################################################################################
@@ -6292,11 +6294,12 @@ $DOT_CONTENT
     }
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
         CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
-        run "$RUSTUP"     --version
-        printf '\n'
         run "$CARGO"      --version
+        printf '\n'
+
+        RUSTC=$(command -v rustc) || abort 1 "command not found: rustc"
+        run "$RUSTC"     --version
         printf '\n'
     }
 
@@ -9342,7 +9345,7 @@ __setup_alpine() {
     SYSPM=apk
 
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkgconf go jq yq git curl cmake ninja make g++ libc-dev linux-headers flex bison m4
+    run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkgconf go jq yq git curl cmake ninja make g++ libc-dev linux-headers flex bison m4 rust cargo
 
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
@@ -10361,7 +10364,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.19.0
+PPKG_VERSION=0.19.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
