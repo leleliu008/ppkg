@@ -3011,6 +3011,7 @@ EOF
         unset APPICON_FILENAME
 
         unset APPID
+        unset APPEXEC
 
         #############################################################
 
@@ -3052,31 +3053,36 @@ EOF
             [ -z "$APPNAME" ] && abort 1 "name tag is missing in file: $APPDATA_FILEPATH, for more details, please refer to https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec"
             [ -z "$SUMMARY" ] && abort 1 "summary tag is missing in file: $APPDATA_FILEPATH, for more details, please refer to https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec"
 
-            if [ -n "$APPEXEC" ] ; then
-                for dir in bin sbin
-                do
-                    if [ -f "$dir/$APPEXEC" ] ; then
-                        APPEXEC_FILEPATH="$dir/$APPEXEC"
-                        break
-                    fi
-                done
-
-                if [ -z "$APPEXEC_FILEPATH" ] ; then
-                    APPEXEC_FILEPATH="$(find -name "$APPEXEC" -printf '%P\n' -quit)"
-
-                    if [ -z "$APPEXEC_FILEPATH" ] ; then
-                        abort 1 "executable '$APPEXEC' is expected to exist, but could not found."
-                    fi
-                fi
-
-                echo "APPEXEC_FILEPATH=$APPEXEC_FILEPATH"
-            fi
-
             case $APPID in
                 *.desktop)  DESKTOP_FILENAME="$APPID" ;;
                 *)          DESKTOP_FILENAME="$APPID.desktop"
             esac
         }
+
+        ############################################################################
+
+        if [ -z "$APPEXEC" ] ; then
+            APPEXEC="${RECEIPT_PACKAGE_PKGNAME%@*}"
+        fi
+
+        for dir in bin sbin
+        do
+            if [ -f "$dir/$APPEXEC" ] ; then
+                APPEXEC_FILEPATH="$dir/$APPEXEC"
+                break
+            fi
+        done
+
+        if [ -z "$APPEXEC_FILEPATH" ] ; then
+            APPEXEC_FILEPATH="$(find -name "$APPEXEC" -printf '%P\n' -quit)"
+
+            if [ -z "$APPEXEC_FILEPATH" ] ; then
+                abort 1 "executable '$APPEXEC' is expected to exist in package $RECEIPT_PACKAGE_PKGNAME, but could not found."
+            fi
+        fi
+
+        # AppRun is required for appimage-runtime
+        ln -s "$APPEXEC_FILEPATH" AppRun
 
         #############################################################
 
@@ -3147,11 +3153,6 @@ EOF
 
         run desktop-file-validate "$DESKTOP_FILENAME"
 
-        ############################################################################
-
-        # AppRun is required for appimage-runtime
-        ln -s "$APPEXEC_FILEPATH" AppRun
-
         #############################################################
 
         tee app.yml <<EOF
@@ -3161,8 +3162,8 @@ version: $RECEIPT_PACKAGE_VERSION
 homeurl: $RECEIPT_PACKAGE_WEB_URL
 summary: $RECEIPT_PACKAGE_SUMMARY
 license: $RECEIPT_PACKAGE_LICENSE
-icon: $APPICON_FILEPATH
 exec: $APPEXEC_FILEPATH
+icon: $APPICON_FILEPATH
 desktop: $DESKTOP_FILEPATH
 appdata: $APPDATA_FILEPATH
 creator: ppkg|$PPKG_VERSION|https://github.com/leleliu008/ppkg
@@ -3174,7 +3175,7 @@ EOF
 
         ############################################################################
 
-        run curl -L -o runtime https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
+        wfetch "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH" -o runtime --no-buffer
 
         ############################################################################
 
@@ -10364,7 +10365,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.19.1
+PPKG_VERSION=0.19.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
