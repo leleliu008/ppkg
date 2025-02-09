@@ -2681,6 +2681,9 @@ __fetch_resources_of_the_given_package() {
         *.zip)
             OUTPUT_TYPE=.zip
             ;;
+        *.AppImage)
+            OUTPUT_TYPE=.AppImage
+            ;;
         *)  abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, invalid forth argument: $2"
     esac
 
@@ -2704,11 +2707,14 @@ __fetch_resources_of_the_given_package() {
 
     unset PORTABLE
 
+    unset SIGN_WITH_GPG
+
+    unset SIGNKEY
+
     while [ -n "$1" ]
     do
         case $1 in
-            -K)
-                REQUEST_TO_KEEP_SESSION_DIR=1
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             --exclude)
                 shift
@@ -2721,6 +2727,13 @@ __fetch_resources_of_the_given_package() {
             --portable)
                 PORTABLE=1
                 ;;
+            --sign)
+                SIGN_WITH_GPG=1
+                ;;
+            --sign-key=*)
+                SIGNKEY="${1#*=}"
+                ;;
+            --) break ;;
             *)  abort 1 "$PPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--portable], unrecognized option: $1"
         esac
         shift
@@ -2738,7 +2751,8 @@ __fetch_resources_of_the_given_package() {
 
     #######################################################
 
-    if [ -n "$EXCLUDES" ] || ( [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] && [ "$PORTABLE" = 1 ] ) ; then
+    if [ -n "$EXCLUDES" ] || { [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] && [ "$PORTABLE" = 1 ]
+                             } || [ "$OUTPUT_TYPE" = .AppImage ] ; then
         run install -d bundle.d/
 
         run cp -r "$PACKAGE_INSTALLED_DIR/." bundle.d/
@@ -2967,9 +2981,247 @@ EOF
 
     #######################################################
 
-    run mv bundle.d "$BUNDLE_DIR_NAME"
+    if [ "$OUTPUT_TYPE" = .AppImage ] ; then
+        run "$UPPM" about
+        run "$UPPM" update
 
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$BUNDLE_DIR_NAME/*" "$BUNDLE_DIR_NAME/.ppkg"
+        for UPPM_PACKAGE_NAME in xxd curl zsync gnupg bsdtar sysinfo xmlutils coreutils findutils squashfs appstream desktop-file-utils
+        do
+            run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
+
+            UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+        done
+
+        #############################################################
+
+        unset APPEXEC_FILEPATH
+        unset APPICON_FILEPATH
+        unset DESKTOP_FILEPATH
+        unset APPDATA_FILEPATH
+
+        unset DESKTOP_FILENAME
+        unset APPICON_FILENAME
+
+        unset APPID
+
+        #############################################################
+
+        run cd bundle.d
+
+        #############################################################
+
+        if [ "$CHECK_APPSTREAM" = 1 ] ; then
+            run appstreamcli validate-tree .
+        fi
+
+        #############################################################
+
+        [ -d share/metainfo ] && {
+            for item in metainfo appdata
+            do
+                APPDATA_FILEPATH="$(find share/metainfo -name "*.$item.xml" -printf '%p\n' -quit)"
+
+                [ -n "$APPDATA_FILEPATH" ] && break
+            done
+        }
+
+        [ -z "$APPDATA_FILEPATH" ] && {
+            for item in metainfo appdata
+            do
+                APPDATA_FILEPATH="$(find . -name "*.$item.xml" -not -path './.ppkg/*' -printf '%P\n' -quit)"
+
+                [ -n "$APPDATA_FILEPATH" ] && break
+            done
+        }
+
+        [ -n "$APPDATA_FILEPATH" ] && {
+              APPID="$(xmllint --xpath 'string(/component/id)'      "$APPDATA_FILEPATH")"
+            APPNAME="$(xmllint --xpath 'string(/component/name)'    "$APPDATA_FILEPATH")"
+            SUMMARY="$(xmllint --xpath 'string(/component/summary)' "$APPDATA_FILEPATH")"
+            APPEXEC="$(xmllint --xpath 'string(/component/provides/binary)' "$APPDATA_FILEPATH")"
+
+            [ -z "$APPID" ] && abort 1 "id tag is missing in file: $APPDATA_FILEPATH, for more details, please refer to https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec"
+            [ -z "$APPNAME" ] && abort 1 "name tag is missing in file: $APPDATA_FILEPATH, for more details, please refer to https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec"
+            [ -z "$SUMMARY" ] && abort 1 "summary tag is missing in file: $APPDATA_FILEPATH, for more details, please refer to https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec"
+
+            if [ -n "$APPEXEC" ] ; then
+                for dir in bin sbin
+                do
+                    if [ -f "$dir/$APPEXEC" ] ; then
+                        APPEXEC_FILEPATH="$dir/$APPEXEC"
+                        break
+                    fi
+                done
+
+                if [ -z "$APPEXEC_FILEPATH" ] ; then
+                    APPEXEC_FILEPATH="$(find -name "$APPEXEC" -printf '%P\n' -quit)"
+
+                    if [ -z "$APPEXEC_FILEPATH" ] ; then
+                        abort 1 "executable '$APPEXEC' is expected to exist, but could not found."
+                    fi
+                fi
+
+                echo "APPEXEC_FILEPATH=$APPEXEC_FILEPATH"
+            fi
+
+            case $APPID in
+                *.desktop)  DESKTOP_FILENAME="$APPID" ;;
+                *)          DESKTOP_FILENAME="$APPID.desktop"
+            esac
+        }
+
+        #############################################################
+
+        for d in share/icons/hicolor/256x256/apps share/icons/hicolor/128x128/apps
+        do
+            [ -d "$d" ] || continue
+
+            for type in svg png
+            do
+                APPICON_FILEPATH="$(find "$d" -name "*.$type" -printf '%p\n' -quit)"
+
+                [ -n "$APPICON_FILEPATH" ] && break 2
+            done
+        done
+
+        [ -z "$APPICON_FILEPATH" ] && {
+            for type in svg png
+            do
+                APPICON_FILEPATH="$(find . -name "*.$type" -not -path './.ppkg/*' -printf '%P\n' -quit)"
+
+                [ -n "$APPICON_FILEPATH" ] && break
+            done
+        }
+
+        [ -n "$APPICON_FILEPATH" ] && {
+            APPICON_FILENAME="${APPICON_FILEPATH##*/}"
+
+            run ln -s "$APPICON_FILEPATH" "$APPICON_FILENAME"
+
+            # https://docs.appimage.org/reference/appdir.html
+            # .DirIcon is required for some softwares e.g. https://github.com/TheAssassin/AppImageLauncher to display thumbnail
+            ln -s "$APPICON_FILEPATH" .DirIcon
+        }
+
+        #############################################################
+
+        # appimage-runtime do not care of .desktop file, but other tools might take care of it
+
+        for d in share/applications .
+        do
+            [ -d "$d" ] || continue
+
+            for item in $DESKTOP_FILENAME '*.desktop'
+            do
+                DESKTOP_FILEPATH="$(find "$d" -name "$item" -printf '%p\n' -quit)"
+
+                if [ -n "$DESKTOP_FILEPATH" ] ; then
+                    DESKTOP_FILENAME="${DESKTOP_FILEPATH##*/}"
+                    run ln -s "$DESKTOP_FILEPATH" "$DESKTOP_FILENAME"
+                    break 2
+                fi
+            done
+        done
+
+        if [ -z "$DESKTOP_FILENAME" ] ; then
+            DESKTOP_FILENAME="$RECEIPT_PACKAGE_PKGNAME.desktop"
+
+            cat > "$DESKTOP_FILENAME" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$RECEIPT_PACKAGE_PKGNAME
+Comment=$RECEIPT_PACKAGE_SUMMARY
+Exec=${APPEXEC_FILEPATH##*/}
+Icon=${APPICON_FILENAME%.*}
+Terminal=true
+EOF
+        fi
+
+        run desktop-file-validate "$DESKTOP_FILENAME"
+
+        ############################################################################
+
+        # AppRun is required for appimage-runtime
+        ln -s "$APPEXEC_FILEPATH" AppRun
+
+        #############################################################
+
+        tee app.yml <<EOF
+name: $RECEIPT_PACKAGE_PKGNAME
+arch: $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
+version: $RECEIPT_PACKAGE_VERSION
+homeurl: $RECEIPT_PACKAGE_WEB_URL
+summary: $RECEIPT_PACKAGE_SUMMARY
+license: $RECEIPT_PACKAGE_LICENSE
+icon: $APPICON_FILEPATH
+exec: $APPEXEC_FILEPATH
+desktop: $DESKTOP_FILEPATH
+appdata: $APPDATA_FILEPATH
+creator: ppkg|$PPKG_VERSION|https://github.com/leleliu008/ppkg
+EOF
+
+        ############################################################################
+
+        run cd -
+
+        ############################################################################
+
+        run curl -L -o runtime https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
+
+        ############################################################################
+
+        if [ -z "$@" ] ; then
+            run mksquashfs bundle.d squashfs -comp zstd -b 128K -root-owned -noappend
+        else
+            run mksquashfs bundle.d squashfs "$@"
+        fi
+
+        ############################################################################
+
+        run 'cat runtime squashfs > AppImage'
+
+        run chmod a+x AppImage
+
+        ############################################################################
+
+        if [ "$SIGN_WITH_GPG" = 1 ] ; then
+            if [ -z "$SIGNKEY" ] ; then
+                SIGN_ARGS=
+            else
+                SIGN_ARGS="--sign-key $SIGNKEY"
+            fi
+
+            run gpg --sign --output AppImage.sig AppImage $SIGN_ARGS
+        fi
+
+        ############################################################################
+
+        run mv AppImage "$OUTPUT_FILENAME"
+
+        if [ "$SIGN_WITH_GPG" = 1 ] ; then
+            run mv AppImage.sig "$OUTPUT_FILENAME.sig"
+        fi
+
+        ############################################################################
+
+        if [ -n "$GITHUB_REPOSITORY" ] ; then
+            URL="https://github.com/$GITHUB_REPOSITORY/releases/download/"
+
+            run zsyncmake -u "$URL" "$OUTPUT_FILENAME"
+        fi
+    else
+        run mv bundle.d "$BUNDLE_DIR_NAME"
+
+        run bsdtar cvaf "$OUTPUT_FILENAME" "$BUNDLE_DIR_NAME/*" "$BUNDLE_DIR_NAME/.ppkg"
+    fi
 
     run du -sh "$OUTPUT_FILENAME"
 
@@ -3919,7 +4171,7 @@ EOF
 
     MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
 
-    if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=static --prefer-static"
     else
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
@@ -6539,7 +6791,7 @@ $PACKAGE_DO12345
     #########################################################################################
 
     [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
-        if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             step "copy dependent libraries to linker first search dir"
 
             for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
@@ -7077,7 +7329,7 @@ EOF
                     # https://docs.rs/openssl/latest/openssl/
                     export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
 
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                         # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
                         export OPENSSL_STATIC=1
                         export OPENSSL_NO_VENDOR=1
@@ -7087,27 +7339,27 @@ EOF
                     # https://docs.rs/openssl/latest/openssl/
                     export OPENSSL_DIR="$libopenssl_INSTALL_DIR"
 
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                         # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
                         export OPENSSL_STATIC=1
                         export OPENSSL_NO_VENDOR=1
                     fi
                     ;;
                 libssh2)
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                         # https://github.com/alexcrichton/ssh2-rs/blob/master/libssh2-sys/build.rs
                         export LIBSSH2_SYS_USE_PKG_CONFIG=1
                     fi
                     ;;
                 libgit2)
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                         # https://github.com/rust-lang/git2-rs/blob/master/libgit2-sys/build.rs
                         export LIBGIT2_NO_VENDOR=1
                         export LIBGIT2_SYS_USE_PKG_CONFIG=1
                     fi
                     ;;
                 libz|zlib)
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                         # https://github.com/rust-lang/libz-sys/blob/main/build.rs
                         export LIBZ_SYS_STATIC=1
                     fi
@@ -10020,7 +10272,7 @@ ${COLOR_GREEN}ppkg logs <PACKAGE-SPEC>${COLOR_OFF}
 
     This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ppkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE> [--exclude <PATH>] [-K] [--portable]${COLOR_OFF}
+${COLOR_GREEN}ppkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE> [--exclude <PATH>] [-K] [--portable] [--sign] [--sign-key=<SIGNKEY>] [--] [mksquashfs OPTIONS]${COLOR_OFF}
     bundle the given installed package into a single archive file.
 
     ${COLOR_BLUE}<OUTPUT-DIR>${COLOR_OFF}
@@ -10030,7 +10282,7 @@ ${COLOR_GREEN}ppkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>
         If unspecified, use <PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH> as default.
 
     ${COLOR_BLUE}<BUNDLE-TYPE>${COLOR_OFF}
-        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip
+        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip .AppImage
 
     ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
         exclude file that is not mean to be bundled into the final file.
@@ -10044,6 +10296,15 @@ ${COLOR_GREEN}ppkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>
 
     ${COLOR_BLUE}--portable${COLOR_OFF}
         this option only has effect for linux to bundle libc and dynamic loader into the final file to make it portable to run on any linux.
+
+    ${COLOR_BLUE}--sign${COLOR_OFF}
+        sign the output file with gpg.
+
+    ${COLOR_BLUE}--sign-key=<SIGNKEY>${COLOR_OFF}
+        specify the gpg sign key.
+
+    ${COLOR_BLUE}--${COLOR_OFF}
+        options after -- would be passed to mksquashfs command only if <BUNDLE-TYPE> is .AppImage, otherwise, options after -- would be ignored.
 
 
 ${COLOR_GREEN}ppkg export <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<EXPORT-TYPE> [--exclude <PATH>] [-K]${COLOR_OFF}
@@ -10100,7 +10361,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.18.14
+PPKG_VERSION=0.19.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
