@@ -9844,15 +9844,15 @@ __setup() {
 
         for f in ppkg/core/*.c
         do
-            o="${f#*/}"
+            o="${f##*/}"
             o="${o%.c}"
 
             run cc -flto -Os -std=c99 -o "$o" "$f"
             run strip "$o"
         done
 
-        run mv ppkg/uppm-shim-$SYSPM uppm
-        run mv ppkg/fonts.conf .
+        run mv ppkg/core/uppm-shim-$SYSPM uppm
+        run mv ppkg/core/fonts.conf .
 
         run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
 
