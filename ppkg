@@ -3073,8 +3073,8 @@ EOF
 
         unset APPEXEC_FILEPATH
         unset APPICON_FILEPATH
-        unset DESKTOP_FILEPATH
         unset APPDATA_FILEPATH
+        unset DESKTOP_FILEPATH
 
         unset DESKTOP_FILENAME
         unset APPICON_FILENAME
@@ -3128,7 +3128,7 @@ EOF
             esac
         }
 
-        ############################################################################
+        #############################################################
 
         if [ -z "$APPEXEC" ] ; then
             APPEXEC="${RECEIPT_PACKAGE_PKGNAME%@*}"
@@ -3144,14 +3144,197 @@ EOF
 
         if [ -z "$APPEXEC_FILEPATH" ] ; then
             APPEXEC_FILEPATH="$(find -name "$APPEXEC" -printf '%P\n' -quit)"
-
-            if [ -z "$APPEXEC_FILEPATH" ] ; then
-                abort 1 "executable '$APPEXEC' is expected to exist in package $RECEIPT_PACKAGE_PKGNAME, but could not found."
-            fi
         fi
 
-        # AppRun is required for appimage-runtime
-        ln -s "$APPEXEC_FILEPATH" AppRun
+        #############################################################
+
+        unset EXPOSED_EXECUTABLES
+
+        for d in bin sbin
+        do
+            [ -d "$d" ] || continue
+
+            for f in $(ls "$d")
+            do
+                FILEPATH="$d/$f"
+
+                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
+
+                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                case $FILEMAGIC in
+                    7F454C46*)
+                        ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
+
+                        case $ELFTYPE in
+                                # fully statically linked executable
+                            02) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
+                                ;;
+                                # dynamically linked library or executable
+                            03) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
+                                ;;
+                        esac
+                        ;;
+                    2321*)
+                        # script
+                        [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
+                        ;;
+                esac
+            done
+        done
+
+        if [ -z "$EXPOSED_EXECUTABLES" ] ; then
+            abort 1 'no executables in package: $RECEIPT_PACKAGE_PKGNAME'
+        fi
+
+        EXPOSED_EXECUTABLES="${EXPOSED_EXECUTABLES# }"
+
+        if [ "$(list_size $EXPOSED_EXECUTABLES)" = 1 ] ; then
+            APPEXEC_FILEPATH="$EXPOSED_EXECUTABLES"
+
+            # AppRun is required for appimage-runtime
+            run ln -s "$APPEXEC_FILEPATH" AppRun
+        else
+            if [ -z "$APPEXEC_FILEPATH" ] ; then
+                APPEXEC_FILEPATH="${EXPOSED_EXECUTABLES%% *}"
+            fi
+
+            cat > AppRun.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <unistd.h>
+
+#include <sys/stat.h>
+
+#if defined (__linux__)
+#include <linux/limits.h>
+#else
+#include <limits.h>
+#endif
+
+int main(int argc, char* argv[]) {
+    // https://docs.appimage.org/packaging-guide/environment-variables.html#type-2-appimage-runtime
+    const char * const APPDIR = getenv("APPDIR");
+
+    if (APPDIR == NULL || APPDIR[0] == '\0') {
+        fprintf(stderr, "APPDIR environment variable is not set.\n");
+        return 1;
+    }
+
+    ////////////////////////////////////////////////////
+
+    const char * const ARGV0 = getenv("ARGV0");
+
+    if (ARGV0 == NULL || ARGV0[0] == '\0') {
+        fprintf(stderr, "ARGV0 environment variable is not set.\n");
+        return 2;
+    }
+
+    ////////////////////////////////////////////////////
+
+    const char * cmdName = NULL;
+
+    ////////////////////////////////////////////////////
+
+    int slashIndex = -1;
+
+    for (int i = 0; ; i++) {
+        if (ARGV0[i] == '\0') {
+            break;
+        }
+
+        if (ARGV0[i] == '/') {
+            slashIndex = i;
+        }
+    }
+
+    if (slashIndex == -1) {
+        cmdName = ARGV0;
+    } else {
+        cmdName = &ARGV0[slashIndex + 1];
+    }
+
+    ////////////////////////////////////////////////////
+
+    char cmdPATH[PATH_MAX];
+
+    int APPDIRLength = 0;
+
+    for (int i = 0; ;i++) {
+        if (APPDIR[i] == '\0') {
+            APPDIRLength = i;
+            cmdPATH[i] = '/';
+            break;
+        } else {
+            cmdPATH[i] = APPDIR[i];
+        }
+    }
+
+    ////////////////////////////////////////////////////
+
+    cmdPATH[APPDIRLength + 1] = 'b';
+    cmdPATH[APPDIRLength + 2] = 'i';
+    cmdPATH[APPDIRLength + 3] = 'n';
+    cmdPATH[APPDIRLength + 4] = '/';
+
+    char * p = &cmdPATH[APPDIRLength + 5];
+
+    for (int i = 0; ;i++) {
+        p[i] = cmdName[i];
+
+        if (cmdName[i] == '\0') {
+            break;
+        }
+    }
+
+    struct stat st;
+
+    if (stat(cmdPATH, &st) == 0 && S_ISREG(st.st_mode)) {
+
+    } else {
+        cmdPATH[APPDIRLength + 1] = 's';
+        cmdPATH[APPDIRLength + 2] = 'b';
+        cmdPATH[APPDIRLength + 3] = 'i';
+        cmdPATH[APPDIRLength + 4] = 'n';
+        cmdPATH[APPDIRLength + 5] = '/';
+
+        p = &cmdPATH[APPDIRLength + 6];
+
+        for (int i = 0; ;i++) {
+            p[i] = cmdName[i];
+
+            if (cmdName[i] == '\0') {
+                break;
+            }
+        }
+
+        if (stat(cmdPATH, &st) == 0 && S_ISREG(st.st_mode)) {
+
+        } else {
+            const char * const defaultEXE = "$APPEXEC_FILEPATH";
+
+            p = &cmdPATH[APPDIRLength + 1];
+
+            for (int i = 0; ;i++) {
+                p[i] = defaultEXE[i];
+
+                if (defaultEXE[i] == '\0') {
+                    break;
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////
+
+    argv[0] = cmdPATH;
+    execv (cmdPATH, argv);
+    perror(cmdPATH);
+    return 255;
+}
+EOF
+            run gcc -static -std=gnu11 -Os -s -flto -o AppRun AppRun.c
+        fi
 
         #############################################################
 
@@ -3206,21 +3389,9 @@ EOF
             done
         done
 
-        if [ -z "$DESKTOP_FILENAME" ] ; then
-            DESKTOP_FILENAME="$RECEIPT_PACKAGE_PKGNAME.desktop"
-
-            cat > "$DESKTOP_FILENAME" <<EOF
-[Desktop Entry]
-Type=Application
-Name=$RECEIPT_PACKAGE_PKGNAME
-Comment=$RECEIPT_PACKAGE_SUMMARY
-Exec=${APPEXEC_FILEPATH##*/}
-Icon=${APPICON_FILENAME%.*}
-Terminal=true
-EOF
+        if [ -n "$DESKTOP_FILENAME" ] ; then
+            run desktop-file-validate "$DESKTOP_FILENAME"
         fi
-
-        run desktop-file-validate "$DESKTOP_FILENAME"
 
         #############################################################
 
@@ -3231,8 +3402,8 @@ version: $RECEIPT_PACKAGE_VERSION
 homeurl: $RECEIPT_PACKAGE_WEB_URL
 summary: $RECEIPT_PACKAGE_SUMMARY
 license: $RECEIPT_PACKAGE_LICENSE
-exec: $APPEXEC_FILEPATH
-icon: $APPICON_FILEPATH
+mainexe: $APPEXEC_FILEPATH
+appicon: $APPICON_FILEPATH
 desktop: $DESKTOP_FILEPATH
 appdata: $APPDATA_FILEPATH
 creator: ppkg|$PPKG_VERSION|https://github.com/leleliu008/ppkg
@@ -10435,7 +10606,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.20.0
+PPKG_VERSION=0.20.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
