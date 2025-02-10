@@ -39,7 +39,7 @@ jobs:
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
       - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
 
-      - run: rm check-if-has-dynamic-section.c list-section-names.c print-*-if-present.c wrapper-template.c
+      - run: rm core/check-if-has-dynamic-section.c core/list-section-names.c core/print-*-if-present.c core/wrapper-template.c core/AppRun.c
 
       - run: |
           set -ex
