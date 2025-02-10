@@ -7450,8 +7450,12 @@ EOF
 
         #########################################################################
 
+        # this environment variable is not defined by Rust, but it is widely used by a large number of third-party projects.
+        export RUST_TARGET
+
         if [ "$CROSS_COMPILING" = 1 ] ; then
             RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
+            RUST_TARGET="$RUST_TARGET_FOR_BUILD"
 
             # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
             # https://doc.rust-lang.org/cargo/reference/environment-variables.html
@@ -7499,41 +7503,34 @@ EOF
                 eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_NO_VENDOR=1"
                 export OPENSSL_NO_VENDOR=1
             }
+        else
+            case $TARGET_PLATFORM_NAME in
+                linux)
+                    case $TARGET_PLATFORM_VERS in
+                        glibc) XX=gnu  ;;
+                        musl)  XX=musl ;;
+                        *)     XX=
+                    esac
+
+                    case $TARGET_PLATFORM_ARCH in
+                        ppc64le) RUST_TARGET="powerpc64le-unknown-linux-$XX" ;;
+                        riscv64) RUST_TARGET="riscv64gc-unknown-linux-$XX"  ;;
+                        *)       RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-linux-$XX" ;;
+                    esac
+                    ;;
+                macos)
+                    case $TARGET_PLATFORM_ARCH in
+                        x86_64) RUST_TARGET='x86_64-apple-darwin'  ;;
+                        arm64)  RUST_TARGET='aarch64-apple-darwin' ;;
+                    esac
+                    ;;
+                *)
+                    case $TARGET_PLATFORM_ARCH in
+                        amd64)  RUST_TARGET="x86_64-unknown-$TARGET_PLATFORM_NAME" ;;
+                        *)      RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"  ;;
+                    esac
+            esac
         fi
-
-        #########################################################################
-
-        unset RUST_TARGET
-
-        case $TARGET_PLATFORM_NAME in
-            linux)
-                case $TARGET_PLATFORM_VERS in
-                    glibc) XX=gnu  ;;
-                    musl)  XX=musl ;;
-                    *)     XX=
-                esac
-
-                case $TARGET_PLATFORM_ARCH in
-                    ppc64le) RUST_TARGET="powerpc64le-unknown-linux-$XX" ;;
-                    riscv64) RUST_TARGET="riscv64gc-unknown-linux-$XX"  ;;
-                    *)       RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-linux-$XX" ;;
-                esac
-                ;;
-            macos)
-                case $TARGET_PLATFORM_ARCH in
-                    x86_64) RUST_TARGET='x86_64-apple-darwin'  ;;
-                    arm64)  RUST_TARGET='aarch64-apple-darwin' ;;
-                esac
-                ;;
-            *)
-                case $TARGET_PLATFORM_ARCH in
-                    amd64)  RUST_TARGET="x86_64-unknown-$TARGET_PLATFORM_NAME" ;;
-                    *)      RUST_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"  ;;
-                esac
-        esac
-
-        # this environment variable is not defined by Rust, but it is widely used by third-party project.
-        export RUST_TARGET
 
         #########################################################
 
@@ -10606,7 +10603,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.20.1
+PPKG_VERSION=0.20.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
