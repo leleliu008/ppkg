@@ -39,6 +39,12 @@ jobs:
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
       - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
 
+      - run: ~/.ppkg/uppm/installed/curl/bin/curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: ~/.ppkg/uppm/installed/curl/bin/curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.sub
+      - run: ~/.ppkg/uppm/installed/curl/bin/curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.guess
+
+      - run: chmod +x config.sub config.guess
+
       - run: rm core/check-if-has-dynamic-section.c core/list-section-names.c core/print-*-if-present.c core/wrapper-template.c core/AppRun.c
 
       - run: |
@@ -48,14 +54,27 @@ jobs:
           SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
           CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=${{ matrix.target-version }} -arch ${{ matrix.target-arch }} -Qunused-arguments"
 
+          install -d out/
+
+          cd core/
+
           for f in *.c
           do
-            o="${f%.c}.exe"
+            o="../out/${f%.c}"
             $CC $CFLAGS -std=c99 -Os -flto -o "$o" "$f"
             strip "$o"
           done
 
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
+          cd -
+
+          ~/.ppkg/uppm/installed/bsdtar/bin/bsdtar vxf uppm*.tar.xz -C out --strip-components=1
+
+          mv out/bin/uppm *.otf fonts.conf config.sub config.guess out/
+
+          rm -rf out/bin/ out/share/ out/.ppkg/
+
+          mv out ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
+          ~/.ppkg/uppm/installed/bsdtar/bin/bsdtar cavf ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,55 +88,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-arch: [loongarch64, x86_64, aarch64, riscv64, ppc64le, s390x]
+        target-arch: [loongarch64, x86_64, aarch64, riscv64, ppc64le, s390x, armhf]
 
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - run: |
-          cat > run.sh <<EOF
-          set -e
-
-          COLOR_GREEN='\033[0;32m'        # Green
-          COLOR_PURPLE='\033[0;35m'       # Purple
-          COLOR_OFF='\033[0m'             # Reset
-
-          echo() {
-              printf '%b\n' "\$*"
-          }
-
-          run() {
-              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
-              eval "\$*"
-          }
-
-          run uname -a
-
-          run apk update
-          run apk add curl tar xz g++ libc-dev linux-headers
-
-          for item in *.c
-          do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "\${item%.c}.exe" "\$item"
-          done
-
-          export GITHUB_ACTIONS=true
-
-          run ./ppkg setup --syspm
-          run ./ppkg update
-          run ./build-core.sh
-          run ./ppkg install uppm@0.15.4 --static
-          run ./ppkg bundle  uppm@0.15.4 .tar.xz
-          EOF
-
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} linux-${{ matrix.target-arch }}
+      - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
+      - run: chmod +x alpine-chroot-install
+      - run: sudo ./alpine-chroot-install -d /alpine -a ${{ matrix.target-arch }}
+      - run: /alpine/enter-chroot /bin/sh .github/build-core.sh ${{ needs.base.outputs.release-version }}
+      - run: /alpine/destroy
+      - run: ls -l
 
       - uses: actions/upload-artifact@v4
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
-          path: ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
+          path: ppkg-core-${{ needs.base.outputs.release-version }}-linux-*.tar.xz
 
 
   dragonflybsd:
@@ -139,23 +127,7 @@ jobs:
           usesh: true
           sync: rsync
           copyback: true
-          run: |
-            run() {
-              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
-              eval "$@"
-            }
-
-            run ./ppkg setup --syspm
-            run ./ppkg update
-            run ./ppkg install uppm@0.15.4 --static
-            run ./ppkg bundle  uppm@0.15.4 .tar.xz
-
-            for item in *.c
-            do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}.exe" "$item"
-            done
-
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} dragonflybsd-${{ matrix.target-version }}-x86_64
+          run: .github/build-core.sh
 
       - uses: actions/upload-artifact@v4
         with:
@@ -182,23 +154,7 @@ jobs:
           operating_system: freebsd
           version: ${{ matrix.target-version }}
           shell: bash
-          run: |
-            run() {
-              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
-              eval "$@"
-            }
-
-            run ./ppkg setup --syspm
-            run ./ppkg update
-            run ./ppkg install uppm@0.15.4 --static --profile=debug
-            run ./ppkg bundle  uppm@0.15.4 .tar.xz
-
-            for item in *.c
-            do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}.exe" "$item"
-            done
-
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} freebsd-${{ matrix.target-version }}-amd64
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -225,23 +181,7 @@ jobs:
           operating_system: openbsd
           version: ${{ matrix.openbsd-version }}
           shell: bash
-          run: |
-            run() {
-              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
-              eval "$@"
-            }
-
-            run ./ppkg setup --syspm
-            run ./ppkg update
-            run ./ppkg install uppm@0.15.4
-            run ./ppkg bundle  uppm@0.15.4 .tar.xz
-
-            for item in *.c
-            do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}.exe" "$item"
-            done
-
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} openbsd-${{ matrix.target-version }}-amd64
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -257,7 +197,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['10.0', '9.4', '9.3', '9.2']
+        target-version: ['10.1', '10.0', '9.4', '9.3', '9.2']
         # https://ftp.netbsd.org/pub/NetBSD/
 
     steps:
@@ -265,30 +205,12 @@ jobs:
 
       - run: curl -LO https://curl.se/ca/cacert.pem
 
-      - uses: cross-platform-actions/action@v0.26.0
+      - uses: cross-platform-actions/action@v0.27.0
         with:
           operating_system: netbsd
           version: ${{ matrix.target-version }}
           shell: bash
-          run: |
-            run() {
-              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
-              eval "$@"
-            }
-
-            run export SSL_CERT_FILE="$PWD/cacert.pem"
-
-            run ./ppkg setup --syspm
-            run ./ppkg update
-            run ./ppkg install uppm@0.15.4 --static
-            run ./ppkg bundle  uppm@0.15.4 .tar.xz
-
-            for item in *.c
-            do
-              cc -std=c99 -Os -flto -Wl,-s -static -o "${item%.c}.exe" "$item"
-            done
-
-      - run: ./pack-ppkg-core ${{ needs.base.outputs.release-version }} netbsd-${{ matrix.target-version }}-amd64
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
 
       - uses: actions/upload-artifact@v4
         with:
