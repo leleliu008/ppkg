@@ -45,6 +45,15 @@ rm -rf out/bin/ out/share/ out/.ppkg/
 NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
 NATIVE_OS_ARCH="$(uname -m)"
 
-DIRNAME="ppkg-core-$1-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+case $NATIVE_OS_KIND in
+    linux)
+        DIRNAME="ppkg-core-$1-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+        ;;
+    *)  NATIVE_OS_VERS="$(uname -r)"
+        NATIVE_OS_VERS="${NATIVE_OS_VERS%%-*}"
+        DIRNAME="ppkg-core-$1-$NATIVE_OS_KIND-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+esac
+
 mv out "$DIRNAME"
+
 bsdtar cavf "$DIRNAME.tar.xz" "$DIRNAME"

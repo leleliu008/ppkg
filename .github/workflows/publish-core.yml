@@ -127,7 +127,7 @@ jobs:
           usesh: true
           sync: rsync
           copyback: true
-          run: .github/build-core.sh
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
 
       - uses: actions/upload-artifact@v4
         with:
