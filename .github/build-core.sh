@@ -18,10 +18,12 @@ run ./ppkg bundle  uppm@0.15.4 .tar.xz
 
 run rm core/AppRun.c core/wrapper-template.c
 
+install -d out/
+
 for f in core/*.c
 do
-    f="${f#*/}"
-    o="${f%.c}"
+    x="${f#*/}"
+    o="out/${x%.c}"
     run cc -flto -Os -std=gnu99 -o "$o" "$f"
     run strip "$o"
 done
@@ -33,13 +35,6 @@ run export SSL_CERT_FILE="$HOME/.ppkg/core/cacert.pem"
 ~/.ppkg/uppm/installed/curl/bin/curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.guess
 
 chmod +x config.sub config.guess
-
-install -d out/
-
-for f in *.exe
-do
-    mv "$f" "out/${f%.exe}"
-done
 
 ~/.ppkg/uppm/installed/bsdtar/bin/bsdtar vxf uppm*.tar.xz -C out --strip-components=1
 
