@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ "$GITHUB_ACTIONS" != true ]
+if [ "$GITHUB_ACTIONS" != true ] ; then
     echo "this script only run via GitHub Actions."
     exit 1
 fi
@@ -48,7 +48,7 @@ done
 
 ~/.ppkg/uppm/installed/bsdtar/bin/bsdtar vxf uppm*.tar.xz -C out --strip-components=1
 
-mv out/bin/uppm *.otf fonts.conf config.sub config.guess out/
+mv out/bin/uppm *.otf core/fonts.conf config.sub config.guess out/
 
 rm -rf out/bin/ out/share/ out/.ppkg/
 
