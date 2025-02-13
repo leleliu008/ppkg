@@ -2,11 +2,6 @@
 
 set -ex
 
-if [ "$GITHUB_ACTIONS" != true ] ; then
-    echo "this script only run via GitHub Actions."
-    exit 1
-fi
-
 run() {
   printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
   eval "$@"
@@ -21,7 +16,7 @@ run ./ppkg update
 run ./ppkg install uppm@0.15.4 --static
 run ./ppkg bundle  uppm@0.15.4 .tar.xz
 
-run core/AppRun.c core/wrapper-template.c
+run rm core/AppRun.c core/wrapper-template.c
 
 for f in core/*.c
 do
