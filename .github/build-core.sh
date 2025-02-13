@@ -30,13 +30,13 @@ done
 
 run export SSL_CERT_FILE="$HOME/.ppkg/core/cacert.pem"
 
-~/.ppkg/uppm/installed/curl/bin/curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-~/.ppkg/uppm/installed/curl/bin/curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.sub
-~/.ppkg/uppm/installed/curl/bin/curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.guess
+curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.sub
+curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.guess
 
 chmod +x config.sub config.guess
 
-~/.ppkg/uppm/installed/bsdtar/bin/bsdtar vxf uppm*.tar.xz -C out --strip-components=1
+bsdtar vxf uppm*.tar.xz -C out --strip-components=1
 
 mv out/bin/uppm *.otf core/fonts.conf config.sub config.guess out/
 
@@ -47,4 +47,4 @@ NATIVE_OS_ARCH="$(uname -m)"
 
 DIRNAME="ppkg-core-$1-$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
 mv out "$DIRNAME"
-~/.ppkg/uppm/installed/bsdtar/bin/bsdtar cavf "$DIRNAME.tar.xz" "$DIRNAME"
+bsdtar cavf "$DIRNAME.tar.xz" "$DIRNAME"
