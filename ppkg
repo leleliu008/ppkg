@@ -3834,6 +3834,7 @@ EOF
 package *
     extra-include-dirs: $libgmp_INCLUDE_DIR,$libffi_INCLUDE_DIR,$libz_INCLUDE_DIR
     extra-lib-dirs: $PACKAGE_WORKING_DIR/lib,$libgmp_LIBRARY_DIR,$libffi_LIBRARY_DIR,$libz_LIBRARY_DIR
+
 EOF
 
     if [ "$ENABLE_STRIP" = 1 ] ; then
@@ -3844,14 +3845,31 @@ EOF
 
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         cat >> cabal.project <<EOF
+    executable-static:  True
+    executable-dynamic: False
+    static: True
+    shared: False
     ld-options: -static
+EOF
+    fi
+
+    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        cat >> cabal.project <<EOF
+    executable-static:  False
+    executable-dynamic: True
+    static: True
+    shared: False
 EOF
     fi
 
     CABAL_ARGS="--jobs=$BUILD_NJOBS --max-backjumps=100000 --install-method=copy --installdir=$PACKAGE_INSTALL_DIR/bin"
 
     if [ "$VERBOSE_CABAL" = 1 ] ; then
-        CABAL_ARGS="$CABAL_ARGS -v"
+        CABAL_ARGS="$CABAL_ARGS -v2"
+    fi
+
+    if [ "$DEBUG_CABAL" = 1 ] ; then
+        CABAL_ARGS="$CABAL_ARGS -v3"
     fi
 
     run cabal --version
@@ -4991,6 +5009,7 @@ __inspect_install_arguments() {
 
     unset VERBOSE_GO
     unset VERBOSE_CARGO
+    unset VERBOSE_CABAL
     unset VERBOSE_MESON
     unset VERBOSE_NINJA
     unset VERBOSE_GMAKE
@@ -5001,6 +5020,7 @@ __inspect_install_arguments() {
     unset DEBUG_LD
     unset DEBUG_GO
     unset DEBUG_CARGO
+    unset DEBUG_CABAL
     unset DEBUG_GMAKE
     unset DEBUG_CMAKE
     unset DEBUG_XMAKE
@@ -5021,6 +5041,7 @@ __inspect_install_arguments() {
 
                 VERBOSE_GO=1
                 VERBOSE_CARGO=1
+                VERBOSE_CABAL=1
                 VERBOSE_MESON=1
                 VERBOSE_NINJA=1
                 VERBOSE_GMAKE=1
@@ -5046,6 +5067,7 @@ __inspect_install_arguments() {
                 DEBUG_LD=1
                 DEBUG_GO=1
                 DEBUG_CARGO=1
+                DEBUG_CABAL=1
                 DEBUG_GMAKE=1
                 DEBUG_CMAKE=1
                 DEBUG_XMAKE=1
@@ -5071,6 +5093,9 @@ __inspect_install_arguments() {
                 ;;
             -v-cargo)
                 VERBOSE_CARGO=1
+                ;;
+            -v-cabal)
+                VERBOSE_CABAL=1
                 ;;
             -v-meson)
                 VERBOSE_MESON=1
@@ -5101,6 +5126,9 @@ __inspect_install_arguments() {
                 ;;
             -x-cargo)
                 DEBUG_CARGO=1
+                ;;
+            -x-cabal)
+                DEBUG_CABAL=1
                 ;;
             -x-gmake)
                 DEBUG_GMAKE=1
