@@ -3832,8 +3832,8 @@ EOF
 
     cat >> cabal.project <<EOF
 package *
-    extra-include-dirs: $libgmp_INCLUDE_DIR,$libffi_INCLUDE_DIR,$libz_INCLUDE_DIR
-    extra-lib-dirs: $PACKAGE_WORKING_DIR/lib,$libgmp_LIBRARY_DIR,$libffi_LIBRARY_DIR,$libz_LIBRARY_DIR
+    extra-include-dirs: $PACKAGE_WORKING_DIR/include$CABAL_PROJECT_EXTRA_INCLUDE_DIRS
+    extra-lib-dirs: $PACKAGE_WORKING_DIR/lib$CABAL_PROJECT_EXTRA_LIBRARY_DIRS
 
 EOF
 
@@ -7243,6 +7243,9 @@ EOF
 
     ##################################################################################
 
+    unset CABAL_PROJECT_EXTRA_INCLUDE_DIRS
+    unset CABAL_PROJECT_EXTRA_LIBRARY_DIRS
+
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
@@ -7257,10 +7260,12 @@ EOF
 
         if [ -d "$DEPENDENT_PACKAGE_INCLUDE_DIR" ] ; then
             PPFLAGS="-I$DEPENDENT_PACKAGE_INCLUDE_DIR $PPFLAGS"
+            CABAL_PROJECT_EXTRA_INCLUDE_DIRS="$CABAL_PROJECT_EXTRA_INCLUDE_DIRS,$DEPENDENT_PACKAGE_INCLUDE_DIR"
         fi
 
         if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
             LDFLAGS="-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Wl,-rpath,$DEPENDENT_PACKAGE_LIBRARY_DIR $LDFLAGS"
+            CABAL_PROJECT_EXTRA_LIBRARY_DIRS="$CABAL_PROJECT_EXTRA_LIBRARY_DIRS,$DEPENDENT_PACKAGE_LIBRARY_DIR"
         fi
 
         for d in lib share
