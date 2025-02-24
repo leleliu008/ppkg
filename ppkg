@@ -3821,8 +3821,7 @@ add_ldflags() {
 ##############################################################################
 # {{{ cabal_v2_install
 
-# https://cabal.readthedocs.io/en/3.4/cabal-projectindex.html
-# https://cabal.readthedocs.io/en/3.4/cabal-project.html
+# https://cabal.readthedocs.io/en/3.14/cabal-project-description-file.html
 cabal_v2_install() {
     if [ ! -f cabal.project ] ; then
         cat > cabal.project <<EOF
@@ -3831,34 +3830,16 @@ EOF
     fi
 
     cat >> cabal.project <<EOF
+
 package *
     extra-include-dirs: $PACKAGE_WORKING_DIR/include$CABAL_PROJECT_EXTRA_INCLUDE_DIRS
     extra-lib-dirs: $PACKAGE_WORKING_DIR/lib$CABAL_PROJECT_EXTRA_LIBRARY_DIRS
 
 EOF
 
-    if [ "$ENABLE_STRIP" = 1 ] ; then
-        cat >> cabal.project <<EOF
-    executable-stripping: True
-EOF
-    fi
-
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         cat >> cabal.project <<EOF
-    executable-static:  True
-    executable-dynamic: False
-    static: True
-    shared: False
     ld-options: -static
-EOF
-    fi
-
-    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-        cat >> cabal.project <<EOF
-    executable-static:  False
-    executable-dynamic: True
-    static: True
-    shared: False
 EOF
     fi
 
@@ -3870,6 +3851,10 @@ EOF
 
     if [ "$DEBUG_CABAL" = 1 ] ; then
         CABAL_ARGS="$CABAL_ARGS -v3"
+    fi
+
+    if [ "$ENABLE_STRIP" = 1 ] ; then
+        CABAL_ARGS="$CABAL_ARGS --enable-executable-stripping"
     fi
 
     run cabal --version
