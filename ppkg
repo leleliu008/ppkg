@@ -1047,7 +1047,7 @@ filetype_from_url() {
 
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
-    unset PACKAGE_PREPARE
+    unset PACKAGE_DOSETUP
     unset PACKAGE_DOBUILD
     unset PACKAGE_DOTWEAK
 
@@ -1133,7 +1133,7 @@ filetype_from_url() {
 
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOSETUP="$(yq '.dosetup | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1722,7 +1722,7 @@ __search_packages() {
         --arg doextra "$PACKAGE_DOEXTRA" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
-        --arg prepare "$PACKAGE_PREPARE" \
+        --arg dosetup "$PACKAGE_DOSETUP" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg bindenv "$PACKAGE_BINDENV" \
@@ -1775,7 +1775,7 @@ __search_packages() {
     "doextra":$doextra,
     "do12345":$do12345,
     "dopatch":$dopatch,
-    "prepare":$prepare,
+    "dosetup":$dosetup,
     "install":$install,
     "dotweak":$dotweak,
     "bindenv":$bindenv,
@@ -1939,9 +1939,9 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOPATCH"
             ;;
-        prepare)
+        dosetup)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_PREPARE"
+            printf '%s\n' "$PACKAGE_DOSETUP"
             ;;
         install)
             __load_formula_of_the_given_package "$1"
@@ -2107,7 +2107,7 @@ EOF
         --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
-        --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
+        --arg dosetup "$RECEIPT_PACKAGE_DOSETUP" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg bindenv "$RECEIPT_PACKAGE_BINDENV" \
@@ -2163,7 +2163,7 @@ EOF
     "doextra":$doextra,
     "do12345":$do12345,
     "dopatch":$dopatch,
-    "prepare":$prepare,
+    "dosetup":$dosetup,
     "install":$install,
     "dotweak":$dotweak,
     "bindenv":$bindenv,
@@ -7788,14 +7788,14 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    [ -n "$PACKAGE_PREPARE" ] && {
-        step "prepare for target"
+    [ -n "$PACKAGE_DOSETUP" ] && {
+        step "dosetup for target"
 
         eval "
-prepare() {
-$PACKAGE_PREPARE
+    dosetup() {
+$PACKAGE_DOSETUP
 }"
-        prepare
+        dosetup
     }
 
     #########################################################################################
@@ -8824,7 +8824,7 @@ install_mans() {
 
     unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
-    unset RECEIPT_PACKAGE_PREPARE
+    unset RECEIPT_PACKAGE_DOSETUP
     unset RECEIPT_PACKAGE_DOBUILD
     unset RECEIPT_PACKAGE_DOTWEAK
 
@@ -8895,7 +8895,7 @@ install_mans() {
 
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DOSETUP="$(yq '.dosetup | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -10627,7 +10627,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.20.2
+PPKG_VERSION=0.21.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
