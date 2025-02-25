@@ -930,8 +930,10 @@ It would be automatically fetched to your local repository as name `official-cor
 
 ## prebuild packages built by this software
 
+- <https://github.com/leleliu008/uppm-package-repository-linux-loongarch64>
 - <https://github.com/leleliu008/uppm-package-repository-linux-x86_64>
 - <https://github.com/leleliu008/uppm-package-repository-linux-aarch64>
 - <https://github.com/leleliu008/uppm-package-repository-linux-riscv64>
 - <https://github.com/leleliu008/uppm-package-repository-linux-ppc64le>
 - <https://github.com/leleliu008/uppm-package-repository-linux-s390x>
+- <https://github.com/leleliu008/uppm-package-repository-linux-armv7l>
