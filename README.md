@@ -765,21 +765,6 @@ a ppkg formula's file content only has one level mapping and shall has following
 |-|
 |![phases](phases.svg)|
 
-|build system name|build script file name|
-|-|-|
-|`meson`|`meson.build`|
-|`cmake`|`CMakeLists.txt`|
-|`gmake`|`GNUMakefile` or `Makefile`|
-|`ninja`|`build.ninja`|
-|`xmake`|`xmake.lua`|
-|`cargo`|`Cargo.toml`|
-|`cabal`|`cabal.project` `cabal.project.freeze` `cabal.project.local`|
-|`go`|`go.mod`|
-|`rake`|`Rakefile`|
-|`autogen`|`autogen.sh`|
-|`autotools`|`configure.ac`|
-|`configure`|`configure`|
-
 **commands that can be used out of the box:**
 
 |command|usage-example|
@@ -875,6 +860,23 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`x_INSTALL_DIR`|the installation directory of x package.|
 |`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
 |`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
+
+## build system name and corresponding build script file name
+
+|build system name|build script file name|
+|-|-|
+|`meson`|`meson.build`|
+|`cmake`|`CMakeLists.txt`|
+|`gmake`|`GNUMakefile` or `Makefile`|
+|`ninja`|`build.ninja`|
+|`xmake`|`xmake.lua`|
+|`cargo`|`Cargo.toml`|
+|`cabal`|`cabal.project` `cabal.project.freeze` `cabal.project.local`|
+|`go`|`go.mod`|
+|`rake`|`Rakefile`|
+|`autogen`|`autogen.sh`|
+|`autotools`|`configure.ac`|
+|`configure`|`configure`|
 
 ## ppkg formula repository
 
