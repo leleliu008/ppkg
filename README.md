@@ -741,7 +741,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
@@ -773,6 +773,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`ninja`|`build.ninja`|
 |`xmake`|`xmake.lua`|
 |`cargo`|`Cargo.toml`|
+|`cabal`|`cabal.project` `cabal.project.freeze` `cabal.project.local`|
 |`go`|`go.mod`|
 |`rake`|`Rakefile`|
 |`autogen`|`autogen.sh`|
@@ -836,15 +837,15 @@ a ppkg formula's file content only has one level mapping and shall has following
 |||
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
-|`NATIVE_OS_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
-|`NATIVE_OS_TYPE`|current running os type. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
-|`NATIVE_OS_NAME`|current running os name. value might be any one of `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD`, `DragonFlyBSD`, etc|
-|`NATIVE_OS_VERS`|current running os version.|
-|`NATIVE_OS_ARCH`|current running os arch. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
-|`NATIVE_OS_NCPU`|current running os's cpu core count.|
-|`NATIVE_OS_LIBC`|current running os's libc name. value shall be any one of `glibc` and `musl`.|
-|`NATIVE_OS_EUID`|current running os's effective user ID.|
-|`NATIVE_OS_EGID`|current running os's effective group ID.|
+|`NATIVE_PLATFORM_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_PLATFORM_TYPE`|current running os type. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`NATIVE_PLATFORM_NAME`|current running os name. value might be any one of `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD`, `DragonFlyBSD`, etc|
+|`NATIVE_PLATFORM_VERS`|current running os version.|
+|`NATIVE_PLATFORM_ARCH`|current running os arch. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
+|`NATIVE_PLATFORM_NCPU`|current running os's cpu core count.|
+|`NATIVE_PLATFORM_LIBC`|current running os's libc name. value shall be any one of `glibc` and `musl`.|
+|`NATIVE_PLATFORM_EUID`|current running os's effective user ID.|
+|`NATIVE_PLATFORM_EGID`|current running os's effective group ID.|
 |||
 |`TARGET_PLATFORM_NAME`|target platform name that is built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
 |`TARGET_PLATFORM_VERS`|target platform version that is built with.|
