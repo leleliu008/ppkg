@@ -3102,7 +3102,7 @@ EOF
         [ -d share/metainfo ] && {
             for item in metainfo appdata
             do
-                APPDATA_FILEPATH="$(find share/metainfo -name "*.$item.xml" -printf '%p\n' -quit)"
+                APPDATA_FILEPATH="$(find -L share/metainfo -type f -name "*.$item.xml" -printf '%p\n' -quit)"
 
                 [ -n "$APPDATA_FILEPATH" ] && break
             done
@@ -3111,7 +3111,7 @@ EOF
         [ -z "$APPDATA_FILEPATH" ] && {
             for item in metainfo appdata
             do
-                APPDATA_FILEPATH="$(find . -name "*.$item.xml" -not -path './.ppkg/*' -printf '%P\n' -quit)"
+                APPDATA_FILEPATH="$(find -L -type f -name "*.$item.xml" -not -path './.ppkg/*' -printf '%P\n' -quit)"
 
                 [ -n "$APPDATA_FILEPATH" ] && break
             done
@@ -3148,7 +3148,7 @@ EOF
         done
 
         if [ -z "$APPEXEC_FILEPATH" ] ; then
-            APPEXEC_FILEPATH="$(find -name "$APPEXEC" -printf '%P\n' -quit)"
+            APPEXEC_FILEPATH="$(find -L -type f -name "$APPEXEC" -printf '%P\n' -quit)"
         fi
 
         #############################################################
@@ -3368,7 +3368,7 @@ EOF
 
             for type in svg png
             do
-                APPICON_FILEPATH="$(find "$d" -name "*.$type" -printf '%p\n' -quit)"
+                APPICON_FILEPATH="$(find -L "$d" -type f -name "*.$type" -printf '%p\n' -quit)"
 
                 [ -n "$APPICON_FILEPATH" ] && break 2
             done
@@ -3377,7 +3377,7 @@ EOF
         [ -z "$APPICON_FILEPATH" ] && {
             for type in svg png
             do
-                APPICON_FILEPATH="$(find . -name "*.$type" -not -path './.ppkg/*' -printf '%P\n' -quit)"
+                APPICON_FILEPATH="$(find -L -type f -name "*.$type" -not -path './.ppkg/*' -printf '%P\n' -quit)"
 
                 [ -n "$APPICON_FILEPATH" ] && break
             done
@@ -3403,7 +3403,7 @@ EOF
 
             for item in $DESKTOP_FILENAME '*.desktop'
             do
-                DESKTOP_FILEPATH="$(find "$d" -name "$item" -printf '%p\n' -quit)"
+                DESKTOP_FILEPATH="$(find -L "$d" -type f -name "$item" -printf '%p\n' -quit)"
 
                 if [ -n "$DESKTOP_FILEPATH" ] ; then
                     DESKTOP_FILENAME="${DESKTOP_FILEPATH##*/}"
@@ -4059,12 +4059,7 @@ configure() {
     fi
 
     if [ "$VERBOSE_GMAKE" = 1 ] ; then
-        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
-        do
-            gsed -i 's|\t@|\t|g'     "$Makefile"
-            gsed -i 's|@echo|echo|g' "$Makefile"
-        done
-        unset Makefile
+        find "$PACKAGE_BSCRIPT_DIR" -type f -name Makefile -exec gsed -i -e 's|\t@|\t|g' -e 's|@echo|echo|g' {} +
     fi
 
     if [ "$CONFIGURE_ONLY" != 1 ] ; then
@@ -7941,10 +7936,10 @@ $PACKAGE_DOTWEAK
 
     run cd "$PACKAGE_INSTALL_DIR"
 
-    if [ -d  lib ] ; then
+    if [ -d lib ] ; then
         # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
         # remove Libtool Archive (.la) files
-        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} +
+        find -L lib -maxdepth 1 -mindepth 1 -type f -name '*.la' -exec rm -v {} +
     fi
 
     #########################################################################################
@@ -8058,7 +8053,7 @@ $PACKAGE_DOTWEAK
 
     for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
-        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} . \;
+        find -L "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -type f -iname "$item" -exec cp -L {} . \;
     done
 
     #########################################################################################
@@ -8222,7 +8217,7 @@ __check_elf_files() {
 
                     [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
                         unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L lib -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
@@ -8300,7 +8295,7 @@ $NEEDED_SHARED_LIBRARY_FILENAME"
 
                     [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
                         unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L "$NEEDED_SHARED_LIBRARY_ROOT_DIR" -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
@@ -8445,7 +8440,7 @@ EOF
 
         [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
             unset NEEDED_SHARED_LIBRARY_FILEPATH
-            NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+            NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L lib -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
         }
     fi
 
@@ -8463,7 +8458,7 @@ EOF
 
         [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && break
 
-        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L "$NEEDED_SHARED_LIBRARY_ROOT_DIR" -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
 
         [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && break
     done
@@ -10650,7 +10645,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.21.1
+PPKG_VERSION=0.21.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
