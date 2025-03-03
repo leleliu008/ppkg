@@ -8252,8 +8252,6 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                 ;;
             libutil)
                 ;;
-            libcrypt)
-                ;;
             libresolv)
                 ;;
             libpthread)
