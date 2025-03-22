@@ -4071,6 +4071,14 @@ configure() {
 
 # }}}
 ##############################################################################
+# {{{ ninjaw
+
+ninjaw() {
+    run ninja "$@"
+}
+
+# }}}
+##############################################################################
 # {{{ gmakew
 
 gmakew() {
@@ -4371,10 +4379,6 @@ EOF
 # https://github.com/xmake-io/xmake/issues/2003
 # run in a subshell
 xmakew() {
-    export CC="$PPKG_COMPILER_C"
-    export AS="$PPKG_COMPILER_C"
-    export LD="$PPKG_COMPILER_C"
-
     XMAKE_CONFIG_OPTIONS="$*"
 
     XMAKE_CONFIG_OPTION_CLEAN=
@@ -4402,7 +4406,7 @@ xmakew() {
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$PROFILE"
     fi
 
-    run "$XMAKE" config "$XMAKE_CONFIG_OPTIONS" "--project=$PACKAGE_BSCRIPT_DIR" "--buildir=$PACKAGE_BCACHED_DIR" &&
+    run "$XMAKE" config "$XMAKE_CONFIG_OPTIONS" "--project=$PACKAGE_BSCRIPT_DIR" "--buildir=$PACKAGE_BCACHED_DIR" "--cc=$CC" "--cxx=$CXX" "--as=$CC" "--ld=$CC" "--cflags='$CFLAGS $CPPFLAGS'" "--cxxflags='$CXXFLAGS $CPPFLAGS'" "--ldflags='$LDFLAGS'" "--shflags='$LDFLAGS'" &&
     run "$XMAKE" "--jobs=$BUILD_NJOBS" &&
     run "$XMAKE" install -o "$PACKAGE_INSTALL_DIR"
 }
@@ -10643,7 +10647,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.21.3
+PPKG_VERSION=0.21.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
