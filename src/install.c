@@ -1611,8 +1611,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_ZLIB:
             nativePackage->name = "zlib";
-            nativePackage->srcUrl = "https://zlib.net/fossils/zlib-1.3.tar.gz";
-            nativePackage->srcSha = "ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e";
+            nativePackage->srcUrl = "https://zlib.net/fossils/zlib-1.3.1.tar.gz";
+            nativePackage->srcSha = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CMAKE;
             break;
         case NATIVE_PACKAGE_ID_LIBBZ2:
@@ -1624,9 +1624,9 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_PERL:
             nativePackage->name = "perl";
-            nativePackage->srcUrl = "https://www.cpan.org/src/5.0/perl-5.38.0.tar.xz";
-            nativePackage->srcUri = "https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz";
-            nativePackage->srcSha = "eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e";
+            nativePackage->srcUrl = "https://www.cpan.org/src/5.0/perl-5.38.2.tar.xz";
+            nativePackage->srcUri = "https://distfiles.macports.org/perl5.38/perl-5.38.2.tar.xz";
+            nativePackage->srcSha = "d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;
         case NATIVE_PACKAGE_ID_OPENSSL:
@@ -1682,8 +1682,8 @@ static int getNativePackageInfoByID(int packageID, NativePackage * nativePackage
             break;
         case NATIVE_PACKAGE_ID_LIBLZMA:
             nativePackage->name = "liblzma";
-            nativePackage->srcUrl = "https://github.com/tukaani-project/xz/releases/download/v5.4.4/xz-5.4.4.tar.gz";
-            nativePackage->srcSha = "aae39544e254cfd27e942d35a048d592959bd7a79f9a624afb0498bb5613bdf8";
+            nativePackage->srcUrl = "https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2";
+            nativePackage->srcSha = "913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49";
             nativePackage->buildConfigureArgs = "--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc";
             nativePackage->buildSystemType = BUILD_SYSTEM_TYPE_CONFIGURE;
             break;

@@ -4,7 +4,7 @@
 if (CURL_INCLUDE_DIRS AND CURL_LIBRARIES)
     set(CURL_FOUND TRUE)
 else()
-    pkg_check_modules(PKG_CONFIG_CURL QUIET libcurl)
+    pkg_check_modules(PKG_CONFIG_CURL libcurl)
 
     message("PKG_CONFIG_CURL_FOUND=${PKG_CONFIG_CURL_FOUND}")
     message("PKG_CONFIG_CURL_INCLUDE_DIRS=${PKG_CONFIG_CURL_INCLUDE_DIRS}")

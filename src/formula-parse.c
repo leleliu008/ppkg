@@ -29,6 +29,7 @@
 typedef enum {
     FORMULA_KEY_CODE_unknown,
 
+    FORMULA_KEY_CODE_pkgtype,
     FORMULA_KEY_CODE_summary,
     FORMULA_KEY_CODE_version,
     FORMULA_KEY_CODE_license,
@@ -81,6 +82,7 @@ void ppkg_formula_dump(PPKGFormula * formula) {
         return;
     }
 
+    printf("pkgtype: %s\n", formula->pkgtype);
     printf("summary: %s\n", formula->summary);
     printf("version: %s\n", formula->version);
     printf("license: %s\n", formula->license);

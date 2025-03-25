@@ -65,6 +65,7 @@ static int get_output_file_path(char outputFilePath[PATH_MAX], const char * pack
         } else if (outputPath[outputPathLength - 1] == '/') {
            ret = snprintf(outputFilePath, strlen(outputPath) + strlen(packageName) + 20U, "%s%s-dependencies.%s", outputPath, packageName, outputFileNameSuffix);
         } else {
+            ret = 0;
             size_t n = strlen(outputPath);
             strncpy(outputFilePath, outputPath, n);
             outputFilePath[n] = '\0';

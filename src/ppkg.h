@@ -66,6 +66,8 @@
 
 
 typedef struct {
+    char * pkgtype;
+
     char * summary;
     char * version;
     char * license;

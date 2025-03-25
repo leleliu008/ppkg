@@ -1,4 +1,4 @@
-name: publish ppkg
+name: publish ppkg main
 
 on:
   workflow_dispatch:
@@ -45,41 +45,43 @@ jobs:
     needs: check
     if: needs.check.outputs.if-has-new-commit == 'yes'
 
-    runs-on: macos-12
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        netbsd-version: ['10.0', '9.4', '9.3', '9.2']
 
     steps:
-      - uses: leleliu008/github-actions-vagrant@main
+      - uses: actions/checkout@v4
+
+      - run: curl -LO https://curl.se/ca/cacert.pem
+
+      - uses: cross-platform-actions/action@v0.25.0
         with:
-          mem: 8192
-          box: generic/netbsd9
+          operating_system: netbsd
+          version: ${{ matrix.netbsd-version }}
+          shell: bash
           run: |
-            export HOME=/home/vagrant
-
-            run sudo sed -i 's/#ETCCERTSDIR=/ETCCERTSDIR=/' /usr/pkg/etc/ca-certificates-dir.conf
-            run sudo update-ca-certificates
-
-            unset ETCCERTSDIR
-
-            ETCCERTSDIR=$(sed -n '/^ETCCERTSDIR=/p' /usr/pkg/etc/ca-certificates-dir.conf | sed 's|ETCCERTSDIR=\(.*\)|\1|')
-
-            if [ -n "$ETCCERTSDIR" ] ; then
-                export SSL_CERT_FILE="$ETCCERTSDIR/ca-certificates.crt"
-            fi
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
 
             run sudo pkgin -y update
             run sudo pkgin -y install llvm
+
+            run export SSL_CERT_FILE="$PWD/cacert.pem"
 
             run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
             run chmod a+x ppkg
             run ./ppkg setup
             run ./ppkg update
 
-            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
+            ~/.ppkg/uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-            run ./ppkg install ppkg --link-type=static-only --install-lib=static
-            run ./ppkg pack    ppkg -o /home/vagrant
-
-      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/ppkg-*-netbsd-amd64.tar.xz .
+            run ./ppkg install ppkg --static
+            run ./ppkg bundle  ppkg .tar.xz
 
       - uses: actions/upload-artifact@v3
         with:
@@ -91,70 +93,43 @@ jobs:
     needs: [check, netbsd-amd64]
     if: needs.check.outputs.if-has-new-commit == 'yes'
 
-    runs-on: macos-12
+    runs-on: ubuntu-latest
 
-    env:
-      VAGRANT_LOG: info
-      # https://www.vagrantup.com/docs/other/debugging
+    strategy:
+      fail-fast: false
+      matrix:
+        openbsd-version: ['7.6', '7.5', '7.4', '7.3', '7.2']
 
     steps:
-      - run: |
-          echo 'set -e' > shell.sh
+      - uses: actions/checkout@v4
 
-          export -p | grep 'GITHUB_' >> shell.sh
+      - uses: cross-platform-actions/action@master
+        with:
+          operating_system: openbsd
+          version: ${{ matrix.openbsd-version }}
+          shell: bash
+          run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
 
-          cat >> shell.sh <<'EOF'
-          run() {
-            printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
-            eval "$*"
-          }
+            run sudo pkg_add curl gtar-- gcc%11
 
-          run sudo pkg_add curl gtar-- gcc%11
+            run sudo ln -s /usr/local/bin/gtar /usr/bin/tar
 
-          run sudo ln -s /usr/local/bin/gtar /usr/bin/tar
+            export LD_LIBRARY_PATH=/usr/local/lib
 
-          export HOME=/home/vagrant
-          export LD_LIBRARY_PATH=/usr/local/lib
+            run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+            run chmod a+x ppkg
+            run ./ppkg setup
+            run ./ppkg update
 
-          run cd /home/vagrant/${{ github.repository }}
-          run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-          run chmod a+x ppkg
-          run ./ppkg setup
-          run ./ppkg update
+            ~/.ppkg/uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-          ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
-
-          run ./ppkg install ppkg --link-type=static-only --install-lib=static
-          run ./ppkg pack    ppkg -o .
-
-          ls ppkg-*-openbsd-amd64.tar.xz > name.txt
-
-          run curl -LO https://raw.githubusercontent.com/emikulic/darkhttpd/master/darkhttpd.c
-          run cc -o darkhttpd darkhttpd.c
-          run ./darkhttpd . --port 8080 &
-          EOF
-
-          cat shell.sh
-
-      - run: |
-          tee Vagrantfile <<EOF
-          Vagrant.configure("2") do |config|
-            config.vm.box = "generic/openbsd7"
-
-            config.vm.provider "virtualbox" do |vb|
-              vb.memory = "8192"
-            end
-
-            config.vm.network "forwarded_port", guest: 8080, host: 8080
-            config.vm.synced_folder ".", "/home/vagrant/${{ github.repository }}", type: "rsync"
-            config.vm.provision "shell", path: "shell.sh"
-          end
-          EOF
-
-      - run: vagrant up --provider virtualbox --provision
-
-      - run: curl -O http://localhost:8080/name.txt
-      - run: curl -O http://localhost:8080/$(cat name.txt)
+            run ./ppkg install ppkg --static
+            run ./ppkg bundle  ppkg .tar.xz
+            EOF
 
       - uses: actions/upload-artifact@v3
         with:
@@ -166,29 +141,38 @@ jobs:
     needs: [check, openbsd-amd64]
     if: needs.check.outputs.if-has-new-commit == 'yes'
 
-    runs-on: macos-12
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        freebsd-version: ['14.1', '14.0', '13.4', '13.3', '13.2', '13.1']
 
     steps:
-      - uses: leleliu008/github-actions-vagrant@main
-        with:
-          mem: 8192
-          box: generic/freebsd13
-          run: |
-            export HOME=/home/vagrant
+      - uses: actions/checkout@v4
 
-            run pkg install -y gcc curl libnghttp2
+      - uses: cross-platform-actions/action@master
+        with:
+          operating_system: freebsd
+          version: ${{ matrix.freebsd-version }}
+          shell: bash
+          run: |
+            run() {
+              printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
+              eval "$@"
+            }
+
+            run sudo pkg install -y gcc curl
 
             run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
             run chmod a+x ppkg
             run ./ppkg setup
             run ./ppkg update
 
-            ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
+            ~/.ppkg/uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-            run ./ppkg install ppkg --link-type=static-only --install-lib=static
-            run ./ppkg pack    ppkg -o /home/vagrant
-
-      - run: scp -i $VAGRANT_CWD/.vagrant/machines/default/virtualbox/private_key -o StrictHostKeyChecking=no -r -P 2222 vagrant@127.0.0.1:/home/vagrant/ppkg-*-freebsd-amd64.tar.xz .
+            run ./ppkg install ppkg --static
+            run ./ppkg bundle  ppkg .tar.xz
 
       - uses: actions/upload-artifact@v3
         with:
@@ -200,12 +184,12 @@ jobs:
     needs: [check, freebsd-amd64]
     if: needs.check.outputs.if-has-new-commit == 'yes' 
 
-    runs-on: macos-12
+    runs-on: macos-14
 
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['10.15', '11.0', '12.0', '13.0']
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0']
         target-arch: [x86_64, arm64]
 
     steps:
@@ -217,8 +201,8 @@ jobs:
       - run: |
           ~/.uppm/installed/gsed/bin/gsed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.xcpkg/repos.d/official-core/formula/ppkg.yml
 
-      - run: ./xcpkg install ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg pack    ppkg:MacOSX:${{ matrix.target-version }}:${{ matrix.target-arch }} -o .
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/ppkg
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/ppkg
 
       - uses: actions/upload-artifact@v3
         with:
@@ -232,7 +216,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    container: alpine:3.16
+    container: alpine:3.19
 
     steps:
       - run: apk update
@@ -248,8 +232,8 @@ jobs:
       - run: |
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-      - run: ./ppkg install ppkg --link-type=static-only --install-lib=static
-      - run: ./ppkg pack    ppkg -o .
+      - run: ./ppkg install ppkg --static
+      - run: ./ppkg bundle  ppkg .tar.xz
 
       - uses: actions/upload-artifact@v3
         with:
@@ -293,8 +277,8 @@ jobs:
 
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-          run ./ppkg install ppkg --link-type=static-only --install-lib=static
-          run ./ppkg pack    ppkg -o .
+          run ./ppkg install ppkg --static
+          run ./ppkg bundle  ppkg .tar.xz
           EOF
 
           chmod +x run.sh
@@ -347,8 +331,8 @@ jobs:
 
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-          run ./ppkg install ppkg --link-type=static-only --install-lib=static
-          run ./ppkg pack    ppkg -o .
+          run ./ppkg install ppkg --static
+          run ./ppkg bundle  ppkg .tar.xz
           EOF
 
           chmod +x run.sh
@@ -401,8 +385,8 @@ jobs:
 
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-          run ./ppkg install ppkg --link-type=static-only --install-lib=static
-          run ./ppkg pack    ppkg -o .
+          run ./ppkg install ppkg --static
+          run ./ppkg bundle  ppkg .tar.xz
           EOF
 
           chmod +x run.sh
@@ -456,8 +440,8 @@ jobs:
 
           sed -i "/git-url/a git-sha: ${{ needs.check.outputs.git-sha }}" ~/.ppkg/repos.d/official-core/formula/ppkg.yml
 
-          run ./ppkg install ppkg gh --link-type=static-only --install-lib=static
-          run ./ppkg pack    ppkg -o .
+          run ./ppkg install ppkg --static
+          run ./ppkg bundle  ppkg .tar.xz
           EOF
 
           chmod +x run.sh
@@ -484,80 +468,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: ppkg---netbsd-amd64-tar-xz
+          pattern: '*'
           path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---openbsd-amd64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---freebsd-amd64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos10.15-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos11.0-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos12.0-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos13.0-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos11.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos12.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---macos13.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---linux-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---linux-aarch64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---linux-ppc64le-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---linux-riscv64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: ppkg---linux-s390x-tar-xz
-          path: .
+          merge-multiple: true
 
       - run: ls -a
 
