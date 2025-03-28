@@ -10680,6 +10680,14 @@ fi
 
 ##################################################################################
 
+# dot_static command use this
+# https://www.freedesktop.org/software/fontconfig/fontconfig-user.html
+if [ -z  "$FONTCONFIG_FILE" ] ; then
+    export FONTCONFIG_FILE="$PPKG_CORE_DIR/fonts.conf"
+fi
+
+##################################################################################
+
 UPPM="$PPKG_CORE_DIR/uppm"
 
 export UPPM_HOME="$PPKG_HOME/uppm"
