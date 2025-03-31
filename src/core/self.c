@@ -64,31 +64,31 @@ int selfpath(char buf[]) {
         return -1;
     }
 
-    if (sysctl(mib, 4, argv, &size, NULL, 0) != 0) {
+    if (sysctl(mib, 4, argv, &len, NULL, 0) != 0) {
         free(argv);
         return -1;
     }
 
-    char * p = argv[0];
+    char * s = argv[0];
 
     int ispath;
 
     for (;;) {
-        if (p[0] == '\0') {
+        if (s[0] == '\0') {
             ispath = 0;
             break;
         }
 
-        if (p[0] == '/') {
+        if (s[0] == '/') {
             ispath = 1;
             break;
         }
 
-        p++;
+        s++;
     }
 
     if (ispath == 1) {
-        realpath(p, buf);
+        realpath(s, buf);
         free(argv);
         return 0;
     } else {
@@ -107,7 +107,7 @@ int selfpath(char buf[]) {
 
                     if (i != 0) {
                         if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
-                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
+                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, s);
 
                             if (n < 0) {
                                 return -1;
@@ -132,7 +132,7 @@ int selfpath(char buf[]) {
 
                     if (i != 0) {
                         if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
-                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
+                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, s);
 
                             if (n < 0) {
                                 return -1;
