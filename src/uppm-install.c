@@ -323,7 +323,11 @@ static int uppm_install_internal(const char * packageName, const UPPMFormula * f
     size_t tmpStrCapacity = strlen(formula->bin_url) + 30U;
     char   tmpStr[tmpStrCapacity];
 
+#if defined (__OpenBSD__)
+    ret = snprintf(tmpStr, tmpStrCapacity, "%s|%lld|%d", formula->bin_url, (long long)ts, pid);
+#else
     ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", formula->bin_url, ts, pid);
+#endif
 
     if (ret < 0) {
         perror(NULL);

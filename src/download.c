@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
 
@@ -120,7 +121,11 @@ int ppkg_download(const char * url, const char * uri, const char * expectedSHA25
     size_t tmpCapacity = strlen(url) + 30U;
     char   tmp[tmpCapacity];
 
+#if defined (__OpenBSD__)
+    int ret = snprintf(tmp, tmpCapacity, "%s|%lld|%d", url, (long long)time(NULL), getpid());
+#else
     int ret = snprintf(tmp, tmpCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+#endif
 
     if (ret < 0) {
         perror(NULL);

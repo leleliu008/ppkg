@@ -230,7 +230,11 @@ static int download_via_http(const char * url, const char * uri, const char * ex
         size_t tmpStrCapacity = strlen(url) + 30U;
         char   tmpStr[tmpStrCapacity];
 
+#if defined (__OpenBSD__)
+        ret = snprintf(tmpStr, tmpStrCapacity, "%s|%lld|%d", url, (long long)time(NULL), getpid());
+#else
         ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+#endif
 
         if (ret < 0) {
             perror(NULL);
@@ -409,8 +413,11 @@ static int setup_sysroot_for_freebsd(const PPKGTargetPlatform * targetPlatform, 
             size_t tmpStrCapacity = strlen(url) + 30U;
             char   tmpStr[tmpStrCapacity];
 
+#if defined (__OpenBSD__)
+            ret = snprintf(tmpStr, tmpStrCapacity, "%s|%lld|%d", url, (long long)time(NULL), getpid());
+#else
             ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
-
+#endif
             if (ret < 0) {
                 perror(NULL);
                 return PPKG_ERROR;
@@ -652,7 +659,11 @@ static int setup_sysroot_for_openbsd(const PPKGTargetPlatform * targetPlatform, 
                 size_t tmpStrCapacity = strlen(url) + 30U;
                 char   tmpStr[tmpStrCapacity];
 
+#if defined (__OpenBSD__)
+                ret = snprintf(tmpStr, tmpStrCapacity, "%s|%lld|%d", url, (long long)time(NULL), getpid());
+#else
                 ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+#endif
 
                 if (ret < 0) {
                     perror(NULL);
@@ -922,7 +933,11 @@ static int setup_sysroot_for__netbsd(const PPKGTargetPlatform * targetPlatform, 
                 size_t tmpStrCapacity = strlen(url) + 30U;
                 char   tmpStr[tmpStrCapacity];
 
+#if defined (__OpenBSD__)
+                ret = snprintf(tmpStr, tmpStrCapacity, "%s|%lld|%d", url, (long long)time(NULL), getpid());
+#else
                 ret = snprintf(tmpStr, tmpStrCapacity, "%s|%ld|%d", url, time(NULL), getpid());
+#endif
 
                 if (ret < 0) {
                     perror(NULL);
@@ -1910,7 +1925,11 @@ static int install_native_package(
     size_t strBufSize = packageNameLength + strlen(srcUrl) + strlen(srcSha) + 50U;
     char   strBuf[strBufSize];
 
-    ret = snprintf(strBuf, strBufSize, "%s:%s:%s:%zu:%u", packageName, srcUrl, srcSha, time(NULL), getpid());
+#if defined (__OpenBSD__)
+    ret = snprintf(strBuf, strBufSize, "%s:%s:%s:%lld:%d", packageName, srcUrl, srcSha, (long long)time(NULL), getpid());
+#else
+    ret = snprintf(strBuf, strBufSize, "%s:%s:%s:%ld:%d", packageName, srcUrl, srcSha, time(NULL), getpid());
+#endif
 
     if (ret < 0) {
         perror(NULL);
@@ -2736,7 +2755,11 @@ static int generate_shell_vars_file(
         return PPKG_ERROR;
     }
 
-    ret = dprintf(fd, "TIMESTAMP_UNIX=%zu\n", ts);
+#if defined (__OpenBSD__)
+    ret = dprintf(fd, "TIMESTAMP_UNIX=%lld\n", (long long)ts);
+#else
+    ret = dprintf(fd, "TIMESTAMP_UNIX=%ld\n", ts);
+#endif
 
     if (ret < 0) {
         close(fd);
@@ -3513,7 +3536,7 @@ static int generate_receipt(const char * packageName, const PPKGFormula * formul
         default: libcName = (char*)"";
     }
 
-    fprintf(receiptFile, "\nbuiltfor: %s-%s-%s\nbuiltby: %s\nbuiltat: %zu\n\n", targetPlatform->name, targetPlatform->vers, targetPlatform->arch, PPKG_VERSION, ts);
+    fprintf(receiptFile, "\nbuiltfor: %s-%s-%s\nbuiltby: %s\nbuiltat: %ld\n\n", targetPlatform->name, targetPlatform->vers, targetPlatform->arch, PPKG_VERSION, ts);
 
     fprintf(receiptFile, "build-on:\n    os-arch: %s\n    os-kind: %s\n    os-type: %s\n    os-name: %s\n    os-vers: %s\n    os-ncpu: %u\n    os-libc: %s\n    os-euid: %u\n    os-egid: %u\n", sysinfo->arch, sysinfo->kind, sysinfo->type, sysinfo->name, sysinfo->vers, sysinfo->ncpu, libcName, sysinfo->euid, sysinfo->egid);
 
@@ -4086,7 +4109,11 @@ static int ppkg_install_package(
     size_t strBufSize = packageNameLength + 50U;
     char   strBuf[strBufSize];
 
-    int ret = snprintf(strBuf, strBufSize, "%s:%zu:%u", packageName, ts, getpid());
+#if defined (__OpenBSD__)
+    int ret = snprintf(strBuf, strBufSize, "%s:%lld:%d", packageName, (long long)ts, getpid());
+#else
+    int ret = snprintf(strBuf, strBufSize, "%s:%ld:%d", packageName, ts, getpid());
+#endif
 
     if (ret < 0) {
         perror(NULL);
