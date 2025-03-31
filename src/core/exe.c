@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <sys/syslimits.h>
 #include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>

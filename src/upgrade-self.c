@@ -3,7 +3,6 @@
 
 #include <limits.h>
 #include <sys/stat.h>
-#include <sys/syslimits.h>
 
 #include "core/sysinfo.h"
 #include "core/self.h"

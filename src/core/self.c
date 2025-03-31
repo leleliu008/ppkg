@@ -9,7 +9,6 @@
 // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dyld.3.html
 #if defined (__APPLE__)
 #include <mach-o/dyld.h>
-#include <sys/syslimits.h>
 #elif defined (__linux__) && defined (HAVE_LINUX_LIMITS_H)
 #include <linux/limits.h>
 #else

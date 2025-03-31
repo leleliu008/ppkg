@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include <limits.h>
-#include <sys/syslimits.h>
 
 #include "core/self.h"
 
