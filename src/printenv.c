@@ -3,7 +3,6 @@
  *
  * https://pubs.opengroup.org/onlinepubs/9799919799/functions/environ.html
  *
- * http://refspecs.linux-foundation.org/LSB_4.0.0/LSB-Core-generic/LSB-Core-generic/baselib---environ.html
  */
 
 #include <stdio.h>
@@ -17,8 +16,6 @@
 void printenv() {
 #if defined (__APPLE__)
     char **envlist = *_NSGetEnviron();
-#elif defined (__linux__)
-    char **envlist = __environ;
 #else
     extern char ** environ;
     char **envlist = environ;

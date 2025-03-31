@@ -182,7 +182,11 @@ int ppkg_formula_repo_add(const char * formulaRepoName, const char * formulaRepo
 
     char ts[11];
 
+#if defined (__OpenBSD__)
+    ret = snprintf(ts, 11, "%lld", (long long)time(NULL));
+#else
     ret = snprintf(ts, 11, "%ld", time(NULL));
+#endif
 
     if (ret < 0) {
         perror(NULL);
