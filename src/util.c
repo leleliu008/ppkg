@@ -16,6 +16,8 @@
 #include "sha256sum.h"
 #include "ppkg.h"
 
+void printenv();
+
 //invoked as 'ppkg util <CMD> [ARGUMENTS]'
 int ppkg_util(int argc, char* argv[]) {
     if (argv[2] == NULL) {
@@ -450,6 +452,11 @@ int ppkg_util(int argc, char* argv[]) {
         }
 
         return ret;
+    }
+
+    if (strcmp(argv[2], "printenv") == 0) {
+        printenv();
+        return PPKG_OK;
     }
 
     if (strcmp(argv[2], "wfetch") == 0) {

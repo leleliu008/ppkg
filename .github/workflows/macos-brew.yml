@@ -66,6 +66,8 @@ jobs:
       - run: ppkg --version
       - run: ppkg -V
 
+      - run: ./output/bin/ppkg util printenv
+
       - run: ppkg about
       - run: ppkg about -v
 

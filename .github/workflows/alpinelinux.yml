@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['3.18', '3.17', '3.16','3.15']
+        tag: ['3.21', '3.20', '3.19', '3.18', '3.17', '3.16', '3.15', '3.14']
 
     container: alpine:${{ matrix.tag }}
 
@@ -35,6 +35,8 @@ jobs:
 
       - run: ./output/bin/ppkg --version
       - run: ./output/bin/ppkg -V
+
+      - run: ./output/bin/ppkg util printenv
 
       - run: ./output/bin/ppkg setup -v
 

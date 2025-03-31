@@ -52,6 +52,8 @@ jobs:
       - run: ./output/bin/ppkg --version
       - run: ./output/bin/ppkg -V
 
+      - run: ./output/bin/ppkg util printenv
+
       - run: ./output/bin/ppkg setup -v
 
       - run: ./output/bin/ppkg about
