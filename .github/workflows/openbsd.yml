@@ -13,12 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        openbsd-version: ['7.5', '7.4', '7.3', '7.2']
+        openbsd-version: ['7.6', '7.5', '7.4', '7.3', '7.2']
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cross-platform-actions/action@v0.25.0
+      - uses: cross-platform-actions/action@master
         with:
           operating_system: openbsd
           version: ${{ matrix.openbsd-version }}
@@ -30,7 +30,7 @@ jobs:
             }
 
 
-            run sudo pkg_add cmake ninja llvm pkgconf curl libgit2 libarchive libyaml jansson sqlite
+            run sudo pkg_add cmake ninja llvm pkgconf curl libgit2 libarchive libyaml jansson sqlite pcre2
 
             run cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=./output -DCMAKE_VERBOSE_MAKEFILE=ON
             run cmake --build   build.d
