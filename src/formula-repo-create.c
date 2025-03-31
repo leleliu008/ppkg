@@ -42,7 +42,7 @@ int ppkg_formula_repo_create(const char * formulaRepoName, const char * formulaR
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

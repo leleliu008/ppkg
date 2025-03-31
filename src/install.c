@@ -1,3 +1,4 @@
+#include <sys/syslimits.h>
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -172,21 +173,6 @@ static int write_to_file(const char * fp, const char * str) {
     } else {
         fprintf(stderr, "file not fully written: %s\n", fp);
         return PPKG_ERROR;
-    }
-}
-
-// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
-extern char ** environ;
-
-static void printenv() {
-    for (int i = 0; ; i++) {
-        const char * p = environ[i];
-
-        if (p == NULL) {
-            break;
-        }
-
-        puts(p);
     }
 }
 
@@ -2073,7 +2059,7 @@ static int install_native_package(
     if (buildSystemType == BUILD_SYSTEM_TYPE_CMAKE) {
         char cmakePath[PATH_MAX];
 
-        ret = exe_where("cmake", cmakePath, PATH_MAX);
+        ret = exe_where("cmake", cmakePath);
 
         switch (ret) {
             case -3:
@@ -2240,7 +2226,7 @@ static int install_native_package(
         } else if (nativePackageID == NATIVE_PACKAGE_ID_PERL_XML_PARSER) {
             char perlPath[PATH_MAX];
 
-            ret = exe_where("perl", perlPath, PATH_MAX);
+            ret = exe_where("perl", perlPath);
 
             switch (ret) {
                 case -3:
@@ -2347,7 +2333,7 @@ static int install_native_package(
         char   gmakePath[PATH_MAX];
         size_t gmakePathLength = 0U;
 
-        ret = exe_where("gmake", gmakePath, PATH_MAX);
+        ret = exe_where("gmake", gmakePath);
 
         switch (ret) {
             case -3:
@@ -2358,7 +2344,7 @@ static int install_native_package(
                 perror(NULL);
                 return PPKG_ERROR;
             case 0:
-                ret = exe_where("make", gmakePath, PATH_MAX);
+                ret = exe_where("make", gmakePath);
 
                 switch (ret) {
                     case -3:
@@ -2644,7 +2630,7 @@ static int generate_shell_vars_file(
         {"EXPORT_COMPILE_COMMANDS_JSON", installOptions->exportCompileCommandsJson},
         {"PACKAGE_BINBSTD", formula->binbstd},
         {"PACKAGE_SYMLINK", formula->symlink},
-        {"PACKAGE_PARALLEL", formula->parallel},
+        {"PACKAGE_PARALLEL", formula->support_build_in_parallel},
         {"PACKAGE_BUILD_IN_BSCRIPT_DIR", formula->binbstd},
         {"PACKAGE_USE_BSYSTEM_AUTOGENSH", formula->useBuildSystemAutogen},
         {"PACKAGE_USE_BSYSTEM_AUTOTOOLS", formula->useBuildSystemAutotools},
@@ -2670,10 +2656,9 @@ static int generate_shell_vars_file(
     const char * linkType;
 
     switch (installOptions->linkType) {
-        case PPKGLinkType_static_full: linkType = (formula->sfslink) ? "static-full" : "static-most"; break;
-        case PPKGLinkType_static_most: linkType = "static-most"; break;
-        case PPKGLinkType_shared_full: linkType = "shared-full"; break;
-        case PPKGLinkType_shared_most: linkType = "shared-most"; break;
+        case PPKGLinkage_static_full: linkType = (formula->support_create_fully_statically_linked_executable) ? "static-full" : "static-most"; break;
+        case PPKGLinkage_static_most: linkType = "static-most"; break;
+        case PPKGLinkage_shared:      linkType = "shared"; break;
     }
 
     KV kvs[] = {
@@ -2684,7 +2669,7 @@ static int generate_shell_vars_file(
         {"NATIVE_OS_NAME", sysinfo->name },
         {"NATIVE_OS_VERS", sysinfo->vers },
         {"NATIVE_OS_LIBC", libcName },
-        {"BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "release" : "debug"},
+        {"BUILD_TYPE", installOptions->buildType == PPKGBuildProfile_release ? "release" : "debug"},
         {"LINK_TYPE", linkType},
         {"INSTALL_LIB", "both"},
         {"PPKG_VERSION", PPKG_VERSION},
@@ -3429,10 +3414,10 @@ static int generate_manifest_r(const char * dirPath, const size_t offset, FILE *
 int generate_manifest(const char * installedDIRPath) {
     size_t installedDIRLength = strlen(installedDIRPath);
 
-    size_t installedManifestFilePathLength = installedDIRLength + 20U;
+    size_t installedManifestFilePathLength = installedDIRLength + sizeof(PPKG_MANIFEST_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
     char   installedManifestFilePath[installedManifestFilePathLength];
 
-    int ret = snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s/.ppkg/MANIFEST.txt", installedDIRPath);
+    int ret = snprintf(installedManifestFilePath, installedManifestFilePathLength, "%s%s", installedDIRPath, PPKG_MANIFEST_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
     if (ret < 0) {
         perror(NULL);
@@ -3454,10 +3439,10 @@ int generate_manifest(const char * installedDIRPath) {
 }
 
 static int generate_receipt(const char * packageName, const PPKGFormula * formula, const PPKGTargetPlatform * targetPlatform, const SysInfo * sysinfo, const time_t ts, const char * packageMetaInfoDIR, const size_t packageMetaInfoDIRCapacity) {
-    size_t receiptFilePathLength = packageMetaInfoDIRCapacity + 12U;
+    size_t receiptFilePathLength = packageMetaInfoDIRCapacity + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_METADATA_DIR);
     char   receiptFilePath[receiptFilePathLength];
 
-    int ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/RECEIPT.yml", packageMetaInfoDIR);
+    int ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageMetaInfoDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_METADATA_DIR);
 
     if (ret < 0) {
         perror(NULL);
@@ -4087,7 +4072,7 @@ static int ppkg_install_package(
 
     size_t njobs;
 
-    if (formula->parallel) {
+    if (formula->support_build_in_parallel) {
         if (installOptions->parallelJobsCount > 0) {
             njobs = installOptions->parallelJobsCount;
         } else {
@@ -4440,7 +4425,7 @@ static int ppkg_install_package(
 
     char m4Path[PATH_MAX];
 
-    ret = exe_where("m4", m4Path, PATH_MAX);
+    ret = exe_where("m4", m4Path);
 
     switch (ret) {
         case -3:
@@ -5075,7 +5060,7 @@ static int ppkg_install_package(
 
             char clangPath[PATH_MAX];
 
-            ret = exe_where("clang", clangPath, PATH_MAX);
+            ret = exe_where("clang", clangPath);
 
             switch (ret) {
                 case -3:
@@ -5094,7 +5079,7 @@ static int ppkg_install_package(
 
             char clangxxPath[PATH_MAX];
 
-            ret = exe_where("clang++", clangxxPath, PATH_MAX);
+            ret = exe_where("clang++", clangxxPath);
 
             switch (ret) {
                 case -3:
@@ -5271,11 +5256,11 @@ static int ppkg_install_package(
 
         bool needAddStaticFlag = false;
 
-        if (installOptions->linkType == PPKGLinkType_static_full) {
-            if (formula->sfslink) {
+        if (installOptions->linkType == PPKGLinkage_static_full) {
+            if (formula->support_create_fully_statically_linked_executable) {
                 needAddStaticFlag = true;
             } else {
-                fprintf(stderr, "user request to create fully statically linked executable, but package '%s' DO NOT support it, so we will downgrade to mostly statically linked executable.\n", packageName);
+                fprintf(stderr, "You are requesting to create fully statically linked executables, but package '%s' DO NOT support it, so we will downgrade to mostly statically linked executable.\n", packageName);
             }
         }
 
@@ -5305,7 +5290,7 @@ static int ppkg_install_package(
 
     const char * libSuffix;
 
-    if (installOptions->linkType == PPKGLinkType_static_full || installOptions->linkType == PPKGLinkType_static_most) {
+    if (installOptions->linkType == PPKGLinkage_static_full || installOptions->linkType == PPKGLinkage_static_most) {
         libSuffix = ".a";
     } else {
         libSuffix = isTargetOSDarwin ? ".dylib" : ".so";
@@ -5387,7 +5372,7 @@ static int ppkg_install_package(
         }
 
         // https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_TYPE.html
-        if (setenv("CMAKE_BUILD_TYPE", installOptions->buildType == PPKGBuildType_release ? "Release" : "Debug", 1) != 0) {
+        if (setenv("CMAKE_BUILD_TYPE", installOptions->buildType == PPKGBuildProfile_release ? "Release" : "Debug", 1) != 0) {
             perror("CMAKE_BUILD_TYPE");
             return PPKG_ERROR;
         }
@@ -5800,10 +5785,10 @@ static int ppkg_install_package(
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t packageMetaInfoDIRCapacity = packageInstalledDIRCapacity + 6U;
+    size_t packageMetaInfoDIRCapacity = packageInstalledDIRCapacity + sizeof(PPKG_METADATA_DIR_PATH_RELATIVE_TO_INSTALLED_ROOT);
     char   packageMetaInfoDIR[packageMetaInfoDIRCapacity];
 
-    ret = snprintf(packageMetaInfoDIR, packageMetaInfoDIRCapacity, "%s/.ppkg", packageInstalledDIR);
+    ret = snprintf(packageMetaInfoDIR, packageMetaInfoDIRCapacity, "%s%s", packageInstalledDIR, PPKG_METADATA_DIR_PATH_RELATIVE_TO_INSTALLED_ROOT);
 
     if (ret < 0) {
         perror(NULL);
@@ -6397,9 +6382,9 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
         }
 
         if (formula == NULL) {
-            char * formulaFilePath = NULL;
+            char formulaFilePath[PATH_MAX];
 
-            ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
+            ret = ppkg_formula_path(packageName, targetPlatformName, formulaFilePath);
 
             if (ret != PPKG_OK) {
                 free(packageName);
@@ -6418,8 +6403,6 @@ static int check_and_read_formula_in_cache(const char * packageName, const char 
             }
 
             ret = ppkg_copy_file(formulaFilePath, formulaFilePath2);
-
-            free(formulaFilePath);
 
             if (ret != PPKG_OK) {
                 free(packageName);
@@ -6743,7 +6726,7 @@ int ppkg_setup_toolchain_for_native_build(
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    ret = snprintf(ccflags, ccflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->ccflags, (installOptions->buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret1 == 0) ? " -Wno-error=unused-command-line-argument" : "");
+    ret = snprintf(ccflags, ccflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->ccflags, (installOptions->buildType == PPKGBuildProfile_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret1 == 0) ? " -Wno-error=unused-command-line-argument" : "");
 
     if (ret < 0) {
         perror(NULL);
@@ -6765,7 +6748,7 @@ int ppkg_setup_toolchain_for_native_build(
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    ret = snprintf(cxxflags, cxxflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->cxxflags, (installOptions->buildType == PPKGBuildType_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret2 == 0) ? " -Wno-error=unused-command-line-argument" : "");
+    ret = snprintf(cxxflags, cxxflagsCapacity, "%s%s%s%s", toolchainForNativeBuild->cxxflags, (installOptions->buildType == PPKGBuildProfile_release) ? " -Os" : " -g -O0", installOptions->verbose_cc ? " -v" : "", (ret2 == 0) ? " -Wno-error=unused-command-line-argument" : "");
 
     if (ret < 0) {
         perror(NULL);
@@ -6778,7 +6761,7 @@ int ppkg_setup_toolchain_for_native_build(
 
     //////////////////////////////////////////////////////////////////////
 
-    if (installOptions->buildType == PPKGBuildType_release || installOptions->verbose_ld) {
+    if (installOptions->buildType == PPKGBuildProfile_release || installOptions->verbose_ld) {
         size_t ldflagsCapacity = strlen(toolchainForNativeBuild->ldflags) + 60U;
 
         char * ldflags = (char*)malloc(ldflagsCapacity);
@@ -6787,7 +6770,7 @@ int ppkg_setup_toolchain_for_native_build(
             return PPKG_ERROR_MEMORY_ALLOCATE;
         }
 
-        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchainForNativeBuild->ldflags, (installOptions->buildType == PPKGBuildType_release) ? " -Wl,-s" : "", installOptions->verbose_ld ? " -Wl,-v" : "");
+        ret = snprintf(ldflags, ldflagsCapacity, "%s%s%s", toolchainForNativeBuild->ldflags, (installOptions->buildType == PPKGBuildProfile_release) ? " -Wl,-s" : "", installOptions->verbose_ld ? " -Wl,-v" : "");
 
         if (ret < 0) {
             perror(NULL);
@@ -6821,12 +6804,12 @@ int ppkg_setup_toolchain_for_native_build(
 }
 
 int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlatform, const PPKGInstallOptions * installOptions) {
-    if (installOptions->linkType == PPKGLinkType_static_full) {
+    if (installOptions->linkType == PPKGLinkage_static_full) {
         if (strcmp(targetPlatform->name, "macos") == 0) {
-            fprintf(stderr, "--link-type=static-full option is not supported for macos, because there is no static standard C library for macos. please use --link-type=static-most instead.\n");
+            fprintf(stderr, "--linkage=static option is not supported for macos, because there is no static standard C library for macos. please use --linkage=static-most instead.\n");
             return PPKG_ERROR;
         } else if (strcmp(targetPlatform->name, "openbsd") == 0) {
-            fprintf(stderr, "--link-type=static-full option is not supported for openbsd. please use --link-type=static-most instead.\n");
+            fprintf(stderr, "--linkage=static option is not supported for openbsd. please use --linkage=static-most instead.\n");
             return PPKG_ERROR;
         }
     }
@@ -6884,7 +6867,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -6907,7 +6890,7 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
     char   sessionDIR[PATH_MAX];
     size_t sessionDIRLength;
 
-    ret = ppkg_session_dir(sessionDIR, PATH_MAX, &sessionDIRLength);
+    ret = ppkg_session_dir(sessionDIR, &sessionDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -6993,9 +6976,11 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 
     //////////////////////////////////////////////////////////////////////////////
 
-    char * ppkgExeFilePath = self_realpath();
+    char ppkgExeFilePath[PATH_MAX];
 
-    if (ppkgExeFilePath == NULL) {
+    ret = selfpath(ppkgExeFilePath);
+
+    if (ret == -1) {
         sysinfo_free(&sysinfo);
         ppkg_toolchain_free(&toolchainForNativeBuild);
         return PPKG_ERROR;
@@ -7070,7 +7055,6 @@ int ppkg_install(const char * packageName, const PPKGTargetPlatform * targetPlat
 finalize:
     sysinfo_free(&sysinfo);
     ppkg_toolchain_free(&toolchainForNativeBuild);
-    free(ppkgExeFilePath);
 
     for (size_t i = 0; i < packageSetSize; i++) {
         free(packageSet[i]->packageName);

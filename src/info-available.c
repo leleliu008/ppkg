@@ -22,9 +22,9 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     }
 
     if ((key == NULL) || (key[0] == '\0') || (strcmp(key, "--yaml") == 0)) {
-        char * formulaFilePath = NULL;
+        char formulaFilePath[PATH_MAX];
 
-        ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
+        ret = ppkg_formula_path(packageName, targetPlatformName, formulaFilePath);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -34,7 +34,6 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         if (formulaFile == NULL) {
             perror(formulaFilePath);
-            free(formulaFilePath);
             return PPKG_ERROR;
         }
 
@@ -53,7 +52,6 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
             if (ferror(formulaFile)) {
                 perror(formulaFilePath);
                 fclose(formulaFile);
-                free(formulaFilePath);
                 return PPKG_ERROR;
             }
 
@@ -61,7 +59,6 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
                 if (fwrite(buff, 1, size, stdout) != size || ferror(stdout)) {
                     perror(NULL);
                     fclose(formulaFile);
-                    free(formulaFilePath);
                     return PPKG_ERROR;
                 }
             }
@@ -73,12 +70,10 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         }
 
         printf("formula: %s\n", formulaFilePath);
-
-        free(formulaFilePath);
     } else if (strcmp(key, "--json") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -123,9 +118,9 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         json_object_set_new(root, "bsystem", json_string(formula->bsystem));
         json_object_set_new(root, "bscript", json_string(formula->bscript));
+        json_object_set_new(root, "disable", json_string(formula->disable));
         json_object_set_new(root, "binbstd", json_boolean(formula->binbstd));
-        json_object_set_new(root, "sfslink", json_boolean(formula->sfslink));
-        json_object_set_new(root, "parallel", json_boolean(formula->parallel));
+        json_object_set_new(root, "movable", json_boolean(formula->movable));
         json_object_set_new(root, "symlink", json_boolean(formula->symlink));
 
         json_object_set_new(root, "do12345", json_string(formula->do12345));
@@ -145,20 +140,19 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "formula") == 0) {
-        char * formulaFilePath = NULL;
+        char formulaFilePath[PATH_MAX];
 
-        ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
+        ret = ppkg_formula_path(packageName, targetPlatformName, formulaFilePath);
 
         if (ret != PPKG_OK) {
             return ret;
         }
 
         printf("%s\n", formulaFilePath);
-        free(formulaFilePath);
     } else if (strcmp(key, "summary") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -172,7 +166,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "version") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -186,7 +180,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "license") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -200,7 +194,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "web-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -214,7 +208,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "git-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -228,7 +222,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "git-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -242,7 +236,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "git-ref") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -256,7 +250,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "git-nth") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -268,7 +262,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "src-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -282,7 +276,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "src-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -296,7 +290,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "src-ft") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -318,7 +312,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -326,7 +320,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -347,7 +341,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "fix-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -361,7 +355,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "fix-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -375,7 +369,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "fix-ft") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -397,7 +391,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -405,7 +399,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -426,7 +420,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "res-url") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -440,7 +434,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "res-sha") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -454,7 +448,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "res-ft") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -476,7 +470,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -484,7 +478,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
 
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -505,7 +499,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "dep-pkg") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -519,7 +513,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "dep-upp") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -533,7 +527,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "dep-pym") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -547,7 +541,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "dep-plm") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -561,7 +555,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "bsystem") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -575,7 +569,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "bscript") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -589,7 +583,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "binbstd") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -598,22 +592,22 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         printf("%d\n", formula->binbstd);
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "sfslink") == 0) {
+    } else if (strcmp(key, "movable") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
         }
 
-        printf("%d\n", formula->sfslink);
+        printf("%d\n", formula->movable);
 
         ppkg_formula_free(formula);
     } else if (strcmp(key, "symlink") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -622,22 +616,10 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
         printf("%d\n", formula->symlink);
 
         ppkg_formula_free(formula);
-    } else if (strcmp(key, "parallel") == 0) {
-        PPKGFormula * formula = NULL;
-
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
-
-        if (ret != PPKG_OK) {
-            return ret;
-        }
-
-        printf("%d\n", formula->parallel);
-
-        ppkg_formula_free(formula);
     } else if (strcmp(key, "ppflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -651,7 +633,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "ccflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -665,7 +647,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "xxflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -679,7 +661,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "ldflags") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -693,7 +675,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "do12345") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -707,7 +689,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "dopatch") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -721,7 +703,7 @@ int ppkg_available_info(const char * packageName, const char * targetPlatformNam
     } else if (strcmp(key, "install") == 0) {
         PPKGFormula * formula = NULL;
 
-        ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+        ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
         if (ret != PPKG_OK) {
             return ret;

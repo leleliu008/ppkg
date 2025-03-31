@@ -289,7 +289,7 @@ static int uppm_install_internal(const char * packageName, const UPPMFormula * f
     char   uppmHomeDIR[PATH_MAX];
     size_t uppmHomeDIRLength;
 
-    int ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    int ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

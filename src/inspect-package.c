@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "core/sysinfo.h"
+
 #include "ppkg.h"
 
 int ppkg_inspect_package(const char * package, const char * userSpecifiedTargetPlatformSpec, const char ** packageName, PPKGTargetPlatform * targetPlatform) {

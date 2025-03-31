@@ -1,34 +1,32 @@
 #include <stdio.h>
 
 #include <limits.h>
+#include <sys/syslimits.h>
 
 #include "core/self.h"
 
 #include "ppkg.h"
 
 int ppkg_about(const bool verbose) {
-    char   ppkgHomeDIR[PATH_MAX];
-    size_t ppkgHomeDIRLength;
+    char buf[PATH_MAX];
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(buf, NULL);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
     printf("ppkg.version : %s\n", PPKG_VERSION);
-    printf("ppkg.homedir : %s\n", ppkgHomeDIR);
+    printf("ppkg.homedir : %s\n", buf);
 
-    char * selfRealPath = self_realpath();
+    ret = selfpath(buf);
 
-    if (selfRealPath == NULL) {
+    if (ret == -1) {
         perror(NULL);
         return PPKG_ERROR;
     }
 
-    printf("ppkg.exepath : %s\n", selfRealPath);
-
-    free(selfRealPath);
+    printf("ppkg.exepath : %s\n", buf);
 
     printf("ppkg.website : %s\n\n", "https://github.com/leleliu008/ppkg");
    

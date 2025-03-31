@@ -1,9 +1,9 @@
-#include <math.h>
 #include <errno.h>
 #include <string.h>
 
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/syslimits.h>
 
 #include "core/sysinfo.h"
 #include "core/self.h"
@@ -126,7 +126,7 @@ int ppkg_upgrade_self(const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -424,42 +424,42 @@ finalize:
         return PPKG_ERROR;
     }
 
-    char * selfRealPath = self_realpath();
+    char selfPath[PATH_MAX];
 
-    if (selfRealPath == NULL) {
+    ret = selfpath(selfPath);
+
+    if (ret == -1) {
         perror(NULL);
         ret = PPKG_ERROR;
         goto finally;
     }
 
-    if (rename(upgradableExecutableFilePath, selfRealPath) != 0) {
+    if (rename(upgradableExecutableFilePath, selfPath) != 0) {
         if (errno == EXDEV) {
-            if (unlink(selfRealPath) != 0) {
-                perror(selfRealPath);
+            if (unlink(selfPath) != 0) {
+                perror(selfPath);
                 ret = PPKG_ERROR;
                 goto finally;
             }
 
-            ret = ppkg_copy_file(upgradableExecutableFilePath, selfRealPath);
+            ret = ppkg_copy_file(upgradableExecutableFilePath, selfPath);
 
             if (ret != PPKG_OK) {
                 goto finally;
             }
 
-            if (chmod(selfRealPath, S_IRWXU) != 0) {
-                perror(selfRealPath);
+            if (chmod(selfPath, S_IRWXU) != 0) {
+                perror(selfPath);
                 ret = PPKG_ERROR;
             }
         } else {
-            perror(selfRealPath);
+            perror(selfPath);
             ret = PPKG_ERROR;
             goto finally;
         }
     }
 
 finally:
-    free(selfRealPath);
-
     if (ret == PPKG_OK) {
         fprintf(stderr, "ppkg is up to date with version %s\n", latestVersion);
     } else {

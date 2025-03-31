@@ -468,9 +468,9 @@ int uppm_formula_lookup(const char * packageName, UPPMFormula * * out) {
     }
 
     char   uppmHomeDIR[PATH_MAX];
-    size_t uppmHomeDIRLength = 0U;
+    size_t uppmHomeDIRLength;
 
-    int ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    int ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

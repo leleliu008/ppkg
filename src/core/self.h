@@ -1,11 +1,14 @@
 #ifndef _SELF_H
 #define _SELF_H
 
-/** get the current executing executable's absolute file path.
+/** get the current running executable's absolute path.
  *
- *  On success, char* pointer is returned.
- *  On error, NULL is returned and errno is set to indicate the error.
+ *  the capacity of buf must be PATH_MAX
+ *
+ *  On success, 0 returned.
+ *
+ *  On error, -1 is returned and errno is set to indicate the error.
  */
-char* self_realpath();
+int selfpath(char buf[]);
 
 #endif

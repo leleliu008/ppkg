@@ -1,12 +1,12 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
+#include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
-
-#include "core/http.h"
 
 #include "sha256sum.h"
 
@@ -127,7 +127,7 @@ static int ppkg_fetch_file(const char * url, const char * uri, const char * expe
 int ppkg_fetch(const char * packageName, const char * targetPlatformName, const bool verbose) {
     PPKGFormula * formula = NULL;
 
-    int ret = ppkg_formula_lookup(packageName, targetPlatformName, &formula);
+    int ret = ppkg_formula_load(packageName, targetPlatformName, &formula);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -138,7 +138,7 @@ int ppkg_fetch(const char * packageName, const char * targetPlatformName, const 
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

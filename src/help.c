@@ -1,11 +1,12 @@
 #include <unistd.h>
+
 #include "core/log.h"
 
 int ppkg_help() {
     if (isatty(STDOUT_FILENO)) {
         const char * str = ""
         COLOR_GREEN
-        "A portable package manager for Unix-like system.\n\n"
+        "A portable package builder/manager for Unix-like system\n\n"
         "ppkg <ACTION> [ARGUMENT...]\n\n"
         "ppkg --help\n"
         "ppkg -h\n"
@@ -210,7 +211,7 @@ int ppkg_help() {
         printf("%s\n", str);
     } else {
         const char * str = ""
-        "A portable package manager for Unix-like system.\n\n"
+        "A portable package builder/manager for Unix-like system\n\n"
         "ppkg <ACTION> [ARGUMENT...]\n\n"
         "ppkg --help\n"
         "ppkg -h\n"

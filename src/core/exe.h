@@ -26,13 +26,19 @@ int exe_search(const char * commandName, char *** listP, const bool findAll);
 int exe_lookup(const char * commandName, char ** pathP);
 
 /** lookup the given command name in the PATH.
+ *  
+ *  the capacity of buf must be PATH_MAX
  *
  *  On success, path length is returned.
+ *
  *  If not found, 0 is returned.
+ *
  *  On error, -1 is returned and errno is set to indicate the error.
+ *
  *  On PATH is not set, -2 is returned.
+ *
  *  On PATH is set a empty string, -3 is returned.
  */
-int exe_where(const char * commandName, char buf[], size_t bufSize);
+int exe_where(const char * commandName, char buf[]);
 
 #endif

@@ -21,27 +21,9 @@
 #include <sys/sysctl.h>
 #endif
 
-#if defined (__OpenBSD__)
-#include <stdbool.h>
-
-static inline bool ispath(const char * p) {
-    for (;;) {
-        if (p[0] == '\0') {
-            return false;
-        }
-
-        if (p[0] == '/') {
-            return true;
-        }
-
-        p++;
-    }
-}
-#endif
-
 #include "self.h"
 
-char* self_realpath() {
+int selfpath(char buf[]) {
 #if defined (__APPLE__)
     // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dyld.3.html
     uint32_t bufSize = 0U;
@@ -50,123 +32,141 @@ char* self_realpath() {
     char path[bufSize];
     _NSGetExecutablePath(path, &bufSize);
 
-    return realpath(path, NULL);
+    realpath(path, buf);
+
+    return 0;
 #elif defined (__FreeBSD__)
     const int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
 
-    size_t bufLength = 0U;
+    size_t len;
 
-    if (sysctl(mib, 4, NULL, &bufLength, NULL, 0) < 0) {
-        return NULL;
+    if (sysctl(mib, 4, NULL, &len, NULL, 0) < 0) {
+        return -1;
     }
 
-    char * buf = (char*)calloc(bufLength + 1U, sizeof(char));
-
-    if (buf == NULL) {
-        errno = ENOMEM;
-        return NULL;
+    if (sysctl(mib, 4,  buf, &len, NULL, 0) < 0) {
+        return -1;
     }
 
-    if (sysctl(mib, 4, buf, &bufLength, NULL, 0) < 0) {
-        return NULL;
-    }
-
-    return buf;
+    return 0;
 #elif defined (__OpenBSD__)
     const int mib[4] = { CTL_KERN, KERN_PROC_ARGS, getpid(), KERN_PROC_ARGV };
-    size_t size;
 
-    if (sysctl(mib, 4, NULL, &size, NULL, 0) != 0) {
-        return NULL;
+    size_t len;
+
+    if (sysctl(mib, 4, NULL, &len, NULL, 0) != 0) {
+        return -1;
     }
 
-    char** argv = (char**)malloc(size);
+    char** argv = (char**)calloc(len, sizeof(char*));
 
     if (argv == NULL) {
         errno = ENOMEM;
-        return NULL;
+        return -1;
     }
-
-    memset(argv, 0, size);
 
     if (sysctl(mib, 4, argv, &size, NULL, 0) != 0) {
-        return NULL;
+        free(argv);
+        return -1;
     }
 
-    if (ispath(argv[0])) {
-        return realpath(argv[0], NULL);
+    char * p = argv[0];
+
+    int ispath;
+
+    for (;;) {
+        if (p[0] == '\0') {
+            ispath = 0;
+            break;
+        }
+
+        if (p[0] == '/') {
+            ispath = 1;
+            break;
+        }
+
+        p++;
+    }
+
+    if (ispath == 1) {
+        realpath(p, buf);
+        free(argv);
+        return 0;
     } else {
-        const char * const PATH = getenv("PATH");
-
-        // in fact, it shouldn’t happen
-        if (PATH == NULL) {
-            return NULL;
-        }
-
-        size_t PATHLength = strlen(PATH);
-
-        // in fact, it shouldn’t happen
-        if (PATHLength == 0U) {
-            return NULL;
-        }
-
-        size_t  PATH2Length = PATHLength + 1U;
-        char    PATH2[PATH2Length];
-        strncpy(PATH2, PATH, PATH2Length);
-
         struct stat st;
 
-        char buf[PATH_MAX];
+        char tmpBuf[PATH_MAX];
+        char outBuf[PATH_MAX];
 
-        int ret;
+        const char * p = getenv("PATH");
 
-        size_t commandNameLength = strlen(argv[0]);
+        while (p != NULL) {
+            for (int i = 0;; i++) {
+                if (p[i] == '\0') {
+                    p = NULL;
+                    tmpBuf[i] = '\0';
 
-        char * PATHItem = strtok(PATH2, ":");
+                    if (i != 0) {
+                        if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
+                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
 
-        while (PATHItem != NULL) {
-            if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-                ret = snprintf(buf, PATH_MAX, "%s/%s", PATHItem, argv[0]);
+                            if (n < 0) {
+                                return -1;
+                            }
 
-                if (ret < 0) {
-                    return -1;
-                }
+                            if (access(outBuf, X_OK) == 0) {
+                                strncpy(buf, outBuf, n);
 
-                if (access(buf, X_OK) == 0) {
-                    char * p = strdup(buf);
+                                buf[n] = '\0';
 
-                    if (p == NULL) {
-                        errno = ENOMEM;
-                        return NULL;
-                    } else {
-                        return p;
+                                return n;
+                            }
+                        }
                     }
-                }
-            }
 
-            PATHItem = strtok(NULL, ":");
+                    break;
+                }
+
+                if (p[i] == ':') {
+                    p += i + 1;
+                    tmpBuf[i] = '\0';
+
+                    if (i != 0) {
+                        if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
+                            int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
+
+                            if (n < 0) {
+                                return -1;
+                            }
+
+                            if (access(outBuf, X_OK) == 0) {
+                                strncpy(buf, outBuf, n);
+
+                                buf[n] = '\0';
+
+                                return n;
+                            }
+                        }
+                    }
+
+                    break;
+                }
+
+                tmpBuf[i] = p[i];
+            }
         }
 
-        // in fact, it shouldn’t happen
-        return NULL;
+        free(argv);
+        return 0;
     }
 #else
-    // PATH_MAX : maximum number of bytes in a pathname, including the terminating null character.
-    // https://pubs.opengroup.org/onlinepubs/009695399/basedefs/limits.h.html
-    char buf[PATH_MAX] = {0};
+    ssize_t n = readlink("/proc/self/exe", buf, PATH_MAX - 1U);
 
-    //  readlink() does not append a terminating null byte to buf.
-    if (readlink("/proc/self/exe", buf, PATH_MAX - 1U) == -1) {
-        return NULL;
-    }
-
-    char * p = strdup(buf);
-
-    if (p == NULL) {
-        errno = ENOMEM;
-        return NULL;
+    if (n == -1) {
+        return -1;
     } else {
-        return p;
+        buf[n] = '\0';
+        return 0;
     }
 #endif
 }

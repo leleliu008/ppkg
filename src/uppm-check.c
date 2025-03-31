@@ -41,9 +41,9 @@ int uppm_check_if_the_given_package_is_available(const char * packageName) {
     }
 
     char   uppmHomeDIR[PATH_MAX];
-    size_t uppmHomeDIRLength = 0U;
+    size_t uppmHomeDIRLength;
 
-    ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -78,7 +78,7 @@ int uppm_check_if_the_given_package_is_installed(const char * packageName) {
     char   uppmHomeDIR[PATH_MAX];
     size_t uppmHomeDIRLength;
 
-    ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

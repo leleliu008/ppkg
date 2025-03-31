@@ -1,24 +1,49 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h>
+#include <limits.h>
 
 #include "ppkg.h"
 
 int ppkg_formula_bat(const char * packageName, const char * targetPlatformName) {
-    char * formulaFilePath = NULL;
+    char formulaFilePath[PATH_MAX];
 
-    int ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
+    int ret = ppkg_formula_path(packageName, targetPlatformName, formulaFilePath);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    execlp("bat", "bat", "--paging=never", formulaFilePath, NULL);
+    //////////////////////////////////////////////////////////////////////////////
 
-    perror("bat");
+    char   ppkgHomeDIR[PATH_MAX];
+    size_t ppkgHomeDIRLength;
 
-    free(formulaFilePath);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
+
+    if (ret != PPKG_OK) {
+        return ret;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    const char * const str = "/uppm/installed/bat/bin/bat";
+
+    size_t batCommandPathCapacity = ppkgHomeDIRLength + strlen(str) + sizeof(char);
+    char   batCommandPath[batCommandPathCapacity];
+
+    ret = snprintf(batCommandPath, batCommandPathCapacity, "%s%s", ppkgHomeDIR, str);
+
+    if (ret < 0) {
+        perror(NULL);
+        return PPKG_ERROR;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+
+    execlp(batCommandPath, batCommandPath, "--paging=never", formulaFilePath, NULL);
+    perror(batCommandPath);
 
     return PPKG_ERROR;
 }

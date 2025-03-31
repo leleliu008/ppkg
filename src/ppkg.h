@@ -3,14 +3,22 @@
 
 #include <config.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "core/sysinfo.h"
 #include "core/tar.h"
 
 
 #define PPKG_PACKAGE_NAME_PATTERN "^[A-Za-z0-9+-._@]{1,50}$"
+
+#define PPKG_METADATA_DIR_PATH_RELATIVE_TO_INSTALLED_ROOT "/.ppkg"
+#define PPKG_MANIFEST_FILEPATH_RELATIVE_TO_INSTALLED_ROOT "/.ppkg/MANIFEST.txt"
+#define PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT "/.ppkg/RECEIPT.yml"
+#define PPKG_RECEIPT_FILEPATH_RELATIVE_TO_METADATA_DIR "/RECEIPT.yml"
+
+#define PPKG_FORMULA_REPO_CONFIG_FILPATH_RELATIVE_TO_REPO_ROOT "/.ppkg-formula-repo.yml"
+
 
  
 #define PPKG_OK                     0
@@ -65,16 +73,31 @@
 #define PPKG_ERROR_NETWORK_BASE    150
 
 
+typedef enum {
+    PPKGPlatformID_linux,
+    PPKGPlatformID_macos,
+    PPKGPlatformID_freebsd,
+    PPKGPlatformID_openbsd,
+    PPKGPlatformID_netbsd,
+    PPKGPlatformID_dragonflybsd
+} PPKGPlatformID;
+
 typedef struct {
+    char * path;
+
     char * pkgtype;
 
-    char * summary;
     char * version;
+
+    char * summary;
+
     char * license;
 
     char * web_url;
+    char * web_uri;
 
     char * git_url;
+    char * git_uri;
     char * git_sha;
     char * git_ref;
     size_t git_nth;
@@ -87,36 +110,51 @@ typedef struct {
     char * fix_url;
     char * fix_uri;
     char * fix_sha;
+    char * fix_opt;
+    char * patches;
 
     char * res_url;
     char * res_uri;
     char * res_sha;
+    char * reslist;
 
     char * dep_pkg;
     char * dep_upp;
     char * dep_pym;
     char * dep_plm;
+    char * dep_lib;
 
     char * bsystem;
     char * bscript;
 
     bool   binbstd;
-    bool   parallel;
 
     bool   symlink;
 
-    bool   sfslink;
+    bool   movable;
+
+    bool   support_lto;
+
+    bool   support_build_in_parallel;
+
+    bool   support_create_fully_statically_linked_executable;
+    bool   support_create_mostly_statically_linked_executable;
+
+    char * disable;
 
     char * ppflags;
     char * ccflags;
     char * xxflags;
     char * ldflags;
 
+    char * dofetch;
     char * do12345;
     char * dopatch;
+    char * prepare;
     char * install;
+    char * dotweak;
 
-    char * path;
+    char * caveats;
 
     bool web_url_is_calculated;
     bool version_is_calculated;
@@ -132,17 +170,17 @@ typedef struct {
     bool useBuildSystemNinja;
     bool useBuildSystemCargo;
     bool useBuildSystemGolang;
+    bool useBuildSystemGN;
 
 } PPKGFormula;
 
 int  ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out);
-int  ppkg_formula_lookup(const char * packageName, const char * targetPlatformName, PPKGFormula * * formula);
-int  ppkg_formula_locate(const char * packageName, const char * targetPlatformName, char * * out);
+int  ppkg_formula_path(const char * packageName, const char * targetPlatformName, char formulaFilePath[]);
+int  ppkg_formula_load(const char * packageName, const char * targetPlatformName, PPKGFormula * * formula);
 int  ppkg_formula_edit(const char * packageName, const char * targetPlatformName, const char * editor);
 int  ppkg_formula_view(const char * packageName, const char * targetPlatformName, const bool raw);
 int  ppkg_formula_cat (const char * packageName, const char * targetPlatformName);
 int  ppkg_formula_bat (const char * packageName, const char * targetPlatformName);
-
 
 void ppkg_formula_free(PPKGFormula * formula);
 void ppkg_formula_dump(PPKGFormula * formula);
@@ -312,9 +350,29 @@ int ppkg_buildinfo();
 
 int ppkg_about(const bool verbose);
 
-int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize);
+/** get the ppkg home directory absolute path
+ *
+ *  the capacity of buf must be PATH_MAX
+ *
+ *  len can be null if you do not want to known the length of filled string
+ *
+ *  on success, 0 is returned and buf will be filled with a null-terminated string
+ *
+ *  on error, none-zero value will be returned and buf remains unchanged.
+ */
+int ppkg_home_dir(char buf[], size_t * len);
 
-int ppkg_session_dir(char buf[], size_t bufSize, size_t * outSize);
+/** get the session directory absolute path
+ *
+ *  the capacity of buf must be PATH_MAX
+ *
+ *  len can be null if you do not want to known the length of filled string
+ *
+ *  on success, 0 is returned and buf will be filled with a null-terminated string
+ *
+ *  on error, none-zero value will be returned and buf remains unchanged.
+ */
+int ppkg_session_dir(char buf[], size_t * len);
 
 int ppkg_search(const char * regPattern, const char * targetPlatformName, const bool verbose);
 
@@ -326,16 +384,22 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
 
 int ppkg_logs(const char * packageName, const PPKGTargetPlatform * targetPlatform);
 
-int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose);
+int ppkg_bundle(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose);
 
 typedef enum {
+    PPKGDependsOutputType_D2,
     PPKGDependsOutputType_DOT,
     PPKGDependsOutputType_BOX,
     PPKGDependsOutputType_SVG,
     PPKGDependsOutputType_PNG,
 } PPKGDependsOutputType;
 
-int ppkg_depends(const char * packageName, const char * targetPlatformName, PPKGDependsOutputType outputType, const char * outputPath);
+typedef enum {
+    PPKGDependsOutputDiagramEngine_DOT,
+    PPKGDependsOutputDiagramEngine_D2
+} PPKGDependsOutputDiagramEngine;
+
+int ppkg_depends(const char * packageName, const char * targetPlatformName, PPKGDependsOutputType outputType, const char * outputPath, PPKGDependsOutputDiagramEngine engine);
 
 int ppkg_fetch(const char * packageName, const char * targetPlatformName, const bool verbose);
 
@@ -349,16 +413,15 @@ typedef enum {
 } PPKGLogLevel;
 
 typedef enum {
-    PPKGBuildType_release,
-    PPKGBuildType_debug
-} PPKGBuildType;
+    PPKGBuildProfile_release,
+    PPKGBuildProfile_debug
+} PPKGBuildProfile;
 
 typedef enum {
-    PPKGLinkType_shared_most,
-    PPKGLinkType_shared_full,
-    PPKGLinkType_static_most,
-    PPKGLinkType_static_full
-} PPKGLinkType;
+    PPKGLinkage_shared,
+    PPKGLinkage_static_most,
+    PPKGLinkage_static_full
+} PPKGLinkage;
 
 typedef struct {
     bool   exportCompileCommandsJson;
@@ -377,8 +440,8 @@ typedef struct {
 
     size_t parallelJobsCount;
 
-    PPKGBuildType buildType;
-    PPKGLinkType  linkType;
+    PPKGBuildProfile buildType;
+    PPKGLinkage  linkType;
 
     PPKGLogLevel  logLevel;
 } PPKGInstallOptions;
@@ -440,5 +503,7 @@ int ppkg_mkdir_p(const char * dirPath, const bool verbose);
 int ppkg_rm_rf(const char * dirPath, const bool preserveRoot, const bool verbose);
 
 int ppkg_setenv_SSL_CERT_FILE();
+
+int ppkg_get_platform_id_by_name(const char * const platformName, PPKGPlatformID * const platformID);
 
 #endif

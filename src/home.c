@@ -2,18 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/syslimits.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #include "ppkg.h"
 
-int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
+int ppkg_home_dir(char buf[], size_t * len) {
     if (buf == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
-    }
-
-    if (bufSize == 0U) {
-        return PPKG_ERROR_ARG_IS_INVALID;
     }
 
     const char * const ppkgHomeDIR = getenv("PPKG_HOME");
@@ -29,44 +27,53 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
             return PPKG_ERROR_ENV_HOME_NOT_SET;
         }
 
-        size_t defaultUppmHomeDIRCapacity = strlen(userHomeDIR) + 7U;
-        char   defaultUppmHomeDIR[defaultUppmHomeDIRCapacity];
+        char   tmpBuf[PATH_MAX];
+        size_t tmpBufLength;
 
-        int ret = snprintf(defaultUppmHomeDIR, defaultUppmHomeDIRCapacity, "%s/.ppkg", userHomeDIR);
-
-        if (ret < 0) {
-            perror(NULL);
-            return PPKG_ERROR;
+        for (int i = 0; ; i++) {
+            if (userHomeDIR[i] == '\0') {
+                tmpBufLength = i;
+                break;
+            } else {
+                tmpBuf[i] = userHomeDIR[i];
+            }
         }
 
-        size_t defaultUppmHomeDIRLength = ret;
+        char * p = tmpBuf + tmpBufLength;
+
+        const char * const str = "/.ppkg";
+
+        for (int i = 0; ; i++) {
+            p[i] = str[i];
+
+            if (str[i] == '\0') {
+                tmpBufLength += i;
+                break;
+            }
+        }
 
         struct stat st;
 
-        if (stat(defaultUppmHomeDIR, &st) == 0) {
+        if (stat(tmpBuf, &st) == 0) {
             if (!S_ISDIR(st.st_mode)) {
-                fprintf(stderr, "%s was expected to be a directory, but it was not.\n", defaultUppmHomeDIR);
+                fprintf(stderr, "%s was expected to be a directory, but it was not.\n", tmpBuf);
                 return PPKG_ERROR;
             }
         } else {
-            if (mkdir(defaultUppmHomeDIR, S_IRWXU) != 0) {
+            if (mkdir(tmpBuf, S_IRWXU) != 0) {
                 if (errno != EEXIST) {
-                    perror(defaultUppmHomeDIR);
+                    perror(tmpBuf);
                     return PPKG_ERROR;
                 }
             }
         }
 
-        size_t m = bufSize - 1U;
+        strncpy(buf, tmpBuf, tmpBufLength);
 
-        size_t n = (m > defaultUppmHomeDIRLength) ? defaultUppmHomeDIRLength : m;
+        buf[tmpBufLength] = '\0';
 
-        strncpy(buf, defaultUppmHomeDIR, n);
-
-        buf[n] = '\0';
-
-        if (outSize != NULL) {
-            (*outSize) = n;
+        if (len != NULL) {
+            (*len) = tmpBufLength;
         }
     } else {
         if (ppkgHomeDIR[0] == '\0') {
@@ -90,18 +97,14 @@ int ppkg_home_dir(char buf[], size_t bufSize, size_t * outSize) {
             }
         }
 
-        size_t ppkgHomeDIRLength = strlen(ppkgHomeDIR);
-
-        size_t m = bufSize - 1U;
-
-        size_t n = (m > ppkgHomeDIRLength) ? ppkgHomeDIRLength : m;
+        size_t n = strlen(ppkgHomeDIR);
 
         strncpy(buf, ppkgHomeDIR, n);
 
         buf[n] = '\0';
 
-        if (outSize != NULL) {
-            (*outSize) = n;
+        if (len != NULL) {
+            (*len) = n;
         }
     }
 

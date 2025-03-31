@@ -345,7 +345,7 @@ int uppm_receipt_parse(const char * packageName, UPPMReceipt * * out) {
     char   uppmHomeDIR[PATH_MAX];
     size_t uppmHomeDIRLength;
 
-    ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

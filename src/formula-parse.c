@@ -67,14 +67,13 @@ typedef enum {
     FORMULA_KEY_CODE_install,
     FORMULA_KEY_CODE_symlink,
 
-    FORMULA_KEY_CODE_sfslink,
+    FORMULA_KEY_CODE_movable,
+    FORMULA_KEY_CODE_disable,
 
     FORMULA_KEY_CODE_ppflags,
     FORMULA_KEY_CODE_ccflags,
     FORMULA_KEY_CODE_xxflags,
     FORMULA_KEY_CODE_ldflags,
-
-    FORMULA_KEY_CODE_parallel,
 } PPKGFormulaKeyCode;
 
 void ppkg_formula_dump(PPKGFormula * formula) {
@@ -114,14 +113,14 @@ void ppkg_formula_dump(PPKGFormula * formula) {
     printf("bsystem: %s\n", formula->bsystem);
     printf("bscript: %s\n", formula->bscript);
     printf("binbstd: %d\n", formula->binbstd);
-    printf("parallel: %d\n", formula->parallel);
 
     printf("do12345: %s\n", formula->do12345);
     printf("dopatch: %s\n", formula->dopatch);
     printf("install: %s\n", formula->install);
     printf("symlink: %d\n", formula->symlink);
 
-    printf("sfslink: %d\n", formula->sfslink);
+    printf("movable: %d\n", formula->movable);
+    printf("disable: %s\n", formula->disable);
 
     printf("path:    %s\n", formula->path);
 
@@ -363,16 +362,16 @@ static PPKGFormulaKeyCode ppkg_formula_key_code_from_key_name(char * key) {
         return FORMULA_KEY_CODE_install;
     } else if (strcmp(key, "symlink") == 0) {
         return FORMULA_KEY_CODE_symlink;
-    } else if (strcmp(key, "sfslink") == 0) {
-        return FORMULA_KEY_CODE_sfslink;
+    } else if (strcmp(key, "movable") == 0) {
+        return FORMULA_KEY_CODE_movable;
+    } else if (strcmp(key, "disable") == 0) {
+        return FORMULA_KEY_CODE_disable;
     } else if (strcmp(key, "bsystem") == 0) {
         return FORMULA_KEY_CODE_bsystem;
     } else if (strcmp(key, "bscript") == 0) {
         return FORMULA_KEY_CODE_bscript;
     } else if (strcmp(key, "binbstd") == 0) {
         return FORMULA_KEY_CODE_binbstd;
-    } else if (strcmp(key, "parallel") == 0) {
-        return FORMULA_KEY_CODE_parallel;
     } else {
         return FORMULA_KEY_CODE_unknown;
     }
@@ -459,23 +458,16 @@ static void ppkg_formula_set_value(PPKGFormulaKeyCode keyCode, char * value, PPK
                 //TODO
             }
             break;
-        case FORMULA_KEY_CODE_sfslink:
+        case FORMULA_KEY_CODE_movable:
             if (strcmp(value, "1") == 0) {
-                formula->sfslink = true;
+                formula->movable = true;
             } else if (strcmp(value, "0") == 0) {
-                formula->sfslink = false;
+                formula->movable = false;
             } else {
                 //TODO
             }
             break;
-        case FORMULA_KEY_CODE_parallel:
-            if (strcmp(value, "1") == 0) {
-                formula->parallel = true;
-            } else if (strcmp(value, "0") == 0) {
-                formula->parallel = false;
-            } else {
-                //TODO
-            }
+        case FORMULA_KEY_CODE_disable:
             break;
         default:
             break;
@@ -788,11 +780,32 @@ static int ppkg_formula_check(PPKGFormula * formula, const char * formulaFilePat
 
     if (formula->web_url == NULL) {
         if (formula->git_url == NULL) {
-            fprintf(stderr, "scheme error in formula file: %s : web-url mapping not found.\n", formulaFilePath);
-            return PPKG_ERROR_FORMULA_SCHEME;
+            if (formula->src_url == NULL) {
+                fprintf(stderr, "scheme error in formula file: %s : web-url mapping not found.\n", formulaFilePath);
+                return PPKG_ERROR_FORMULA_SCHEME;
+            } else {
+                char * p = regex_extract(formula->src_url, "https://git(hub|lab).com/[^/]*/[^/]*/");
+
+                if (p == NULL) {
+                    if (errno == 0) {
+                        fprintf(stderr, "scheme error in formula file: %s : web-url mapping not found.\n", formulaFilePath);
+                        return PPKG_ERROR_FORMULA_SCHEME;
+                    } else {
+                        perror(NULL);
+                        return PPKG_ERROR;
+                    }
+                } else {
+                    formula->web_url_is_calculated = true;
+                    formula->web_url = p;
+                }
+            }
         } else {
-            formula->web_url = strdup(formula->git_url);
             formula->web_url_is_calculated = true;
+            formula->web_url = strdup(formula->git_url);
+
+            if (formula->web_url == NULL) {
+                return PPKG_ERROR_MEMORY_ALLOCATE;
+            }
         }
     }
 
@@ -1172,9 +1185,12 @@ int ppkg_formula_parse(const char * formulaFilePath, PPKGFormula * * out) {
 
                         formula->git_nth = 1U;
                         formula->symlink = true;
-                        formula->sfslink = true;
+                        formula->movable = true;
                         formula->binbstd = false;
-                        formula->parallel = true;
+                        formula->support_lto = true;
+                        formula->support_build_in_parallel = true;
+                        formula->support_create_fully_statically_linked_executable = true;
+                        formula->support_create_mostly_statically_linked_executable = true;
                     }
 
                     ppkg_formula_set_value(formulaKeyCode, (char*)token.data.scalar.value, formula);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/syslimits.h>
 #include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
@@ -179,7 +180,7 @@ int exe_lookup(const char * commandName, char ** pathP) {
     return 0;
 }
 
-int exe_where(const char * commandName, char buf[], size_t bufSize) {
+int exe_where(const char * commandName, char buf[]) {
     if (commandName == NULL) {
         errno = EINVAL;
         return -1;
@@ -195,58 +196,75 @@ int exe_where(const char * commandName, char buf[], size_t bufSize) {
         return -1;
     }
 
-    if (bufSize == 0U) {
-        errno = EINVAL;
-        return -1;
-    }
+    const char * p = getenv("PATH");
 
-    const char * const PATH = getenv("PATH");
-
-    if (PATH == NULL) {
+    if (p == NULL) {
         return -2;
     }
 
-    if (PATH[0] == '\0') {
+    if (p[0] == '\0') {
         return -3;
     }
 
-    size_t  PATH2Capacity = strlen(PATH) + 1U;
-    char    PATH2[PATH2Capacity];
-    strncpy(PATH2, PATH, PATH2Capacity);
-
     struct stat st;
 
-    size_t commandNameLength = strlen(commandName);
+    char tmpBuf[PATH_MAX];
+    char outBuf[PATH_MAX];
 
-    char * PATHItem = strtok(PATH2, ":");
+    while (p != NULL) {
+        for (int i = 0;; i++) {
+            if (p[i] == '\0') {
+                p = NULL;
+                tmpBuf[i] = '\0';
 
-    char   pathBuf[PATH_MAX];
+                if (i != 0) {
+                    if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
+                        int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
 
-    while (PATHItem != NULL) {
-        if ((stat(PATHItem, &st) == 0) && S_ISDIR(st.st_mode)) {
-            size_t max = strlen(PATHItem) + commandNameLength + 2U;
+                        if (n < 0) {
+                            return -1;
+                        }
 
-            int ret = snprintf(pathBuf, max, "%s/%s", PATHItem, commandName);
+                        if (access(outBuf, X_OK) == 0) {
+                            strncpy(buf, outBuf, n);
 
-            if (ret < 0) {
-                return -1;
+                            buf[n] = '\0';
+
+                            return n;
+                        }
+                    }
+                }
+
+                break;
             }
 
-            size_t pathLength = ret;
+            if (p[i] == ':') {
+                p += i + 1;
+                tmpBuf[i] = '\0';
 
-            if (access(pathBuf, X_OK) == 0) {
-                size_t m = bufSize - 1U;
-                size_t n = (m > pathLength) ? pathLength : m;
+                if (i != 0) {
+                    if ((stat(tmpBuf, &st) == 0) && S_ISDIR(st.st_mode)) {
+                        int n = snprintf(outBuf, PATH_MAX, "%s/%s", tmpBuf, commandName);
 
-                strncpy(buf, pathBuf, n);
+                        if (n < 0) {
+                            return -1;
+                        }
 
-                buf[n] = '\0';
+                        if (access(outBuf, X_OK) == 0) {
+                            strncpy(buf, outBuf, n);
 
-                return n;
+                            buf[n] = '\0';
+
+                            return n;
+                        }
+                    }
+                }
+
+                break;
             }
+
+            tmpBuf[i] = p[i];
         }
-
-        PATHItem = strtok(NULL, ":");
     }
 
     return 0;

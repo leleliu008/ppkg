@@ -9,7 +9,7 @@
 
 #include "ppkg.h"
 
-int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose) {
+int ppkg_bundle(const char * packageName, const PPKGTargetPlatform * targetPlatform, ArchiveType outputType, const char * outputPath, const bool verbose) {
     if (targetPlatform == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
@@ -94,16 +94,16 @@ int ppkg_pack(const char * packageName, const PPKGTargetPlatform * targetPlatfor
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    char   sessionDIR[PATH_MAX] = {0};
+    char   sessionDIR[PATH_MAX];
     size_t sessionDIRLength;
 
-    ret = ppkg_session_dir(sessionDIR, PATH_MAX, &sessionDIRLength);
+    ret = ppkg_session_dir(sessionDIR, &sessionDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

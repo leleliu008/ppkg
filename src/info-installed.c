@@ -35,7 +35,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -65,10 +65,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
+        size_t receiptFilePathLength = packageInstalledDIRLength + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   receiptFilePath[receiptFilePathLength];
 
-        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);
@@ -89,7 +89,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -119,10 +119,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
+        size_t receiptFilePathLength = packageInstalledDIRLength + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   receiptFilePath[receiptFilePathLength];
 
-        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);
@@ -133,10 +133,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
             return PPKG_ERROR_PACKAGE_IS_BROKEN;
         }
 
-        size_t manifestFilePathLength = packageInstalledDIRLength + 20U;
+        size_t manifestFilePathLength = packageInstalledDIRLength + sizeof(PPKG_MANIFEST_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   manifestFilePath[manifestFilePathLength];
 
-        ret = snprintf(manifestFilePath, manifestFilePathLength, "%s/.ppkg/MANIFEST.txt", packageInstalledDIR);
+        ret = snprintf(manifestFilePath, manifestFilePathLength, "%s%s", packageInstalledDIR, PPKG_MANIFEST_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);
@@ -188,7 +188,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         char   ppkgHomeDIR[PATH_MAX] = {0};
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -218,10 +218,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
+        size_t receiptFilePathLength = packageInstalledDIRLength + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   receiptFilePath[receiptFilePathLength];
 
-        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);
@@ -242,7 +242,7 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
         char   ppkgHomeDIR[PATH_MAX];
         size_t ppkgHomeDIRLength;
 
-        int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+        int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
         if (ret != PPKG_OK) {
             return ret;
@@ -268,10 +268,10 @@ int ppkg_installed_info(const char * packageName, const PPKGTargetPlatform * tar
             return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
         }
 
-        size_t receiptFilePathLength = packageInstalledDIRLength + 20U;
+        size_t receiptFilePathLength = packageInstalledDIRLength + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   receiptFilePath[receiptFilePathLength];
 
-        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);

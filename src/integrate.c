@@ -12,7 +12,7 @@ int ppkg_integrate_zsh_completion(const char * outputDIR, const bool verbose) {
     char   ppkgHomeDIR[PATH_MAX] = {0};
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

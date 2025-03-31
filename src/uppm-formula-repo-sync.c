@@ -57,8 +57,8 @@ static int uppm_formula_repo_url_of_official_core(char buf[], const size_t bufSi
         return PPKG_ERROR;
     }
 
-    if (osVersMajor > 13) {
-        osVersMajor = 13;
+    if (osVersMajor > 14) {
+        osVersMajor = 14;
     }
 
     ret = snprintf(buf, bufSize, "https://github.com/leleliu008/uppm-package-repository-%s-%d.0-%s", osType, osVersMajor, osArch);
@@ -71,7 +71,7 @@ static int uppm_formula_repo_url_of_official_core(char buf[], const size_t bufSi
 #elif defined (__NetBSD__)
     ret = snprintf(buf, bufSize, "https://github.com/leleliu008/uppm-package-repository-%s-%s-%s", osType, osVers, osArch);
 #else
-    ret = snprintf(buf, bufSize, "https://github.com/leleliu008/uppm-formula-repository-%s-%s", osType, osArch);
+    ret = snprintf(buf, bufSize, "https://github.com/leleliu008/uppm-package-repository-%s-%s", osType, osArch);
 #endif
 
     if (ret < 0) {
@@ -163,7 +163,7 @@ int uppm_formula_repo_sync_official_core() {
     char   uppmHomeDIR[PATH_MAX];
     size_t uppmHomeDIRLength;
 
-    int ret = uppm_home_dir(uppmHomeDIR, PATH_MAX, &uppmHomeDIRLength);
+    int ret = uppm_home_dir(uppmHomeDIR, &uppmHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

@@ -1,5 +1,7 @@
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 
 #include <unistd.h>
 #include <limits.h>
@@ -8,34 +10,24 @@
 #include "uppm.h"
 #include "ppkg.h"
 
-int uppm_home_dir(char buf[], size_t bufSize, size_t * outSize) {
+int uppm_home_dir(char buf[], size_t * len) {
     if (buf == NULL) {
         return PPKG_ERROR_ARG_IS_NULL;
     }
 
-    if (bufSize == 0U) {
-        return PPKG_ERROR_ARG_IS_INVALID;
-    }
+    char   tmpBuf[PATH_MAX];
+    size_t tmpBufLength;
 
-    char   ppkgHomeDIR[PATH_MAX];
-    size_t ppkgHomeDIRLength = 0U;
-
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(tmpBuf, &tmpBufLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    ret = snprintf(buf, bufSize, "%s/uppm", ppkgHomeDIR);
+    const char * const str = "/uppm";
+    size_t strLength = strlen(str);
 
-    if (ret < 0) {
-        perror(NULL);
-        return PPKG_ERROR;
-    }
-
-    if (outSize != NULL) {
-        (*outSize) = ret;
-    }
+    strncpy(tmpBuf + tmpBufLength, str, strLength + sizeof(char));
 
     struct stat st;
 
@@ -51,6 +43,12 @@ int uppm_home_dir(char buf[], size_t bufSize, size_t * outSize) {
                 return PPKG_ERROR;
             }
         }
+    }
+
+    tmpBufLength += strLength;
+
+    if (len != NULL) {
+        (*len) = tmpBufLength;
     }
 
     return PPKG_OK;

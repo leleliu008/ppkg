@@ -73,10 +73,10 @@ static int _list_dir(const PPKGTargetPlatform * targetPlatform, const char * pac
             continue;
         }
 
-        size_t receiptFilePathCapacity = packageInstalledDIRCapacity + 20U;
+        size_t receiptFilePathCapacity = packageInstalledDIRCapacity + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
         char   receiptFilePath[receiptFilePathCapacity];
 
-        ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+        ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
         if (ret < 0) {
             perror(NULL);
@@ -100,7 +100,7 @@ static int _list_dir(const PPKGTargetPlatform * targetPlatform, const char * pac
 
             PPKGFormula * formula = NULL;
 
-            ret = ppkg_formula_lookup(dir_entry->d_name, targetPlatform->name, &formula);
+            ret = ppkg_formula_load(dir_entry->d_name, targetPlatform->name, &formula);
 
             if (ret == PPKG_OK) {
                 if (strcmp(receipt->version, formula->version) != 0) {
@@ -166,7 +166,7 @@ int ppkg_list_the__outdated_packages(const PPKGTargetPlatform * targetPlatform, 
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;

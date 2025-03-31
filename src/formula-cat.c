@@ -3,13 +3,14 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "ppkg.h"
 
 int ppkg_formula_cat(const char * packageName, const char * targetPlatformName) {
-    char * formulaFilePath = NULL;
+    char formulaFilePath[PATH_MAX];
 
-    int ret = ppkg_formula_locate(packageName, targetPlatformName, &formulaFilePath);
+    int ret = ppkg_formula_path(packageName, targetPlatformName, formulaFilePath);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -19,14 +20,10 @@ int ppkg_formula_cat(const char * packageName, const char * targetPlatformName) 
 
     if (fd == -1) {
         perror(formulaFilePath);
-        free(formulaFilePath);
         return PPKG_ERROR;
     }
 
     printf("formula: %s\n", formulaFilePath);
-
-    free(formulaFilePath);
-    formulaFilePath = NULL;
 
     char buf[1024];
 

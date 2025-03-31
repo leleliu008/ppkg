@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <limits.h>
 #include <sys/stat.h>
+
+#include "core/sysinfo.h"
 
 #include "ppkg.h"
 
-int ppkg_formula_locate(const char * packageName, const char * targetPlatformName, char ** out) {
+int ppkg_formula_path(const char * packageName, const char * targetPlatformName, char out[]) {
     int ret = ppkg_check_if_the_given_argument_matches_package_name_pattern(packageName);
 
     if (ret != PPKG_OK) {
@@ -57,14 +60,8 @@ int ppkg_formula_locate(const char * packageName, const char * targetPlatformNam
 
         if (stat(formulaFilePath1, &st) == 0 && S_ISREG(st.st_mode)) {
             ppkg_formula_repo_list_free(formulaRepoList);
-
-            (*out) = strdup(formulaFilePath1);
-
-            if (*out == NULL) {
-                return PPKG_ERROR_MEMORY_ALLOCATE;
-            } else {
-                return PPKG_OK;
-            }
+            strncpy(out, formulaFilePath1, formulaFilePath1Capacity);
+            return PPKG_OK;
         }
 
         ////////////////////////////////////////////////////////////////
@@ -81,14 +78,8 @@ int ppkg_formula_locate(const char * packageName, const char * targetPlatformNam
 
         if (stat(formulaFilePath2, &st) == 0 && S_ISREG(st.st_mode)) {
             ppkg_formula_repo_list_free(formulaRepoList);
-
-            (*out) = strdup(formulaFilePath2);
-
-            if (*out == NULL) {
-                return PPKG_ERROR_MEMORY_ALLOCATE;
-            } else {
-                return PPKG_OK;
-            }
+            strncpy(out, formulaFilePath2, formulaFilePath2Capacity);
+            return PPKG_OK;
         }
     }
 

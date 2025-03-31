@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 
+#include "core/sysinfo.h"
 #include "core/regex/regex.h"
 
 #include "ppkg.h"
@@ -117,7 +118,7 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName, const
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -143,10 +144,10 @@ int ppkg_check_if_the_given_package_is_installed(const char * packageName, const
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    size_t receiptFilePathCapacity = packageInstalledDIRCapacity + 19U;
+    size_t receiptFilePathCapacity = packageInstalledDIRCapacity + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
     char   receiptFilePath[receiptFilePathCapacity];
 
-    ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+    ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
     if (ret < 0) {
         perror(NULL);
@@ -168,7 +169,7 @@ int ppkg_check_if_the_given_package_is_outdated(const char * packageName, const 
     PPKGFormula * formula = NULL;
     PPKGReceipt * receipt = NULL;
 
-    int ret = ppkg_formula_lookup(packageName, targetPlatform->name, &formula);
+    int ret = ppkg_formula_load(packageName, targetPlatform->name, &formula);
 
     if (ret != PPKG_OK) {
         goto finalize;

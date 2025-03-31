@@ -17,7 +17,7 @@ int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPl
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -47,10 +47,10 @@ int ppkg_uninstall(const char * packageName, const PPKGTargetPlatform * targetPl
 
     if (lstat(packageInstalledLinkDIR, &st) == 0) {
         if (S_ISLNK(st.st_mode)) {
-            size_t receiptFilePathCapacity = packageInstalledLinkDIRCapacity + 20U;
+            size_t receiptFilePathCapacity = packageInstalledLinkDIRCapacity + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
             char   receiptFilePath[receiptFilePathCapacity];
 
-            ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s/.ppkg/RECEIPT.yml", packageInstalledLinkDIR);
+            ret = snprintf(receiptFilePath, receiptFilePathCapacity, "%s%s", packageInstalledLinkDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
             if (ret < 0) {
                 perror(NULL);

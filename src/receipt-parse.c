@@ -570,20 +570,20 @@ int ppkg_receipt_parse(const char * packageName, const PPKGTargetPlatform * targ
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
     }
 
-    size_t receiptFilePathLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + 34U;
+    size_t receiptFilePathLength = ppkgHomeDIRLength + targetPlatform->nameLen + targetPlatform->versLen + targetPlatform->archLen + strlen(packageName) + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT) + 14U;
     char * receiptFilePath = (char*)calloc(receiptFilePathLength, sizeof(char));
 
     if (receiptFilePath == NULL) {
         return PPKG_ERROR_MEMORY_ALLOCATE;
     }
 
-    if (snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s-%s-%s/%s/.ppkg/RECEIPT.yml", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName) < 0) {
+    if (snprintf(receiptFilePath, receiptFilePathLength, "%s/installed/%s-%s-%s/%s%s", ppkgHomeDIR, targetPlatform->name, targetPlatform->vers, targetPlatform->arch, packageName, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT) < 0) {
         perror(NULL);
         return PPKG_ERROR;
     }

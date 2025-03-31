@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "ppkg.h"
 #include "uppm.h"
@@ -21,7 +22,7 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -43,10 +44,10 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
         return PPKG_ERROR_PACKAGE_NOT_INSTALLED;
     }
 
-    size_t receiptFilePathLength = packageInstalledDIRCapacity + 20U;
+    size_t receiptFilePathLength = packageInstalledDIRCapacity + sizeof(PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
     char   receiptFilePath[receiptFilePathLength];
 
-    ret = snprintf(receiptFilePath, receiptFilePathLength, "%s/.ppkg/RECEIPT.yml", packageInstalledDIR);
+    ret = snprintf(receiptFilePath, receiptFilePathLength, "%s%s", packageInstalledDIR, PPKG_RECEIPT_FILEPATH_RELATIVE_TO_INSTALLED_ROOT);
 
     if (ret < 0) {
         perror(NULL);
@@ -59,10 +60,12 @@ int ppkg_tree(const char * packageName, const PPKGTargetPlatform * targetPlatfor
 
     //////////////////////////////////////////////////////////////////////////////
 
-    size_t treeCommandPathCapacity = ppkgHomeDIRLength + 30U;
+    const char * const str = "/uppm/installed/tree/bin/tree";
+
+    size_t treeCommandPathCapacity = ppkgHomeDIRLength + strlen(str) + sizeof(char);
     char   treeCommandPath[treeCommandPathCapacity];
 
-    ret = snprintf(treeCommandPath, treeCommandPathCapacity, "%s/uppm/installed/tree/bin/tree", ppkgHomeDIR);
+    ret = snprintf(treeCommandPath, treeCommandPathCapacity, "%s%s", ppkgHomeDIR, str);
 
     if (ret < 0) {
         perror(NULL);

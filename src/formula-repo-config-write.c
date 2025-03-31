@@ -37,10 +37,10 @@ int ppkg_formula_repo_config_write(const char * formulaRepoDIRPath, const char *
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t formulaRepoConfigFilePathCapacity = strlen(formulaRepoDIRPath) + 24U;
+    size_t formulaRepoConfigFilePathCapacity = strlen(formulaRepoDIRPath) + sizeof(PPKG_FORMULA_REPO_CONFIG_FILPATH_RELATIVE_TO_REPO_ROOT);
     char   formulaRepoConfigFilePath[formulaRepoConfigFilePathCapacity];
 
-    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s/.ppkg-formula-repo.yml", formulaRepoDIRPath);
+    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s%s", formulaRepoDIRPath, PPKG_FORMULA_REPO_CONFIG_FILPATH_RELATIVE_TO_REPO_ROOT);
 
     if (ret < 0) {
         perror(NULL);

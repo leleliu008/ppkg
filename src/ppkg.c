@@ -326,6 +326,7 @@ int ppkg_main(int argc, char* argv[]) {
         }
 
         PPKGDependsOutputType outputType = PPKGDependsOutputType_BOX;
+        PPKGDependsOutputDiagramEngine engine = PPKGDependsOutputDiagramEngine_DOT;
 
         const char * targetPlatformName = NULL;
 
@@ -377,7 +378,10 @@ int ppkg_main(int argc, char* argv[]) {
                     return PPKG_ERROR_ARG_IS_EMPTY;
                 }
 
-                if (strcmp(type, "dot") == 0) {
+                if (strcmp(type, "d2") == 0) {
+                    outputType = PPKGDependsOutputType_D2;
+                    i++;
+                } else if (strcmp(type, "dot") == 0) {
                     outputType = PPKGDependsOutputType_DOT;
                     i++;
                 } else if (strcmp(type, "box") == 0) {
@@ -407,13 +411,34 @@ int ppkg_main(int argc, char* argv[]) {
                 }
 
                 i++;
+            } else if (strncmp(argv[i], "--engine=", 9) == 0) {
+                const char * engineName = &argv[i][9];
+
+                if (engineName == NULL) {
+                    fprintf(stderr, "--engine=<ENGINE>, <ENGINE> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
+
+                if (engineName[0] == '\0') {
+                    fprintf(stderr, "--engine=<ENGINE>, <ENGINE> should be a non-empty string.\n");
+                    return PPKG_ERROR_ARG_IS_EMPTY;
+                }
+
+                if (strcmp(engineName, "d2") == 0) {
+                    engine = PPKGDependsOutputDiagramEngine_D2;
+                } else if (strcmp(engineName, "dot") == 0) {
+                    engine = PPKGDependsOutputDiagramEngine_DOT;
+                } else {
+                    LOG_ERROR2("unsupported diagram engine: ", engineName);
+                    return PPKG_ERROR_ARG_IS_INVALID;
+                }
             } else {
                 LOG_ERROR2("unrecognized argument: ", argv[i]);
                 return PPKG_ERROR_ARG_IS_INVALID;
             }
         }
 
-        int ret = ppkg_depends(argv[2], targetPlatformName, outputType, outputPath);
+        int ret = ppkg_depends(argv[2], targetPlatformName, outputType, outputPath, engine);
 
         if (ret == PPKG_ERROR_ARG_IS_INVALID) {
             fprintf(stderr, "Usage: %s depends <PACKAGE-NAME>, <PACKAGE-NAME> does not match pattern %s\n", argv[0], PPKG_PACKAGE_NAME_PATTERN);
@@ -539,18 +564,18 @@ int ppkg_main(int argc, char* argv[]) {
                 installOptions.enableCcache = true;
             } else if (strcmp(argv[i], "--enable-bear") == 0) {
                 installOptions.enableBear = true;
-            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
-                installOptions.buildType = PPKGBuildType_debug;
-            } else if (strcmp(argv[i], "--build-type=release") == 0) {
-                installOptions.buildType = PPKGBuildType_release;
-            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
-                installOptions.linkType = PPKGLinkType_static_full;
-            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_full;
-            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
-                installOptions.linkType = PPKGLinkType_static_most;
-            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_most;
+            } else if (strcmp(argv[i], "--profile=debug") == 0) {
+                installOptions.buildType = PPKGBuildProfile_debug;
+            } else if (strcmp(argv[i], "--profile=release") == 0) {
+                installOptions.buildType = PPKGBuildProfile_release;
+            } else if (strcmp(argv[i], "--linkage=static") == 0) {
+                installOptions.linkType = PPKGLinkage_static_full;
+            } else if (strcmp(argv[i], "--linkage=static-pie") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
+            } else if (strcmp(argv[i], "--linkage=static-most") == 0) {
+                installOptions.linkType = PPKGLinkage_static_most;
+            } else if (strcmp(argv[i], "--linkage=shared") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
             } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
                 char * jobsStr = &argv[i][7];
 
@@ -678,18 +703,18 @@ int ppkg_main(int argc, char* argv[]) {
                 installOptions.enableCcache = true;
             } else if (strcmp(argv[i], "--enable-bear") == 0) {
                 installOptions.enableBear = true;
-            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
-                installOptions.buildType = PPKGBuildType_debug;
-            } else if (strcmp(argv[i], "--build-type=release") == 0) {
-                installOptions.buildType = PPKGBuildType_release;
-            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
-                installOptions.linkType = PPKGLinkType_static_full;
-            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_full;
-            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
-                installOptions.linkType = PPKGLinkType_static_most;
-            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_most;
+            } else if (strcmp(argv[i], "--profile=debug") == 0) {
+                installOptions.buildType = PPKGBuildProfile_debug;
+            } else if (strcmp(argv[i], "--profile=release") == 0) {
+                installOptions.buildType = PPKGBuildProfile_release;
+            } else if (strcmp(argv[i], "--linkage=static") == 0) {
+                installOptions.linkType = PPKGLinkage_static_full;
+            } else if (strcmp(argv[i], "--linkage=static-pie") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
+            } else if (strcmp(argv[i], "--linkage=static-most") == 0) {
+                installOptions.linkType = PPKGLinkage_static_most;
+            } else if (strcmp(argv[i], "--linkage=shared") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
             } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
                 char * jobsStr = &argv[i][7];
 
@@ -817,18 +842,18 @@ int ppkg_main(int argc, char* argv[]) {
                 installOptions.enableCcache = true;
             } else if (strcmp(argv[i], "--enable-bear") == 0) {
                 installOptions.enableBear = true;
-            } else if (strcmp(argv[i], "--build-type=debug") == 0) {
-                installOptions.buildType = PPKGBuildType_debug;
-            } else if (strcmp(argv[i], "--build-type=release") == 0) {
-                installOptions.buildType = PPKGBuildType_release;
-            } else if (strcmp(argv[i], "--link-type=static-full") == 0) {
-                installOptions.linkType = PPKGLinkType_static_full;
-            } else if (strcmp(argv[i], "--link-type=shared-full") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_full;
-            } else if (strcmp(argv[i], "--link-type=static-most") == 0) {
-                installOptions.linkType = PPKGLinkType_static_most;
-            } else if (strcmp(argv[i], "--link-type=shared-most") == 0) {
-                installOptions.linkType = PPKGLinkType_shared_most;
+            } else if (strcmp(argv[i], "--profile=debug") == 0) {
+                installOptions.buildType = PPKGBuildProfile_debug;
+            } else if (strcmp(argv[i], "--profile=release") == 0) {
+                installOptions.buildType = PPKGBuildProfile_release;
+            } else if (strcmp(argv[i], "--linkage=static") == 0) {
+                installOptions.linkType = PPKGLinkage_static_full;
+            } else if (strcmp(argv[i], "--linkage=static-pie") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
+            } else if (strcmp(argv[i], "--linkage=static-most") == 0) {
+                installOptions.linkType = PPKGLinkage_static_most;
+            } else if (strcmp(argv[i], "--linkage=shared") == 0) {
+                installOptions.linkType = PPKGLinkage_shared;
             } else if (strncmp(argv[i], "--jobs=", 7) == 0) {
                 char * jobsStr = &argv[i][7];
 
@@ -1544,12 +1569,12 @@ int ppkg_main(int argc, char* argv[]) {
         return ret;
     }
 
-    if (strcmp(argv[1], "pack") == 0) {
+    if (strcmp(argv[1], "bundle") == 0) {
         if (argv[2] == NULL) {
-            fprintf(stderr, "Usage: %s pack <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified.\n", argv[0]);
+            fprintf(stderr, "Usage: %s bundle <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified.\n", argv[0]);
             return PPKG_ERROR_ARG_IS_NULL;
         } else if (argv[2][0] == '\0') {
-            fprintf(stderr, "Usage: %s pack <PACKAGE-SPEC>, <PACKAGE-SPEC> must be a non-empty string.\n", argv[0]);
+            fprintf(stderr, "Usage: %s bundle <PACKAGE-SPEC>, <PACKAGE-SPEC> must be a non-empty string.\n", argv[0]);
             return PPKG_ERROR_ARG_IS_EMPTY;
         }
 
@@ -1633,7 +1658,7 @@ int ppkg_main(int argc, char* argv[]) {
             return ret;
         }
 
-        ret = ppkg_pack(packageName, &targetPlatform, outputType, outputPath, verbose);
+        ret = ppkg_bundle(packageName, &targetPlatform, outputType, outputPath, verbose);
 
         if (ret == PPKG_ERROR_ARG_IS_NULL) {
             fprintf(stderr, "Usage: %s %s <PACKAGE-NAME> [-t tar.gz|tar.xz|tar.bz2|zip], <PACKAGE-NAME> is not given.\n", argv[0], argv[1]);

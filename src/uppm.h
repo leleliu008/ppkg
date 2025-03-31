@@ -69,7 +69,17 @@ void uppm_receipt_dump(UPPMReceipt * receipt);
 
 //////////////////////////////////////////////////////////////////////
 
-int uppm_home_dir(char buf[], size_t bufSize, size_t * outSize);
+/** get the uppm home directory absolute path
+ *
+ *  the capacity of buf must be PATH_MAX
+ *
+ *  len can be null if you do not want to known the length of filled string
+ *
+ *  on success, 0 is returned and buf will be filled with a null-terminated string
+ *
+ *  on error, none-zero value will be returned and buf remains unchanged.
+ */
+int uppm_home_dir(char buf[], size_t * len);
 
 int uppm_install(const char * packageName, const bool verbose, const bool force);
 

@@ -24,7 +24,7 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
     char   ppkgHomeDIR[PATH_MAX];
     size_t ppkgHomeDIRLength;
 
-    int ret = ppkg_home_dir(ppkgHomeDIR, PATH_MAX, &ppkgHomeDIRLength);
+    int ret = ppkg_home_dir(ppkgHomeDIR, &ppkgHomeDIRLength);
 
     if (ret != PPKG_OK) {
         return ret;
@@ -47,10 +47,10 @@ int ppkg_formula_repo_remove(const char * formulaRepoName) {
         return PPKG_ERROR;
     }
 
-    size_t formulaRepoConfigFilePathCapacity = formulaRepoPathCapacity + 24U;
+    size_t formulaRepoConfigFilePathCapacity = formulaRepoPathCapacity + sizeof(PPKG_FORMULA_REPO_CONFIG_FILPATH_RELATIVE_TO_REPO_ROOT);
     char   formulaRepoConfigFilePath[formulaRepoConfigFilePathCapacity];
 
-    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s/.ppkg-formula-repo.yml", formulaRepoPath);
+    ret = snprintf(formulaRepoConfigFilePath, formulaRepoConfigFilePathCapacity, "%s%s", formulaRepoPath, PPKG_FORMULA_REPO_CONFIG_FILPATH_RELATIVE_TO_REPO_ROOT);
 
     if (ret < 0) {
         perror(NULL);

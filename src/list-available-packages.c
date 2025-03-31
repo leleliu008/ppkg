@@ -5,6 +5,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include "core/sysinfo.h"
+
 #include "ppkg.h"
 
 static int _list_dir(const char * formulaDIR, const char * targetPlatformName, const bool verbose, PPKGPackageNameFilter packageNameFilter, const void * payload, size_t * counter) {
