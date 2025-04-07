@@ -2,44 +2,39 @@
 #include <stdlib.h>
 
 #include <unistd.h>
-
-#if defined (__linux__)
-#include <linux/limits.h>
-#else
 #include <limits.h>
-#endif
 
 int main(int argc, char* argv[]) {
-    char selfExecPath[PATH_MAX];
+    char selfExePath[PATH_MAX];
 
-    int ret = readlink("/proc/self/exe", selfExecPath, PATH_MAX);
+    int n = readlink("/proc/self/exe", selfExePath, PATH_MAX);
 
-    if (ret == -1) {
+    if (n == -1) {
         perror("/proc/self/exe");
         return 1;
     }
 
-    selfExecPath[ret] = '\0';
+    selfExePath[n] = '\0';
 
     ////////////////////////////////////////////////////
 
     int slashIndex = -1;
 
-    char realExePath[ret + 5];
+    char realExePath[n + 5];
 
-    for (int i = 0; i < ret; i++) {
-        realExePath[i] = selfExecPath[i];
+    for (int i = 0; i < n; i++) {
+        realExePath[i] = selfExePath[i];
 
-        if (selfExecPath[i] == '/') {
+        if (selfExePath[i] == '/') {
             slashIndex = i;
         }
     }
 
-    realExePath[ret    ] = '.';
-    realExePath[ret + 1] = 'e';
-    realExePath[ret + 2] = 'x';
-    realExePath[ret + 3] = 'e';
-    realExePath[ret + 4] = '\0';
+    realExePath[n    ] = '.';
+    realExePath[n + 1] = 'e';
+    realExePath[n + 2] = 'x';
+    realExePath[n + 3] = 'e';
+    realExePath[n + 4] = '\0';
 
     ////////////////////////////////////////////////////
 
@@ -51,7 +46,7 @@ int main(int argc, char* argv[]) {
     char libraryPath[PATH_MAX];
 
     for (int i = 0; i <= slashIndex; i++) {
-        libraryPath[i] = selfExecPath[i];
+        libraryPath[i] = selfExePath[i];
     }
 
     for (int i = 1; ; i++) {
@@ -66,7 +61,7 @@ int main(int argc, char* argv[]) {
 
     char dynamicLoaderPath[PATH_MAX];
 
-    ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", libraryPath, dynamicLoaderName);
+    int ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", libraryPath, dynamicLoaderName);
 
     if (ret < 0) {
         perror(NULL);
@@ -81,7 +76,7 @@ int main(int argc, char* argv[]) {
     argv2[1] = (char*)"--library-path";
     argv2[2] = libraryPath;
     argv2[3] = (char*)"--argv0";
-    argv2[4] = selfExecPath;
+    argv2[4] = selfExePath;
     argv2[5] = realExePath;
 
     for (int i = 1; i < argc; i++) {
