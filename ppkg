@@ -2995,15 +2995,21 @@ EOF
                     LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
                 fi
 
-                run chmod -x "$FILEPATH"
+                #run chmod -x "$FILEPATH"
 
                 run mv "$FILEPATH" "$FILEPATH.exe"
 
-                if [ ! -f "$FILEPATH.c" ] ; then
+                if [ -f "$FILEPATH.c" ] ; then
+                    gsed -i -e "s|DYNAMIC_LOADER_FILENAME|$DYNAMIC_LOADER_FILENAME|" -e "s|LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH|$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH|" "$FILEPATH.c"
+                else
                     __generate_wrapper_c_source_file
                 fi
 
-                run cc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
+                if [ -z "$DYNAMIC_LOADER_FILENAME" ] ; then
+                    run cc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
+                else
+                    run cc -static -std=gnu11 -Os -s -flto -D__USE_DYNAMIC_LOADER__ -o "$FILEPATH" "$FILEPATH.c"
+                fi
             done < ts.txt
 
             if [ -n "$DYNAMIC_LOADER_FILENAME" ] ; then
@@ -10670,7 +10676,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.22.0
+PPKG_VERSION=0.22.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
