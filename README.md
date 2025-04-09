@@ -731,6 +731,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`reslist`|optional|multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
 |`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
+|`dep-res`|optional|a space-separated list of   `well-known resources` that are needed by this package when installing. the only possible value is `sys/queue.h` at the moment.|
 |`dep-lib`|optional|a space-separated list of libraries that will be linked. library name starts with `-l` will be directly passed to the linker. otherwise, it will be recognized as a `pkg-config` package name and it will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
 |`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
 |`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|

@@ -1034,6 +1034,10 @@ filetype_from_url() {
     # space-separated ppkg packages that are depended by this package when installing and/or runtime, which will be installed via ppkg
     unset PACKAGE_DEP_PKG
 
+    # space-separated ppkg resources that are needed by this package when installing
+    unset PACKAGE_DEP_RES
+
+    # space-separated ppkg pkg-config packages that are depended by this package while linking
     unset PACKAGE_DEP_LIB
 
     unset PACKAGE_PPFLAGS
@@ -1113,6 +1117,7 @@ filetype_from_url() {
     PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_RES="$(yq '.dep-res | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1713,6 +1718,7 @@ __search_packages() {
         --arg patches "$PACKAGE_PATCHES" \
         --arg reslist "$PACKAGE_RESLIST" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
+        --arg dep_res "$PACKAGE_DEP_RES" \
         --arg dep_lib "$PACKAGE_DEP_LIB" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
@@ -1758,6 +1764,7 @@ __search_packages() {
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
+    "dep-res":$dep_res,
     "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
@@ -1819,6 +1826,7 @@ res-url: $PACKAGE_RES_URL
 res-uri: $PACKAGE_RES_URI
 res-sha: $PACKAGE_RES_SHA
 dep-pkg: $PACKAGE_DEP_PKG
+dep-res: $PACKAGE_DEP_RES
 dep-lib: $PACKAGE_DEP_LIB
 dep-upp: $PACKAGE_DEP_UPP
 dep-pym: $PACKAGE_DEP_PYM
@@ -1892,6 +1900,7 @@ PACKAGE_USE_BSYSTEM_AUTOGENSH
 PACKAGE_USE_BSYSTEM_AUTOTOOLS
 PACKAGE_USE_BSYSTEM_CONFIGURE
 PACKAGE_DEP_PKG
+PACKAGE_DEP_RES
 PACKAGE_DEP_LIB
 PACKAGE_DEP_UPP
 PACKAGE_DEP_PYM
@@ -2098,6 +2107,7 @@ EOF
         --arg patches "$RECEIPT_PACKAGE_PATCHES" \
         --arg reslist "$RECEIPT_PACKAGE_RESLIST" \
         --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
+        --arg dep_res "$RECEIPT_PACKAGE_DEP_RES" \
         --arg dep_lib "$RECEIPT_PACKAGE_DEP_LIB" \
         --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
         --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
@@ -2146,6 +2156,7 @@ EOF
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
+    "dep-res":$dep_res,
     "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
@@ -6797,6 +6808,14 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    if [ "$TARGET_PLATFORM_VERS" = musl ] && [ "$PACKAGE_DEP_RES" = 'sys/queue.h' ] ; then
+        wfetch 'https://raw.githubusercontent.com/leleliu008/sys-queue.h/v1/sys-queue.h' --no-buffer
+        run install -d "$PACKAGE_INSTALLING_INC_DIR/sys"
+        run mv sys-queue.h "$PACKAGE_INSTALLING_INC_DIR/sys/queue.h"
+    fi
+
+    #########################################################################################
+
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         step "tree files of the installing top directory"
         run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
@@ -8852,6 +8871,7 @@ install_mans() {
     unset RECEIPT_PACKAGE_RESLIST
 
     unset RECEIPT_PACKAGE_DEP_PKG
+    unset RECEIPT_PACKAGE_DEP_RES
     unset RECEIPT_PACKAGE_DEP_LIB
     unset RECEIPT_PACKAGE_DEP_UPP
     unset RECEIPT_PACKAGE_DEP_PYM
@@ -8918,6 +8938,7 @@ install_mans() {
     RECEIPT_PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_RES="$(yq '.dep-res | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -10676,7 +10697,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.22.1
+PPKG_VERSION=0.22.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
