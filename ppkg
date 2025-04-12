@@ -1045,13 +1045,10 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_ONSTART
-    unset PACKAGE_ONREADY
-    unset PACKAGE_DOEXTRA
-
+    unset PACKAGE_DOFETCH
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
-    unset PACKAGE_DOSETUP
+    unset PACKAGE_PREPARE
     unset PACKAGE_DOBUILD
     unset PACKAGE_DOTWEAK
 
@@ -1084,14 +1081,28 @@ filetype_from_url() {
     # whether to build in build script directory, otherwise build in build dir
     unset PACKAGE_BINBSTD
 
-    # whether to build in parallel
-    unset PACKAGE_PARALLEL
+    unset PACKAGE_LTOABLE
+
+    # whether the installed files can be moved/copied to other locations
+    unset PACKAGE_MOVABLE
+
+    unset PACKAGE_EXETYPE
+    unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
+    unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
+    unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
+
+    PACKAGE_LTOABLE=1
+    PACKAGE_MOVABLE=1
+    PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
+    PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+    PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
 
     unset PACKAGE_DEVELOPER
 
     #########################################################################################
 
     PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_EXETYPE="$(yq '.exetype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1132,13 +1143,13 @@ filetype_from_url() {
     PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LTOABLE="$(yq '.ltoable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_DOFETCH="$(yq '.dofetch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOSETUP="$(yq '.dosetup | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1148,7 +1159,7 @@ filetype_from_url() {
     PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1363,7 +1374,7 @@ filetype_from_url() {
             gmake)       PACKAGE_USE_BSYSTEM_GMAKE=1     ;;
             rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
-            cabal)       PACKAGE_USE_BSYSTEM_CABAL=1     ;;
+            cabal)       PACKAGE_USE_BSYSTEM_CABAL=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
             waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
         esac
@@ -1406,10 +1417,11 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_GMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
     [ "$PACKAGE_USE_BSYSTEM_XMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"
     [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
-    [ "$PACKAGE_USE_BSYSTEM_CABAL"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cabal-install"
     [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
     [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
     [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+
+    [ "$PACKAGE_USE_BSYSTEM_CABAL"     = 1 ] && PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG libncurses libffi libgmp libz"
 
     #########################################################################################
 
@@ -1429,12 +1441,6 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_PARALLEL" ] ; then
-        PACKAGE_PARALLEL=1
-    fi
-
-    #########################################################################################
-
     PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
 
     #########################################################################################
@@ -1448,6 +1454,26 @@ filetype_from_url() {
                     PACKAGE_PKGTYPE=lib ;;
                *)   PACKAGE_PKGTYPE=exe ;;
         esac
+    fi
+
+    #########################################################################################
+
+    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+        for item in $PACKAGE_EXETYPE
+        do
+            case $item in
+                ~)  item="${item#'~'}"
+                    case $item in
+                        static)      PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
+                        static-pie)  PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
+                        static-most) PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
+                        *)  abort 1 "unrecognized exe type: $item"
+                    esac
+            esac
+        done
+    else
+        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+        PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
     fi
 }
 
@@ -1723,12 +1749,12 @@ __search_packages() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
-        --arg onstart "$PACKAGE_ONSTART" \
-        --arg onready "$PACKAGE_ONREADY" \
-        --arg doextra "$PACKAGE_DOEXTRA" \
+        --arg dofetch "$PACKAGE_DOFETCH" \
+        --arg ltoable "$PACKAGE_LTOABLE" \
+        --arg movable "$PACKAGE_MOVABLE" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
-        --arg dosetup "$PACKAGE_DOSETUP" \
+        --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg bindenv "$PACKAGE_BINDENV" \
@@ -1739,7 +1765,7 @@ __search_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg parallel $PACKAGE_PARALLEL \
+        --arg parallel $PACKAGE_SUPPORT_BUILD_IN_PARALLEL \
         --arg developer "$PACKAGE_DEVELOPER" \
 '{
     "pkgname":$pkgname,
@@ -1777,12 +1803,12 @@ __search_packages() {
     "ldflags":$ldflags,
     "parallel":$parallel,
     "developer":$developer,
-    "onstart":$onstart,
-    "onready":$onready,
-    "doextra":$doextra,
+    "dofetch":$dofetch,
+    "ltoable":$ltoable,
+    "movable":$movable,
     "do12345":$do12345,
     "dopatch":$dopatch,
-    "dosetup":$dosetup,
+    "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak,
     "bindenv":$bindenv,
@@ -1837,7 +1863,7 @@ ppflags: $PACKAGE_PPFLAGS
 ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
-parallel: $PACKAGE_PARALLEL
+parallel: $PACKAGE_SUPPORT_BUILD_IN_PARALLEL
 installed: $PACKAGE_INSTALLED
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -1911,7 +1937,7 @@ PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
 PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
-PACKAGE_PARALLEL
+PACKAGE_SUPPORT_BUILD_IN_PARALLEL
 PACKAGE_DEVELOPER
 EOF
 }
@@ -1928,17 +1954,17 @@ EOF
         --json)
             __info_the_given_available_package_as_json "$1"
             ;;
-        onstart)
+        dofetch)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONSTART"
+            printf '%s\n' "$PACKAGE_DOFETCH"
             ;;
-        onready)
+        ltoable)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONREADY"
+            printf '%s\n' "$PACKAGE_LTOABLE"
             ;;
-        doextra)
+        movable)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOEXTRA"
+            printf '%s\n' "$PACKAGE_MOVABLE"
             ;;
         do12345)
             __load_formula_of_the_given_package "$1"
@@ -1948,9 +1974,9 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOPATCH"
             ;;
-        dosetup)
+        prepare)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOSETUP"
+            printf '%s\n' "$PACKAGE_PREPARE"
             ;;
         install)
             __load_formula_of_the_given_package "$1"
@@ -2112,12 +2138,12 @@ EOF
         --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
         --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
-        --arg onstart "$RECEIPT_PACKAGE_ONSTART" \
-        --arg onready "$RECEIPT_PACKAGE_ONREADY" \
-        --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
+        --arg dofetch "$RECEIPT_PACKAGE_DOFETCH" \
+        --arg ltoable "$RECEIPT_PACKAGE_LTOABLE" \
+        --arg movable "$RECEIPT_PACKAGE_MOVABLE" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
-        --arg dosetup "$RECEIPT_PACKAGE_DOSETUP" \
+        --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg bindenv "$RECEIPT_PACKAGE_BINDENV" \
@@ -2128,7 +2154,7 @@ EOF
         --arg xxflags "$RECEIPT_PACKAGE_XXFLAGS" \
         --arg ppflags "$RECEIPT_PACKAGE_PPFLAGS" \
         --arg ldflags "$RECEIPT_PACKAGE_LDFLAGS" \
-        --arg parallel $RECEIPT_PACKAGE_PARALLEL \
+        --arg parallel $RECEIPT_PACKAGE_SUPPORT_BUILD_IN_PARALLEL \
         --arg developer "$RECEIPT_PACKAGE_DEVELOPER" \
         --arg builtby "$RECEIPT_PACKAGE_BUILTBY" \
         --arg builtat "$RECEIPT_PACKAGE_BUILTAT" \
@@ -2169,12 +2195,12 @@ EOF
     "ldflags":$ldflags,
     "parallel":$parallel,
     "developer":$developer,
-    "onstart":$onstart,
-    "onready":$onready,
-    "doextra":$doextra,
+    "dofetch":$dofetch,
+    "ltoable":$ltoable,
+    "movable":$movable,
     "do12345":$do12345,
     "dopatch":$dopatch,
-    "dosetup":$dosetup,
+    "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak,
     "bindenv":$bindenv,
@@ -3881,6 +3907,38 @@ add_ldflags() {
 
 # https://cabal.readthedocs.io/en/3.14/cabal-project-description-file.html
 cabal_v2_install() {
+    if [ -z "$BOOTSTRAP_HASKELL_GHC_VERSION" ] ; then
+        export BOOTSTRAP_HASKELL_GHC_VERSION='9.8.2'
+    fi
+
+    export BOOTSTRAP_HASKELL_CABAL_VERSION='3.14.1.1'
+    export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
+    export BOOTSTRAP_HASKELL_VERBOSE=1
+    export BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1
+
+    unset  BOOTSTRAP_HASKELL_INSTALL_HLS
+    unset  BOOTSTRAP_HASKELL_CABAL_XDG
+    unset  BOOTSTRAP_HASKELL_DOWNLOADER
+    unset  BOOTSTRAP_HASKELL_ADJUST_BASHRC
+    unset  BOOTSTRAP_HASKELL_MINIMAL
+
+    unset  GHCUP_USE_XDG_DIRS
+    unset  GHCUP_BASE_URL
+
+    export GHCUP_INSTALL_BASE_PREFIX="$PACKAGE_WORKING_DIR"
+
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        DEBUG_CABAL=1
+    fi
+
+    wfetch 'https://get-ghcup.haskell.org' -o ghcup-installer.sh
+    gsed -i '/GHCUP_INSTALL_BASE_PREFIX:=/d'  ghcup-installer.sh
+    run sh ghcup-installer.sh
+
+    export LD_LIBRARY_PATH="$libncurses_LIBRARY_DIR:$libgmp_LIBRARY_DIR"
+
+    export PATH="$GHCUP_INSTALL_BASE_PREFIX/.ghcup/bin:$PATH"
+
     if [ ! -f cabal.project ] ; then
         cat > cabal.project <<EOF
 packages: ./*.cabal
@@ -3915,9 +3973,11 @@ EOF
         CABAL_ARGS="$CABAL_ARGS --enable-executable-stripping"
     fi
 
-    run cabal --version
-    run cabal update
-    run cabal v2-install "$CABAL_ARGS" "$@"
+    CABAL=$(command -v cabal) || abort 1 "command not found: cabal"
+
+    run "$CABAL" --version
+    run "$CABAL" update
+    run "$CABAL" v2-install "$CABAL_ARGS" "$@"
 }
 
 # }}}
@@ -6007,28 +6067,39 @@ EOF
     unset PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
     unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
-    case $PACKAGE_PKGTYPE in
-        exe)
-            if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+    [ "$PACKAGE_PKGTYPE" = exe ] && {
+        if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+            if [ "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
             else
+                if [ "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+                    note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
+                    export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                else
+                    note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables."
+                fi
+            fi
+        else
+            if [ "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
             fi
-            ;;
-        pie)
-            export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-
-            if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
-            fi
-    esac
+        fi
+    }
 
     #########################################################################################
 
-    if [ "$PACKAGE_PARALLEL" = 1 ] ; then
-        BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
+    if [ "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" = 1 ] ; then
+        if [ -z "$BUILD_NJOBS" ] ; then
+            BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
+        fi
     else
         BUILD_NJOBS=1
+    fi
+
+    #########################################################################################
+
+    if [ "$PACKAGE_LTOABLE" != 1 ] ; then
+        ENABLE_LTO=0
     fi
 
     #########################################################################################
@@ -6084,18 +6155,6 @@ EOF
     PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
     PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_ONSTART" ] && {
-        step "onstart"
-
-        eval "
-onstart() {
-$PACKAGE_ONSTART
-}"
-        onstart
-    }
 
     #########################################################################################
 
@@ -6639,71 +6698,79 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "fetch resources"
+    step "dofetch"
 
-    case $PACKAGE_SRC_URL in
-        '')
-            if [ -n "$PACKAGE_GIT_URL" ] ; then
-                unset GIT_FETCH_URL
+    if [ -n "$PACKAGE_DOFETCH" ] ; then
+        eval "
+dofetch() {
+$PACKAGE_DOFETCH
+}"
+        dofetch
+    else
+        case $PACKAGE_SRC_URL in
+            '')
+                if [ -n "$PACKAGE_GIT_URL" ] ; then
+                    unset GIT_FETCH_URL
 
-                if [ -z "$PPKG_URL_TRANSFORM" ] ; then
-                    GIT_FETCH_URL="$PACKAGE_GIT_URL"
-                else
-                    GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-                fi
+                    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+                        GIT_FETCH_URL="$PACKAGE_GIT_URL"
+                    else
+                        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+                    fi
 
-                if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                    if [ -z "$PACKAGE_GIT_REF" ] ; then
+                    if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                        if [ -z "$PACKAGE_GIT_REF" ] ; then
+                            GIT_BRANCH_NAME=master
+                            GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                        else
+                            GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                            GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                        fi
+                    else
                         GIT_BRANCH_NAME=master
-                        GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-                    else
-                        GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                        GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                        GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
                     fi
-                else
-                    GIT_BRANCH_NAME=master
-                    GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-                fi
 
-                if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                    PACKAGE_GIT_NTH=1
-                fi
-
-                if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                    if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                        GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                    else
-                        GIT_FETCH_EXTRA_OPTIONS=
+                    if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                        PACKAGE_GIT_NTH=1
                     fi
-                else
-                    GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+
+                    if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+                        if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                            GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                        else
+                            GIT_FETCH_EXTRA_OPTIONS=
+                        fi
+                    else
+                        GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+                    fi
+
+                    run cd "$PACKAGE_INSTALLING_SRC_DIR"
+
+                    run git -c init.defaultBranch=master init
+                    run git remote add origin "$GIT_FETCH_URL"
+                    run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+                    run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+
+                    git_submodule_update_recursive
                 fi
+                ;;
+            dir://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                ;;
+            file://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                ;;
+            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+        esac
 
-                run cd "$PACKAGE_INSTALLING_SRC_DIR"
+        if [ -n    "$PACKAGE_FIX_URL" ] ; then
+            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+        fi
 
-                run git -c init.defaultBranch=master init
-                run git remote add origin "$GIT_FETCH_URL"
-                run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-                run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-
-                git_submodule_update_recursive
-            fi
-            ;;
-        dir://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        file://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-    esac
-
-    if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
-    fi
-
-    if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        if [ -n    "$PACKAGE_RES_URL" ] ; then
+            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        fi
     fi
 
     #########################################################################################
@@ -6828,20 +6895,6 @@ $DOT_CONTENT
             run ls -l "$PACKAGE_BSCRIPT_DIR"
         fi
     fi
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_ONREADY" ] && {
-        step "onready"
-
-        cd "$PACKAGE_BSCRIPT_DIR"
-
-        eval "
-onready() {
-$PACKAGE_ONREADY
-}"
-        onready "$1"
-    }
 
     #########################################################################################
 
@@ -7851,14 +7904,14 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DOSETUP" ] && {
-        step "dosetup for target"
+    [ -n "$PACKAGE_PREPARE" ] && {
+        step "prepare for target"
 
         eval "
-    dosetup() {
-$PACKAGE_DOSETUP
+    prepare() {
+$PACKAGE_PREPARE
 }"
-        dosetup
+        prepare
     }
 
     #########################################################################################
@@ -7949,22 +8002,6 @@ EOF
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DOEXTRA" ] && {
-        step "doextra"
-
-        eval "
-doextra() {
-$PACKAGE_DOEXTRA
-}"
-        doextra
-    }
-
-    #########################################################################################
-
-    __tweak_pc_files
-
-    #########################################################################################
-
     [ -n "$PACKAGE_DOTWEAK" ] && {
         step "dotweak"
 
@@ -7976,6 +8013,10 @@ $PACKAGE_DOTWEAK
 }"
         dotweak
     }
+
+    #########################################################################################
+
+    __tweak_pc_files
 
     #########################################################################################
 
@@ -8146,7 +8187,7 @@ $PACKAGE_DOTWEAK
     grep -q '^git-url: ' RECEIPT.yml || gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
     grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
     grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
-    grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_PARALLEL" >> RECEIPT.yml
+    grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" >> RECEIPT.yml
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' RECEIPT.yml || {
@@ -8880,13 +8921,13 @@ install_mans() {
     unset RECEIPT_PACKAGE_BSYSTEM
     unset RECEIPT_PACKAGE_BSCRIPT
 
-    unset RECEIPT_PACKAGE_ONSTART
-    unset RECEIPT_PACKAGE_ONREADY
-    unset RECEIPT_PACKAGE_DOEXTRA
+    unset RECEIPT_PACKAGE_DOFETCH
+    unset RECEIPT_PACKAGE_LTOABLE
+    unset RECEIPT_PACKAGE_MOVABLE
 
     unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
-    unset RECEIPT_PACKAGE_DOSETUP
+    unset RECEIPT_PACKAGE_PREPARE
     unset RECEIPT_PACKAGE_DOBUILD
     unset RECEIPT_PACKAGE_DOTWEAK
 
@@ -8901,7 +8942,8 @@ install_mans() {
     unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS
     unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
 
-    unset RECEIPT_PACKAGE_PARALLEL
+    unset RECEIPT_PACKAGE_SUPPORT_BUILD_IN_PARALLEL
+
     unset RECEIPT_PACKAGE_DEVELOPER
 
     #########################################################################################
@@ -8953,15 +8995,15 @@ install_mans() {
     RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    RECEIPT_PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-
+    RECEIPT_PACKAGE_DOFETCH="$(yq '.dofetch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_DOSETUP="$(yq '.dosetup | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_LTOABLE="$(yq '.ltoable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -8971,7 +9013,7 @@ install_mans() {
 
     RECEIPT_PACKAGE_BUILTFOR="$(yq '.builtfor | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    RECEIPT_PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -10697,7 +10739,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.22.2
+PPKG_VERSION=0.23.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
