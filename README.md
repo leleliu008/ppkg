@@ -276,7 +276,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     This command is actually to do two things:
 
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ppkg/core`
-  - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+  - install other essential tools (listed below) used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 
     - [GNU Bash](https://www.gnu.org/software/bash/manual/bash.html)
     - [GNU CoreUtils](https://www.gnu.org/software/coreutils/manual/coreutils.html)
@@ -431,7 +431,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339-utc
     ```
 
-- **show packages that are depended by the given package**
+- **show packages depended by the given package**
 
     ```bash
     ppkg depends curl
@@ -729,14 +729,14 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`res-uri`|optional|the mirror of `res-url`.|
 |`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
 ||||
-|`reslist`|optional|multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
+|`reslist`|optional|The value is multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
-|`dep-pkg`|optional|a space-separated list of   `ppkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
-|`dep-res`|optional|a space-separated list of   `well-known resources` that are needed by this package when installing. the only possible value is `sys/queue.h` at the moment.|
-|`dep-lib`|optional|a space-separated list of libraries that will be linked. library name starts with `-l` will be directly passed to the linker. otherwise, it will be recognized as a `pkg-config` package name and it will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
-|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
-|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
-|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+|`dep-pkg`|optional|The value is a space-separated list of   `ppkg packages` depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
+|`dep-res`|optional|The value is a space-separated list of   `well-known resources` needed by this package when installing. the only possible value is `sys/queue.h` at the moment.|
+|`dep-lib`|optional|The value is a space-separated list of libraries to be linked. library name starts with `-l` will be directly passed to the linker. otherwise, it will be recognized as a `pkg-config` package name and it will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
+|`dep-upp`|optional|The value is a space-separated list of   `uppm packages` depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-pym`|optional|The value is a space-separated list of `python packages` depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
+|`dep-plm`|optional|The value is a space-separated list of    `perl modules` depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
 ||||
 |`ccflags`|optional|append to `CFLAGS`|
 |`xxflags`|optional|append to `CXXFLAGS`|
@@ -765,7 +765,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 |-|
 |<img src="phases.svg" width="200px" >|
 
-**commands that can be used out of the box:**
+**commands to be used out of the box:**
 
 |command|usage-example|
 |-|-|
