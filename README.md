@@ -763,7 +763,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 
 |phases|
 |-|
-|![phases](phases.svg)|
+|<img src="phases.svg" width="200px" >|
 
 **commands that can be used out of the box:**
 
