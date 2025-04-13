@@ -1061,8 +1061,10 @@ filetype_from_url() {
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
-    unset PACKAGE_USE_BSYSTEM_WAF
     unset PACKAGE_USE_BSYSTEM_GO
+    unset PACKAGE_USE_BSYSTEM_GN
+    unset PACKAGE_USE_BSYSTEM_WAF
+    unset PACKAGE_USE_BSYSTEM_ZIG
     unset PACKAGE_USE_BSYSTEM_RAKE
     unset PACKAGE_USE_BSYSTEM_NINJA
     unset PACKAGE_USE_BSYSTEM_GMAKE
@@ -1090,12 +1092,6 @@ filetype_from_url() {
     unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
     unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
     unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
-
-    PACKAGE_LTOABLE=1
-    PACKAGE_MOVABLE=1
-    PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
-    PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-    PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
 
     unset PACKAGE_DEVELOPER
 
@@ -1348,6 +1344,7 @@ filetype_from_url() {
                     cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
                     go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
                     waf)          PACKAGE_BSYSTEM=waf   ; break ;;
+                    zig)          PACKAGE_BSYSTEM=zig   ; break ;;
                     cabal_v2_install)
                                   PACKAGE_BSYSTEM=cabal ; break ;;
                 esac
@@ -1376,7 +1373,11 @@ filetype_from_url() {
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
             cabal)       PACKAGE_USE_BSYSTEM_CABAL=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
+            gn)          PACKAGE_USE_BSYSTEM_GN=1        ;;
             waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
+            zig)         PACKAGE_USE_BSYSTEM_ZIG=1       ;;
+            zig@[0-9].[0-9][0-9])
+                         PACKAGE_USE_BSYSTEM_ZIG=1       ;;
         esac
     done
 
@@ -1395,7 +1396,11 @@ filetype_from_url() {
             cargo)     PACKAGE_DOBUILD='cargow install' ;;
             cabal)     PACKAGE_DOBUILD='cabal_v2_install' ;;
             go)        PACKAGE_DOBUILD='gow' ;;
+            gn)        PACKAGE_DOBUILD='gnw' ;;
             waf)       PACKAGE_DOBUILD='waf' ;;
+            zig)       PACKAGE_DOBUILD='zig' ;;
+            zig@[0-9].[0-9][0-9])
+                       PACKAGE_DOBUILD='zig' ;;
         esac
     }
 
@@ -1420,12 +1425,14 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
     [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
     [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+    [ "$PACKAGE_USE_BSYSTEM_ZIG"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $PACKAGE_BSYSTEM"
 
     [ "$PACKAGE_USE_BSYSTEM_CABAL"     = 1 ] && PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG libncurses libffi libgmp libz"
 
     #########################################################################################
 
     [ "$PACKAGE_USE_BSYSTEM_WAF"   = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_BSYSTEM_ZIG"   = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_GO"    = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
@@ -1458,6 +1465,12 @@ filetype_from_url() {
 
     #########################################################################################
 
+    [ -z "$PACKAGE_LTOABLE" ] && PACKAGE_LTOABLE=1
+    [ -z "$PACKAGE_MOVABLE" ] && PACKAGE_MOVABLE=1
+    [ -z "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" ] && PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
+
+    #########################################################################################
+
     if [ "$PACKAGE_PKGTYPE" = exe ] ; then
         for item in $PACKAGE_EXETYPE
         do
@@ -1471,6 +1484,9 @@ filetype_from_url() {
                     esac
             esac
         done
+
+        [ -z "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" ]  && PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+        [ -z "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" ] && PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
     else
         PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
         PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
@@ -3987,6 +4003,36 @@ EOF
 waf() {
     run python3 ./waf "$@"
 }
+
+# }}}
+##############################################################################
+# {{{ zig
+
+zig() {
+    ZIG_BUILD_EXTRA_ARGS="-j$BUILD_NJOBS"
+
+    if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        # https://zig.guide/build-system/cross-compilation/
+        if [ $TARGET_PLATFORM_ARCH = arm64 ] ; then
+            ZIG_BUILD_TARGET='aarch64-macos'
+        else
+            ZIG_BUILD_TARGET=$TARGET_PLATFORM_ARCH-macos
+        fi
+
+        ZIG_BUILD_EXTRA_ARGS="$ZIG_BUILD_EXTRA_ARGS -Dtarget=$ZIG_BUILD_TARGET"
+    fi
+
+    case $PROFILE in
+        release) ZIG_BUILD_EXTRA_ARGS="$ZIG_BUILD_EXTRA_ARGS --release=small" ;;
+    esac
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_NORMAL" ] ; then
+        ZIG_BUILD_EXTRA_ARGS="$ZIG_BUILD_EXTRA_ARGS --verbose"
+    fi
+
+    run command zig build $ZIG_BUILD_EXTRA_ARGS --prefix "$PACKAGE_INSTALL_DIR" "$@"
+}
+
 
 # }}}
 ##############################################################################
@@ -10739,7 +10785,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.0
+PPKG_VERSION=0.23.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
