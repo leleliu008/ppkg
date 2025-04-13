@@ -3924,7 +3924,21 @@ add_ldflags() {
 # https://cabal.readthedocs.io/en/3.14/cabal-project-description-file.html
 cabal_v2_install() {
     if [ -z "$BOOTSTRAP_HASKELL_GHC_VERSION" ] ; then
-        export BOOTSTRAP_HASKELL_GHC_VERSION='9.8.2'
+        if [ -f cabal.project ] ; then
+            HASKELL_GHC_VERSION="$(gsed -n '/^with-compiler: ghc-/p' cabal.project)"
+
+            if [ -n "$HASKELL_GHC_VERSION" ] ; then
+                HASKELL_GHC_VERSION="${HASKELL_GHC_VERSION#'with-compiler: ghc-'}"
+
+                if [ -n "$HASKELL_GHC_VERSION" ] ; then
+                    export BOOTSTRAP_HASKELL_GHC_VERSION="$HASKELL_GHC_VERSION"
+                fi
+            fi
+        fi
+
+        if [ -z "$BOOTSTRAP_HASKELL_GHC_VERSION" ] ; then
+            export BOOTSTRAP_HASKELL_GHC_VERSION='9.8.2'
+        fi
     fi
 
     export BOOTSTRAP_HASKELL_CABAL_VERSION='3.14.1.1'
@@ -3953,7 +3967,18 @@ cabal_v2_install() {
 
     export LD_LIBRARY_PATH="$libncurses_LIBRARY_DIR:$libgmp_LIBRARY_DIR"
 
+    export PROXIED_CC_ARGS="$PROXIED_CC_ARGS -L$PACKAGE_WORKING_DIR/lib"
+    export PROXIED_CXX_ARGS="$PROXIED_CXX_ARGS -L$PACKAGE_WORKING_DIR/lib"
+
     export PATH="$GHCUP_INSTALL_BASE_PREFIX/.ghcup/bin:$PATH"
+
+    if [ "$TARGET_PLATFORM_VERS" = glibc ] ; then
+        X="$("$CC_FOR_BUILD" -print-file-name=libtinfo.so.6)"
+
+        if [ -n "$X" ] ; then
+            run ln -s "$X" "$PACKAGE_WORKING_DIR/lib/libtinfo.so"
+        fi
+    fi
 
     if [ ! -f cabal.project ] ; then
         cat > cabal.project <<EOF
@@ -8327,7 +8352,9 @@ __check_elf_files() {
 
         "$CHECKER" "$FILEPATH" || continue
 
-        patchelf --remove-rpath "$FILEPATH"
+        [ -w "$FILEPATH" ] || run chmod +w "$FILEPATH"
+
+        run patchelf --remove-rpath "$FILEPATH"
 
         __check_DT_NEEDED "$FILEPATH"
     done < .ppkg/MANIFEST.txt
@@ -10785,7 +10812,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.1
+PPKG_VERSION=0.23.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
