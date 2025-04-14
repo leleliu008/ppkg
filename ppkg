@@ -9885,7 +9885,7 @@ __setup_freebsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go go-yq jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10095,20 +10095,20 @@ __setup() {
         # https://github.com/mikefarah/yq/releases
         case $NATIVE_PLATFORM_KIND-$NATIVE_PLATFORM_ARCH in
             linux-x86_64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64'
-                YQ_SHA='9a54846e81720ae22814941905cd3b056ebdffb76bf09acffa30f5e90b22d615'
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64'
+                YQ_SHA='654d2943ca1d3be2024089eb4f270f4070f491a0610481d128509b2834870049'
                 ;;
             freebsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_freebsd_amd64'
-                YQ_SHA='81c39a58c30bd5805378c843c12cb038477c6c1c37628a49e30f0ce6e7ade732'
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_freebsd_amd64'
+                YQ_SHA='4172149394434ebb82dee3143c15317ed8510dd293e44e5c248af5f353960d5b'
                 ;;
             openbsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_openbsd_amd64'
-                YQ_SHA='38116c63589b5726826567b70555c6cd587f09a2ab6b16d759badcbefcc9b0f3'
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_openbsd_amd64'
+                YQ_SHA='9e6a828746be46779e3177e34bbb23c0cfb48e4f2dfc39aa73e28636f8b061a2'
                 ;;
             netbsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_netbsd_amd64'
-                YQ_SHA='cad6dcd7449e11868eadb122bca6be5ec8a0918f822528e1e7c845d4ca637492'
+                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_netbsd_amd64'
+                YQ_SHA='24e5145cb637e7b95f9c29c3fe6932b8b2a93800055ecc62a3a671c3a3bd3653'
                 ;;
         esac
 
@@ -10812,7 +10812,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.2
+PPKG_VERSION=0.23.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
