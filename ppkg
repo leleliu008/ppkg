@@ -1229,7 +1229,7 @@ filetype_from_url() {
                     PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                     case $PACKAGE_VERSION in
                         '') abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
-                        v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
+                        v*) PACKAGE_VERSION="${PACKAGE_VERSION#v}"
                     esac
                 fi
 
@@ -1243,6 +1243,14 @@ filetype_from_url() {
     else
         if [ -n "$PACKAGE_GIT_URL" ] ; then
             PACKAGE_SRC_FILETYPE=.git
+
+            if [ -z "$PACKAGE_VERSION" ] && [ -z "$PACKAGE_GIT_SHA" ] && [ -n "$PACKAGE_GIT_REF" ] ; then
+                PACKAGE_GIT_REF_NAME="${PACKAGE_GIT_REF##*/}"
+
+                case $PACKAGE_GIT_REF_NAME in
+                    v*) PACKAGE_VERSION="${PACKAGE_GIT_REF_NAME#v}"
+                esac
+            fi
 
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
@@ -1269,7 +1277,7 @@ filetype_from_url() {
 
         PACKAGE_NEED_CURL=1
 
-        case $PACKAGE_SRC_FILETYPE in
+        case $PACKAGE_FIX_FILETYPE in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
                 PACKAGE_NEED_BTAR=1
         esac
@@ -1286,7 +1294,7 @@ filetype_from_url() {
 
         PACKAGE_NEED_CURL=1
 
-        case $PACKAGE_SRC_FILETYPE in
+        case $PACKAGE_RES_FILETYPE in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
                 PACKAGE_NEED_BTAR=1
         esac
