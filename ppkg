@@ -1248,7 +1248,8 @@ filetype_from_url() {
                 PACKAGE_GIT_REF_NAME="${PACKAGE_GIT_REF##*/}"
 
                 case $PACKAGE_GIT_REF_NAME in
-                    v*) PACKAGE_VERSION="${PACKAGE_GIT_REF_NAME#v}"
+                    v*) PACKAGE_VERSION="${PACKAGE_GIT_REF_NAME#v}" ;;
+                    [0-9]*) PACKAGE_VERSION="$PACKAGE_GIT_REF_NAME"
                 esac
             fi
 
