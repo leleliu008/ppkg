@@ -5972,6 +5972,7 @@ native_package_info_help2man() {
     PACKAGE_DEP_AUX='perl gmake'
     PACKAGE_DEP_RUN='perl'
     PACKAGE_INSTALL='configure'
+    PACKAGE_DOTWEAK='gsed -i "1c #!$UPPM_HOME/installed/perl/bin/perl -w" "$PACKAGE_INSTALL_DIR/bin/help2man"'
 }
 
 native_package_info_libexpat() {
