@@ -7246,7 +7246,11 @@ $PACKAGE_DO12345
 
         if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
             if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
-                printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                if [ "$TARGET_PLATFORM_ARCH" = riscv64 ] ; then
+                    printf '%s\n' 'INPUT(-l:libgcc.a -l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                else
+                    printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                fi
             fi
         fi
     fi
@@ -10826,7 +10830,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.6
+PPKG_VERSION=0.23.7
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
