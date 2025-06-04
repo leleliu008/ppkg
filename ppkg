@@ -10083,9 +10083,15 @@ __setup() {
 
         #################################################################################
 
+        if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
+            SRC=sysinfo/src/lib/determine-linux-system-libc.c
+        else
+            SRC=
+        fi
+
         step "install sysinfo"
         run git clone --depth=1 https://github.com/leleliu008/sysinfo
-        run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
+        run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRC -Isysinfo/src/lib
         run strip bin/sysinfo
         run bin/sysinfo
 
