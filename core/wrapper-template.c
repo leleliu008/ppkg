@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include <unistd.h>
-#include <limits.h>
+#include <linux/limits.h>
 
 int main(int argc, char* argv[]) {
     char selfExePath[PATH_MAX];
