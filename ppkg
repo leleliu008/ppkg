@@ -7247,7 +7247,8 @@ $PACKAGE_DO12345
         if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
             if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
                 if [ "$TARGET_PLATFORM_ARCH" = riscv64 ] ; then
-                    printf '%s\n' 'INPUT(-l:libgcc.a -l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                    LIBC_FILEPATH="$("$CC" -print-file-name=libc.a)"
+                    printf 'INPUT(%s -l:libgcc.a -l:libgcc_eh.a)\n' "$LIBC_FILEPATH" > "$PACKAGE_WORKING_DIR/lib/libc.a"
                 else
                     printf '%s\n' 'INPUT(-l:libgcc_eh.a)' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
                 fi
