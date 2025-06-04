@@ -1484,7 +1484,7 @@ filetype_from_url() {
         for item in $PACKAGE_EXETYPE
         do
             case $item in
-                ~)  item="${item#'~'}"
+                ~*) item="${item#'~'}"
                     case $item in
                         static)      PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
                         static-pie)  PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
@@ -10826,7 +10826,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.5
+PPKG_VERSION=0.23.6
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
