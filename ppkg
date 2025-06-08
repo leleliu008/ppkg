@@ -6980,6 +6980,8 @@ $PACKAGE_DOFETCH
 
                     run cd "$PACKAGE_WORKING_DIR"
                     run git clone --depth=1 "$LIBEXECINFO_GIT_URL" lib/libexecinfo
+                    run ln -s ../lib/libexecinfo/execinfo.h      include/execinfo.h
+                    run ln -s ../lib/libexecinfo/stacktraverse.h include/stacktraverse.h
             esac
         done
     fi
