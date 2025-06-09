@@ -1088,17 +1088,15 @@ filetype_from_url() {
     # whether the installed files can be moved/copied to other locations
     unset PACKAGE_MOVABLE
 
-    unset PACKAGE_EXETYPE
+    unset PACKAGE_LINKAGE
     unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
-    unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
-    unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
     unset PACKAGE_DEVELOPER
 
     #########################################################################################
 
     PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_EXETYPE="$(yq '.exetype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LINKAGE="$(yq '.linkage | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1481,24 +1479,10 @@ filetype_from_url() {
     #########################################################################################
 
     if [ "$PACKAGE_PKGTYPE" = exe ] ; then
-        for item in $PACKAGE_EXETYPE
-        do
-            case $item in
-                ~*) item="${item#'~'}"
-                    case $item in
-                        static)      PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
-                        static-pie)  PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
-                        static-most) PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
-                        *)  abort 1 "unrecognized exe type: $item"
-                    esac
-            esac
-        done
-
-        [ -z "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" ]  && PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-        [ -z "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" ] && PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-    else
-        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
-        PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+        case $PACKAGE_LINKAGE in
+            ''|static|static/pie|shared|shared/most) ;;
+            *)  abort 1 "unsupported linkage: $PACKAGE_LINKAGE"
+        esac
     fi
 }
 
@@ -2819,8 +2803,8 @@ EOF
 
     ////////////////////////////////////////////////////
 
-    const char * dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
-    const char * libraryPathRelativeToSelfExePath = "/$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH";
+    const char * const dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
+    const char * const libraryPathRelativeToSelfExePath = "$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH";
 
     ////////////////////////////////////////////////////
 
@@ -2830,10 +2814,12 @@ EOF
         libraryPath[i] = selfExePath[i];
     }
 
-    for (int i = 1; ; i++) {
-        libraryPath[slashIndex + i] = libraryPathRelativeToSelfExePath[i];
+    char * p = libraryPath + slashIndex + 1;
 
-        if (libraryPathRelativeToSelfExePath[i] == '\\0') {
+    for (int i = 0; ; i++) {
+        p[i] = libraryPathRelativeToSelfExePath[i];
+
+        if (p[i] == '\\0') {
             break;
         }
     }
@@ -6153,6 +6139,33 @@ EOF
     unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
     [ "$PACKAGE_PKGTYPE" = exe ] && {
+        unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
+        unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
+
+        case $PACKAGE_LINKAGE in
+            '')
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                ;;
+            static)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            static/pie)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            shared)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                ;;
+            shared/most)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            *)  abort 1 "unsupported linkage: $PACKAGE_LINKAGE"
+        esac
+
         if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             if [ "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
@@ -10872,7 +10885,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.8
+PPKG_VERSION=0.23.9
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
