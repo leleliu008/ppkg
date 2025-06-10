@@ -896,15 +896,21 @@ __sync_available_formula_repositories() {
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    for FORMULA_SEARCH_DIR in $PPKG_FORMULA_SEARCH_DIRS
-    do
-        FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+    if [ -n "$PPKG_FORMULA_SEARCH_DIRS" ] ; then
+        export IFS=':'
 
-        if [ -f           "$FORMULA_FILEPATH" ] ; then
-            printf '%s\n' "$FORMULA_FILEPATH"
-            return 0
-        fi
-    done
+        for FORMULA_SEARCH_DIR in $PPKG_FORMULA_SEARCH_DIRS
+        do
+            FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+
+            if [ -f           "$FORMULA_FILEPATH" ] ; then
+                printf '%s\n' "$FORMULA_FILEPATH"
+                return 0
+            fi
+        done
+
+        unset IFS
+    fi
 
     [ -d "$PPKG_FORMULA_REPO_ROOT" ] || return 0
 
@@ -5347,8 +5353,7 @@ __inspect_install_arguments() {
                 [ -e "$1" ] || abort 1 "'$1' was expected to be exist, but it was not."
                 [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
                 FORMULA_SEARCH_DIR="$(realpath "$1")"
-                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS
-$FORMULA_SEARCH_DIR"
+                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS:$FORMULA_SEARCH_DIR"
                 ;;
             -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
@@ -5363,7 +5368,11 @@ $FORMULA_SEARCH_DIR"
 
     #########################################################################################
 
-    PPKG_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS"
+    if [ -z "$PPKG_FORMULA_SEARCH_DIRS" ] ; then
+        PPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}"
+    else
+        PPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}:$PPKG_FORMULA_SEARCH_DIRS"
+    fi
 
     #########################################################################################
 
@@ -10898,7 +10907,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.10
+PPKG_VERSION=0.23.11
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -10910,7 +10919,6 @@ PPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg'
 PPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ppkg-formula-repository-official-core.git'
 PPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg-zsh-completion'
 
-PPKG_FORMULA_SEARCH_DIRS=
 PPKG_FORMULA_REPO_ROOT="$PPKG_HOME/repos.d"
 PPKG_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/installed"
 PPKG_PACKAGE_SYMLINKED_ROOT="$PPKG_HOME/symlinked"
