@@ -1056,6 +1056,7 @@ filetype_from_url() {
     unset PACKAGE_RESLIST
 
     unset PACKAGE_BINDENV
+    unset PACKAGE_WRAPPER
     unset PACKAGE_CAVEATS
 
     unset PACKAGE_BSYSTEM
@@ -1151,6 +1152,7 @@ filetype_from_url() {
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_WRAPPER="$(yq '.wrapper | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -8140,6 +8142,17 @@ EOF
 
     #########################################################################################
 
+    for item in $PACKAGE_WRAPPER
+    do
+        S="${item%'|'*}"
+        T="${item#*'|'}"
+
+        wfetch "https://raw.githubusercontent.com/leleliu008/ppkg-formula-repository-official-core/refs/heads/master/wrappers/$S" --no-buffer
+        run mv "$S" "$T"
+    done
+
+    #########################################################################################
+
     [ -n "$PACKAGE_DOTWEAK" ] && {
         step "dotweak"
 
@@ -10885,7 +10898,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.9
+PPKG_VERSION=0.23.10
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

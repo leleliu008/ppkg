@@ -759,6 +759,8 @@ a ppkg formula's file content only has one level mapping and shall has following
 ||||
 |`bindenv`|optional|bind environment variables to executables. multiple lines of formatted string `<KEY>=<VALUE>`. `%s` represents the install directory.|
 ||||
+|`wrapper`|optional|wrapper c source code. multiple line of formatted string `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that ppkg will fetch `bear.c` from https://raw.githubusercontent.com/leleliu008/ppkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.|
+||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
 |phases|
