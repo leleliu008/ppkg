@@ -10132,6 +10132,8 @@ __setup() {
         step "install ppkg core"
         run git clone --depth=1 https://github.com/leleliu008/ppkg
 
+        rm ppkg/core/wrapper-template.c
+
         for f in ppkg/core/*.c
         do
             o="${f##*/}"
