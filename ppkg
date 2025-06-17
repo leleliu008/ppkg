@@ -1249,6 +1249,7 @@ filetype_from_url() {
     else
         if [ -n "$PACKAGE_GIT_URL" ] ; then
             PACKAGE_SRC_FILETYPE=.git
+            PACKAGE_SRC_FILEPATH=.git
 
             if [ -z "$PACKAGE_VERSION" ] && [ -z "$PACKAGE_GIT_SHA" ] && [ -n "$PACKAGE_GIT_REF" ] ; then
                 PACKAGE_GIT_REF_NAME="${PACKAGE_GIT_REF##*/}"
@@ -10909,7 +10910,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.11
+PPKG_VERSION=0.23.12
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
