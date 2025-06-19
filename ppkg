@@ -6009,15 +6009,15 @@ run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 }
 
 native_package_info_libiconv() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    PACKAGE_SRC_SHA='8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz'
+    PACKAGE_SRC_SHA='3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8'
     PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
 }
 
 native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.6.tar.xz'
-    PACKAGE_SRC_SHA='889c593a881a3db5fdd96cc9318c87df34eb648edfc458272ad46fd607353fbb'
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz'
+    PACKAGE_SRC_SHA='277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a'
     PACKAGE_DEP_PKG='libz libiconv'
     PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
@@ -10910,7 +10910,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.12
+PPKG_VERSION=0.23.13
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
