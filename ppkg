@@ -2722,11 +2722,19 @@ int main(int argc, char* argv[]) {
 
     ////////////////////////////////////////////////////
 
+    const char * s = ".exe";
+
+    int j;
+
+    for (j = 0; s[j] != '\0'; j++);
+
+    char realExePath[n + j + 1];
+
     int slashIndex = -1;
 
-    char realExePath[n + 5];
+    int i;
 
-    for (int i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
         realExePath[i] = selfExePath[i];
 
         if (selfExePath[i] == '/') {
@@ -2734,12 +2742,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    realExePath[n    ] = '.';
-    realExePath[n + 1] = 'e';
-    realExePath[n + 2] = 'x';
-    realExePath[n + 3] = 'e';
-    realExePath[n + 4] = '\\0';
+    char * p = realExePath + n;
 
+    for (;;) {
+        p[0] = s[0];
+
+        if (p[0] == '\0') break;
+
+        p++;
+        s++;
+    }
 EOF
 
     ####################################
@@ -2762,21 +2774,30 @@ EOF
 
     ////////////////////////////////////////////////////
 
-    selfExePath[slashIndex] = '\0';
+    p = getenv("$KEY");
 
-    char kv$I[PATH_MAX];
+    if (p == NULL || p[0] == '\0') {
+        s = "$VALUE_RELATIVE_TO_SELF_EXE_PATH";
 
-    if (snprintf(kv$I, PATH_MAX, "%s/$VALUE_RELATIVE_TO_SELF_EXE_PATH", selfExePath) < 0) {
-        perror(NULL);
-        return 11;
+        for (j = 0; s[j] != '\0'; j++);
+
+        char pathBuf[slashIndex + j + 1];
+
+        for (i = 0; i <= slashIndex; i++) {
+            pathBuf[i] = selfExePath[i];
+        }
+
+        p = pathBuf + slashIndex + 1;
+
+        for (i = 0U; i <= j; i++) {
+            p[i] = s[i];
+        }
+
+        if (setenv("$KEY", pathBuf, 1) != 0) {
+            perror("$KEY");
+            return 10;
+        }
     }
-
-    if (setenv("$KEY", kv$I, 1) != 0) {
-        perror(NULL);
-        return 10;
-    }
-
-    selfExePath[slashIndex] = '/';
 EOF
                     ;;
                 *)  cat >> "$FILEPATH.c" <<EOF
@@ -2817,31 +2838,46 @@ EOF
 
     ////////////////////////////////////////////////////
 
-    char libraryPath[PATH_MAX];
+    for (j = 0; libraryPathRelativeToSelfExePath[j] != '\0'; j++);
 
-    for (int i = 0; i <= slashIndex; i++) {
+    char libraryPath[slashIndex + j + 1];
+
+    for (i = 0; i <= slashIndex; i++) {
         libraryPath[i] = selfExePath[i];
     }
 
-    char * p = libraryPath + slashIndex + 1;
+    p = libraryPath + slashIndex + 1;
 
-    for (int i = 0; ; i++) {
+    for (i = 0; i <= j; i++) {
         p[i] = libraryPathRelativeToSelfExePath[i];
-
-        if (p[i] == '\\0') {
-            break;
-        }
     }
 
     ////////////////////////////////////////////////////
 
-    char dynamicLoaderPath[PATH_MAX];
+    int k;
 
-    int ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/%s", libraryPath, dynamicLoaderName);
+    for (k = 0; dynamicLoaderName[k] != '\0'; k++);
 
-    if (ret < 0) {
-        perror(NULL);
-        return 2;
+    char dynamicLoaderPath[slashIndex + j + k + 2];
+
+    for (i = 0; i <= slashIndex; i++) {
+        dynamicLoaderPath[i] = selfExePath[i];
+    }
+
+    p = dynamicLoaderPath + slashIndex + 1;
+
+    for (i = 0; i < j; i++) {
+        p[i] = libraryPathRelativeToSelfExePath[i];
+    }
+
+    p += j;
+
+    p[0] = '/';
+
+    p++;
+
+    for (i = 0; i <= k; i++) {
+        p[i] = dynamicLoaderName[i];
     }
 
     ////////////////////////////////////////////////////
@@ -2857,7 +2893,7 @@ EOF
 
     n = 6;
 
-    for (int i = 1; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
         argv2[n++] = argv[i];
     }
 
@@ -10910,7 +10946,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.13
+PPKG_VERSION=0.23.14
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
