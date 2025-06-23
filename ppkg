@@ -1083,6 +1083,7 @@ filetype_from_url() {
     unset PACKAGE_USE_BSYSTEM_AUTOGENSH
     unset PACKAGE_USE_BSYSTEM_AUTOTOOLS
     unset PACKAGE_USE_BSYSTEM_CONFIGURE
+    unset PACKAGE_USE_BSYSTEM_NETSURF
 
     # directory relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
@@ -1385,6 +1386,7 @@ filetype_from_url() {
             meson)       PACKAGE_USE_BSYSTEM_MESON=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
             ninja)       PACKAGE_USE_BSYSTEM_NINJA=1     ;;
             gmake)       PACKAGE_USE_BSYSTEM_GMAKE=1     ;;
+            netsurf)     PACKAGE_USE_BSYSTEM_GMAKE=1     ; PACKAGE_USE_BSYSTEM_NETSURF=1 ;;
             rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
             cabal)       PACKAGE_USE_BSYSTEM_CABAL=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
@@ -1404,6 +1406,7 @@ filetype_from_url() {
             autogen)   PACKAGE_DOBUILD='configure' ;;
             autotools) PACKAGE_DOBUILD='configure' ;;
             configure) PACKAGE_DOBUILD='configure' ;;
+            netsurf)   PACKAGE_DOBUILD='netsurf_buildsystem' ;;
             cmake*)    PACKAGE_DOBUILD='cmakew' ;;
             xmake)     PACKAGE_DOBUILD='xmakew' ;;
             meson)     PACKAGE_DOBUILD='mesonw' ;;
@@ -1432,6 +1435,7 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
     [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
     [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    [ "$PACKAGE_USE_BSYSTEM_NETSURF"   = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake netsurf_buildsystem"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
     [ "$PACKAGE_USE_BSYSTEM_CMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake"
@@ -1453,6 +1457,7 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_CABAL" = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_BSYSTEM_NETSURF" = 1 ] && PACKAGE_BINBSTD=1
 
     if [ -z  "$PACKAGE_BINBSTD" ] ; then
         if [ "$PACKAGE_BSYSTEM_MASTER" = gmake ] ; then
@@ -4063,6 +4068,15 @@ EOF
 
 # }}}
 ##############################################################################
+# {{{ netsurf_buildsystem
+
+netsurf_buildsystem() {
+    gmakew install COMPONENT_TYPE=lib-static NSSHARED="$NATIVE_PACKAGE_INSTALLED_ROOT/netsurf_buildsystem/share/netsurf-buildsystem" PREFIX="$PACKAGE_INSTALL_DIR"
+    gmakew install COMPONENT_TYPE=lib-shared NSSHARED="$NATIVE_PACKAGE_INSTALLED_ROOT/netsurf_buildsystem/share/netsurf-buildsystem" PREFIX="$PACKAGE_INSTALL_DIR"
+}
+
+# }}}
+##############################################################################
 # {{{ waf
 
 waf() {
@@ -5875,6 +5889,9 @@ EOF
         cmake)
             PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -G Ninja -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
             ;;
+        gmake)
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL"
+            ;;
     esac
 
     eval "$PACKAGE_INSTALL"
@@ -6006,7 +6023,7 @@ native_package_info_help2man() {
     PACKAGE_DEP_AUX='perl gmake'
     PACKAGE_DEP_RUN='perl'
     PACKAGE_INSTALL='configure'
-    PACKAGE_DOTWEAK='gsed -i "1c #!$UPPM_HOME/installed/perl/bin/perl -w" "$PACKAGE_INSTALL_DIR/bin/help2man"'
+    PACKAGE_DOTWEAK='gsed -i "1c #!$UPPM_HOME/installed/perl/bin/perl -w" bin/help2man'
 }
 
 native_package_info_libexpat() {
@@ -6080,6 +6097,13 @@ exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
 EOF
 run chmod +x bin/itstool
     '
+}
+
+native_package_info_netsurf_buildsystem() {
+    PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
+    PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
+    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
 }
 
 # }}}
@@ -6559,6 +6583,9 @@ $DOT_CONTENT
                     else
                     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
                     fi
+                    ;;
+                netsurf_buildsystem)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
                     ;;
                 *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
             esac
@@ -10946,7 +10973,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.14
+PPKG_VERSION=0.23.15
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
