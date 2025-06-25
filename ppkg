@@ -3561,7 +3561,14 @@ EOF
 
         ############################################################################
 
-        wfetch "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH" -o runtime --no-buffer
+        case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
+            x86_64|aarch64)
+                wfetch "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH" -o runtime --no-buffer
+                ;;
+            *)  wfetch "https://github.com/leleliu008/appimage-runtime-type2-prebuild/releases/download/2025.06.18-5e7217b7cfeecee1491c2d251e355c3cf8ba6e4d/appimage-runtime-type2-2025.06.18-linux-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH.release.tar.xz" -o runtime.tar.xz --no-buffer
+                run bsdtar xf runtime.tar.xz --strip-components=1 --no-same-owner
+                run mv bin/appimage-runtime-type2 runtime
+        esac
 
         ############################################################################
 
@@ -10973,7 +10980,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.15
+PPKG_VERSION=0.23.16
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
