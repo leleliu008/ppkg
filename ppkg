@@ -4347,6 +4347,10 @@ gmakew() {
         GMAKE_OPTIONS="$GMAKE_OPTIONS --debug"
     fi
 
+    if [ "$VERBOSE_GMAKE" = 1 ] ; then
+        find "$PACKAGE_BSCRIPT_DIR" -type f -name Makefile -exec gsed -i -e 's|\t@|\t|g' -e 's|@echo|echo|g' {} +
+    fi
+
     if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         run bear -- $GMAKE $GMAKE_OPTIONS $*
     else
@@ -10980,7 +10984,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.16
+PPKG_VERSION=0.23.17
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
