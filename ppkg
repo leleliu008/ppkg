@@ -10204,12 +10204,16 @@ __setup() {
 
         #################################################################################
 
+        if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+            SRCS=
+        else
+            SRCS="$(ls ppkg/core/elftools/*.c)"
+        fi
+
         step "install ppkg core"
         run git clone --depth=1 https://github.com/leleliu008/ppkg
 
-        rm ppkg/core/wrapper-template.c
-
-        for f in ppkg/core/*.c
+        for f in ppkg/core/wrappers/*.c $SRCS
         do
             o="${f##*/}"
             o="${o%.c}"

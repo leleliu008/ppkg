@@ -16,11 +16,9 @@ run ./ppkg update
 run ./ppkg install uppm@0.15.4 --static
 run ./ppkg bundle  uppm@0.15.4 .tar.xz
 
-run rm core/AppRun.c core/wrapper-template.c
-
 install -d out/
 
-for f in core/*.c
+for f in wrappers/*.c elftools/*.c
 do
     x="${f#*/}"
     o="out/${x%.c}"
@@ -31,14 +29,10 @@ done
 run export SSL_CERT_FILE="$HOME/.ppkg/core/cacert.pem"
 
 curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.sub
-curl -LO https://git.savannah.gnu.org/cgit/config.git/tree/config.guess
-
-chmod +x config.sub config.guess
 
 bsdtar vxf uppm*.tar.xz -C out --strip-components=1
 
-mv out/bin/uppm *.otf core/fonts.conf config.sub config.guess out/
+mv out/bin/uppm *.otf core/fonts.conf out/
 
 rm -rf out/bin/ out/share/ out/.ppkg/
 
