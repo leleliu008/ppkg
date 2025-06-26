@@ -6758,15 +6758,20 @@ $DOT_CONTENT
         if command -v cargo > /dev/null && command -v rustc > /dev/null ; then
             :
         else
-            # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
+            if [ "$GITHUB_ACTIONS" = true ] && [ "$CROSS_COMPILING" != 1 ] && [ "$NATIVE_PLATFORM_CODE" = alpine ] && [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
+                run $sudo /sbin/apk update
+                run $sudo /sbin/apk add rust cargo
+            else
+                # https://www.rust-lang.org/tools/install
+                note "${COLOR_GREEN}cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
-            wfetch 'https://sh.rustup.rs' -o rustup-init.sh
+                wfetch 'https://sh.rustup.rs' -o rustup-init.sh
 
-            run bash rustup-init.sh -y && {
-                export CARGO_HOME="$HOME/.cargo"
-                export PATH="$CARGO_HOME/bin:$PATH"
-            }
+                run bash rustup-init.sh -y && {
+                    export CARGO_HOME="$HOME/.cargo"
+                    export PATH="$CARGO_HOME/bin:$PATH"
+                }
+            fi
         fi
     }
 

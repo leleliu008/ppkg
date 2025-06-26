@@ -58,7 +58,7 @@ jobs:
       - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
       - run: chmod +x alpine-chroot-install
       - run: sudo ./alpine-chroot-install -d /alpine -a ${{ matrix.target-arch }}
-      - run: /alpine/enter-chroot /bin/sh .github/build-core.sh ${{ needs.base.outputs.release-version }}
+      - run: /alpine/enter-chroot /bin/sh .github/build-core.sh ${{ needs.base.outputs.release-version }} linux-musl-${{ matrix.target-arch }}
       - run: /alpine/destroy
       - run: ls -l
 
@@ -87,7 +87,7 @@ jobs:
           usesh: true
           sync: rsync
           copyback: true
-          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }} dragonflybsd-${{ matrix.target-version }}-x86_64
 
       - uses: actions/upload-artifact@v4
         with:
@@ -114,7 +114,7 @@ jobs:
           operating_system: freebsd
           version: ${{ matrix.target-version }}
           shell: bash
-          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }} freebsd-${{ matrix.target-version }}-amd64
 
       - uses: actions/upload-artifact@v4
         with:
@@ -141,7 +141,7 @@ jobs:
           operating_system: openbsd
           version: ${{ matrix.openbsd-version }}
           shell: bash
-          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }} openbsd-${{ matrix.openbsd-version }}-amd64
 
       - uses: actions/upload-artifact@v4
         with:
@@ -170,7 +170,7 @@ jobs:
           operating_system: netbsd
           version: ${{ matrix.target-version }}
           shell: bash
-          run: .github/build-core.sh ${{ needs.base.outputs.release-version }}
+          run: .github/build-core.sh ${{ needs.base.outputs.release-version }} netbsd-${{ matrix.target-version }}-amd64
 
       - uses: actions/upload-artifact@v4
         with:

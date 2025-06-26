@@ -17,23 +17,14 @@ jobs:
       - run: |
           RELEASE_VERSION="$(./ppkg --version)"
 
-          install -d "ppkg-$RELEASE_VERSION/bin/"
-          install -d "ppkg-$RELEASE_VERSION/share/zsh/vendor-completions/"
+          install -d bundle.d/bin/ bundle.d/share/zsh/vendor-completions/
 
-          cp ppkg "ppkg-$RELEASE_VERSION/bin/ppkg"
-          cp ppkg-zsh-completion "ppkg-$RELEASE_VERSION/share/zsh/vendor-completions/_ppkg"
+          mv  ppkg-zsh-completion _ppkg
+          mv  ppkg bundle.d/bin/
+          mv _ppkg bundle.d/share/zsh/vendor-completions/
 
-          RELEASE_FILE_NAME="ppkg-$RELEASE_VERSION.tar.gz"
+          mv bundle.d "ppkg-$RELEASE_VERSION"
 
-          tar zvcf "$RELEASE_FILE_NAME" "ppkg-$RELEASE_VERSION"
+          tar cvzf "ppkg-$RELEASE_VERSION.tar.gz" "ppkg-$RELEASE_VERSION"
 
-          SHA256SUM="$(sha256sum "$RELEASE_FILE_NAME")"
-
-          cat > notes.md <<EOF
-          sha256sum:
-          \`\`\`
-          $SHA256SUM
-          \`\`\`
-          EOF
-
-          gh release create "$RELEASE_VERSION" "$RELEASE_FILE_NAME" --title "$RELEASE_VERSION" --notes-file notes.md
+          gh release create "$RELEASE_VERSION" *.tar.gz --title "$RELEASE_VERSION"

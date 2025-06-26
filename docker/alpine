@@ -1,0 +1,11 @@
+FROM alpine:3.22
+
+MAINTAINER leleliu008@gmail.com
+
+ADD ppkg /usr/bin/
+
+RUN apk update && apk add --no-cache curl g++ libc-dev linux-headers
+
+ENV GITHUB_ACTIONS=true
+
+ENTRYPOINT [ "/bin/bash", "-l" ]
