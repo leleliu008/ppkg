@@ -1,13 +1,13 @@
 name: publish ppkg docker image
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 on:
   workflow_dispatch:
-
-  permissions:
-    contents: read
-    packages: write
-    attestations: write
-    id-token: write
 
 jobs:
 
@@ -15,7 +15,7 @@ jobs:
   # https://docs.docker.com/build/ci/github-actions/multi-platform/
 
   single-arch:
-    
+
     strategy:
       fail-fast: false
       matrix:
