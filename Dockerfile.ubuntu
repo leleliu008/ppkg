@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-MAINTAINER leleliu008@gmail.com
+LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 
 ADD ppkg /usr/bin/
 

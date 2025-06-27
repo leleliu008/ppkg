@@ -1,10 +1,10 @@
 FROM alpine:3.22
 
-MAINTAINER leleliu008@gmail.com
+LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 
 ADD ppkg /usr/bin/
 
-RUN apk update && apk add --no-cache curl g++ libc-dev linux-headers
+RUN apk update && apk add --no-cache g++ libc-dev linux-headers
 
 ENV GITHUB_ACTIONS=true
 
