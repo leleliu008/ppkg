@@ -8064,7 +8064,7 @@ EOF
 
     step "dopatch for target"
 
-    cd "$PACKAGE_BSCRIPT_DIR"
+    run cd "$PACKAGE_BSCRIPT_DIR"
 
     [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
         for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")

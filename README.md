@@ -273,6 +273,8 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg setup
     ```
 
+    This command needs `curl` or `wget` has already installed.
+
     This command is actually to do two things:
 
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ppkg/core`
