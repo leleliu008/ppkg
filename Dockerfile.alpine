@@ -8,4 +8,4 @@ RUN apk update && apk add --no-cache g++ libc-dev linux-headers
 
 ENV GITHUB_ACTIONS=true
 
-ENTRYPOINT [ "/bin/bash", "-l" ]
+ENTRYPOINT [ "/bin/sh", "-l" ]
