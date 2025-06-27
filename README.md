@@ -54,7 +54,6 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 
 ```bash
 mkdir -p ~/ppkg-home
-mkdir -p ~/.m2
 
 docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg-alpine
 ```
