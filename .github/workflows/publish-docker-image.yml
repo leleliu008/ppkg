@@ -50,12 +50,12 @@ jobs:
           file: Dockerfile.${{ matrix.os }}
           platforms: linux/${{ matrix.arch }}
           push: true
-          tags: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:latest,ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:${{ steps.version.outputs.version }}
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.os }}/${{ matrix.arch }}:latest,ghcr.io/${{ github.repository }}/${{ matrix.os }}/${{ matrix.arch }}:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}
+          subject-name: ghcr.io/${{ github.repository }}/${{ matrix.os }}/${{ matrix.arch }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
@@ -98,12 +98,12 @@ jobs:
           file: Dockerfile.${{ matrix.os }}
           platforms: linux/amd64,linux/arm64/v8,linux/riscv64,linux/ppc64le,linux/s390x
           push: true
-          tags: ghcr.io/${{ github.repository }}-${{ matrix.os }}:latest,ghcr.io/${{ github.repository }}-${{ matrix.os }}:${{ steps.version.outputs.version }}
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.os }}:latest,ghcr.io/${{ github.repository }}/${{ matrix.os }}:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-${{ matrix.os }}
+          subject-name: ghcr.io/${{ github.repository }}/${{ matrix.os }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 

@@ -35,27 +35,27 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 
 `alpine-based` docker images :
 
-- ghcr.io/leleliu008/ppkg-alpine
-- ghcr.io/leleliu008/ppkg-alpine-amd64
-- ghcr.io/leleliu008/ppkg-alpine-arm64/v8
-- ghcr.io/leleliu008/ppkg-alpine-riscv64
-- ghcr.io/leleliu008/ppkg-alpine-ppc64le
-- ghcr.io/leleliu008/ppkg-alpine-s390x
+- ghcr.io/leleliu008/ppkg/alpine
+- ghcr.io/leleliu008/ppkg/alpine/amd64
+- ghcr.io/leleliu008/ppkg/alpine/arm64/v8
+- ghcr.io/leleliu008/ppkg/alpine/riscv64
+- ghcr.io/leleliu008/ppkg/alpine/ppc64le
+- ghcr.io/leleliu008/ppkg/alpine/s390x
 
 `ubuntu-based` docker images :
-- ghcr.io/leleliu008/ppkg-ubuntu
-- ghcr.io/leleliu008/ppkg-ubuntu-amd64
-- ghcr.io/leleliu008/ppkg-ubuntu-arm64/v8
-- ghcr.io/leleliu008/ppkg-ubuntu-riscv64
-- ghcr.io/leleliu008/ppkg-ubuntu-ppc64le
-- ghcr.io/leleliu008/ppkg-ubuntu-s390x
+- ghcr.io/leleliu008/ppkg/ubuntu
+- ghcr.io/leleliu008/ppkg/ubuntu/amd64
+- ghcr.io/leleliu008/ppkg/ubuntu/arm64/v8
+- ghcr.io/leleliu008/ppkg/ubuntu/riscv64
+- ghcr.io/leleliu008/ppkg/ubuntu/ppc64le
+- ghcr.io/leleliu008/ppkg/ubuntu/s390x
 
 **step1. create the ppkg docker container**
 
 ```bash
 mkdir -p ~/ppkg-home
 
-docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg-alpine
+docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg/alpine
 ```
 
 **step2. start the ppkg docker container**
@@ -76,7 +76,7 @@ docker exec -it ppkg ppkg setup
 docker exec -it ppkg ppkg update
 ```
 
-If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-35-arm64-v8a`:
+If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
 docker exec -it ppkg ppkg install curl --static
