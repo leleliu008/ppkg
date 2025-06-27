@@ -12,7 +12,6 @@ on:
 jobs:
 
   # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions
-  # https://docs.docker.com/build/ci/github-actions/multi-platform/
 
   single-arch:
 
@@ -61,6 +60,8 @@ jobs:
           push-to-registry: true
 
 
+  # https://docs.docker.com/build/ci/github-actions/multi-platform/
+
   multip-arch:
 
     strategy:
@@ -88,6 +89,7 @@ jobs:
         run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - id: push
         uses: docker/build-push-action@v6
