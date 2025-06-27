@@ -3,11 +3,18 @@ name: publish ppkg docker image
 on:
   workflow_dispatch:
 
+  permissions:
+    contents: read
+    packages: write
+    attestations: write
+    id-token: write
+
 jobs:
 
   # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions
+  # https://docs.docker.com/build/ci/github-actions/multi-platform/
 
-  docker:
+  single-arch:
     
     strategy:
       fail-fast: false
@@ -16,12 +23,6 @@ jobs:
         arch: [amd64, arm64/v8, riscv64, ppc64le, s390x]
 
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +57,51 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+
+  multip-arch:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, alpine]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - id: version
+        run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.${{ matrix.os }}
+          platforms: linux/amd64,linux/arm64/v8,linux/riscv64,linux/ppc64le,linux/s390x
+          push: true
+          tags: ghcr.io/${{ github.repository }}-${{ matrix.os }}:latest,ghcr.io/${{ github.repository }}-${{ matrix.os }}:${{ steps.version.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-${{ matrix.os }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 

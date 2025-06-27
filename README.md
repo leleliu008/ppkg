@@ -29,6 +29,62 @@ In this way, all you need to do is just clicking the buttons and waiting for fin
 
 For more details please refer to <https://github.com/leleliu008/ppkg-package-manually-build>
 
+## Using ppkg via [Docker](https://www.docker.com/)
+
+`docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+
+`alpine-based` docker images :
+
+- ghcr.io/leleliu008/ppkg-alpine
+- ghcr.io/leleliu008/ppkg-alpine-amd64
+- ghcr.io/leleliu008/ppkg-alpine-arm64/v8
+- ghcr.io/leleliu008/ppkg-alpine-riscv64
+- ghcr.io/leleliu008/ppkg-alpine-ppc64le
+- ghcr.io/leleliu008/ppkg-alpine-s390x
+
+`ubuntu-based` docker images :
+- ghcr.io/leleliu008/ppkg-ubuntu
+- ghcr.io/leleliu008/ppkg-ubuntu-amd64
+- ghcr.io/leleliu008/ppkg-ubuntu-arm64/v8
+- ghcr.io/leleliu008/ppkg-ubuntu-riscv64
+- ghcr.io/leleliu008/ppkg-ubuntu-ppc64le
+- ghcr.io/leleliu008/ppkg-ubuntu-s390x
+
+**step1. create the ppkg docker container**
+
+```bash
+mkdir -p ~/ppkg-home
+mkdir -p ~/.m2
+
+docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg-alpine
+```
+
+**step2. start the ppkg docker container**
+
+```bash
+docker start ppkg
+```
+
+**step3. install essential tools**
+
+```bash
+docker exec -it ppkg ppkg setup
+```
+
+**step4. update formula repositories**
+
+```bash
+docker exec -it ppkg ppkg update
+```
+
+If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-35-arm64-v8a`:
+
+```bash
+docker exec -it ppkg ppkg install curl --static
+```
+
+**Note:** you can use `podman` instead of `docker`
+
 ## Install POSIX-Shell-based ppkg via curl
 
 ```bash
@@ -708,7 +764,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 
 |KEY|required?|overview|
 |-|-|-|
-|`pkgtype`|optional|the type of this package.<br>value shall be any one of `exe`, `lib`, `exe+lib`.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if the package name starts/ends with `lib` or ends with `-dev`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
+|`pkgtype`|optional|the type of this package.<br>value shall be any one of `exe`, `lib`, `exe+lib`.<br>If this mapping is not present, `ppkg` will determine the package type by package name, if the package name starts/ends with `lib` or ends with `-dev`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`linkage`|optional|This mapping is only for `exe` type package.<br>specify the executable's link method.<br>value shall be any one of `static`, `static/pie`, `shared`, `shared/most`.<br>`static` indicates this package only support creating fully statically linked executables.<br>`shared` indicates this package only support creating dynamically linked executables and `ppkg` will try to link as many static libraries as possible.<br>`shared/most` indicates this package only support creating dynamically linked executables and ppkg will try to link as many shared libraries as possible. <br>`shared` as default if this mapping is not present.|
 |`summary`|required|one sentence description of this package.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
