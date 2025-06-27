@@ -10408,12 +10408,12 @@ __setup_uppm() {
     else
         TAR="$(command -v gtar || command -v tar || true)"
 
-        if [ -z "$TAR" ] || command -v xz > /dev/null ; then
+        if [ -n "$TAR" ] && command -v xz > /dev/null ; then
+            :
+        else
             wfetch "https://github.com/leleliu008/bsdtar.exe/releases/download/2025.06.26/bsdtar-3.7.7-$NATIVE_PLATFORM_TARGET.release" -o bsdtar --no-buffer
             chmod +x bsdtar
             TAR=./bsdtar
-        else
-            abort 1 'none of bsdtar, gtar, tar command was found.'
         fi
     fi
 
