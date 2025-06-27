@@ -7,7 +7,7 @@ jobs:
 
   # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions
 
-  ubuntu:
+  docker:
     
     strategy:
       fail-fast: false
@@ -32,8 +32,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
+      - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
@@ -41,8 +40,10 @@ jobs:
       - id: version
         run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push Docker image
-        id: push
+      - if : matrix.arch != 'amd64'
+        uses: docker/setup-qemu-action@v3
+
+      - id: push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -52,8 +53,7 @@ jobs:
           tags: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:latest,ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}
           subject-digest: ${{ steps.push.outputs.digest }}
