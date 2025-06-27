@@ -4,11 +4,6 @@ LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 
 ADD ppkg /usr/bin/
 
-RUN apt-get -y update && \
-    apt-get -y install curl g++ gfortran && \
-    apt-get clean && \
-    rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
 ENV GITHUB_ACTIONS=true
 
-ENTRYPOINT [ "/bin/bash", "-l" ]
+ENTRYPOINT [ "/bin/sh", "/usr/bin/ppkg" ]

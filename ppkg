@@ -9937,21 +9937,21 @@ __cleanup() {
 ##############################################################################
 # {{{ ppkg setup
 
-__setup_ubuntu() {
+__setup_syspm_ubuntu() {
     SYSPM=apt
 
     run $sudo apt -y update
     run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree libarchive-tools patch patchelf pkg-config golang git curl cmake ninja-build make g++ linux-headers-generic flex bison m4 jq
 }
 
-__setup_fedora() {
+__setup_syspm_fedora() {
     SYSPM=dnf
 
     run $sudo dnf -y update
     run $sudo dnf -y install bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkg-config golang git curl cmake ninja-build make g++ flex bison m4 jq
 }
 
-__setup_alpine() {
+__setup_syspm_alpine() {
     SYSPM=apk
 
     run $sudo apk update
@@ -9963,7 +9963,7 @@ __setup_alpine() {
     printf 'export ACLOCAL_PATH=/usr/share/aclocal\n' > init.sh
 }
 
-__setup_darwin() {
+__setup_syspm_macos() {
     SYSPM=brew
 
     BREW="$(command -v brew || true)"
@@ -10023,7 +10023,7 @@ export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
 }
 
-__setup_dragonflybsd() {
+__setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
@@ -10050,7 +10050,7 @@ __setup_dragonflybsd() {
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
 
-__setup_freebsd() {
+__setup_syspm_freebsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
@@ -10075,7 +10075,7 @@ __setup_freebsd() {
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
 
-__setup_openbsd() {
+__setup_syspm_openbsd() {
     SYSPM=pkg_add
 
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
@@ -10116,7 +10116,7 @@ LDFLAGS=-L/usr/local/lib
 EOF
 }
 
-__setup_netbsd() {
+__setup_syspm_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
@@ -10162,171 +10162,128 @@ export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
 }
 
-__setup() {
-    SESSION_DIR="$PPKG_HOME/run/$$/core"
+__setup_syspm() {
+    step "install needed packages via your system's package manager"
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+        unset ID
 
-    run install -d bin
-
-    ##################################################################################
-
-    NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_PLATFORM_ARCH="$(uname -m)"
-
-    if [ "$NATIVE_PLATFORM_KIND" = dragonfly ] ; then
-        NATIVE_PLATFORM_KIND=dragonflybsd
-    fi
-
-    #################################################################################
-
-    unset sudo
-
-    [ "$(id -u)" -eq 0 ] || sudo=sudo
-
-    #################################################################################
-
-    if [ "$1" = '--syspm' ] ; then
-        step "install needed packages via your system's package manager"
-
-        if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
-            unset ID
-
-            if [ -f /etc/os-release ] ; then
-                .   /etc/os-release
-            fi
-
-            NATIVE_PLATFORM_NAME="$ID"
-        else
-            NATIVE_PLATFORM_NAME="$NATIVE_PLATFORM_KIND"
+        if [ -f /etc/os-release ] ; then
+            .   /etc/os-release
         fi
 
-        __setup_$NATIVE_PLATFORM_NAME
-
-        export PATH="$PWD/bin:$PATH"
-
-        #################################################################################
-
-        step "install ppkg core"
-        run git clone --depth=1 https://github.com/leleliu008/ppkg
-
-        if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
-            SRCS=
-        else
-            SRCS="$(ls ppkg/core/elftools/*.c)"
-        fi
-
-        for f in ppkg/core/wrappers/*.c $SRCS
-        do
-            o="${f##*/}"
-            o="${o%.c}"
-
-            run cc -flto -Os -std=c99 -o "$o" "$f"
-            run strip "$o"
-        done
-
-        run mv ppkg/core/uppm-shim-$SYSPM uppm
-        run mv ppkg/core/fonts.conf .
-
-        run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
-
-        #################################################################################
-
-        wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' --no-buffer
-
-        #################################################################################
-
-        if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
-            SRC=sysinfo/src/lib/determine-linux-system-libc.c
-        else
-            SRC=
-        fi
-
-        step "install sysinfo"
-        run git clone --depth=1 https://github.com/leleliu008/sysinfo
-        run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRC -Isysinfo/src/lib
-        run strip bin/sysinfo
-        run bin/sysinfo
-
-        #################################################################################
-
-        [ "$NATIVE_PLATFORM_KIND" = darwin ] || {
-            step "install patchelf"
-            wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
-            run bsdtar xf patchelf-0.17.2.zip --no-same-owner
-            run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
-        }
-
-        #################################################################################
-
-        step "install xxd"
-        wfetch 'https://raw.githubusercontent.com/vim/vim/master/src/xxd/xxd.c' --no-buffer
-        run cc -DUNIX -Os -flto -o bin/xxd xxd.c
-        run strip bin/xxd
-
-        #################################################################################
-
-        step "install yq"
-
-        unset YQ_URL
-        unset YQ_SHA
-
-        # https://github.com/mikefarah/yq/releases
-        case $NATIVE_PLATFORM_KIND-$NATIVE_PLATFORM_ARCH in
-            linux-x86_64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64'
-                YQ_SHA='654d2943ca1d3be2024089eb4f270f4070f491a0610481d128509b2834870049'
-                ;;
-            freebsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_freebsd_amd64'
-                YQ_SHA='4172149394434ebb82dee3143c15317ed8510dd293e44e5c248af5f353960d5b'
-                ;;
-            openbsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_openbsd_amd64'
-                YQ_SHA='9e6a828746be46779e3177e34bbb23c0cfb48e4f2dfc39aa73e28636f8b061a2'
-                ;;
-            netbsd-amd64)
-                YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_netbsd_amd64'
-                YQ_SHA='24e5145cb637e7b95f9c29c3fe6932b8b2a93800055ecc62a3a671c3a3bd3653'
-                ;;
-        esac
-
-        if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-            wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq --no-buffer
-            run chmod +x bin/yq
-        fi
-
-        #################################################################################
-
-        # https://curl.se/docs/caextract.html
-        wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
-
-        printf 'SYSPM=%s\n' "$SYSPM" >> init.sh
+        NATIVE_PLATFORM_NAME="$ID"
     else
-        __setup_uppm
+        NATIVE_PLATFORM_NAME="$NATIVE_PLATFORM_TYPE"
     fi
 
-    #########################################################################################
+    __setup_syspm_$NATIVE_PLATFORM_NAME
 
-    if [ -d        "$PPKG_CORE_DIR" ] ; then
-        run rm -rf "$PPKG_CORE_DIR"
+    export PATH="$PWD/bin:$PATH"
+
+    #################################################################################
+
+    step "install ppkg core"
+    run git clone --depth=1 https://github.com/leleliu008/ppkg
+
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+        SRCS=
+    else
+        SRCS="$(ls ppkg/core/elftools/*.c)"
     fi
 
-    run mv "$SESSION_DIR" "$PPKG_HOME/"
+    for f in ppkg/core/wrappers/*.c $SRCS
+    do
+        o="${f##*/}"
+        o="${o%.c}"
 
-    success "ppkg has been set up successfully."
+        run cc -flto -Os -std=c99 -o "$o" "$f"
+        run strip "$o"
+    done
+
+    run mv ppkg/core/uppm-shim-$SYSPM uppm
+    run mv ppkg/core/fonts.conf .
+
+    run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
+
+    #################################################################################
+
+    wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' --no-buffer
+
+    #################################################################################
+
+    if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+        SRC=sysinfo/src/lib/determine-linux-system-libc.c
+    else
+        SRC=
+    fi
+
+    step "install sysinfo"
+    run git clone --depth=1 https://github.com/leleliu008/sysinfo
+    run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRC -Isysinfo/src/lib
+    run strip bin/sysinfo
+    run bin/sysinfo
+
+    #################################################################################
+
+    [ "$NATIVE_PLATFORM_TYPE" = macos ] || {
+        step "install patchelf"
+        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
+        run bsdtar xf patchelf-0.17.2.zip --no-same-owner
+        run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
+    }
+
+    #################################################################################
+
+    step "install xxd"
+    wfetch 'https://raw.githubusercontent.com/vim/vim/master/src/xxd/xxd.c' --no-buffer
+    run cc -DUNIX -Os -flto -o bin/xxd xxd.c
+    run strip bin/xxd
+
+    #################################################################################
+
+    step "install yq"
+
+    unset YQ_URL
+    unset YQ_SHA
+
+    # https://github.com/mikefarah/yq/releases
+    case $NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH in
+        linux-x86_64)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64'
+            YQ_SHA='654d2943ca1d3be2024089eb4f270f4070f491a0610481d128509b2834870049'
+            ;;
+        freebsd-amd64)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_freebsd_amd64'
+            YQ_SHA='4172149394434ebb82dee3143c15317ed8510dd293e44e5c248af5f353960d5b'
+            ;;
+        openbsd-amd64)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_openbsd_amd64'
+            YQ_SHA='9e6a828746be46779e3177e34bbb23c0cfb48e4f2dfc39aa73e28636f8b061a2'
+            ;;
+        netbsd-amd64)
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_netbsd_amd64'
+            YQ_SHA='24e5145cb637e7b95f9c29c3fe6932b8b2a93800055ecc62a3a671c3a3bd3653'
+            ;;
+    esac
+
+    if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
+        wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq --no-buffer
+        run chmod +x bin/yq
+    fi
+
+    #################################################################################
+
+    # https://curl.se/docs/caextract.html
+    wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
+
+    printf 'SYSPM=%s\n' "$SYSPM" >> init.sh
 }
 
 # use commands: uname curl|wget
 __setup_uppm() {
-    unset NATIVE_PLATFORM_TYPE
-    unset NATIVE_PLATFORM_VERS
-
-    case $NATIVE_PLATFORM_KIND in
-        darwin)
-            NATIVE_PLATFORM_TYPE='macos'
+    case $NATIVE_PLATFORM_TYPE in
+        macos)
             NATIVE_PLATFORM_VERS="$(sw_vers -productVersion)"
             NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
@@ -10367,13 +10324,28 @@ __setup_uppm() {
             ;;
         dragonflybsd)
             NATIVE_PLATFORM_VERS='6.4'
+            ;;
+        linux)
+            if [ "$GITHUB_ACTIONS" = true ] ; then
+                unset ID
+
+                if [ -f /etc/os-release ] ; then
+                    .   /etc/os-release
+
+                    case $ID in
+                        alpine)
+                            run $sudo /sbin/apk update
+                            run $sudo /sbin/apk add g++ gfortran linux-headers
+                            ;;
+                        ubuntu)
+                            run $sudo /usr/bin/apt -y update
+                            run $sudo /usr/bin/apt -y install curl g++ gfortran linux-headers-generic
+                            ;;
+                    esac
+                fi
+            fi
+            ;;
     esac
-
-    ##################################################################################
-
-    if [ -z "$NATIVE_PLATFORM_TYPE" ] ; then
-        NATIVE_PLATFORM_TYPE="$NATIVE_PLATFORM_KIND"
-    fi
 
     ##################################################################################
 
@@ -10607,6 +10579,56 @@ EOF
 
         ln -s ../wrapper-native-cc bin/cc
     fi
+}
+
+__setup() {
+    SESSION_DIR="$PPKG_HOME/run/$$/core"
+
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    run install -d bin
+
+    #################################################
+
+    unset NATIVE_PLATFORM_KIND
+    unset NATIVE_PLATFORM_TYPE
+    unset NATIVE_PLATFORM_ARCH
+    unset NATIVE_PLATFORM_VERS
+
+    NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
+    NATIVE_PLATFORM_ARCH="$(uname -m)"
+
+    case $NATIVE_PLATFORM_KIND in
+        dragonfly)  NATIVE_PLATFORM_TYPE=dragonflybsd ;;
+        darwin)     NATIVE_PLATFORM_TYPE=macos ;;
+        *)          NATIVE_PLATFORM_TYPE="$NATIVE_PLATFORM_KIND" ;;
+    esac
+
+    #################################################
+
+    unset sudo
+
+    [ "$(id -u)" -eq 0 ] || sudo=sudo
+
+    #################################################
+
+    if [ "$1" = '--syspm' ] ; then
+        __setup_syspm
+    else
+        __setup_uppm
+    fi
+
+    #################################################
+
+    if [ -d        "$PPKG_CORE_DIR" ] ; then
+        run rm -rf "$PPKG_CORE_DIR"
+    fi
+
+    run mv "$SESSION_DIR" "$PPKG_HOME/"
+
+    success "ppkg has been set up successfully."
 }
 
 # }}}
@@ -11011,7 +11033,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.18
+PPKG_VERSION=0.23.19
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

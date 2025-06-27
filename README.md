@@ -67,19 +67,19 @@ docker start ppkg
 **step3. install essential tools**
 
 ```bash
-docker exec -it ppkg ppkg setup
+docker exec -it ppkg setup
 ```
 
 **step4. update formula repositories**
 
 ```bash
-docker exec -it ppkg ppkg update
+docker exec -it ppkg update
 ```
 
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ppkg ppkg install curl --static
+docker exec -it ppkg install curl --static
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -746,6 +746,11 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     colon-seperated list of directories to search formulas.
 
+- **GITHUB_ACTIONS**
+
+    The value is `true` to indicates that `ppkg` is running on GitHub Actions.
+
+    In this mode, `ppkg` will use system's package manager to install some packages e.g. `curl`, `g++`, `libc-dev`, `linux-headers`, `rust`, `cargo`, etc.
 
 **Note:** some commonly used environment variables are overridden by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 

@@ -4,8 +4,6 @@ LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 
 ADD ppkg /usr/bin/
 
-RUN apk update && apk add --no-cache g++ libc-dev linux-headers
-
 ENV GITHUB_ACTIONS=true
 
-ENTRYPOINT [ "/bin/sh", "-l" ]
+ENTRYPOINT [ "/bin/sh", "/usr/bin/ppkg" ]
