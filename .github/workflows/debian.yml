@@ -26,7 +26,7 @@ jobs:
           #https://stackoverflow.com/questions/76094428/debian-stretch-repositories-404-not-found
 
       - run: apt -y update
-      - run: apt -y install curl xz-utils g++
+      - run: apt -y install curl g++
 
       - uses: actions/checkout@v4
 

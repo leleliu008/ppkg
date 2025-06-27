@@ -10319,7 +10319,7 @@ __setup() {
     success "ppkg has been set up successfully."
 }
 
-# use commands: uname curl|wget tar xz cut
+# use commands: uname curl|wget
 __setup_uppm() {
     unset NATIVE_PLATFORM_TYPE
     unset NATIVE_PLATFORM_VERS
@@ -10327,8 +10327,10 @@ __setup_uppm() {
     case $NATIVE_PLATFORM_KIND in
         darwin)
             NATIVE_PLATFORM_TYPE='macos'
+            NATIVE_PLATFORM_VERS="$(sw_vers -productVersion)"
+            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
-            case $(sw_vers -productVersion | cut -d. -f1) in
+            case $NATIVE_PLATFORM_VERS_MAJOR in
                 10) NATIVE_PLATFORM_VERS='10.15' ;;
                 11) NATIVE_PLATFORM_VERS='11.0'  ;;
                 12) NATIVE_PLATFORM_VERS='12.0'  ;;
@@ -10399,7 +10401,23 @@ __setup_uppm() {
 
     ##################################################################################
 
-    TAR="$(command -v bsdtar || command -v gtar || command -v tar)" || abort 1 'none of bsdtar, gtar, tar command was found.'
+    BSDTAR="$(command -v bsdtar || true)"
+
+    if [ -n "$BSDTAR" ] ; then
+        TAR="$BSDTAR"
+    else
+        TAR="$(command -v gtar || command -v tar || true)"
+
+        if [ -z "$TAR" ] || command -v xz > /dev/null ; then
+            wfetch "https://github.com/leleliu008/bsdtar.exe/releases/download/2025.06.26/bsdtar-3.7.7-$NATIVE_PLATFORM_TARGET.debug" -o bsdtar --no-buffer
+            chmod +x bsdtar
+            TAR=./bsdtar
+        else
+            abort 1 'none of bsdtar, gtar, tar command was found.'
+        fi
+    fi
+
+    ##################################################################################
 
     run "$TAR" xvf "$PPKG_CORE_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
@@ -10436,7 +10454,7 @@ __setup_uppm() {
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/sbin"
         fi
-
+tar
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
             UPPM_PACKAGE_ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
         fi
@@ -10993,7 +11011,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.17
+PPKG_VERSION=0.23.18
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

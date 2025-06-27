@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: zypper update -y
-      - run: zypper install -y curl tar gzip xz gcc-c++
+      - run: zypper install -y curl gcc-c++
 
       - uses: actions/checkout@v4
 

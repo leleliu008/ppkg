@@ -25,12 +25,12 @@ jobs:
             yum -y update
             yum -y install epel-release
             yum -y --enablerepo=epel update
-            yum -y --enablerepo=epel install curl xz gcc-c++
+            yum -y --enablerepo=epel install curl gcc-c++
         if: ${{ matrix.tag == 7 }}
 
       - run: |
             dnf -y update
-            dnf -y install curl xz gcc-c++
+            dnf -y install curl gcc-c++
         if: ${{ matrix.tag == 8 }}
 
       - uses: actions/checkout@v3
