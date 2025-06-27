@@ -10409,7 +10409,7 @@ __setup_uppm() {
         TAR="$(command -v gtar || command -v tar || true)"
 
         if [ -z "$TAR" ] || command -v xz > /dev/null ; then
-            wfetch "https://github.com/leleliu008/bsdtar.exe/releases/download/2025.06.26/bsdtar-3.7.7-$NATIVE_PLATFORM_TARGET.debug" -o bsdtar --no-buffer
+            wfetch "https://github.com/leleliu008/bsdtar.exe/releases/download/2025.06.26/bsdtar-3.7.7-$NATIVE_PLATFORM_TARGET.release" -o bsdtar --no-buffer
             chmod +x bsdtar
             TAR=./bsdtar
         else
