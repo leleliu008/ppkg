@@ -46,7 +46,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: docker
-          file: ${{ matrix.os }}
+          file: docker/${{ matrix.os }}
           platforms: linux/${{ matrix.arch }}
           push: true
           tags: ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:latest,ghcr.io/${{ github.repository }}-${{ matrix.os }}-${{ matrix.arch }}:${{ steps.version.outputs.version }}
