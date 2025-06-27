@@ -6,4 +6,4 @@ ADD ppkg /usr/bin/
 
 ENV GITHUB_ACTIONS=true
 
-ENTRYPOINT [ "/bin/sh", "/usr/bin/ppkg" ]
+ENTRYPOINT [ "/bin/sh", "-l" ]

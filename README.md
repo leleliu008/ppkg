@@ -67,19 +67,19 @@ docker start ppkg
 **step3. install essential tools**
 
 ```bash
-docker exec -it ppkg setup
+docker exec -it ppkg ppkg setup
 ```
 
 **step4. update formula repositories**
 
 ```bash
-docker exec -it ppkg update
+docker exec -it ppkg ppkg update
 ```
 
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ppkg install curl --static
+docker exec -it ppkg ppkg install curl --static
 ```
 
 **Note:** you can use `podman` instead of `docker`
