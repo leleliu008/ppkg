@@ -10454,7 +10454,7 @@ __setup_uppm() {
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/sbin"
         fi
-tar
+
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
             UPPM_PACKAGE_ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
         fi
