@@ -5460,6 +5460,8 @@ __inspect_install_arguments() {
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
+    #echo "SPECIFIED_PACKAGE_SPEC_LIST=$SPECIFIED_PACKAGE_SPEC_LIST"
+
     #########################################################################################
 
     if [ "$LOG_LEVEL" = 0 ] ; then
@@ -7077,7 +7079,7 @@ $PACKAGE_DOFETCH
 
     #########################################################################################
 
-    if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
+    if [ -n "$PACKAGE_DEP_RES" ] && [ "$TARGET_PLATFORM_NAME" = linux ] && [ "$TARGET_PLATFORM_VERS" = musl ] ; then
         for item in $PACKAGE_DEP_RES
         do
             case $item in
@@ -9314,9 +9316,14 @@ __install_the_given_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -9352,14 +9359,9 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
-
-        TARGET_PLATFORM_NAME=
-        TARGET_PLATFORM_VERS=
-        TARGET_PLATFORM_ARCH=
-
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
         TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
@@ -9368,7 +9370,7 @@ __install_the_given_packages() {
 
         REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -9458,9 +9460,14 @@ __reinstall_the_given_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -9496,14 +9503,9 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
-
-        TARGET_PLATFORM_NAME=
-        TARGET_PLATFORM_VERS=
-        TARGET_PLATFORM_ARCH=
-
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
         TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
@@ -9512,7 +9514,7 @@ __reinstall_the_given_packages() {
 
         REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -9597,9 +9599,14 @@ __upgrade_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -9635,14 +9642,9 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
-
-        TARGET_PLATFORM_NAME=
-        TARGET_PLATFORM_VERS=
-        TARGET_PLATFORM_ARCH=
-
+        TARGET_PLATFORM_SPEC="${PACKAGE_SPEC%/*}"
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
         TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
@@ -9651,7 +9653,7 @@ __upgrade_packages() {
 
         REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
+        PACKAGE_NAME_STACK="${PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
