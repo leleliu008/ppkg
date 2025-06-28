@@ -799,6 +799,7 @@ a ppkg formula's file content only has one level mapping and shall has following
 |`reslist`|optional|The value is multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
 |`dep-pkg`|optional|The value is a space-separated list of   `ppkg packages` depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
+|`dep-pkg-musl`|optional|The value is a space-separated list of   `ppkg packages` depended by this package when installing and/or runtime for target `musl`, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).<br> packages that are missing in `musl-libc` e.g. `libfts` `libargp` `libobstack` `libexecinfo`|
 |`dep-res`|optional|The value is a space-separated list of   `well-known resources` needed by this package when installing. the only possible value is `sys/queue.h` at the moment.|
 |`dep-lib`|optional|The value is a space-separated list of libraries to be linked. library name starts with `-l` will be directly passed to the linker. otherwise, it will be recognized as a `pkg-config` package name and it will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
 |`dep-upp`|optional|The value is a space-separated list of   `uppm packages` depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|

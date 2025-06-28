@@ -1039,6 +1039,7 @@ filetype_from_url() {
 
     # space-separated ppkg packages that are depended by this package when installing and/or runtime, which will be installed via ppkg
     unset PACKAGE_DEP_PKG
+    unset PACKAGE_DEP_PKG_FOR_MUSL
 
     # space-separated ppkg resources that are needed by this package when installing
     unset PACKAGE_DEP_RES
@@ -1165,6 +1166,18 @@ filetype_from_url() {
     PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    if [ "$TARGET_PLATFORM_NAME" = linux ] && [ "$TARGET_PLATFORM_VERS" = musl ] ; then
+        PACKAGE_DEP_PKG_FOR_MUSL="$(yq '.dep-pkg-musl | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+        if [ -n "$PACKAGE_DEP_PKG_FOR_MUSL" ] ; then
+            if [ -n "$PACKAGE_DEP_PKG" ] ; then
+                PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG $PACKAGE_DEP_PKG_FOR_MUSL"
+            else
+                PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG_FOR_MUSL"
+            fi
+        fi
+    fi
 
     #########################################################################################
 
@@ -7064,8 +7077,6 @@ $PACKAGE_DOFETCH
 
     #########################################################################################
 
-    unset LIBEXECINFO_GIT_URL
-
     if [ "$TARGET_PLATFORM_VERS" = musl ] ; then
         for item in $PACKAGE_DEP_RES
         do
@@ -7074,18 +7085,6 @@ $PACKAGE_DOFETCH
                     run cd "$PACKAGE_WORKING_DIR"
                     run install -d include/sys/
                     wfetch https://raw.githubusercontent.com/leleliu008/sys-queue.h/v1/sys-queue.h -o include/sys/queue.h --no-buffer
-                    ;;
-                libexecinfo)
-                    LIBEXECINFO_GIT_URL='https://github.com/leleliu008/libexecinfo'
-
-                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                        LIBEXECINFO_GIT_URL="$("$PPKG_URL_TRANSFORM" "$LIBEXECINFO_GIT_URL")"
-                    fi
-
-                    run cd "$PACKAGE_WORKING_DIR"
-                    run git clone --depth=1 "$LIBEXECINFO_GIT_URL" lib/libexecinfo
-                    run ln -s ../lib/libexecinfo/execinfo.h      include/execinfo.h
-                    run ln -s ../lib/libexecinfo/stacktraverse.h include/stacktraverse.h
             esac
         done
     fi
@@ -7665,10 +7664,6 @@ EOF
         #-Wl,--no-dynamic-linker
     fi
 
-    [ -n "$LIBEXECINFO_GIT_URL" ] && {
-        LDFLAGS="$LDFLAGS -Wl,--whole-archive $PACKAGE_INSTALLING_LIB_DIR/libexecinfo.a -Wl,--no-whole-archive"
-    }
-
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
     PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
@@ -7696,6 +7691,23 @@ EOF
         PROXIED_CXX_ARGS="$PROXIED_CXX_ARGS $item"
         PROXIED_OBJC_ARGS="$PROXIED_OBJC_ARGS $item"
     done
+
+    if [ "$TARGET_PLATFORM_NAME" = linux ] && [ "$TARGET_PLATFORM_VERS" = musl ] ; then
+        if [ -n "$PACKAGE_DEP_PKG_FOR_MUSL" ] ; then
+            LDFLAGS_FOR_TARGET_MUSL='-Wl,--whole-archive'
+
+            for item in $PACKAGE_DEP_PKG_FOR_MUSL
+            do
+                LDFLAGS_FOR_TARGET_MUSL="$LDFLAGS_FOR_TARGET_MUSL -l${item#lib}"
+            done
+
+            LDFLAGS_FOR_TARGET_MUSL="$LDFLAGS_FOR_TARGET_MUSL -Wl,--no-whole-archive"
+
+            PROXIED_CC_ARGS="$PROXIED_CC_ARGS $LDFLAGS_FOR_TARGET_MUSL"
+            PROXIED_CXX_ARGS="$PROXIED_CXX_ARGS $LDFLAGS_FOR_TARGET_MUSL"
+            PROXIED_OBJC_ARGS="$PROXIED_OBJC_ARGS $LDFLAGS_FOR_TARGET_MUSL"
+        fi
+    fi
 
     #########################################################################################
 
@@ -8049,16 +8061,6 @@ EOF
         export CGO_CPPFLAGS="$CPPFLAGS"
         export CGO_LDFLAGS="$LDFLAGS"
     fi
-
-    #########################################################################################
-
-    [ -n "$LIBEXECINFO_GIT_URL" ] && {
-        run cd "$PACKAGE_INSTALLING_LIB_DIR/libexecinfo"
-        run "$CC" -c "$CFLAGS" stacktraverse.c
-        run "$CC" -c "$CFLAGS" execinfo.c
-        run "$AR" crs libexecinfo.a execinfo.o stacktraverse.o
-        run mv libexecinfo.a ..
-    }
 
     #########################################################################################
 
@@ -11033,7 +11035,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.19
+PPKG_VERSION=0.23.20
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
