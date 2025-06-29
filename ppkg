@@ -1039,6 +1039,7 @@ filetype_from_url() {
 
     # space-separated ppkg packages that are depended by this package when installing and/or runtime, which will be installed via ppkg
     unset PACKAGE_DEP_PKG
+    unset PACKAGE_DEP_PKG_FOR_TARGET
     unset PACKAGE_DEP_PKG_FOR_MUSL
 
     # space-separated ppkg resources that are needed by this package when installing
@@ -1166,6 +1167,16 @@ filetype_from_url() {
     PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_DEP_PKG_FOR_TARGET="$(yq ".dep-pkg-$TARGET_PLATFORM_NAME | select(. != null)" "$PACKAGE_FORMULA_FILEPATH")"
+
+    if [ -n "$PACKAGE_DEP_PKG_FOR_TARGET" ] ; then
+        if [ -n "$PACKAGE_DEP_PKG" ] ; then
+            PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG $PACKAGE_DEP_PKG_FOR_TARGET"
+        else
+            PACKAGE_DEP_PKG="$PACKAGE_DEP_PKG_FOR_TARGET"
+        fi
+    fi
 
     if [ "$TARGET_PLATFORM_NAME" = linux ] && [ "$TARGET_PLATFORM_VERS" = musl ] ; then
         PACKAGE_DEP_PKG_FOR_MUSL="$(yq '.dep-pkg-musl | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -5610,6 +5621,10 @@ __inspect_install_arguments() {
     unset DESTDIR
 
     unset LIBS
+
+    # https://mesonbuild.com/Reference-tables.html#compiler-and-linker-flag-environment-variables
+    unset VALAFLAGS
+    unset RUSTFLAGS
 
     # autoreconf --help
 
@@ -11037,7 +11052,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.20
+PPKG_VERSION=0.23.21
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
