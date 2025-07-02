@@ -10203,7 +10203,7 @@ __setup_syspm() {
     #################################################################################
 
     step "install ppkg core"
-    run git clone --depth=1 https://github.com/leleliu008/ppkg
+    run git clone --depth=1 --branch=dev https://github.com/leleliu008/ppkg
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         SRCS=
