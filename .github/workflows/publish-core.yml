@@ -103,8 +103,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['14.2', '14.1', '14.0', '13.4', '13.3', '13.2']
-        # https://archive.freebsd.org/old-releases/amd64/
+        target-version: ['14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
+        # https://github.com/cross-platform-actions/action?tab=readme-ov-file#freebsd-freebsd
 
     steps:
       - uses: actions/checkout@v4

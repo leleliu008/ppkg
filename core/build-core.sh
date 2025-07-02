@@ -2,10 +2,9 @@
 
 set -ex
 
-for f in wrappers/*.c
+for f in wrappers/*.c elftools/*.c
 do
     o="${f%.c}"
-    cc -flto -Os -std=gnu99 -o "$o" "$f"
-    strip "$o"
+    cc -std=gnu99 -Os -s -flto -o "$o" "$f"
     mv "$o" ~/.ppkg/core/
 done
