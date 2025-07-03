@@ -41,6 +41,7 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
         ;;
     dragonflybsd)
+        run pkg install -y curl libnghttp2 gcc
         run ./ppkg setup
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
