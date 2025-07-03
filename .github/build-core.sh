@@ -44,7 +44,7 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
 
     for f in core/wrappers/*.c
     do
-        x="${f#*/}"
+        x="${f##*/}"
         o="bundle.d/${x%.c}"
         run $CC $CFLAGS -std=c99 -Os -flto -o "$o" "$f"
         run strip "$o"
@@ -52,7 +52,7 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
 else
     for f in core/wrappers/*.c core/elftools/*.c
     do
-        x="${f#*/}"
+        x="${f##*/}"
         o="bundle.d/${x%.c}"
         run cc -std=gnu99 -Os -s -flto -static -o "$o" "$f"
     done
