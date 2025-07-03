@@ -6172,6 +6172,7 @@ __install_the_given_package() {
     STATIC_LIBRARY_SUFFIX='.a'
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+        unset REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
         SHARED_LIBRARY_SUFFIX='.dylib'
     else
         SHARED_LIBRARY_SUFFIX='.so'

@@ -33,15 +33,25 @@ fi
 
 ######################################################
 
-if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-    run ./ppkg setup
-else
-    run ./ppkg setup --syspm
-fi
-
-run ./ppkg update
-run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
-run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+case $TARGET_PLATFORM_NAME in
+    macos)
+        run ./ppkg setup
+        run ./ppkg update
+        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+        ;;
+    dragonflybsd)
+        run ./ppkg setup
+        run ./ppkg update
+        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+        ;;
+    *)
+        run ./ppkg setup --syspm
+        run ./ppkg update
+        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+esac
 
 ######################################################
 
