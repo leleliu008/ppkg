@@ -10046,7 +10046,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go121 go-yq jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go121 jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
 
     run ln -s /usr/local/go121/bin/go   bin/go
 

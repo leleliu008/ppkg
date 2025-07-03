@@ -14,8 +14,16 @@ fi
 
 ######################################################
 
-TARGET_PLATFORM_NAME="${2%%-*}"
-TARGET_PLATFORM_ARCH="${2##*-}"
+if [ "$2" = 'linux-musl-armhf' ] ; then
+    TARGET_PLATFORM_SPEC='linux-musl-armv7l'
+else
+    TARGET_PLATFORM_SPEC="$2"
+fi
+
+######################################################
+
+TARGET_PLATFORM_NAME="${TARGET_PLATFORM_SPEC%%-*}"
+TARGET_PLATFORM_ARCH="${TARGET_PLATFORM_SPEC##*-}"
 
 ######################################################
 
@@ -25,10 +33,15 @@ fi
 
 ######################################################
 
-run ./ppkg setup --syspm
+if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
+    run ./ppkg setup
+else
+    run ./ppkg setup --syspm
+fi
+
 run ./ppkg update
-run ./ppkg install $2/uppm@0.15.4 --static
-run ./ppkg bundle  $2/uppm@0.15.4 .tar.xz
+run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
+run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
 
 ######################################################
 
@@ -67,7 +80,7 @@ run curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/relea
 if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
     BUNDLE_DIRNAME="ppkg-core-$1-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_ARCH"
 else
-    BUNDLE_DIRNAME="ppkg-core-$1-$2"
+    BUNDLE_DIRNAME="ppkg-core-$1-$TARGET_PLATFORM_SPEC"
 fi
 
 ######################################################
