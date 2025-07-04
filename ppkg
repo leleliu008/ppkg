@@ -7723,21 +7723,19 @@ EOF
 
     ##############################################################################
 
-    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" != 1 ] ; then
-        export IFS=':'
+    export IFS=':'
 
-        for item in $TARGET_INCLUDE_SEARCH_DIRS
-        do
-            PPFLAGS="$PPFLAGS -I$item"
-        done
+    for d in $TARGET_INCLUDE_SEARCH_DIRS
+    do
+        PPFLAGS="$PPFLAGS -I$d"
+    done
 
-        for item in $TARGET_LIBRARY_SEARCH_DIRS
-        do
-            LDFLAGS="$LDFLAGS -L$item -Wl,-rpath,$item"
-        done
+    for d in $TARGET_LIBRARY_SEARCH_DIRS
+    do
+        LDFLAGS="$LDFLAGS -L$d -Wl,-rpath,$d"
+    done
 
-        unset IFS
-    fi
+    unset IFS
 
     ##############################################################################
 
@@ -11116,7 +11114,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.22
+PPKG_VERSION=0.23.23
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
