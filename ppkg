@@ -10331,20 +10331,20 @@ __setup_syspm() {
     # https://github.com/mikefarah/yq/releases
     case $NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH in
         linux-x86_64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64'
-            YQ_SHA='654d2943ca1d3be2024089eb4f270f4070f491a0610481d128509b2834870049'
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_linux_amd64'
+            YQ_SHA='b96de04645707e14a12f52c37e6266832e03c29e95b9b139cddcae7314466e69'
             ;;
         freebsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_freebsd_amd64'
-            YQ_SHA='4172149394434ebb82dee3143c15317ed8510dd293e44e5c248af5f353960d5b'
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_freebsd_amd64'
+            YQ_SHA='4a7b1c1de3925e07b25ebcb236799842bc8574cf506bb4744e815f76e405840a'
             ;;
         openbsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_openbsd_amd64'
-            YQ_SHA='9e6a828746be46779e3177e34bbb23c0cfb48e4f2dfc39aa73e28636f8b061a2'
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_openbsd_amd64'
+            YQ_SHA='ffb4ac6da4537de3e8ab8192c2cbead11d47ffb2508a73e143db752a90f6cc92'
             ;;
         netbsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_netbsd_amd64'
-            YQ_SHA='24e5145cb637e7b95f9c29c3fe6932b8b2a93800055ecc62a3a671c3a3bd3653'
+            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_netbsd_amd64'
+            YQ_SHA='aef7b2e3fd50e65f32a12df1241986924552da32c910396bea2816a1625e4b68'
             ;;
     esac
 
@@ -11114,7 +11114,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.23
+PPKG_VERSION=0.23.24
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

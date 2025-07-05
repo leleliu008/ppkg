@@ -1,0 +1,9 @@
+FROM loongarch64/alpine:3.22
+
+LABEL org.opencontainers.image.authors=leleliu008@gmail.com
+
+ADD ppkg /usr/bin/
+
+ENV GITHUB_ACTIONS=true
+
+ENTRYPOINT [ "/bin/sh", "-l" ]
