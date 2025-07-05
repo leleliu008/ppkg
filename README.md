@@ -133,6 +133,22 @@ sudo chroot alpine-rootfs ppkg update
 sudo chroot alpine-rootfs ppkg install curl --static
 ```
 
+you can use [alpine-chroot-install](https://github.com/alpinelinux/alpine-chroot-install/blob/master/alpine-chroot-install) instead of above
+
+```bash
+curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
+chmod +x alpine-chroot-install
+
+sudo ./alpine-chroot-install -d ~/alpine-chroot -a x86_64
+
+curl -L -o ~/alpine-chroot/ppkg https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+chmod a+x  ~/alpine-chroot/ppkg
+
+~/alpine-chroot/enter-chroot /ppkg setup
+~/alpine-chroot/enter-chroot /ppkg update
+~/alpine-chroot/enter-chroot /ppkg install curl --static
+```
+
 ## Install POSIX-Shell-based ppkg via curl
 
 ```bash
