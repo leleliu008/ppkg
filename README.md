@@ -35,20 +35,20 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 
 `alpine-based` docker images :
 
-- ghcr.io/leleliu008/ppkg/alpine
-- ghcr.io/leleliu008/ppkg/alpine/amd64
-- ghcr.io/leleliu008/ppkg/alpine/arm64/v8
-- ghcr.io/leleliu008/ppkg/alpine/riscv64
-- ghcr.io/leleliu008/ppkg/alpine/ppc64le
-- ghcr.io/leleliu008/ppkg/alpine/s390x
+- `ghcr.io/leleliu008/ppkg/alpine`
+- `ghcr.io/leleliu008/ppkg/alpine/amd64`
+- `ghcr.io/leleliu008/ppkg/alpine/arm64/v8`
+- `ghcr.io/leleliu008/ppkg/alpine/riscv64`
+- `ghcr.io/leleliu008/ppkg/alpine/ppc64le`
+- `ghcr.io/leleliu008/ppkg/alpine/s390x`
 
 `ubuntu-based` docker images :
-- ghcr.io/leleliu008/ppkg/ubuntu
-- ghcr.io/leleliu008/ppkg/ubuntu/amd64
-- ghcr.io/leleliu008/ppkg/ubuntu/arm64/v8
-- ghcr.io/leleliu008/ppkg/ubuntu/riscv64
-- ghcr.io/leleliu008/ppkg/ubuntu/ppc64le
-- ghcr.io/leleliu008/ppkg/ubuntu/s390x
+- `ghcr.io/leleliu008/ppkg/ubuntu`
+- `ghcr.io/leleliu008/ppkg/ubuntu/amd64`
+- `ghcr.io/leleliu008/ppkg/ubuntu/arm64/v8`
+- `ghcr.io/leleliu008/ppkg/ubuntu/riscv64`
+- `ghcr.io/leleliu008/ppkg/ubuntu/ppc64le`
+- `ghcr.io/leleliu008/ppkg/ubuntu/s390x`
 
 **step1. create the ppkg docker container**
 
