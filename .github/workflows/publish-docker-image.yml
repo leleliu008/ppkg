@@ -108,12 +108,12 @@ jobs:
           push-to-registry: true
 
 
-  loongarch64:
+  alpine-loong64:
 
     strategy:
       fail-fast: false
       matrix:
-        os: [alpine, archlinux]
+        os: [alpine]
 
     runs-on: ubuntu-latest
 
@@ -141,15 +141,102 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.${{ matrix.os }}.loongarch64
+          file: Dockerfile.${{ matrix.os }}.loong64
           platforms: linux/loong64
           push: true
-          tags: ghcr.io/${{ github.repository }}/${{ matrix.os }}/loongarch64:latest,ghcr.io/${{ github.repository }}/${{ matrix.os }}/loongarch64:${{ steps.version.outputs.version }}
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.os }}/loong64:latest,ghcr.io/${{ github.repository }}/${{ matrix.os }}/loong64:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}/${{ matrix.os }}/loongarch64
+          subject-name: ghcr.io/${{ github.repository }}/${{ matrix.os }}/loong64
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
+
+  openeuler-multip-arch:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - id: version
+        run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.openeuler
+          platforms: linux/amd64,linux/arm64,linux/loong64
+          push: true
+          tags: ghcr.io/${{ github.repository }}/openeuler:latest,ghcr.io/${{ github.repository }}/openeuler:${{ steps.version.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/openeuler
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+
+  openeuler-single-arch:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, alpine]
+        arch: [amd64, arm64, loong64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - id: version
+        run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.openeuler
+          platforms: ${{ matrix.arch }}
+          push: true
+          tags: ghcr.io/${{ github.repository }}/openeuler/${{ matrix.arch }}:latest,ghcr.io/${{ github.repository }}/openeuler/${{ matrix.arch }}:${{ steps.version.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/openeuler/${{ matrix.arch }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

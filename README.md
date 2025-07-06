@@ -32,23 +32,27 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 ## Using ppkg via [Docker](https://www.docker.com/)
 
 `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
-
-`alpine-based` docker images :
-
-- `ghcr.io/leleliu008/ppkg/alpine`
-- `ghcr.io/leleliu008/ppkg/alpine/amd64`
-- `ghcr.io/leleliu008/ppkg/alpine/arm64/v8`
-- `ghcr.io/leleliu008/ppkg/alpine/riscv64`
-- `ghcr.io/leleliu008/ppkg/alpine/ppc64le`
-- `ghcr.io/leleliu008/ppkg/alpine/s390x`
-
-`ubuntu-based` docker images :
-- `ghcr.io/leleliu008/ppkg/ubuntu`
-- `ghcr.io/leleliu008/ppkg/ubuntu/amd64`
-- `ghcr.io/leleliu008/ppkg/ubuntu/arm64/v8`
-- `ghcr.io/leleliu008/ppkg/ubuntu/riscv64`
-- `ghcr.io/leleliu008/ppkg/ubuntu/ppc64le`
-- `ghcr.io/leleliu008/ppkg/ubuntu/s390x`
+|REPOSITORY|OS|ARCH|
+|-|-|-|
+|`ghcr.io/leleliu008/ppkg/alpine`|`alpine`|all|
+|`ghcr.io/leleliu008/ppkg/alpine/amd64`|`alpine`|`amd64`|
+|`ghcr.io/leleliu008/ppkg/alpine/arm64/v8`|`alpine`|`arm64/v8`|
+|`ghcr.io/leleliu008/ppkg/alpine/loong64`|`alpine`|`loong64`|
+|`ghcr.io/leleliu008/ppkg/alpine/riscv64`|`alpine`|`riscv64`|
+|`ghcr.io/leleliu008/ppkg/alpine/ppc64le`|`alpine`|`ppc64le`|
+|`ghcr.io/leleliu008/ppkg/alpine/s390x`|`alpine`|`s390x`|
+||||
+|`ghcr.io/leleliu008/ppkg/ubuntu`|`ubuntu`|all|
+|`ghcr.io/leleliu008/ppkg/ubuntu/amd64`|`ubuntu`|`amd64`|
+|`ghcr.io/leleliu008/ppkg/ubuntu/arm64/v8`|`ubuntu`|`arm64/v8`|
+|`ghcr.io/leleliu008/ppkg/ubuntu/riscv64`|`ubuntu`|`riscv64`|
+|`ghcr.io/leleliu008/ppkg/ubuntu/ppc64le`|`ubuntu`|`ppc64le`|
+|`ghcr.io/leleliu008/ppkg/ubuntu/s390x`|`ubuntu`|`s390x`|
+||||
+|`ghcr.io/leleliu008/ppkg/openeuler`|`openeuler`|all|
+|`ghcr.io/leleliu008/ppkg/openeuler/amd64`|`openeuler`|`amd64`|
+|`ghcr.io/leleliu008/ppkg/openeuler/arm64`|`openeuler`|`arm64`|
+|`ghcr.io/leleliu008/ppkg/openeuler/loong64`|`openeuler`|`loong64`|
 
 **step1. create the ppkg docker container**
 
