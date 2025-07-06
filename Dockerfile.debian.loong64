@@ -1,4 +1,4 @@
-FROM ghcr.io/loong64/alpine:3.22
+FROM ghcr.io/loong64/debian:trixie
 
 LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 

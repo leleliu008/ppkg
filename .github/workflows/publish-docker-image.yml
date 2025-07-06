@@ -40,7 +40,7 @@ jobs:
       - id: version
         run: printf 'version=%s\n' "$(./ppkg -V)" >> "$GITHUB_OUTPUT"
 
-      - if : matrix.arch != 'amd64'
+      - if: matrix.arch != 'amd64'
         uses: docker/setup-qemu-action@v3
 
       - id: push
@@ -108,12 +108,12 @@ jobs:
           push-to-registry: true
 
 
-  alpine-loong64:
+  loong64:
 
     strategy:
       fail-fast: false
       matrix:
-        os: [alpine]
+        os: [alpine, debian]
 
     runs-on: ubuntu-latest
 
