@@ -1,4 +1,4 @@
-FROM loongarch64/alpine:3.22
+FROM loongarch64/alpine:3.21
 
 LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 

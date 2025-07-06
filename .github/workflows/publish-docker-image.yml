@@ -142,7 +142,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.${{ matrix.os }}.loongarch64
-          platforms: linux/loongarch64
+          platforms: linux/loong64
           push: true
           tags: ghcr.io/${{ github.repository }}/${{ matrix.os }}/loongarch64:latest,ghcr.io/${{ github.repository }}/${{ matrix.os }}/loongarch64:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
