@@ -1,4 +1,4 @@
-FROM loongarch64/openeuler:24.03-LTS
+FROM docker.io/openeuler/openeuler:24.03
 
 LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 
@@ -6,4 +6,4 @@ ADD ppkg /usr/bin/
 
 ENV GITHUB_ACTIONS=true
 
-ENTRYPOINT [ "/bin/sh", "-l" ]
+CMD [ "/bin/sh" ]
