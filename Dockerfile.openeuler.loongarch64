@@ -1,4 +1,4 @@
-FROM docker.io/openeuler/openeuler:24.03
+FROM openeuler/openeuler:24.03
 
 LABEL org.opencontainers.image.authors=leleliu008@gmail.com
 

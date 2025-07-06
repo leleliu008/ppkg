@@ -13,13 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.4, 15.3]
+        tag: ['15.6', '15.5', '15.4', '15.3']
 
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
+      # curl tar xz are used by actions/checkout@v4
       - run: zypper update -y
-      - run: zypper install -y curl gcc-c++
+      - run: zypper install -y curl tar xz gcc-c++
 
       - uses: actions/checkout@v4
 

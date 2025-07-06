@@ -15,7 +15,7 @@ jobs:
       matrix:
         tag: ['24.03']
 
-    container: openeuler:${{ matrix.tag }}
+    container: openeuler/openeuler:${{ matrix.tag }}
 
     steps:
       #- run: dnf -y update
