@@ -7,7 +7,7 @@ on:
     branches: [ master, dev, tmp ]
 
 jobs:
-  test:
+  opensuse-leap:
     runs-on: ubuntu-latest
     
     strategy:
@@ -18,9 +18,9 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
-      # curl tar xz are used by actions/checkout@v4
+      # curl tar gzip are used by actions/checkout@v4
       - run: zypper update -y
-      - run: zypper install -y curl tar xz gcc-c++
+      - run: zypper install -y curl tar gzip gcc-c++
 
       - uses: actions/checkout@v4
 

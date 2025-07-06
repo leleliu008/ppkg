@@ -7,7 +7,7 @@ on:
     branches: [ master, dev, tmp ]
 
 jobs:
-  test:
+  openeuler:
     runs-on: ubuntu-latest
 
     strategy:
@@ -18,9 +18,6 @@ jobs:
     container: openeuler/openeuler:${{ matrix.tag }}
 
     steps:
-      #- run: dnf -y update
-      #- run: dnf -y install curl g++
-
       - uses: actions/checkout@v4
 
       - run: ./ppkg --help
