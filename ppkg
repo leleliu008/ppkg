@@ -10422,9 +10422,13 @@ __setup_uppm() {
                             run $sudo /usr/bin/apt -y update
                             run $sudo /usr/bin/apt -y install curl g++ gfortran linux-headers-generic
                             ;;
+                        openEuler)
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl g++
+                            ;;
                         arch)
-                            run $sudo sbin/pacman -Syy --noconfirm
-                            run $sudo sbin/pacman -S   --noconfirm curl gcc base-devel
+                            run $sudo /sbin/pacman -Syy --noconfirm
+                            run $sudo /sbin/pacman -S   --noconfirm curl gcc base-devel
                             ;;
                     esac
                 fi
