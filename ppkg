@@ -10406,8 +10406,16 @@ __setup_uppm() {
         dragonflybsd)
             NATIVE_PLATFORM_VERS='6.4'
             ;;
-        linux)
-            if [ "$GITHUB_ACTIONS" = true ] ; then
+    esac
+
+    ##################################################################################
+
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        case $NATIVE_PLATFORM_TYPE in
+            dragonflybsd)
+                run $sudo pkg install -y curl
+                ;;
+            linux)
                 unset ID
 
                 if [ -f /etc/os-release ] ; then
@@ -10418,7 +10426,7 @@ __setup_uppm() {
                             run $sudo /sbin/apk update
                             run $sudo /sbin/apk add g++ gfortran linux-headers
                             ;;
-                        ubuntu)
+                        ubuntu|debian)
                             run $sudo /usr/bin/apt -y update
                             run $sudo /usr/bin/apt -y install curl g++ gfortran linux-headers-generic
                             ;;
@@ -10432,9 +10440,8 @@ __setup_uppm() {
                             ;;
                     esac
                 fi
-            fi
-            ;;
-    esac
+        esac
+    fi
 
     ##################################################################################
 
@@ -11122,7 +11129,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.24
+PPKG_VERSION=0.23.25
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
