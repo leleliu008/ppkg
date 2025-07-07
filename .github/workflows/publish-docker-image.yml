@@ -113,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [alpine, debian]
+        os: [alpine, debian, archlinux]
 
     runs-on: ubuntu-latest
 

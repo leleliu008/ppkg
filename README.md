@@ -34,7 +34,7 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 |REPOSITORY|OS|ARCH|
 |-|-|-|
-|`ghcr.io/leleliu008/ppkg/alpine`|`alpine`|all|
+|`ghcr.io/leleliu008/ppkg/alpine`|`alpine`|all except `loong64`|
 |`ghcr.io/leleliu008/ppkg/alpine/amd64`|`alpine`|`amd64`|
 |`ghcr.io/leleliu008/ppkg/alpine/arm64/v8`|`alpine`|`arm64/v8`|
 |`ghcr.io/leleliu008/ppkg/alpine/loong64`|`alpine`|`loong64`|
@@ -49,32 +49,58 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 |`ghcr.io/leleliu008/ppkg/ubuntu/ppc64le`|`ubuntu`|`ppc64le`|
 |`ghcr.io/leleliu008/ppkg/ubuntu/s390x`|`ubuntu`|`s390x`|
 ||||
+|`ghcr.io/leleliu008/ppkg/debian/loong64`|`debian`|`loong64`|
+||||
+|`ghcr.io/leleliu008/ppkg/archlinux/loong64`|`archinux`|`loong64`|
+||||
 |`ghcr.io/leleliu008/ppkg/openeuler`|`openeuler`|all|
 |`ghcr.io/leleliu008/ppkg/openeuler/amd64`|`openeuler`|`amd64`|
 |`ghcr.io/leleliu008/ppkg/openeuler/arm64`|`openeuler`|`arm64`|
 |`ghcr.io/leleliu008/ppkg/openeuler/loong64`|`openeuler`|`loong64`|
 
-**step1. create the ppkg docker container**
+**step1. create a directory to be mounted to the docker container**
 
 ```bash
-mkdir -p ~/ppkg-home
+install -d ~/ppkg-home
+```
 
+**step2. setup [binfmt_misc](https://docs.kernel.org/admin-guide/binfmt-misc.html) if needed**
+
+```bash
+# for loongarch64
+docker run --privileged --rm ghcr.io/loong64/binfmt --install all
+
+# for others
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+```
+
+You can also use your system package manager to do this instead of the docker on `Ubuntu`:
+
+```bash
+sudo apt-get -y update
+sudo apt-get -y install qemu-user-static binfmt-support
+update-binfmts --enable
+```
+
+**step3. create the ppkg docker container**
+
+```bash
 docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg/alpine
 ```
 
-**step2. start the ppkg docker container**
+**step4. start the ppkg docker container**
 
 ```bash
 docker start ppkg
 ```
 
-**step3. install essential tools**
+**step5. install essential tools**
 
 ```bash
 docker exec -it ppkg ppkg setup
 ```
 
-**step4. update formula repositories**
+**step6. update formula repositories**
 
 ```bash
 docker exec -it ppkg ppkg update
