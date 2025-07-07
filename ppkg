@@ -10413,7 +10413,9 @@ __setup_uppm() {
     if [ "$GITHUB_ACTIONS" = true ] ; then
         case $NATIVE_PLATFORM_TYPE in
             dragonflybsd)
-                run $sudo pkg install -y curl
+                # libnghttp2 should also be installed, otherwise the following error will be shown
+                # /usr/local/lib/libcurl.so.4: Undefined symbol "nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation"
+                run $sudo pkg install -y curl libnghttp2
                 ;;
             linux)
                 unset ID
