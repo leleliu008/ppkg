@@ -4629,6 +4629,14 @@ EOF
     # https://cmake.org/cmake/help/latest/manual/cmake.1.html
     run "$CMAKE" "$CMAKE_CONFIG_OPTIONS" -S "$PACKAGE_BSCRIPT_DIR" -B "$PACKAGE_BCACHED_DIR" "$@"
 
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        CMAKE_CONFIGURE_LOG_FILEPATH="$PACKAGE_BCACHED_DIR/CMakeFiles/CMakeConfigureLog.yaml"
+
+        if [ -f "$CMAKE_CONFIGURE_LOG_FILEPATH" ] ; then
+            run cat "$CMAKE_CONFIGURE_LOG_FILEPATH"
+        fi
+    fi
+
     if [ -z "$CMAKE_BUILD_TARGETS" ] ; then
         run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR"
     else
