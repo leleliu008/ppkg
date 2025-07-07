@@ -6303,6 +6303,13 @@ run chmod +x bin/itstool
     '
 }
 
+native_package_info_autoconf_archive() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
+    PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
+    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_INSTALL='configure'
+}
+
 native_package_info_netsurf_buildsystem() {
     PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
     PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
@@ -6788,6 +6795,9 @@ $DOT_CONTENT
                     else
                     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
                     fi
+                    ;;
+                autoconf-archive)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf_archive"
                     ;;
                 netsurf_buildsystem)
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
@@ -11131,7 +11141,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.25
+PPKG_VERSION=0.23.26
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
