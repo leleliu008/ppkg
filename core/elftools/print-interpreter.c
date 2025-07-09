@@ -51,8 +51,7 @@ int handle_elf32(const int fd, const char * const fp) {
     }
 
     if (hasPT_INTERP == 0) {
-        fprintf(stderr, "no PT_INTERP in ELF file: %s\n", fp);
-        return 1;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -119,8 +118,7 @@ int handle_elf64(const int fd, const char * const fp) {
     }
 
     if (hasPT_INTERP == 0) {
-        fprintf(stderr, "no PT_INTERP in ELF file: %s\n", fp);
-        return 1;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -171,7 +169,7 @@ int main(int argc, const char *argv[]) {
         return 4;
     }
 
-    if (st.st_size < 5) {
+    if (st.st_size < 52) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
         close(fd);
         return 100;

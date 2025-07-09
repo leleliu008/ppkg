@@ -160,7 +160,7 @@ int main(int argc, const char *argv[]) {
         return 4;
     }
 
-    if (st.st_size < 5) {
+    if (st.st_size < 52) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
         close(fd);
         return 100;

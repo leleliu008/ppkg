@@ -52,8 +52,7 @@ int handle_elf32(const int fd, const char * const fp) {
     }
 
     if (hasPT_DYNAMIC == 0) {
-        fprintf(stderr, "There is no .dynamic section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -118,8 +117,7 @@ int handle_elf32(const int fd, const char * const fp) {
     }
 
     if (hasdynstrSection == 0) {
-        fprintf(stderr, "There is no .dynstr section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -205,8 +203,7 @@ int handle_elf64(const int fd, const char * const fp) {
     }
 
     if (hasPT_DYNAMIC == 0) {
-        fprintf(stderr, "There is no .dynamic section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -271,8 +268,7 @@ int handle_elf64(const int fd, const char * const fp) {
     }
 
     if (hasdynstrSection == 0) {
-        fprintf(stderr, "There is no .dynstr section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -342,7 +338,7 @@ int main(int argc, const char *argv[]) {
         return 4;
     }
 
-    if (st.st_size < 5) {
+    if (st.st_size < 52) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
         close(fd);
         return 100;
