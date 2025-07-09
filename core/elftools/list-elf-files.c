@@ -346,7 +346,7 @@ static int determine(const char * fp) {
     if (readBytes != 32) {
         perror(fp);
         close(fd);
-        fprintf(stderr, "not fully read file: %s\nexpect: 18bytes\nactual: %ld", fp, readBytes);
+        fprintf(stderr, "not fully read file: %s\nexpect: 32bytes\nactual: %ldbytes", fp, readBytes);
         return 103;
     }
 
@@ -354,7 +354,14 @@ static int determine(const char * fp) {
 
     // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
     if (a[0] == 0x7F && a[1] == 0x45 && a[2] == 0x4C && a[3] == 0x46) {
-        unsigned short t = *(a + 16);
+        unsigned short t;
+
+        if (a[5] == ELFDATA2MSB) {
+            unsigned char b[2] = { a[17], a[16] };
+            memcpy(&t, b, sizeof(unsigned short));
+        } else {
+            memcpy(&t, a + 16, sizeof(unsigned short));
+        }
 
         const char * s;
 
@@ -497,5 +504,10 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    return scan(argv[1]);
+    if (chdir(argv[1]) == -1) {
+        perror(argv[1]);
+        return 3;
+    }
+
+    return scan(".");
 }
