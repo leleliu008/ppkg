@@ -1,16 +1,24 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 
 #include <elf.h>
 
-
 int handle_elf32(const int fd, const char * const fp) {
+    if (lseek(fd, 0, SEEK_SET) == -1) {
+        perror(fp);
+        close(fd);
+        return 7;
+    }
+
+    ///////////////////////////////////////////////////////////
+
     Elf32_Ehdr ehdr;
 
     int ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
@@ -52,8 +60,7 @@ int handle_elf32(const int fd, const char * const fp) {
     }
 
     if (hasPT_DYNAMIC == 0) {
-        fprintf(stderr, "There is no .dynamic section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -118,8 +125,7 @@ int handle_elf32(const int fd, const char * const fp) {
     }
 
     if (hasdynstrSection == 0) {
-        fprintf(stderr, "There is no .dynstr section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -144,19 +150,10 @@ int handle_elf32(const int fd, const char * const fp) {
             break;
         }
 
-        if (dyn.d_tag == DT_NEEDED) {
-            long xoffset = shdr.sh_offset + dyn.d_un.d_val;
-
-            char buf[100];
-
-            ret = pread(fd, buf, 100, xoffset);
-
-            if (ret == -1) {
-                perror(fp);
-                return 17;
+        if (dyn.d_tag == DT_FLAGS_1) {
+            if (dyn.d_un.d_val & DF_1_PIE) {
+                return 200;
             }
-
-            puts(buf);
         }
     }
 
@@ -164,6 +161,14 @@ int handle_elf32(const int fd, const char * const fp) {
 }
 
 int handle_elf64(const int fd, const char * const fp) {
+    if (lseek(fd, 0, SEEK_SET) == -1) {
+        perror(fp);
+        close(fd);
+        return 7;
+    }
+
+    ///////////////////////////////////////////////////////////
+
     Elf64_Ehdr ehdr;
 
     int ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
@@ -205,8 +210,7 @@ int handle_elf64(const int fd, const char * const fp) {
     }
 
     if (hasPT_DYNAMIC == 0) {
-        fprintf(stderr, "There is no .dynamic section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -271,8 +275,7 @@ int handle_elf64(const int fd, const char * const fp) {
     }
 
     if (hasdynstrSection == 0) {
-        fprintf(stderr, "There is no .dynstr section in file: %s\n", fp);
-        return 100;
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////
@@ -297,108 +300,202 @@ int handle_elf64(const int fd, const char * const fp) {
             break;
         }
 
-        if (dyn.d_tag == DT_NEEDED) {
-            long xoffset = shdr.sh_offset + dyn.d_un.d_val;
-
-            char buf[100];
-
-            ret = pread(fd, buf, 100, xoffset);
-
-            if (ret == -1) {
-                perror(fp);
-                return 17;
+        if (dyn.d_tag == DT_FLAGS_1) {
+            if (dyn.d_un.d_val & DF_1_PIE) {
+                return 200;
             }
-
-            puts(buf);
         }
     }
 
     return 0;
 }
 
-int main(int argc, const char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s <ELF-FILEPATH>\n", argv[0]);
-        return 1;
-    }
+typedef int (*FN)(const char * fp);
 
-    if (argv[1][0] == '\0') {
-        printf("Usage: %s <ELF-FILEPATH>, <ELF-FILEPATH> is unspecified.\n", argv[0]);
-        return 2;
-    }
-
-    int fd = open(argv[1], O_RDONLY);
-
-    if (fd == -1) {
-        perror(argv[1]);
-        return 3;
-    }
-
+static int determine(const char * fp) {
     struct stat st;
 
-    if (fstat(fd, &st) == -1) {
-        perror(argv[1]);
-        close(fd);
-        return 4;
+    if (stat(fp, &st) == -1) {
+        perror(fp);
+        return 100;
     }
 
-    if (st.st_size < 5) {
-        fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
-        close(fd);
-        return 100;
+    if (st.st_size < 52) {
+        return 0;
+    }
+
+    int fd = open(fp, O_RDONLY);
+
+    if (fd == -1) {
+        perror(fp);
+        return 101;
     }
 
     ///////////////////////////////////////////////////////////
 
-    unsigned char a[5];
+    unsigned char a[32];
 
-    ssize_t readBytes = read(fd, a, 5);
+    ssize_t readBytes = read(fd, a, 32);
 
     if (readBytes == -1) {
-        perror(argv[0]);
+        perror(fp);
         close(fd);
-        return 5;
+        return 102;
     }
 
-    if (readBytes != 5) {
-        perror(argv[0]);
+    if (readBytes != 32) {
+        perror(fp);
         close(fd);
-        fprintf(stderr, "not fully read.\n");
-        return 6;
+        fprintf(stderr, "not fully read file: %s\nexpect: 18bytes\nactual: %ld", fp, readBytes);
+        return 103;
     }
 
     ///////////////////////////////////////////////////////////
 
     // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
-    if ((a[0] != 0x7F) || (a[1] != 0x45) || (a[2] != 0x4C) || (a[3] != 0x46)) {
-        fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
-        close(fd);
-        return 100;
-    }
+    if (a[0] == 0x7F && a[1] == 0x45 && a[2] == 0x4C && a[3] == 0x46) {
+        unsigned short t = *(a + 16);
 
-    ///////////////////////////////////////////////////////////
+        const char * s;
 
-    off_t offset = lseek(fd, 0, SEEK_SET);
+        switch (t) {
+            case ET_REL:
+                s = "REL";
+                break;
+            case ET_EXEC:
+                s = "EXE";
+                break;
+            case ET_DYN:
+                if (a[4] == ELFCLASS64) {
+                    Elf64_Addr entry;
 
-    if (offset == -1) {
-        perror(argv[0]);
-        close(fd);
-        return 7;
-    }
+                    memcpy(&entry, a + 24, sizeof(Elf64_Addr));
 
-    ///////////////////////////////////////////////////////////
+                    // A shared library's e_entry is usually 0x0
+                    if (entry == 0) {
+                        s = "DSO";
+                    } else {
+                        int ret = handle_elf64(fd, fp);
 
-    int ret;
+                        if (ret == 0) {
+                            s = "EXE";
+                        } else if (ret == 200) {
+                            s = "PIE";
+                        } else {
+                            close(fd);
+                            return ret;
+                        }
+                    }
 
-    switch (a[4]) {
-        case ELFCLASS32: ret = handle_elf32(fd, argv[1]); break;
-        case ELFCLASS64: ret = handle_elf64(fd, argv[1]); break;
-        default: 
-            fprintf(stderr, "Invalid ELF file: %s\n", argv[1]);
-            ret = 101;
+                    break;
+                }
+
+                if (a[4] == ELFCLASS32) {
+                    Elf32_Addr entry;
+
+                    memcpy(&entry, a + 24, sizeof(Elf32_Addr));
+
+                    if (entry == 0) {
+                        s = "DSO";
+                    } else {
+                        int ret = handle_elf32(fd, fp);
+
+                        if (ret == 0) {
+                            s = "EXE";
+                        } else if (ret == 200) {
+                            s = "PIE";
+                        } else {
+                            close(fd);
+                            return ret;
+                        }
+
+                    }
+                }
+
+                break;
+            default:
+                s = "???";
+                break;
+        }
+
+        printf("%hd %s %s\n", t, s, fp);
     }
 
     close(fd);
+    return 0;
+}
 
-    return ret;
+int scan(const char * dirPath) {
+    DIR * dir = opendir(dirPath);
+
+    if (dir == NULL) {
+        perror(dirPath);
+        return 104;
+    }
+
+    for (;;) {
+        errno = 0;
+
+        struct dirent * dir_entry = readdir(dir);
+
+        if (dir_entry == NULL) {
+            if (errno == 0) {
+                return 0;
+            } else {
+                perror(dirPath);
+                closedir(dir);
+                return 105;
+            }
+        }
+
+        //puts(dir_entry->d_name);
+
+        if ((strcmp(dir_entry->d_name, ".") == 0) || (strcmp(dir_entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        FN fn = NULL;
+
+        switch (dir_entry->d_type) {
+            case DT_DIR:
+                fn = scan;
+                break;
+            case DT_REG:
+                fn = determine;
+                break;
+        }
+
+        if (fn != NULL) {
+            char p[4096];
+
+            int ret = snprintf(p, 4096, "%s/%s", dirPath, dir_entry->d_name);
+
+            if (ret < 0) {
+                perror(NULL);
+                closedir(dir);
+                return 106;
+            }
+
+            ret = fn(p);
+
+            if (ret != 0) {
+                closedir(dir);
+                return ret;
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    if (argc == 1) {
+        fprintf(stderr, "Usage: %s <DIR>\n", argv[0]);
+        return 1;
+    }
+
+    if (argv[1][0] == '\0') {
+        fprintf(stderr, "Usage: %s <DIR>, <DIR> must be non-empty.\n", argv[0]);
+        return 2;
+    }
+
+    return scan(argv[1]);
 }

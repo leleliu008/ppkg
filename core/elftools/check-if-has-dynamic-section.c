@@ -167,8 +167,8 @@ int main(int argc, const char *argv[]) {
     int ret;
 
     switch (a[4]) {
-        case 1: ret = handle_elf32(fd, argv[1]); break;
-        case 2: ret = handle_elf64(fd, argv[1]); break;
+        case ELFCLASS32: ret = handle_elf32(fd, argv[1]); break;
+        case ELFCLASS64: ret = handle_elf64(fd, argv[1]); break;
         default: 
             fprintf(stderr, "Invalid ELF file: %s\n", argv[1]);
             ret = 101;
