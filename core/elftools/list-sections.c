@@ -27,36 +27,6 @@ int handle_elf32(const int fd, const char * const fp) {
 
     ///////////////////////////////////////////////////////////
 
-    Elf32_Phdr phdr;
-
-    int hasPT_DYNAMIC = 0;
-
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
-        ret = pread(fd, &phdr, sizeof(Elf32_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
-
-        if (ret == -1) {
-            perror(fp);
-            return 17;
-        }
-
-        if ((size_t)ret != sizeof(Elf32_Phdr)) {
-            perror(fp);
-            fprintf(stderr, "not fully read.\n");
-            return 18;
-        }
-
-        if (phdr.p_type == PT_DYNAMIC) {
-            hasPT_DYNAMIC = 1;
-            break;
-        }
-    }
-
-    if (hasPT_DYNAMIC == 0) {
-        return 0;
-    }
-
-    ///////////////////////////////////////////////////////////
-
     Elf32_Shdr shdr;
 
     // .shstrtab section header offset in elf file, it usually is the last section header
@@ -125,36 +95,6 @@ int handle_elf64(const int fd, const char * const fp) {
     if (ret != sizeof(Elf64_Ehdr)) {
         perror(fp);
         return 12;
-    }
-
-    ///////////////////////////////////////////////////////////
-
-    Elf64_Phdr phdr;
-
-    int hasPT_DYNAMIC = 0;
-
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
-        ret = pread(fd, &phdr, sizeof(Elf64_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
-
-        if (ret == -1) {
-            perror(fp);
-            return 17;
-        }
-
-        if ((size_t)ret != sizeof(Elf64_Phdr)) {
-            perror(fp);
-            fprintf(stderr, "not fully read.\n");
-            return 18;
-        }
-
-        if (phdr.p_type == PT_DYNAMIC) {
-            hasPT_DYNAMIC = 1;
-            break;
-        }
-    }
-
-    if (hasPT_DYNAMIC == 0) {
-        return 0;
     }
 
     ///////////////////////////////////////////////////////////

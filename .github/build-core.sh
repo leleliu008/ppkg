@@ -66,7 +66,7 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
     SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
     CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments"
 
-    for f in core/wrappers/*.c
+    for f in core/*.c core/wrappers/*.c
     do
         x="${f##*/}"
         o="bundle.d/${x%.c}"
@@ -74,7 +74,7 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         run strip "$o"
     done
 else
-    for f in core/wrappers/*.c core/elftools/*.c
+    for f in core/*.c core/wrappers/*.c core/elftools/*.c
     do
         x="${f##*/}"
         o="bundle.d/${x%.c}"
