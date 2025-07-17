@@ -5,7 +5,11 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+
+// https://elixir.bootlin.com/musl/v1.2.5/source/include/dirent.h#L40
+#define _BSD_SOURCE
 #include <dirent.h>
+
 #include <sys/stat.h>
 
 #include <elf.h>

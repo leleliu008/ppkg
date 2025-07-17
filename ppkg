@@ -3104,7 +3104,7 @@ EOF
                 unset DYNAMIC_LOADER_FILENAME
                 unset DYNAMIC_LOADER_FILEPATH
 
-                DYNAMIC_LOADER_FILEPATH="$(patchelf --print-interpreter "$FILEPATH" || true)"
+                DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter-if-present" "$FILEPATH")"
 
                 if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
                     if [ -z "$RECEIPT_PACKAGE_BINDENV" ] ; then
@@ -8369,6 +8369,8 @@ $PACKAGE_DOTWEAK
     run install -d .ppkg/dependencies/lib/
     run install -d .ppkg/dependencies/sys/
 
+    PATCHELF="$(command -v patchelf)"
+
     #########################################################################################
 
     step "docheck"
@@ -8405,7 +8407,7 @@ $PACKAGE_DOTWEAK
         [ -n "$fs" ] && {
             for f in $fs
             do
-                run patchelf --set-rpath "'\$ORIGIN'" ".ppkg/dependencies/lib/$f"
+                run "$PATCHELF" --set-rpath "'\$ORIGIN'" ".ppkg/dependencies/lib/$f"
             done
         }
 
@@ -8425,16 +8427,28 @@ $PACKAGE_DOTWEAK
 
                 RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$V")"
 
-                run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
+                run "$PATCHELF" --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
             done
         }
     fi
 
     #########################################################################################
 
-    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/lib/
-    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/sys/
-    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/
+    if [ -z "$SYSPM" ] ; then
+        X=1
+    else
+        if [ "$NATIVE_PLATFORM_TYPE" = linux ] || [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+            X=1
+        else
+            X=0
+        fi
+    fi
+
+    if [ "$X" = 1 ] ; then
+        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/lib/
+        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/sys/
+        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/
+    fi
 
     #########################################################################################
 
@@ -8595,7 +8609,7 @@ __check_elf_files() {
 
         [ -w "$FILEPATH" ] || run chmod +w "$FILEPATH"
 
-        run patchelf --remove-rpath "$FILEPATH"
+        run "$PATCHELF" --remove-rpath "$FILEPATH"
 
         __check_DT_NEEDED "$FILEPATH"
     done < files.txt
@@ -8614,7 +8628,7 @@ __check_elf_files() {
         touch "$Y"
     fi
 
-    NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$PATCHELF" --print-needed "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
@@ -9042,27 +9056,24 @@ __tweak_pc_files() {
 
     for pcfile in $pcfiles
     do
-        gsed -i "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
-
-        gsed -i "s|-I$PPKG_HOME[^' ]*||g"      "$pcfile"
-        gsed -i "s|-L$PPKG_HOME[^' ]*||g"      "$pcfile"
-
-        gsed -i "s|-R[^' ]*||g"                "$pcfile"
-        gsed -i "s|-F[^' ]*||g"                "$pcfile"
-        gsed -i "s|-idirafter[^' ]*||g"        "$pcfile"
-        gsed -i "s|-isysroot [^' ]*||g"        "$pcfile"
-
-        gsed -i 's|-flto||g'                   "$pcfile"
-        gsed -i 's|-Wl,--strip-debug||g'       "$pcfile"
-        gsed -i 's|-Wl,-search_paths_first||g' "$pcfile"
-        gsed -i 's|-Wl,-S||g' "$pcfile"
-
-        gsed -i "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" "$pcfile"
-        gsed -i "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"     "$pcfile"
+        gsed -i \
+             -e "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" \
+             -e "s|-I$PPKG_HOME[^' ]*||g" \
+             -e "s|-L$PPKG_HOME[^' ]*||g" \
+             -e "s|-R[^' ]*||g" \
+             -e "s|-F[^' ]*||g" \
+             -e "s|-idirafter[^' ]*||g" \
+             -e "s|-isysroot [^' ]*||g" \
+             -e 's|-flto||g' \
+             -e 's|-Wl,--strip-debug||g' \
+             -e 's|-Wl,-search_paths_first||g' \
+             -e 's|-Wl,-S||g' \
+             -e "s|${PPKG_HOME}/.*/lib\(.*\)\.${SHARED_LIBRARY_SUFFIX#.}|-l\1|g" \
+             -e "s|${PPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g" \
+             "$pcfile"
 
         if [ -n "$SYSROOT" ] ; then
-            gsed -i "s|-L$SYSROOT[^' ]*||g"    "$pcfile"
-            gsed -i "s|--sysroot=$SYSROOT||"   "$pcfile"
+            gsed -i -e "s|-L$SYSROOT[^' ]*||g" -e "s|--sysroot=$SYSROOT||" "$pcfile"
         fi
 
         if grep -q '^Libs.private:' "$pcfile" ; then
@@ -10444,7 +10455,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    if [ "$GITHUB_ACTIONS" = true ] ; then
+    if [ "$GITHUB_ACTIONS" = true ] || [ "$1" = -y ] ; then
         case $NATIVE_PLATFORM_TYPE in
             dragonflybsd)
                 # libnghttp2 should also be installed, otherwise the following error will be shown
