@@ -3137,7 +3137,7 @@ EOF
             if [ -n "$DYNAMIC_LOADER_FILENAME" ] ; then
                 install -d bundle.d/.ppkg/dependencies/lib/
 
-                NEEDED_SYSTEM_DYLIBS="$(cat bundle.d/.ppkg/needed-system-libs.txt)"
+                NEEDED_SYSTEM_DYLIBS="$(ls bundle.d/.ppkg/dependencies/sys/)"
 
                 for NEEDED_FILENAME in $DYNAMIC_LOADER_FILENAME $NEEDED_SYSTEM_DYLIBS
                 do
@@ -6535,7 +6535,7 @@ EOF
     run install -d "$PACKAGE_WORKING_DIR"
     run         cd "$PACKAGE_WORKING_DIR"
 
-    run install -d src/_ fix res bin lib include
+    run install -d src/_ fix res bin lib include map
 
     #########################################################################################
 
@@ -8366,44 +8366,22 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "generate MANIFEST.txt"
-    run install -d .ppkg
-    find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > .ppkg/MANIFEST.txt
+    run install -d .ppkg/dependencies/lib/
+    run install -d .ppkg/dependencies/sys/
 
     #########################################################################################
 
     step "docheck"
 
-    unset NEEDED_SYSTEM_SHARED_LIBS
-    unset NEEDED_EXTERN_SHARED_LIBS
-
-    unset FILES_NEED_TO_SET_RPATH
+    unset FILES_NEED_TO_BE_SET_RPATH
 
     if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         __check_mach_o_files
 
-        [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
-            step "copy dependent external shared libraries"
-
-            echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
-
-            install -d -v .ppkg/dependencies/lib
-
-            for f in $NEEDED_EXTERN_SHARED_LIBS
-            do
-                n="${f##*/}"
-                F=".ppkg/dependencies/lib/$n"
-
-                [ -f "$F" ] || {
-                    cp -L -v "$f" .ppkg/dependencies/lib/
-                }
-            done
-        }
-
-        [ -n "$FILES_NEED_TO_SET_RPATH" ] && {
+        [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
             step "set rpath for executables"
 
-            KVs="$(printf '%s\n' "$FILES_NEED_TO_SET_RPATH" | sort | uniq)"
+            KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
             for KV in $KVs
             do
@@ -8420,29 +8398,23 @@ $PACKAGE_DOTWEAK
     else
         __check_elf_files
 
-        [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
-            step "copy dependent external shared libraries"
+        ###################################################
 
-            echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
+        fs="$(ls .ppkg/dependencies/lib/)"
 
-            install -d -v .ppkg/dependencies/lib
-
-            for f in $NEEDED_EXTERN_SHARED_LIBS
+        [ -n "$fs" ] && {
+            for f in $fs
             do
-                n="${f##*/}"
-                F=".ppkg/dependencies/lib/$n"
-
-                [ -f "$F" ] || {
-                    cp -L -v "$f" .ppkg/dependencies/lib/
-                    run patchelf --set-rpath "'\$ORIGIN'" "$F"
-                }
+                run patchelf --set-rpath "'\$ORIGIN'" ".ppkg/dependencies/lib/$f"
             done
         }
 
-        [ -n "$FILES_NEED_TO_SET_RPATH" ] && {
+        ###################################################
+
+        [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
             step "set rpath for ELF files"
 
-            KVs="$(printf '%s\n' "$FILES_NEED_TO_SET_RPATH" | sort | uniq)"
+            KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
             for KV in $KVs
             do
@@ -8456,11 +8428,18 @@ $PACKAGE_DOTWEAK
                 run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
             done
         }
-
-        [ -n "$NEEDED_SYSTEM_SHARED_LIBS" ] && {
-            printf '%s\n' $NEEDED_SYSTEM_SHARED_LIBS | sort | uniq > .ppkg/needed-system-libs.txt
-        }
     fi
+
+    #########################################################################################
+
+    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/lib/
+    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/sys/
+    run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/
+
+    #########################################################################################
+
+    step "generate MANIFEST.txt"
+    find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > .ppkg/MANIFEST.txt
 
     #########################################################################################
 
@@ -8608,13 +8587,10 @@ EOF
 __check_elf_files() {
     CHECKER="$PPKG_CORE_DIR/check-if-has-dynamic-section"
 
-    while read -r LINE
+    find -type f -printf '%P\n' > files.txt
+
+    while read -r FILEPATH
     do
-        FILETYPE="${LINE%%|*}"
-        FILEPATH="${LINE##*|}"
-
-        [ "$FILETYPE" = f ] || continue
-
         "$CHECKER" "$FILEPATH" || continue
 
         [ -w "$FILEPATH" ] || run chmod +w "$FILEPATH"
@@ -8622,17 +8598,29 @@ __check_elf_files() {
         run patchelf --remove-rpath "$FILEPATH"
 
         __check_DT_NEEDED "$FILEPATH"
-    done < .ppkg/MANIFEST.txt
+    done < files.txt
+
+    rm files.txt
 }
 
 # __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
+    X="$(printf '%s\n' "$1" | tr / _)"
+    Y="$PACKAGE_WORKING_DIR/map/$X"
+
+    if [ -f "$Y" ] ; then
+        return 0
+    else
+        touch "$Y"
+    fi
+
     NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
         NEEDED_SHARED_LIBRARY_FILEPATH=
 
+        echo "$1:$NEEDED_SHARED_LIBRARY_FILENAME"
         case $1 in
             /*) ;;
             *)
@@ -8645,7 +8633,7 @@ __check_elf_files() {
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                        FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                        FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                     }
                 fi
@@ -8698,8 +8686,12 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
         esac
 
         if [ -z "$NEEDED_UNKOWN" ] ; then
-            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILENAME"
+            F=".ppkg/dependencies/sys/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+            if [ ! -f "$F" ] ; then
+                touch "$F"
+            fi
+
             continue
         fi
 
@@ -8723,12 +8715,16 @@ $NEEDED_SHARED_LIBRARY_FILENAME"
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         case $1 in
                             /*) ;;
-                            *)  FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                            *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                         esac
 
-                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                        if [ ! -f "$F" ] ; then
+                            run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" "$F"
+                        fi
+
                         break
                     }
                 done
@@ -8738,21 +8734,20 @@ $NEEDED_SHARED_LIBRARY_FILEPATH"
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
             __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
         else
-            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILENAME"
+            F=".ppkg/dependencies/sys/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+            if [ ! -f "$F" ] ; then
+                touch "$F"
+            fi
         fi
     done
 }
 
 __check_mach_o_files() {
-    while read -r LINE
+    find -type f -printf '%P\n' > files.txt
+
+    while read -r FILEPATH
     do
-        FILETYPE="${LINE%%|*}"
-        FILEPATH="${LINE##*|}"
-
-        [ "$FILETYPE" = f ] || continue
-        [ -f "$FILEPATH" ] || continue
-
         FILE_HEADER_ACTUAL=
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 16 "$FILEPATH")"
 
@@ -8850,7 +8845,9 @@ EOF
         #######################################################################
 
         __check_needed_dylibs "$FILEPATH" "$EXECUTABLE"
-    done < .ppkg/MANIFEST.txt
+    done < files.txt
+
+    rm files.txt
 }
 
 # __find_needed_shared_library <NEEDED_SHARED_LIBRARY_FILENAME>
@@ -8888,6 +8885,15 @@ EOF
 
 # __check_needed_dylibs <MACH-O-FILE-PATH> <IS-EXECUTABLE>
   __check_needed_dylibs() {
+    X="$(printf '%s\n' "$1" | tr / _)"
+    Y="$PACKAGE_WORKING_DIR/map/$X"
+
+    if [ -f "$Y" ] ; then
+        return 0
+    else
+        touch "$Y"
+    fi
+
     NEEDEDs=$(otool -l "$1" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
     if [ -z "$NEEDEDs" ] ; then
@@ -8921,7 +8927,7 @@ EOF
 
                 if [ "$EXECUTABLE" = 1 ] ; then
                     RELATIVE_PATH="${NEEDED_SHARED_LIBRARY_DIR#$PACKAGE_INSTALL_DIR/}"
-                    FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                    FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|$RELATIVE_PATH"
                 fi
                 ;;
@@ -8930,10 +8936,14 @@ $1|$RELATIVE_PATH"
 
                 run install_name_tool -change "$NEEDED" "@rpath/$NEEDED_SHARED_LIBRARY_FILENAME" "$1"
 
-                NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
-$NEEDED"
+                F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                if [ ! -f "$F" ] ; then
+                    run cp -L "$NEEDED" "$F"
+                fi
+
                 if [ "$EXECUTABLE" = 1 ] ; then
-                    FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                    FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                 fi
                 ;;
@@ -8948,17 +8958,20 @@ $1|1"
 
                 case $NEEDED_SHARED_LIBRARY_FILEPATH in
                     /*)
-                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        F=".ppkg/dependencies/lib/$NEEDED"
+
+                        if [ ! -f "$F" ] ; then
+                            run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" "$F"
+                        fi
 
                         if [ "$2" = 1 ] ; then
-                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                            FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                         fi
                         ;;
                     *)
                         if [ "$2" = 1 ] ; then
-                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                            FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                         fi
                 esac
@@ -8978,17 +8991,20 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 
                 case $NEEDED_SHARED_LIBRARY_FILEPATH in
                     /*)
-                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                        if [ ! -f "$F" ] ; then
+                            run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" "$F"
+                        fi
 
                         if [ "$2" = 1 ] ; then
-                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                            FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                         fi
                         ;;
                     *)
                         if [ "$2" = 1 ] ; then
-                            FILES_NEED_TO_SET_RPATH="$FILES_NEED_TO_SET_RPATH
+                            FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                         fi
                 esac
@@ -11149,7 +11165,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.26
+PPKG_VERSION=0.23.27
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
