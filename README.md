@@ -71,7 +71,7 @@ install -d ~/ppkg-home
 docker run --privileged --rm ghcr.io/loong64/binfmt --install all
 
 # for others
-docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+docker run --privileged --rm multiarch/qemu-user-static --reset -p yes
 ```
 
 You can also use your system package manager to do this instead of the docker on `Ubuntu`:
@@ -158,7 +158,7 @@ sudo mount -o bind  /dev alpine-rootfs/dev
 sudo mount -t proc  none alpine-rootfs/proc
 sudo mount -t sysfs none alpine-rootfs/sys
 
-sudo chroot alpine-rootfs ppkg setup
+sudo chroot alpine-rootfs ppkg setup -y
 sudo chroot alpine-rootfs ppkg update
 sudo chroot alpine-rootfs ppkg install curl --static
 ```
