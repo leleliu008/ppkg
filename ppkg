@@ -8400,18 +8400,7 @@ $PACKAGE_DOTWEAK
     else
         __check_elf_files
 
-        ###################################################
-
-        fs="$(ls .ppkg/dependencies/lib/)"
-
-        [ -n "$fs" ] && {
-            for f in $fs
-            do
-                run "$PATCHELF" --set-rpath "'\$ORIGIN'" ".ppkg/dependencies/lib/$f"
-            done
-        }
-
-        ###################################################
+        find .ppkg/dependencies/lib -type f -exec "$PATCHELF" --set-rpath '$ORIGIN' {} \;
 
         [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
             step "set rpath for ELF files"
@@ -8420,8 +8409,8 @@ $PACKAGE_DOTWEAK
 
             for KV in $KVs
             do
-                K="${KV%|*}"
-                V="${KV#*|}"
+                K="${KV%'|'*}"
+                V="${KV#*'|'}"
 
                 [ "$V" = 1 ] && V='.ppkg/dependencies/lib'
 
@@ -8634,7 +8623,6 @@ __check_elf_files() {
     do
         NEEDED_SHARED_LIBRARY_FILEPATH=
 
-        echo "$1:$NEEDED_SHARED_LIBRARY_FILENAME"
         case $1 in
             /*) ;;
             *)

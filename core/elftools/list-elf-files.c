@@ -14,6 +14,10 @@
 
 #include <elf.h>
 
+#ifndef DF_1_PIE
+#define DF_1_PIE 0x08000000
+#endif
+
 int handle_elf32(const int fd, const char * const fp) {
     if (lseek(fd, 0, SEEK_SET) == -1) {
         perror(fp);
