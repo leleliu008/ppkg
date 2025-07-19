@@ -3102,7 +3102,7 @@ EOF
                             LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
 
                             if [ -f "$FILEPATH.c" ] ; then
-                                CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"$DYNAMIC_LOADER_FILENAME\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\""
+                                CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"\\\"$DYNAMIC_LOADER_FILENAME\\\"\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"\\\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\\\"\""
                             else
                                 CPPFLAGS=
                                 __generate_wrapper_c_source_file
@@ -3130,7 +3130,7 @@ EOF
                         LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
 
                         if [ -f "$FILEPATH.c" ] ; then
-                            CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"$DYNAMIC_LOADER_FILENAME\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\""
+                            CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"\\\"$DYNAMIC_LOADER_FILENAME\\\"\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"\\\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\\\"\""
                         else
                             CPPFLAGS=
                             __generate_wrapper_c_source_file
@@ -10024,21 +10024,21 @@ __setup_syspm_ubuntu() {
     SYSPM=apt
 
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq g++ linux-headers-generic
+    run $sudo apt -y install bash coreutils findutils gawk sed grep tree jq libarchive-tools git curl g++ linux-headers-generic
 }
 
 __setup_syspm_fedora() {
     SYSPM=dnf
 
     run $sudo dnf -y update
-    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq g++
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree jq libarchive-tools git curl g++
 }
 
 __setup_syspm_alpine() {
     SYSPM=apk
 
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq yq make g++ libc-dev linux-headers
+    run $sudo apk add bash coreutils findutils gawk sed grep tree jq yq libarchive-tools git curl g++ libc-dev linux-headers
 
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
@@ -10110,7 +10110,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree go121 jq git curl libnghttp2 gmake gcc m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 go121 gcc
 
     run ln -s /usr/local/go121/bin/go   bin/go
 
@@ -10137,7 +10137,7 @@ __setup_syspm_freebsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gmake gcc m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10164,7 +10164,7 @@ __setup_syspm_openbsd() {
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
 
     # https://man.openbsd.org/pkg_add
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gmake pkgconf metaauto m4 go gcc%11
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gcc%11
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10203,7 +10203,7 @@ __setup_syspm_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq go122 gcc13 binutils gmake m4 ca-certificates
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq go122 gcc13 binutils ca-certificates
 
     # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
     run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
