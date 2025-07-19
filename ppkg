@@ -10270,12 +10270,12 @@ __setup_syspm() {
     run git clone --depth=1 https://github.com/leleliu008/ppkg
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-        SRCS=
+        ELFTOOL_SRCS=
     else
-        SRCS="$(ls ppkg/core/elftools/*.c)"
+        ELFTOOL_SRCS="$(ls ppkg/core/elftools/*.c)"
     fi
 
-    for f in core/*.c ppkg/core/wrappers/*.c $SRCS
+    for f in ppkg/core/*.c ppkg/core/wrappers/*.c $ELFTOOL_SRCS
     do
         o="${f##*/}"
         o="${o%.c}"
