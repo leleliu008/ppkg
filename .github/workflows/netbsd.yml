@@ -32,9 +32,6 @@ jobs:
               eval "$@"
             }
 
-            #run sudo pkgin -y update
-            #run sudo pkgin -y install llvm
-
             run export SSL_CERT_FILE="$PWD/cacert.pem"
 
             run ./ppkg --help

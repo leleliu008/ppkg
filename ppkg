@@ -10110,7 +10110,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 go121 gcc
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
 
     run ln -s /usr/local/go121/bin/go   bin/go
 
@@ -10203,7 +10203,7 @@ __setup_syspm_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq go122 gcc13 binutils ca-certificates
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq gcc13 binutils ca-certificates
 
     # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
     run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
@@ -10215,6 +10215,7 @@ __setup_syspm_netbsd() {
     run $sudo ln -sf /usr/pkg/bin/gld /usr/bin/ld
 
     run ln -s /usr/pkg/go122/bin/go   bin/go
+
     run ln -s /usr/pkg/gcc13/bin/gcc  bin/gcc
     run ln -s /usr/pkg/gcc13/bin/g++  bin/g++
     run ln -s /usr/pkg/gcc13/bin/gfortran bin/gfortran
