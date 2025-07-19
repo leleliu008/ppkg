@@ -10164,7 +10164,7 @@ __setup_syspm_openbsd() {
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
 
     # https://man.openbsd.org/pkg_add
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gcc%11
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gmake gcc%11
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10184,9 +10184,21 @@ __setup_syspm_openbsd() {
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
     run ln -s /usr/local/bin/pkgconf    bin/pkg-config
 
-    # tree package in system's package manager is too old
-    printf '%s\n' '#!/bin/sh' > bin/tree
-    chmod +x                    bin/tree
+    # tree package in OpenBSD ports is https://github.com/pyr/tree
+    # It is not compatible with the commonly used one https://github.com/Old-Man-Programmer/tree
+
+    unset CC
+    unset INSTALL
+    unset CFLAGS
+    unset LDLFAGS
+    unset CPPFLAGS
+
+    step "install tree utility"
+    wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree-src.tar.gz --no-buffer
+    run install -d tree-src
+    run bsdtar xf  tree-src.tar.gz -C tree-src --strip-components=1
+    run gmake -C   tree-src clean
+    run gmake -C   tree-src install PREFIX="$PWD"
 
     cat > init.sh <<EOF
 export AUTOCONF_VERSION=2.69
