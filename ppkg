@@ -10324,7 +10324,7 @@ __setup_syspm() {
 
     [ "$NATIVE_PLATFORM_TYPE" = macos ] || {
         step "install patchelf"
-        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2..tar.gz' -o patchelf.src.tar.gz --no-buffer
+        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' -o patchelf.src.tar.gz --no-buffer
         run install -d patchelf.src
         run bsdtar xf patchelf.src.tar.gz -C patchelf.src --strip-components=1
         run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -O3 -flto -o bin/patchelf patchelf.src/src/patchelf.cc
