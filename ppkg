@@ -10194,11 +10194,11 @@ __setup_syspm_openbsd() {
     unset CPPFLAGS
 
     step "install tree utility"
-    wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree-src.tar.gz --no-buffer
-    run install -d tree-src
-    run bsdtar xf  tree-src.tar.gz -C tree-src --strip-components=1
-    run gmake -C   tree-src clean
-    run gmake -C   tree-src install PREFIX="$PWD"
+    wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
+    run install -d tree.src
+    run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
+    run gmake   -C tree.src clean
+    run gmake   -C tree.src install PREFIX="$PWD"
 
     cat > init.sh <<EOF
 export AUTOCONF_VERSION=2.69
@@ -10324,42 +10324,37 @@ __setup_syspm() {
 
     [ "$NATIVE_PLATFORM_TYPE" = macos ] || {
         step "install patchelf"
-        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.zip' -o patchelf-0.17.2.zip --no-buffer
-        run bsdtar xf patchelf-0.17.2.zip --no-same-owner
-        run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
+        wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2..tar.gz' -o patchelf.src.tar.gz --no-buffer
+        run install -d patchelf.src
+        run bsdtar xf patchelf.src.tar.gz -C patchelf.src --strip-components=1
+        run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -O3 -flto -o bin/patchelf patchelf.src/src/patchelf.cc
+        run strip bin/patchelf
     }
 
     #################################################################################
 
-    step "install yq"
+    unset X
 
-    unset YQ_URL
-    unset YQ_SHA
-
-    # https://github.com/mikefarah/yq/releases
-    case $NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH in
-        linux-x86_64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_linux_amd64'
-            YQ_SHA='b96de04645707e14a12f52c37e6266832e03c29e95b9b139cddcae7314466e69'
+    case $NATIVE_PLATFORM_TYPE in
+        linux)
+            case $NATIVE_PLATFORM_ARCH in
+                x86_64)  X='amd64' ;;
+                aarch64) X='arm64' ;;
+                loongarch64)
+                         X='' ;;
+                *)       X="$NATIVE_PLATFORM_ARCH"
+            esac
             ;;
-        freebsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_freebsd_amd64'
-            YQ_SHA='4a7b1c1de3925e07b25ebcb236799842bc8574cf506bb4744e815f76e405840a'
-            ;;
-        openbsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_openbsd_amd64'
-            YQ_SHA='ffb4ac6da4537de3e8ab8192c2cbead11d47ffb2508a73e143db752a90f6cc92'
-            ;;
-        netbsd-amd64)
-            YQ_URL='https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_netbsd_amd64'
-            YQ_SHA='aef7b2e3fd50e65f32a12df1241986924552da32c910396bea2816a1625e4b68'
+        freebsd|openbsd|netbsd)
+            X="$NATIVE_PLATFORM_ARCH"
             ;;
     esac
 
-    if [ -n    "$YQ_URL" ] && [ -n "$YQ_SHA" ] ; then
-        wfetch "$YQ_URL"  --sha256="$YQ_SHA" -o bin/yq --no-buffer
+    [ -n "$X" ] && {
+        step "install yq"
+        wfetch "https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
         run chmod +x bin/yq
-    fi
+    }
 
     #################################################################################
 
