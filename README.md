@@ -447,7 +447,6 @@ all relevant directories and files are located under `~/.ppkg` directory.
     - [d2](https://github.com/terrastruct/d2)
     - [fzf](https://github.com/junegunn/fzf)
     - [bat](https://github.com/sharkdp/bat)
-    - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
 
 - **show basic information about this software**
 
@@ -949,7 +948,6 @@ a ppkg formula's file content only has one level mapping and shall have the foll
 |`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
 |`d2`|[Reference](https://github.com/terrastruct/d2)|
 |`bat`|[Reference](https://github.com/sharkdp/bat)|
-|`xxd`|[Reference](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)|
 |`git`|[Reference](https://git-scm.com/docs/git)|
 |`curl`|[Reference](https://curl.se/docs/manpage.html)|
 |`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|

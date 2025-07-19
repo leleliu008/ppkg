@@ -3063,7 +3063,7 @@ EOF
     #######################################################
 
     if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME" = linux ] ; then
-        find bundle.d/ -type f -not -path 'bundle.d/.ppkg/*' > ts.txt
+        find bundle.d/ -type f -not -path 'bundle.d/.ppkg/*' > fs.txt
 
         unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
 
@@ -3073,66 +3073,79 @@ EOF
 
             while read -r FILEPATH
             do
-                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
+                FILEMAGIC="$("$PPKG_CORE_DIR/file-magic" "$FILEPATH")"
 
-                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                 case $FILEMAGIC in
-                    7F454C460[12]01)
-                        ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
+                    7F454C460100)
+                        # object file
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        continue
                         ;;
-                    7F454C460[12]02)
-                        ELFTYPE="$(xxd -u -p -s 17 -l 1 "$FILEPATH")"
+                    7F454C460200)
+                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+
+                        # fully statically linked executable
+                        if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
+                            if [ -f "$FILEPATH.c" ] ; then
+                                run mv "$FILEPATH" "$FILEPATH.exe"
+                                run cc -static -std=gnu11 -Os -s -flto $CPPFLAGS -o "$FILEPATH" "$FILEPATH.c"
+                            else
+                                [ -z "$RECEIPT_PACKAGE_BINDENV" ] && continue
+                                DYNAMIC_LOADER_FILENAME=
+                                __generate_wrapper_c_source_file
+                                run mv "$FILEPATH" "$FILEPATH.exe"
+                                run cc -static -std=gnu11 -Os -s -flto $CPPFLAGS -o "$FILEPATH" "$FILEPATH.c"
+                            fi
+                        else
+                            DYNAMIC_LOADER_FILENAME="${DYNAMIC_LOADER_FILEPATH##*/}"
+
+                            LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
+
+                            if [ -f "$FILEPATH.c" ] ; then
+                                CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"$DYNAMIC_LOADER_FILENAME\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\""
+                            else
+                                CPPFLAGS=
+                                __generate_wrapper_c_source_file
+                            fi
+
+                            run mv "$FILEPATH" "$FILEPATH.exe"
+
+                            run cc -static -std=gnu11 -Os -s -flto $CPPFLAGS -o "$FILEPATH" "$FILEPATH.c"
+                        fi
+                        ;;
+                    7F454C460300)
+                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+
+                        # shared library
+                        if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
+                            # TODO should check if this shared library is needed by executables
+                            if [ -z "$RECEIPT_PACKAGE_BINDENV" ] ; then
+                                OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                            fi
+                            continue
+                        fi
+
+                        DYNAMIC_LOADER_FILENAME="${DYNAMIC_LOADER_FILEPATH##*/}"
+
+                        LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
+
+                        if [ -f "$FILEPATH.c" ] ; then
+                            CPPFLAGS="-DDYNAMIC_LOADER_FILENAME=\"$DYNAMIC_LOADER_FILENAME\" -DLIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH=\"$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH\""
+                        else
+                            CPPFLAGS=
+                            __generate_wrapper_c_source_file
+                        fi
+
+                        run mv "$FILEPATH" "$FILEPATH.exe"
+
+                        run cc -static -std=gnu11 -Os -s -flto $CPPFLAGS -o "$FILEPATH" "$FILEPATH.c"
                         ;;
                     213C61726368)
                         # static library file
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        continue
                         ;;
-                    *)  continue
                 esac
-
-                case $ELFTYPE in
-                        # object file
-                    01) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        continue
-                        ;;
-                    03) ;;
-                    *)  continue
-                esac
-
-                unset LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH
-                unset DYNAMIC_LOADER_FILENAME
-                unset DYNAMIC_LOADER_FILEPATH
-
-                DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter-if-present" "$FILEPATH")"
-
-                if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
-                    if [ -z "$RECEIPT_PACKAGE_BINDENV" ] ; then
-                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        continue
-                    fi
-                else
-                    DYNAMIC_LOADER_FILENAME="${DYNAMIC_LOADER_FILEPATH##*/}"
-
-                    LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" bundle.d/.ppkg/dependencies/lib)"
-                fi
-
-                #run chmod -x "$FILEPATH"
-
-                run mv "$FILEPATH" "$FILEPATH.exe"
-
-                if [ -f "$FILEPATH.c" ] ; then
-                    gsed -i -e "s|DYNAMIC_LOADER_FILENAME|$DYNAMIC_LOADER_FILENAME|" -e "s|LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH|$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH|" "$FILEPATH.c"
-                else
-                    __generate_wrapper_c_source_file
-                fi
-
-                if [ -z "$DYNAMIC_LOADER_FILENAME" ] ; then
-                    run cc -static -std=gnu11 -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
-                else
-                    run cc -static -std=gnu11 -Os -s -flto -D__USE_DYNAMIC_LOADER__ -o "$FILEPATH" "$FILEPATH.c"
-                fi
-            done < ts.txt
+            done < fs.txt
 
             if [ -n "$DYNAMIC_LOADER_FILENAME" ] ; then
                 install -d bundle.d/.ppkg/dependencies/lib/
@@ -3154,36 +3167,22 @@ EOF
         else
             while read -r FILEPATH
             do
-                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
+                FILEMAGIC="$("$PPKG_CORE_DIR/file-magic" "$FILEPATH")"
 
-                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                 case $FILEMAGIC in
-                    7F454C460[12]01)
-                        ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
-                        ;;
-                    7F454C460[12]02)
-                        ELFTYPE="$(xxd -u -p -s 17 -l 1 "$FILEPATH")"
+                    7F454C460[13]00)
+                        # object file
+                        # dynamically linked library or executable
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        break
                         ;;
                     213C61726368)
                         # static library file
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                         break
                         ;;
-                    *)  continue
                 esac
-
-                case $ELFTYPE in
-                        # object file
-                    01) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        break
-                        ;;
-                        # dynamically linked library or executable
-                    03) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        break
-                        ;;
-                    *)  continue
-                esac
-            done < ts.txt
+            done < fs.txt
         fi
 
         if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
@@ -3205,7 +3204,7 @@ EOF
         run "$UPPM" about
         run "$UPPM" update
 
-        for UPPM_PACKAGE_NAME in xxd curl zsync gnupg bsdtar sysinfo xmlutils coreutils findutils squashfs appstream desktop-file-utils
+        for UPPM_PACKAGE_NAME in curl zsync gnupg bsdtar sysinfo xmlutils coreutils findutils squashfs appstream desktop-file-utils
         do
             run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
 
@@ -3309,44 +3308,24 @@ EOF
             do
                 FILEPATH="$d/$f"
 
-                FILEMAGIC="$(xxd -u -p -l 6 "$FILEPATH")"
+                [ -x "$FILEPATH" ] || continue
+
+                FILEMAGIC="$("$PPKG_CORE_DIR/file-magic" "$FILEPATH")"
 
                 printf '%s : %s\n' "$FILEMAGIC" "$FILEPATH"
 
-                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                 case $FILEMAGIC in
                     2321*)
                         # script
-                        [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
-                        continue
+                        EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
                         ;;
-                    7F454C460[12]01)
-                        ELFTYPE="$(xxd -u -p -s 16 -l 1 "$FILEPATH")"
-
-                        #printf '1 ELFTYPE: %s ELFFILE: %s\n' "$ELFTYPE" "$FILEPATH"
-
-                        case $ELFTYPE in
-                                # fully statically linked executable
-                            02) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
-                                ;;
-                                # dynamically linked library or executable
-                            03) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
-                                ;;
-                        esac
+                    7F454C460200)
+                        # executable
+                        EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
                         ;;
-                    7F454C460[12]02)
-                        ELFTYPE="$(xxd -u -p -s 17 -l 1 "$FILEPATH")"
-
-                        printf '2 ELFTYPE: %s ELFFILE: %s\n' "$ELFTYPE" "$FILEPATH"
-
-                        case $ELFTYPE in
-                                # fully statically linked executable
-                            02) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
-                                ;;
-                                # dynamically linked library or executable
-                            03) [ -x "$FILEPATH" ] && EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
-                                ;;
-                        esac
+                    7F454C460300)
+                        # dynamically linked library or executable
+                        EXPOSED_EXECUTABLES="$EXPOSED_EXECUTABLES $FILEPATH"
                         ;;
                 esac
             done
@@ -8369,8 +8348,6 @@ $PACKAGE_DOTWEAK
     run install -d .ppkg/dependencies/lib/
     run install -d .ppkg/dependencies/sys/
 
-    PATCHELF="$(command -v patchelf)"
-
     #########################################################################################
 
     step "docheck"
@@ -8387,8 +8364,8 @@ $PACKAGE_DOTWEAK
 
             for KV in $KVs
             do
-                K="${KV%|*}"
-                V="${KV#*|}"
+                K="${KV%'|'*}"
+                V="${KV#*'|'}"
 
                 [ "$V" = 1 ] && V='.ppkg/dependencies/lib'
 
@@ -8398,6 +8375,8 @@ $PACKAGE_DOTWEAK
             done
         }
     else
+        PATCHELF="$(command -v patchelf)"
+
         __check_elf_files
 
         find .ppkg/dependencies/lib -type f -exec "$PATCHELF" --set-rpath '$ORIGIN' {} \;
@@ -8423,21 +8402,11 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    if [ -z "$SYSPM" ] ; then
-        X=1
-    else
-        if [ "$NATIVE_PLATFORM_TYPE" = linux ] || [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-            X=1
-        else
-            X=0
-        fi
-    fi
+    RMDIR_IF_EMPTY="$PPKG_CORE_DIR/rmdir-if-empty"
 
-    if [ "$X" = 1 ] ; then
-        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/lib/
-        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/sys/
-        run rmdir --ignore-fail-on-non-empty .ppkg/dependencies/
-    fi
+    run "$RMDIR_IF_EMPTY" .ppkg/dependencies/lib/
+    run "$RMDIR_IF_EMPTY" .ppkg/dependencies/sys/
+    run "$RMDIR_IF_EMPTY" .ppkg/dependencies/
 
     #########################################################################################
 
@@ -8617,7 +8586,7 @@ __check_elf_files() {
         touch "$Y"
     fi
 
-    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$PATCHELF" --print-needed "$1")"
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$PPKG_CORE_DIR/print-needed" "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
@@ -8751,7 +8720,7 @@ __check_mach_o_files() {
     while read -r FILEPATH
     do
         FILE_HEADER_ACTUAL=
-        FILE_HEADER_ACTUAL="$(xxd -u -p -l 16 "$FILEPATH")"
+        FILE_HEADER_ACTUAL="$("$PPKG_CORE_DIR/read-first-n-bytes" 16 "$FILEPATH")"
 
         unset LIBRARY
         unset EXECUTABLE
@@ -10055,21 +10024,21 @@ __setup_syspm_ubuntu() {
     SYSPM=apt
 
     run $sudo apt -y update
-    run $sudo apt -y install bash coreutils findutils bsdmainutils gawk sed grep tree libarchive-tools patch patchelf pkg-config golang git curl cmake ninja-build make g++ linux-headers-generic flex bison m4 jq
+    run $sudo apt -y install bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq g++ linux-headers-generic
 }
 
 __setup_syspm_fedora() {
     SYSPM=dnf
 
     run $sudo dnf -y update
-    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkg-config golang git curl cmake ninja-build make g++ flex bison m4 jq
+    run $sudo dnf -y install bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq g++
 }
 
 __setup_syspm_alpine() {
     SYSPM=apk
 
     run $sudo apk update
-    run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools patch patchelf pkgconf go jq yq git curl cmake ninja make g++ libc-dev linux-headers flex bison m4 rust cargo
+    run $sudo apk add bash coreutils findutils gawk sed grep tree libarchive-tools git curl jq yq make g++ libc-dev linux-headers
 
     run ln -s /usr/bin/make bin/gmake
     run ln -s     /bin/sed  bin/gsed
@@ -10141,7 +10110,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf go121 jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree go121 jq git curl libnghttp2 gmake gcc m4
 
     run ln -s /usr/local/go121/bin/go   bin/go
 
@@ -10168,7 +10137,7 @@ __setup_syspm_freebsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree patch patchelf pkgconf jq git curl libnghttp2 cmake ninja gmake gcc flex bison m4
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gmake gcc m4
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10195,7 +10164,7 @@ __setup_syspm_openbsd() {
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
 
     # https://man.openbsd.org/pkg_add
-    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive cmake ninja gmake gpatch pkgconf metaauto m4 go gcc%11 patchelf bison
+    run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gmake pkgconf metaauto m4 go gcc%11
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10234,7 +10203,7 @@ __setup_syspm_netbsd() {
     SYSPM=pkgin
 
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq patch patchelf pkg-config go122 gcc13 binutils cmake gmake ninja-build flex bison m4 ca-certificates
+    run $sudo pkgin -y install bash coreutils findutils getopt gawk gsed grep git curl bsdtar tree jq go122 gcc13 binutils gmake m4 ca-certificates
 
     # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
     run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
@@ -10306,7 +10275,7 @@ __setup_syspm() {
         SRCS="$(ls ppkg/core/elftools/*.c)"
     fi
 
-    for f in ppkg/core/wrappers/*.c $SRCS
+    for f in core/*.c ppkg/core/wrappers/*.c $SRCS
     do
         o="${f##*/}"
         o="${o%.c}"
@@ -10346,13 +10315,6 @@ __setup_syspm() {
         run bsdtar xf patchelf-0.17.2.zip --no-same-owner
         run c++ -std=c++17 -Wall -D_FILE_OFFSET_BITS=64 -static -O3 -o bin/patchelf  patchelf-0.17.2/src/patchelf.cc
     }
-
-    #################################################################################
-
-    step "install xxd"
-    wfetch 'https://raw.githubusercontent.com/vim/vim/master/src/xxd/xxd.c' --no-buffer
-    run cc -DUNIX -Os -flto -o bin/xxd xxd.c
-    run strip bin/xxd
 
     #################################################################################
 
@@ -10495,7 +10457,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    PPKG_CORE_RELEASE_VERSION='2025.07.04'
+    PPKG_CORE_RELEASE_VERSION='2025.07.18'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
     PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     PPKG_CORE_RELEASE_TARBALL_URL="https://github.com/leleliu008/ppkg/releases/download/$PPKG_CORE_RELEASE_TAG/$PPKG_CORE_RELEASE_TARBALL_FILENAME"
@@ -10544,7 +10506,7 @@ __setup_uppm() {
         DOT=
     fi
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar git curl tree sysinfo patchelf fzf xxd jq yq d2 $DOT $BAT
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar git curl tree sysinfo fzf jq yq d2 $DOT $BAT
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -10793,7 +10755,7 @@ ${COLOR_GREEN}ppkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ppkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gawk, gsed, grep, git, curl, bsdtar, tree, fzf, bat, xxd, jq, yq, d2, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gawk, gsed, grep, git, curl, bsdtar, tree, fzf, bat, jq, yq, d2, etc) used by this shell script.
 
 ${COLOR_GREEN}ppkg about${COLOR_OFF}
     show basic information about this software.
@@ -11164,7 +11126,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.27
+PPKG_VERSION=0.23.28
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
