@@ -7417,6 +7417,11 @@ $PACKAGE_DO12345
 
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         case $TARGET_PLATFORM_NAME in
+            freebsd)
+                if [ "$CROSS_COMPILING" != 1 ] ; then
+                    printf 'INPUT(-lcompiler_rt -lgcc_eh)\n' > "$PACKAGE_WORKING_DIR/lib/libgcc_s.a"
+                fi
+                ;;
             netbsd)
                 if [ "$CROSS_COMPILING" = 1 ] ; then
                     printf 'INPUT(%s/usr/lib/libstdc++.a -lgcc_s)\n' "$SYSROOT" >  "$PACKAGE_WORKING_DIR/lib/libstdc++.a"

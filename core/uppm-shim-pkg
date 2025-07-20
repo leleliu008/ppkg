@@ -18,6 +18,7 @@ package_name_transform_from_uppm_to_pkg() {
         yq)       printf '%s\n' 'go-yq'     ;;
         xz)       printf '%s\n' 'gtar'      ;;
         bsdtar)   printf '%s\n' 'gtar'      ;;
+        ed)       printf '%s\n' 'gsed'      ;;
         pkg-config) printf '%s\n' 'pkgconf' ;;
         perl)     printf '%s\n' 'perl5.38'  ;;
         *)        printf '%s\n' "$1"
