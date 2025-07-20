@@ -5095,7 +5095,7 @@ __setup_sysroot() {
 
     run install -d "$TARGET_PLATFORM_SPEC"
 
-    __setup_sysroot_$TARGET_PLATFORM_TYPE
+    __setup_sysroot_$TARGET_PLATFORM_NAME
 
     run touch "$TARGET_PLATFORM_SPEC/ok"
 }
