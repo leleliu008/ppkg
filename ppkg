@@ -10252,6 +10252,13 @@ __setup_syspm_netbsd() {
     run ln -s /usr/pkg/bin/grealpath  bin/realpath
     run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
 
+    # NetBSD-10.0 grep report:
+    # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
+    if [ "$(uname -r)" = '10.0' ] ; then
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/grep-3.11-netbsd-10.0-amd64.release.tar.xz' --no-buffer
+        run bsdtar xf grep-3.11-netbsd-10.0-amd64.release.tar.xz --strip-components=1
+    fi
+
     cat > init.sh <<EOF
 export PATH="/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
