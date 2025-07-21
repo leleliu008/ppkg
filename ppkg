@@ -4711,8 +4711,18 @@ EOF
         MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
     fi
 
-    run "$MESON" setup   "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
-    run "$MESON" compile "$MESON_COMPILE_ARGS" &&
+    run "$MESON" setup "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" || {
+        if [ "$GITHUB_ACTIONS" = true ] ; then
+            MESON_LOG_FILEPATH="$PACKAGE_BCACHED_DIR/meson-logs/meson-log.txt"
+
+            if [ -f "$MESON_LOG_FILEPATH" ] ; then
+                run cat "$MESON_LOG_FILEPATH"
+            fi
+        fi
+        exit 1
+    }
+
+    run "$MESON" compile "$MESON_COMPILE_ARGS"
     run "$MESON" install "$MESON_INSTALL_ARGS"
 }
 
