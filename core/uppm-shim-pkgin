@@ -16,11 +16,13 @@ package_name_transform_from_uppm_to_pkgin() {
         xxd)      printf '%s\n' 'vim'       ;;
         ninja)    printf '%s\n' 'ninja-build';;
         xmake)    printf '%s\n' 'gmake'     ;;
-        golang)   printf '%s\n' 'go122'     ;;
+        golang)   printf '%s\n' 'go124'     ;;
         pkgconf)  printf '%s\n' 'pkg-config';;
         xmlutils) printf '%s\n' 'libxml2'   ;;
         xsltproc) printf '%s\n' 'libxslt'   ;;
         trietool) printf '%s\n' 'libdatrie' ;;
+        python3)  printf '%s\n' 'python311' ;;
+        texinfo)  printf '%s\n' 'gtexinfo'  ;;
         zig@0.10) printf '%s\n' 'zig' ;;
         zig@0.11) printf '%s\n' 'zig' ;;
         zig@0.12) printf '%s\n' 'zig' ;;

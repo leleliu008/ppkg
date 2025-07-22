@@ -6047,6 +6047,7 @@ EOF
 
             if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
                 PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+                break
             fi
         done
     done
@@ -10243,7 +10244,7 @@ __setup_syspm_netbsd() {
     run $sudo ln -sf /usr/pkg/bin/gas /usr/bin/as
     run $sudo ln -sf /usr/pkg/bin/gld /usr/bin/ld
 
-    run ln -s /usr/pkg/go122/bin/go   bin/go
+    run ln -s /usr/pkg/go124/bin/go   bin/go
 
     run ln -s /usr/pkg/gcc13/bin/gcc  bin/gcc
     run ln -s /usr/pkg/gcc13/bin/g++  bin/g++
