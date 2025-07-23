@@ -10252,26 +10252,6 @@ __setup_syspm_netbsd() {
 
     run ln -s /usr/pkg/bin/python3.12 bin/python3
 
-    run ln -s /usr/pkg/bin/gln        bin/ln
-    run ln -s /usr/pkg/bin/gld        bin/ld
-    run ln -s /usr/pkg/bin/gas        bin/as
-    run ln -s /usr/pkg/bin/gm4        bin/m4
-    run ln -s /usr/pkg/bin/gsed       bin/sed
-    run ln -s /usr/pkg/bin/gawk       bin/awk
-    run ln -s /usr/pkg/bin/ggrep      bin/grep
-    run ln -s /usr/pkg/bin/gfind      bin/find
-    run ln -s /usr/pkg/bin/gmake      bin/make
-    run ln -s /usr/pkg/bin/gstat      bin/stat
-    run ln -s /usr/pkg/bin/getopt     bin/getopt
-    run ln -s /usr/pkg/bin/grmdir     bin/rmdir
-    run ln -s /usr/pkg/bin/gnproc     bin/nproc
-    run ln -s /usr/pkg/bin/gbase64    bin/base64
-    run ln -s /usr/pkg/bin/gprintf    bin/printf
-    run ln -s /usr/pkg/bin/gunlink    bin/unlink
-    run ln -s /usr/pkg/bin/ginstall   bin/install
-    run ln -s /usr/pkg/bin/grealpath  bin/realpath
-    run ln -s /usr/pkg/bin/gsha256sum bin/sha256sum
-
     # NetBSD-10.0 grep report:
     # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
     if [ "$(uname -r)" = '10.0' ] ; then
@@ -10280,7 +10260,7 @@ __setup_syspm_netbsd() {
     fi
 
     cat > init.sh <<EOF
-export PATH="/usr/pkg/bin:\$PATH"
+export PATH="/usr/pkg/gnu/bin:/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
 }
