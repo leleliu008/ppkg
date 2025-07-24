@@ -5582,6 +5582,8 @@ __initialize_environment_variables() {
         openbsd) LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
     esac
 
+    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$PPKG_CORE_DIR/lib"
+
     ########################################################
 
     for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
@@ -10696,7 +10698,7 @@ __setup() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    run install -d bin
+    run install -d bin lib
 
     #################################################
 
@@ -10712,6 +10714,24 @@ __setup() {
         dragonfly)  NATIVE_PLATFORM_TYPE=dragonflybsd ;;
         darwin)     NATIVE_PLATFORM_TYPE=macos ;;
         *)          NATIVE_PLATFORM_TYPE="$NATIVE_PLATFORM_KIND" ;;
+    esac
+
+    #################################################
+
+    case $NATIVE_PLATFORM_KIND in
+        freebsd)
+            printf 'INPUT(-lc++)\n' > lib/libstdc++.a
+            ;;
+        openbsd)
+            printf 'INPUT(-lc)\n'   > lib/libdl.a
+            printf 'INPUT(-lc)\n'   > lib/librt.a
+            printf 'INPUT(-lc)\n'   > lib/libcrypt.a
+            printf 'INPUT(-lc++)\n' > lib/libstdc++.a
+            ;;
+         netbsd)
+            printf 'INPUT(-lc)\n'      > lib/libdl.a
+            printf 'INPUT(-lstdc++)\n' > lib/libc++.a
+            ;;
     esac
 
     #################################################
