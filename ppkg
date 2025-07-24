@@ -10190,6 +10190,8 @@ __setup_syspm_openbsd() {
     # https://man.openbsd.org/pkg_add
     run $sudo pkg_add bash coreutils findutils gawk gsed ggrep jq git curl libarchive gmake gcc%11
 
+    run ln -s /usr/local/bin/python3.11 bin/python3
+
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
     run ln -s /usr/local/bin/gsed       bin/sed
