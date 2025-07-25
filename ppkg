@@ -6761,6 +6761,32 @@ $DOT_CONTENT
 
     if [ -n "$SYSPM" ] ; then
         run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
+
+        if [ "$NATIVE_PLATFORM_KIND" = openbsd ] ; then
+            for item in $PACKAGE_DEP_UPP
+            do
+                case $item in
+                    golang)
+                        GOLANG_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/golang"
+
+                        [ -f "$GOLANG_INSTALL_DIR/ok.txt" ] || {
+                            step "install golang"
+
+                            SHA256='c51dc5d67cbf214d72555bcffedf9b509b599287d4567a85972782207310134b'
+                            OUTPUT="$PPKG_DOWNLOADS_DIR/$SHA256.tgz"
+                            wfetch 'https://go.dev/dl/go1.24.5.openbsd-amd64.tar.gz' --sha256="$SHA256" -o "$OUTPUT"
+
+                            run install -d "$GOLANG_INSTALL_DIR"
+                            run bsdtar xf "$OUTPUT" -C "$GOLANG_INSTALL_DIR" --strip-components=1
+                            run touch "$GOLANG_INSTALL_DIR/ok.txt"
+                        }
+
+                        export PATH="$GOLANG_INSTALL_DIR/bin:$PATH"
+
+                        break
+                esac
+            done
+        fi
     else
         PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
         PACKAGE_DEP_UPP=
