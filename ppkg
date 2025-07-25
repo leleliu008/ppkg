@@ -10266,8 +10266,16 @@ EOF
 __setup_syspm_netbsd() {
     SYSPM=pkgin
 
+    GREP=grep
+
+    # NetBSD-10.0 grep report:
+    # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
+    if [ "$(uname -r)" = '10.0' ] ; then
+        unset GREP
+    fi
+
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq gcc13 binutils ca-certificates
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed "$GREP" git curl bsdtar tree jq gcc13 binutils ca-certificates
 
     # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
     run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
@@ -10286,9 +10294,7 @@ __setup_syspm_netbsd() {
 
     run ln -s /usr/pkg/bin/python3.12 bin/python3
 
-    # NetBSD-10.0 grep report:
-    # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
-    if [ "$(uname -r)" = '10.0' ] ; then
+    if [ -z "$GREP" ] ; then
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/grep-3.11-netbsd-10.0-amd64.release.tar.xz' --no-buffer
         run bsdtar xf grep-3.11-netbsd-10.0-amd64.release.tar.xz --strip-components=1
     fi
