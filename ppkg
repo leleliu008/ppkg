@@ -6767,7 +6767,7 @@ $DOT_CONTENT
             do
                 case $item in
                     golang)
-                        GOLANG_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/golang"
+                        GOLANG_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/golang"
 
                         [ -f "$GOLANG_INSTALL_DIR/ok.txt" ] || {
                             step "install golang"
