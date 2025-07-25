@@ -19,7 +19,16 @@ package_name_transform_from_uppm_to_pkg_add() {
         unzip)    printf '%s\n' 'unzip--'   ;;
         golang)   printf '%s\n' 'go'        ;;
         bsdtar)   printf '%s\n' 'libarchive';;
-        python3)  printf '%s\n' 'python%3.11' ;;
+        python3)
+            case $(uname -r) in
+                7.[0-2])
+                    printf '%s\n' 'python%3.10'
+                    ;;
+                7.*)
+                    printf '%s\n' 'python%3.11'
+                    ;;
+            esac
+            ;;
         pkg-config)
                   printf '%s\n' 'pkgconf'   ;;
         autoconf) printf '%s\n' 'autoconf%2.69' ;;
