@@ -6931,7 +6931,7 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PYM" ] && {
         step "install needed python packages via pip"
 
-        PYTHON3="$(command -v python3)" || abort 1 "command not found: python3"
+        PYTHON3="$(command -v python3 || command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3.10)" || abort 1 "command not found: python3"
 
         if [ -n "$SYSPM" ] ; then
             wfetch 'https://bootstrap.pypa.io/pip/pip.pyz'
