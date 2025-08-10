@@ -161,7 +161,17 @@ git_checkout() {
         shift
     done
 
-    [ -z "$GIT_FETCH_DEPTH" ] && GIT_FETCH_DEPTH=1
+    if [ -z "$GIT_FETCH_DEPTH" ] ; then
+        GIT_FETCH_DEPTH=1
+        GIT_FETCH_OPTION="--depth=1"
+    else
+        if [ "$GIT_FETCH_DEPTH" = '0' ] ; then
+            GIT_FETCH_OPTION=
+        else
+            GIT_FETCH_OPTION="--depth=$GIT_FETCH_DEPTH"
+        fi
+    fi
+
     [ -z "$GIT_FETCH_FROM_REF" ] && GIT_FETCH_FROM_REF='HEAD'
     [ -z "$GIT_FETCH_TO___REF" ] && GIT_FETCH_TO___REF='refs/remotes/origin/master'
 
@@ -174,7 +184,7 @@ git_checkout() {
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_FROM_URL"
-    run git -c protocol.version=2 fetch --progress --depth="$GIT_FETCH_DEPTH" origin "$GIT_FETCH_FROM_REF:$GIT_FETCH_TO___REF"
+    run git -c protocol.version=2 fetch --progress $GIT_FETCH_OPTION origin "$GIT_FETCH_FROM_REF:$GIT_FETCH_TO___REF"
     run git checkout --progress --force -B "$GIT_CHECKOUT_BRANCH_NAME" "$GIT_FETCH_TO___REF"
 
     git_submodule_update_recursive
