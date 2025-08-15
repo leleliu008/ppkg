@@ -2744,6 +2744,7 @@ __generate_wrapper_c_source_file() {
     cat > "$FILEPATH.c" <<EOF
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <unistd.h>
 #include <limits.h>
 
@@ -2783,13 +2784,8 @@ int main(int argc, char* argv[]) {
 
     char * p = realExePath + n;
 
-    for (;;) {
-        p[0] = s[0];
-
-        if (p[0] == '\0') break;
-
-        p++;
-        s++;
+    for (i = 0; i <= j; i++) {
+        p[i] = s[i];
     }
 EOF
 
@@ -2921,24 +2917,24 @@ EOF
 
     ////////////////////////////////////////////////////
 
-    char* argv2[argc + 6];
+    char* args[argc + 6];
 
-    argv2[0] = dynamicLoaderPath;
-    argv2[1] = (char*)"--library-path";
-    argv2[2] = libraryPath;
-    argv2[3] = (char*)"--argv0";
-    argv2[4] = selfExePath;
-    argv2[5] = realExePath;
+    args[0] = dynamicLoaderPath;
+    args[1] = (char*)"--library-path";
+    args[2] = libraryPath;
+    args[3] = (char*)"--argv0";
+    args[4] = selfExePath;
+    args[5] = realExePath;
 
     n = 6;
 
     for (i = 1; i < argc; i++) {
-        argv2[n++] = argv[i];
+        args[n++] = argv[i];
     }
 
-    argv2[n] = NULL;
+    args[n] = NULL;
 
-    execv (dynamicLoaderPath, argv2);
+    execv (dynamicLoaderPath, args);
     perror(dynamicLoaderPath);
     return 255;
 }
@@ -11209,7 +11205,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.28
+PPKG_VERSION=0.23.29
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
