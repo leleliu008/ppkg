@@ -499,7 +499,7 @@ wfetch() {
                 ;;
             3)  case $FETCH_URL in
                     https://ftp.gnu.org/gnu/*)
-                        URL="$(printf '%s\n' "$FETCH_URL" | sed -i 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
+                        URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
                         ;;
                     *)  continue
                 esac
