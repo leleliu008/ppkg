@@ -4140,7 +4140,11 @@ netsurf_buildsystem() {
 # {{{ waf
 
 waf() {
-    run python3 ./waf "$@"
+    PYTHON3=$(command -v python3) || abort 1 "command not found: python3"
+
+    run "$PYTHON3" ./waf configure --prefix=$PACKAGE_INSTALL_DIR $@
+    run "$PYTHON3" ./waf build
+    run "$PYTHON3" ./waf install
 }
 
 # }}}
@@ -11233,7 +11237,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.29
+PPKG_VERSION=0.23.30
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
