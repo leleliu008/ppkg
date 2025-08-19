@@ -8938,6 +8938,8 @@ EOF
 
         [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && break
     done
+
+    return 0
 }
 
 # __check_needed_dylibs <MACH-O-FILE-PATH> <IS-EXECUTABLE>
@@ -8982,7 +8984,7 @@ EOF
 
                 NEEDED_SHARED_LIBRARY_DIR="${NEEDED%/*}"
 
-                if [ "$EXECUTABLE" = 1 ] ; then
+                if [ "$2" = 1 ] ; then
                     RELATIVE_PATH="${NEEDED_SHARED_LIBRARY_DIR#$PACKAGE_INSTALL_DIR/}"
                     FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|$RELATIVE_PATH"
@@ -8999,7 +9001,7 @@ $1|$RELATIVE_PATH"
                     run cp -L "$NEEDED" "$F"
                 fi
 
-                if [ "$EXECUTABLE" = 1 ] ; then
+                if [ "$2" = 1 ] ; then
                     FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                 fi
