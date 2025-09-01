@@ -62,6 +62,84 @@ function _ppkg_outdated_packages() {
     _describe 'outdated-packages' _outdated_packages
 }
 
+function _ppkg_install_target() {
+    local -a platform_names=('linux' 'macos' 'freebsd' 'openbsd' 'netbsd' 'dragonflybsd')
+
+    if [ -z "$PREFIX" ] ; then
+        compadd -S '-' -a -- platform_names
+        return
+    fi
+
+    local -a parts
+    parts=("${(s:-:)PREFIX}")
+
+    case ${#parts} in
+        1)  compadd -S - -a -- platform_names
+            ;;
+        2)  local isValid=0
+
+            for item ($platform_names) {
+                if [ "$item" = "${parts[1]}" ] ; then
+                    isValid=1
+                    break
+                fi
+            }
+
+            [ "$isValid" = 0 ] && return
+
+            local -a versions
+
+            case ${parts[1]} in
+                macos)
+                    versions=('15.4' '15.3' '15.2' '15.1' '15.0' '14.6' '14.5' '14.4' '14.3' '14.2' '14.1' '14.0' '13.5' '13.4' '13.3' '13.2' '13.1' '13.0' '12.4' '12.3' '12.2' '12.0' '11.5' '11.4' '11.3' '11.2' '11.1' '11.0' '10.15' '10.14' '10.13')
+                    ;;
+                linux)
+                    versions=('glibc' 'musl')
+                    ;;
+                freebsd)
+                    versions=('14.2' '14.1' '14.0' '13.5' '13.4' '13.3' '13.2')
+                    ;;
+                openbsd)
+                    versions=('7.7' '7.6' '7.5' '7.4' '7.3' '7.2')
+                    ;;
+                netbsd)
+                    versions=('10.1' '10.0' '9.4' '9.3' '9.2')
+                    ;;
+                dragonflybsd)
+                    versions=('6.4')
+                    ;;
+            esac
+
+            compadd -S - -P "${PREFIX%-*}-" -a -- versions
+            ;;
+        3)  local isValid=0
+
+            for item ($platform_names) {
+                if [ "$item" = "${parts[1]}" ] ; then
+                    isValid=1
+                    break
+                fi
+            }
+
+            [ "$isValid" = 0 ] && return
+
+            local -a archs
+
+            case ${parts[1]} in
+                macos)
+                    archs=('arm64' 'arm64e' 'x86_64')
+                    ;;
+                linux)
+                    archs=('aarch64' 'x86_64' 'riscv64' 'ppc64le' 's390x' 'loongarch64')
+                    ;;
+                *)  archs=('arm64' 'x86_64')
+            esac
+
+            compadd -P "${PREFIX%-*}-" -a -- archs
+            ;;
+    esac
+}
+
 function _ppkg() {
     local context state state_descr line
     typeset -A opt_args
@@ -170,7 +248,7 @@ function _ppkg() {
                 install)
                     _arguments \
                         ':package-name:_ppkg_available_packages' \
-                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--target=-[specify the target to be built for]:target:_ppkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
@@ -208,7 +286,7 @@ function _ppkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ppkg_installed_packages' \
-                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--target=-[specify the target to be built for]:target:_ppkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
@@ -246,7 +324,7 @@ function _ppkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ppkg_outdated_packages' \
-                        '--target=-[specify the target to be built for]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)' \
+                        '--target=-[specify the target to be built for]:target:_ppkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
@@ -292,11 +370,11 @@ function _ppkg() {
                     ;;
                 ls-installed)
                     _arguments \
-                        '--target=-[specify target platform]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)'
+                        '--target=-[specify target platform]:target:_ppkg_install_target'
                     ;;
                 ls-outdated)
                     _arguments \
-                        '--target=-[specify target platform]:target:(linux-glibc-x86_64 linux-musl-x86_64 freebsd-13.2-amd64 openbsd-7.4-amd64 netbsd-9.3-amd64)'
+                        '--target=-[specify target platform]:target:_ppkg_install_target'
                     ;;
                 is-available)
                     _arguments \
@@ -333,5 +411,3 @@ function _ppkg() {
         *);;
     esac
 }
-
-_ppkg "$@"
