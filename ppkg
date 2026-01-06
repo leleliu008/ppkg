@@ -3201,6 +3201,8 @@ EOF
             do
                 FILEMAGIC="$("$PPKG_CORE_DIR/file-magic" "$FILEPATH")"
 
+                echo "$FILEMAGIC $FILEPATH"
+
                 case $FILEMAGIC in
                     7F454C460[13]00)
                         # object file
