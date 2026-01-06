@@ -3204,11 +3204,27 @@ EOF
                 echo "$FILEMAGIC $FILEPATH"
 
                 case $FILEMAGIC in
-                    7F454C460[13]00)
+                    7F454C460100)
                         # object file
-                        # dynamically linked library or executable
                         OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                         break
+                        ;;
+                    7F454C460[23]00)
+                        # dynamically linked library or executable
+
+                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+
+                        if [ -n "$DYNAMIC_LOADER_FILEPATH" ] ; then
+                            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                            break
+                        fi
+
+                        NEEDEDs="$("$PPKG_CORE_DIR/print-needed" "$FILEPATH")"
+
+                        if [ -n "$NEEDEDs" ] ; then
+                            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                            break
+                        fi
                         ;;
                     213C61726368)
                         # static library file
@@ -11241,7 +11257,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.31
+PPKG_VERSION=0.23.32
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
