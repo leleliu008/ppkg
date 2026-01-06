@@ -10328,6 +10328,7 @@ __setup_syspm_netbsd() {
 
     # NetBSD-10.0 grep report:
     # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
+    # expr: Undefined PLT symbol "mbrtoc32" (symnum = 22)
     if [ "$(uname -r)" = '10.0' ] ; then
         unset GREP
     fi
@@ -10355,6 +10356,9 @@ __setup_syspm_netbsd() {
     if [ -z "$GREP" ] ; then
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/grep-3.11-netbsd-10.0-amd64.release.tar.xz' --no-buffer
         run bsdtar xf grep-3.11-netbsd-10.0-amd64.release.tar.xz --strip-components=1
+
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/coreutils-expr-9.4-netbsd-10.0-amd64.release.tar.xz' --no-buffer
+        run bsdtar xf coreutils-expr-9.4-netbsd-10.0-amd64.release.tar.xz --strip-components=1
     fi
 
     cat > init.sh <<EOF
