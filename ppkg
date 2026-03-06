@@ -353,6 +353,13 @@ wfetch() {
         FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")" || return 1
     fi
 
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        case $FETCH_URL in
+            https://ftp.gnu.org/gnu/*)
+                FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+        esac
+    fi
+
     shift
 
     while [ -n "$1" ]
@@ -377,7 +384,7 @@ wfetch() {
             --no-buffer)
                 NOT_BUFFER=1
                 ;;
-            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unknown argument: $1"
         esac
         shift
     done
@@ -11261,7 +11268,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.33
+PPKG_VERSION=0.23.34
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
