@@ -11268,7 +11268,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.23.34
+PPKG_VERSION=0.24.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11309,9 +11309,15 @@ fi
 
 ##################################################################################
 
-UPPM="$PPKG_CORE_DIR/uppm"
+if [ -z "$UPPM_HOME" ] ; then
+    if [ -z "$HOME" ] ; then
+        abort 1 "HOME environment variable is not set."
+    else
+        export UPPM_HOME="$HOME/.uppm"
+    fi
+fi
 
-export UPPM_HOME="$PPKG_HOME/uppm"
+UPPM="$PPKG_CORE_DIR/uppm"
 
 if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
