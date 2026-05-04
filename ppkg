@@ -10796,6 +10796,7 @@ __setup() {
         run rm -rf "$PPKG_CORE_DIR"
     fi
 
+    run cd ..
     run mv core "$PPKG_HOME/"
 
     success "ppkg has been set up successfully."
