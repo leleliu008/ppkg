@@ -21,7 +21,7 @@ jobs:
       - run: dnf -y update
       - run: dnf -y install curl g++
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: ./ppkg --help
       - run: ./ppkg --version

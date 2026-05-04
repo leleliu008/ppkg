@@ -32,11 +32,11 @@ jobs:
         target-arch: [x86_64, arm64]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: .github/build-core.sh ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
       - run: chmod +x alpine-chroot-install
@@ -62,7 +62,7 @@ jobs:
       - run: /alpine/destroy
       - run: ls -l
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-linux-*.tar.xz
@@ -79,7 +79,7 @@ jobs:
         target-version: ['6.4']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: vmactions/dragonflybsd-vm@v1
         with:
@@ -89,7 +89,7 @@ jobs:
           copyback: true
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} dragonflybsd-${{ matrix.target-version }}-x86_64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-dragonflybsd-${{ matrix.target-version }}-x86_64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-dragonflybsd-${{ matrix.target-version }}-x86_64.tar.xz
@@ -107,7 +107,7 @@ jobs:
         # https://github.com/cross-platform-actions/action?tab=readme-ov-file#freebsd-freebsd
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cross-platform-actions/action@master
         with:
@@ -116,7 +116,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} freebsd-${{ matrix.target-version }}-amd64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
@@ -134,7 +134,7 @@ jobs:
         # https://cdn.openbsd.org/pub/OpenBSD/
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cross-platform-actions/action@master
         with:
@@ -143,7 +143,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} openbsd-${{ matrix.openbsd-version }}-amd64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
@@ -161,7 +161,7 @@ jobs:
         # https://ftp.netbsd.org/pub/NetBSD/
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: curl -LO https://curl.se/ca/cacert.pem
 
@@ -172,7 +172,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} netbsd-${{ matrix.target-version }}-amd64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-netbsd-${{ matrix.target-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-netbsd-${{ matrix.target-version }}-amd64.tar.xz
@@ -188,7 +188,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: '*'
           path: .

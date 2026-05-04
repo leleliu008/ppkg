@@ -16,7 +16,7 @@ jobs:
       - run: pacman -Syy --noconfirm
       - run: pacman -S   --noconfirm curl gcc base-devel
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: ./ppkg --help
       - run: ./ppkg --version
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: |
           cat > run.sh <<EOF

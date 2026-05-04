@@ -18,11 +18,11 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
-      # curl tar gzip are used by actions/checkout@v4
+      # curl tar gzip are used by actions/checkout@v5
       - run: zypper update -y
       - run: zypper install -y curl tar gzip gcc-c++
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: ./ppkg --help
       - run: ./ppkg --version

@@ -17,7 +17,7 @@ jobs:
         pm: ['--syspm', '']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: vmactions/dragonflybsd-vm@v1
         with:

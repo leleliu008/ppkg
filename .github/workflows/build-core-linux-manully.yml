@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: curl -LO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/master/alpine-chroot-install
       - run: chmod +x alpine-chroot-install
@@ -34,7 +34,7 @@ jobs:
       - run: /alpine/destroy
       - run: ls -l
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ppkg-core---linux-${{ matrix.target-arch }}.tar.xz
           path: ppkg-core-*.tar.xz

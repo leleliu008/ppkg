@@ -124,6 +124,8 @@ git_clone_depth_1() {
         URL="$("$PPKG_URL_TRANSFORM" "$1")"
     fi
 
+    shift
+
     run git clone --depth=1 "$URL" "$@"
 }
 
