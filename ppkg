@@ -5963,7 +5963,7 @@ __update_gnu_config() {
 
     for item in sub guess
     do
-        find -type f -name config.sub -exec cp -vf "$GNU_CONFIG_DIR/config.$item" {} \;
+        find -type f -name "config.$item" -exec cp -vf "$GNU_CONFIG_DIR/config.$item" {} \;
     done
 }
 
