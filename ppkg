@@ -5959,7 +5959,7 @@ __update_gnu_config() {
 
     __fetch_gnu_config
 
-    run cd ..
+    run cd -
 
     for item in sub guess
     do
