@@ -116,6 +116,17 @@ git() {
     fi
 }
 
+# git_clone_depth_1 <URL> [options]
+git_clone_depth_1() {
+    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        URL="$1"
+    else
+        URL="$("$PPKG_URL_TRANSFORM" "$1")"
+    fi
+
+    run git clone --depth=1 "$URL" "$@"
+}
+
 # git_checkout <URL> --ref-from=<FROM> --ref-to=<TO> --depth=<N> -B <CHECKOUT-BRANCH-NAME> -C <WORKDIR> --recursive
 git_checkout() {
     GIT_CHECKOUT_OLDCWD="$PWD"
@@ -536,6 +547,11 @@ wfetch() {
     fi
 }
 
+__create_session_dir_and_change_to_it() {
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+}
+
 # __load_formula_repository_config <REPO-NAME> [REPO-PATH]
   __load_formula_repository_config() {
     FORMULA_REPO_NAME="$1"
@@ -646,11 +662,11 @@ wfetch() {
 
     printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-    SESSION_DIR="$PPKG_HOME/run/$$/$FORMULA_REPO_NAME"
+    __create_session_dir_and_change_to_it
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    run rm -rf "$FORMULA_REPO_NAME"
+    run mkdir  "$FORMULA_REPO_NAME"
+    run cd     "$FORMULA_REPO_NAME"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_URL"
@@ -665,8 +681,9 @@ enabled: $FORMULA_REPO_ENABLED
 created: $TIMESTAMP_UNIX
 EOF
 
-    run install -d        "$PPKG_FORMULA_REPO_ROOT"
-    run mv "$SESSION_DIR" "$PPKG_FORMULA_REPO_ROOT/"
+    run cd ..
+    run install -d              "$PPKG_FORMULA_REPO_ROOT"
+    run mv "$FORMULA_REPO_NAME" "$PPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -727,11 +744,11 @@ EOF
 
     printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-    SESSION_DIR="$PPKG_HOME/run/$$/$FORMULA_REPO_NAME"
+    __create_session_dir_and_change_to_it
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR/formula"
-    run cd         "$SESSION_DIR"
+    run rm -rf "$FORMULA_REPO_NAME"
+    run mkdir  "$FORMULA_REPO_NAME"
+    run cd     "$FORMULA_REPO_NAME"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$FORMULA_REPO_URL"
@@ -744,8 +761,9 @@ enabled: $FORMULA_REPO_ENABLED
 created: $TIMESTAMP_UNIX
 EOF
 
-    run install -d        "$PPKG_FORMULA_REPO_ROOT"
-    run mv "$SESSION_DIR" "$PPKG_FORMULA_REPO_ROOT/"
+    run cd ..
+    run install -d              "$PPKG_FORMULA_REPO_ROOT"
+    run mv "$FORMULA_REPO_NAME" "$PPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -2528,11 +2546,7 @@ $PACKAGE_NAME -> $item"
             if [ -z "$OUTPUT_FILEPATH" ] ; then
                 printf 'digraph G {\n%s\n}\n' "$LINES"
             else
-                SESSION_DIR="$PPKG_HOME/run/$$"
-
-                rm -rf     "$SESSION_DIR"
-                install -d "$SESSION_DIR"
-                cd         "$SESSION_DIR"
+                __create_session_dir_and_change_to_it
 
                 printf 'digraph G {\n%s\n}\n' "$LINES" > dependencies.dot
 
@@ -2541,19 +2555,13 @@ $PACKAGE_NAME -> $item"
                 fi
 
                 mv -T dependencies.dot "$OUTPUT_FILEPATH"
-
-                rm -rf "$SESSION_DIR"
             fi
             ;;
         d2)
             if [ -z "$OUTPUT_FILEPATH" ] ; then
                 printf '%s\n' "$LINES"
             else
-                SESSION_DIR="$PPKG_HOME/run/$$"
-
-                rm -rf     "$SESSION_DIR"
-                install -d "$SESSION_DIR"
-                cd         "$SESSION_DIR"
+                __create_session_dir_and_change_to_it
 
                 printf '%s\n' "$LINES" > dependencies.d2
 
@@ -2562,8 +2570,6 @@ $PACKAGE_NAME -> $item"
                 fi
 
                 mv -T dependencies.d2 "$OUTPUT_FILEPATH"
-
-                rm -rf "$SESSION_DIR"
             fi
             ;;
         box)
@@ -2580,11 +2586,7 @@ $LINES
                     --data-urlencode "src=$DOT_CONTENT" \
                     'https://dot-to-ascii.ggerganov.com/dot-to-ascii.php'
             else
-                SESSION_DIR="$PPKG_HOME/run/$$"
-
-                rm -rf     "$SESSION_DIR"
-                install -d "$SESSION_DIR"
-                cd         "$SESSION_DIR"
+                __create_session_dir_and_change_to_it
 
                 # https://github.com/ggerganov/dot-to-ascii
                 curl \
@@ -2600,8 +2602,6 @@ $LINES
                 fi
 
                 mv dependencies.box "$OUTPUT_FILEPATH"
-
-                rm -rf "$SESSION_DIR"
             fi
             ;;
         svg|png)
@@ -2616,11 +2616,7 @@ $LINES
                     printf '%s\n' "$LINES" | d2 - "$OUTPUT_FILEPATH"
                 fi
             else
-                SESSION_DIR="$PPKG_HOME/run/$$"
-
-                rm -rf     "$SESSION_DIR"
-                install -d "$SESSION_DIR"
-                cd         "$SESSION_DIR"
+                __create_session_dir_and_change_to_it
 
                 printf 'digraph G {\n%s\n}\n' "$LINES" > dependencies.dot
 
@@ -2635,8 +2631,6 @@ $LINES
 
                     mv -T dependencies.tmp "$OUTPUT_FILEPATH"
                 fi
-
-                rm -rf "$SESSION_DIR"
             fi
     esac
 }
@@ -2700,11 +2694,11 @@ __fetch_resources_of_the_given_package() {
             GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
         fi
 
-        SESSION_DIR="$PPKG_HOME/run/$$"
+        __create_session_dir_and_change_to_it
 
-        run rm -rf     "$SESSION_DIR"
-        run install -d "$SESSION_DIR"
-        run cd         "$SESSION_DIR"
+        run rm -rf repo
+        run mkdir  repo
+        run cd     repo
 
         run git -c init.defaultBranch=master init
         run git remote add origin "$GIT_FETCH_URL"
@@ -3077,11 +3071,9 @@ EOF
 
     OLDCWD="$PWD"
 
-    SESSION_DIR="$PPKG_HOME/run/$$"
+    __create_session_dir_and_change_to_it
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    run rm -rf bundle.d
 
     #######################################################
 
@@ -3781,8 +3773,6 @@ EOF
     #######################################################
 
     OLDCWD="$PWD"
-
-    SESSION_DIR="$PPKG_HOME/run/$$"
 
     run rm -rf     "$SESSION_DIR"
     run install -d "$SESSION_DIR"
@@ -5945,53 +5935,34 @@ __inspect_install_arguments() {
     fi
 }
 
-# https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-# https://git.savannah.gnu.org/cgit/config.git/tree/
-  __update_config_sub_guess() {
-    UPDATE_GNU_CONFIG_OLDCWD="$PWD"
+__fetch_gnu_config() {
+    for URL in 'https://github.com/leleliu008/gnu-config' 'https://git.savannah.gnu.org/git/config.git'
+    do
+        if [ -d    gnu ] ; then
+            rm -rf gnu
+        fi
+
+        git_clone_depth_1 "$URL" gnu && return 0
+    done
+}
+
+__update_gnu_config() {
+    GNU_CONFIG_DIR="$SESSION_DIR/gnu"
+
+    if [ -f "$GNU_CONFIG_DIR/config.sub" ] && [ -f "$GNU_CONFIG_DIR/config.guess" ] ; then
+        return 0
+    fi
 
     run cd "$SESSION_DIR"
 
-    if [ -f config/config.sub ] && [ -f config/config.guess ] ; then
-        CONFIG_FILE_DIR="$SESSION_DIR/config"
-    else
-        if [    -d config ] ; then
-            rm -rf config
-        fi
+    __fetch_gnu_config
 
-        if run git_checkout https://github.com/leleliu008/gnu-config --depth=1 -C config ; then
-            CONFIG_FILE_DIR="$SESSION_DIR/config"
-        elif run git clone --depth 1 https://git.savannah.gnu.org/git/config.git ; then
-            CONFIG_FILE_DIR="$SESSION_DIR/config"
-        else
-            if  run curl -L -o _config.sub   "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'" &&
-                sh _config.sub x86_64-pc-linux &&
-                run curl -L -o _config.guess "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'" &&
-                sh _config.guess > /dev/null ; then
-                run chmod +x _config.guess
-                run chmod +x _config.sub
-                run mv _config.guess config.guess
-                run mv _config.sub   config.sub
-                CONFIG_FILE_DIR="$SESSION_DIR"
-            elif run curl -L -o _config.sub   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub' &&
-                sh _config.sub x86_64-pc-linux &&
-                run curl -L -o _config.guess 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' &&
-                sh _config.guess > /dev/null ; then
-                run chmod +x _config.guess
-                run chmod +x _config.sub
-                run mv _config.guess config.guess
-                run mv _config.sub   config.sub
-                CONFIG_FILE_DIR="$SESSION_DIR"
-            else
-                CONFIG_FILE_DIR="$PPKG_CORE_DIR"
-            fi
-        fi
-    fi
+    run cd ..
 
-    run cd "$UPDATE_GNU_CONFIG_OLDCWD"
-
-    find -type f -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
-    find -type f -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
+    for item in sub guess
+    do
+        find -type f -name config.sub -exec cp -vf "$GNU_CONFIG_DIR/config.$item" {} \;
+    done
 }
 
 # should run in subshell
@@ -6144,7 +6115,7 @@ EOF
 
     case "${PACKAGE_INSTALL%% *}" in
         configure)
-            __update_config_sub_guess
+            __update_gnu_config
             PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
             ;;
         config)
@@ -8314,7 +8285,7 @@ $PACKAGE_DOPATCH
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
         step "update config.{sub,guess}"
-        __update_config_sub_guess
+        __update_gnu_config
     }
 
     #########################################################################################
@@ -9495,10 +9466,7 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    rm -rf     "$SESSION_DIR"
-    install -d "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     #########################################################################################
 
@@ -9638,12 +9606,7 @@ __reinstall_the_given_packages() {
 
     [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "neither package-name nor package-spec is specified."
 
-    #########################################################################################
-
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    rm -rf     "$SESSION_DIR"
-    install -d "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     #########################################################################################
 
@@ -9778,12 +9741,7 @@ __upgrade_packages() {
         return 0
     fi
 
-    #########################################################################################
-
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    rm -rf     "$SESSION_DIR"
-    install -d "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     #########################################################################################
 
@@ -9970,11 +9928,7 @@ __uninstall_the_given_packages() {
         CURRENT_SCRIPT_REALPATH="$PPKG_PATH"
     fi
 
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     wfetch "$1" -o self
 
@@ -9985,8 +9939,6 @@ __uninstall_the_given_packages() {
     else
         run sudo mv self "$CURRENT_SCRIPT_REALPATH"
     fi
-
-    run rm -rf "$SESSION_DIR"
 }
 
 # }}}
@@ -10046,11 +9998,7 @@ __uninstall_the_given_packages() {
         fi
     fi
 
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" -o _ppkg
 
@@ -10076,8 +10024,6 @@ __uninstall_the_given_packages() {
         fi
     fi
 
-    run rm -rf "$SESSION_DIR"
-
     printf '\n'
     note "${COLOR_YELLOW}you may need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
@@ -10087,11 +10033,7 @@ __uninstall_the_given_packages() {
 # {{{ ppkg gen-url-transform-sample
 
 __gen_url_transform_sample() {
-    SESSION_DIR="$PPKG_HOME/run/$$"
-
-    rm -rf     "$SESSION_DIR"
-    install -d "$SESSION_DIR"
-    cd         "$SESSION_DIR"
+    __create_session_dir_and_change_to_it
 
     cat > url-transform.sample <<EOF
 #!/bin/sh
@@ -10114,8 +10056,6 @@ EOF
     install -d "$PPKG_HOME"
 
     mv url-transform.sample "$PPKG_HOME/"
-
-    rm -rf "$SESSION_DIR"
 
     success "url-transform sample has been written into $PPKG_HOME/url-transform.sample"
     note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export PPKG_URL_TRANSFORM=$PPKG_HOME/url-transform' in your terminal."
@@ -10331,17 +10271,8 @@ EOF
 __setup_syspm_netbsd() {
     SYSPM=pkgin
 
-    GREP=grep
-
-    # NetBSD-10.0 grep report:
-    # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
-    # expr: Undefined PLT symbol "mbrtoc32" (symnum = 22)
-    if [ "$(uname -r)" = '10.0' ] ; then
-        unset GREP
-    fi
-
     run $sudo pkgin -y update
-    run $sudo pkgin -y install bash coreutils findutils gawk gsed "$GREP" git curl bsdtar tree jq gcc13 binutils ca-certificates
+    run $sudo pkgin -y install bash coreutils findutils gawk gsed grep git curl bsdtar tree jq gcc13 binutils ca-certificates
 
     # https://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/security/ca-certificates/index.html
     run $sudo /usr/pkg/sbin/update-ca-certificates --etccertsdir /etc/openssl/certs
@@ -10360,12 +10291,17 @@ __setup_syspm_netbsd() {
 
     run ln -s /usr/pkg/bin/python3.12 bin/python3
 
-    if [ -z "$GREP" ] ; then
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/grep-3.11-netbsd-10.0-amd64.release.tar.xz' --no-buffer
-        run bsdtar xf grep-3.11-netbsd-10.0-amd64.release.tar.xz --strip-components=1
-
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/coreutils-expr-9.4-netbsd-10.0-amd64.release.tar.xz' --no-buffer
-        run bsdtar xf coreutils-expr-9.4-netbsd-10.0-amd64.release.tar.xz --strip-components=1
+    # NetBSD-10.0 grep report:
+    # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
+    # expr: Undefined PLT symbol "mbrtoc32" (symnum = 22)
+    #  awk: Undefined PLT symbol "mbrtoc32" (symnum = 222)
+    if [ "$(uname -r)" = '10.0' ] ; then
+        for x in 'grep-3.11' 'gawk-5.3.1' 'coreutils-expr-9.4'
+        do
+            f="$x-netbsd-10.0-amd64.release.tar.xz"
+            wfetch "https://github.com/leleliu008/test/releases/download/2023.10.08/$f" --no-buffer
+            run bsdtar xf "$f" --strip-components=1
+        done
     fi
 
     cat > init.sh <<EOF
@@ -10396,7 +10332,7 @@ __setup_syspm() {
     #################################################################################
 
     step "install ppkg core"
-    run git clone --depth=1 https://github.com/leleliu008/ppkg
+    git_clone_depth_1 https://github.com/leleliu008/ppkg
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         ELFTOOL_SRCS=
@@ -10431,7 +10367,7 @@ __setup_syspm() {
     fi
 
     step "install sysinfo"
-    run git clone --depth=1 https://github.com/leleliu008/sysinfo
+    git_clone_depth_1 https://github.com/leleliu008/sysinfo
     run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRC -Isysinfo/src/lib
     run strip bin/sysinfo
     run bin/sysinfo
@@ -10799,12 +10735,11 @@ EOF
 }
 
 __setup() {
-    SESSION_DIR="$PPKG_HOME/run/$$/core"
+    __create_session_dir_and_change_to_it
 
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
-
+    run rm -rf core
+    run mkdir  core
+    run cd     core
     run install -d bin lib
 
     #################################################
@@ -10861,7 +10796,7 @@ __setup() {
         run rm -rf "$PPKG_CORE_DIR"
     fi
 
-    run mv "$SESSION_DIR" "$PPKG_HOME/"
+    run mv core "$PPKG_HOME/"
 
     success "ppkg has been set up successfully."
 }
@@ -11268,7 +11203,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.24.0
+PPKG_VERSION=0.25.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11284,11 +11219,12 @@ PPKG_FORMULA_REPO_ROOT="$PPKG_HOME/repos.d"
 PPKG_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/installed"
 PPKG_PACKAGE_SYMLINKED_ROOT="$PPKG_HOME/symlinked"
 PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
-PPKG_BACKUP_DIR="$PPKG_HOME/backup.d"
 
 PPKG_CORE_DIR="$PPKG_HOME/core"
 
 PPKG_SYSROOT="$PPKG_HOME/sysroot"
+
+SESSION_DIR="$PPKG_HOME/run/$$"
 
 NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
 
