@@ -36,10 +36,10 @@ jobs:
       - run: ./ppkg search lib
       - run: ./ppkg search uctags
 
-      - run: ./ppkg info-available uctags
-      - run: ./ppkg info-available uctags summary
-      - run: ./ppkg info-available uctags web-url
-      - run: ./ppkg info-available uctags version
+      - run: ./ppkg info uctags
+      - run: ./ppkg info uctags summary
+      - run: ./ppkg info uctags web-url
+      - run: ./ppkg info uctags version
 
       - run: ./ppkg depends uctags
 
@@ -63,13 +63,13 @@ jobs:
       - run: ./ppkg is-symlinked uctags || echo "not symlinked"
       - run: ./ppkg is-outdated  uctags || echo "not outdated"
 
-      - run: ./ppkg info-installed uctags installed-dir
-      - run: ./ppkg info-installed uctags installed-files
-      - run: ./ppkg info-installed uctags builtat
-      - run: ./ppkg info-installed uctags builtat-rfc-3339-utc
-      - run: ./ppkg info-installed uctags builtat-iso-8601-utc
-      - run: ./ppkg info-installed uctags builtat-rfc-3339
-      - run: ./ppkg info-installed uctags builtat-iso-8601
+      - run: ./ppkg show uctags installed-dir
+      - run: ./ppkg show uctags installed-files
+      - run: ./ppkg show uctags builtat
+      - run: ./ppkg show uctags builtat-rfc-3339-utc
+      - run: ./ppkg show uctags builtat-iso-8601-utc
+      - run: ./ppkg show uctags builtat-rfc-3339
+      - run: ./ppkg show uctags builtat-iso-8601
 
       - run: ./ppkg uninstall uctags
 

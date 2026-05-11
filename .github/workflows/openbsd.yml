@@ -46,10 +46,10 @@ jobs:
             run ./ppkg search lib
             run ./ppkg search uctags
 
-            run ./ppkg info-available uctags
-            run ./ppkg info-available uctags summary
-            run ./ppkg info-available uctags web-url
-            run ./ppkg info-available uctags version
+            run ./ppkg info uctags
+            run ./ppkg info uctags summary
+            run ./ppkg info uctags web-url
+            run ./ppkg info uctags version
 
             run ./ppkg depends uctags
 

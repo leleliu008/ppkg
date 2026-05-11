@@ -544,42 +544,42 @@ all relevant directories and files are located under `~/.ppkg` directory.
 - **show information of the given available package**
 
     ```bash
-    ppkg info-available curl
-    ppkg info-available curl --yaml
-    ppkg info-available curl --json
-    ppkg info-available curl version
-    ppkg info-available curl license
-    ppkg info-available curl summary
-    ppkg info-available curl web-url
-    ppkg info-available curl git-url
-    ppkg info-available curl git-sha
-    ppkg info-available curl git-ref
-    ppkg info-available curl src-url
-    ppkg info-available curl src-sha
+    ppkg info curl
+    ppkg info curl --yaml
+    ppkg info curl --json
+    ppkg info curl version
+    ppkg info curl license
+    ppkg info curl summary
+    ppkg info curl web-url
+    ppkg info curl git-url
+    ppkg info curl git-sha
+    ppkg info curl git-ref
+    ppkg info curl src-url
+    ppkg info curl src-sha
     ```
 
 - **show information of the given installed package**
 
     ```bash
-    ppkg info-installed freebsd-13.2-amd64/curl
-    ppkg info-installed freebsd-13.2-amd64/curl --prefix
-    ppkg info-installed freebsd-13.2-amd64/curl --files
-    ppkg info-installed freebsd-13.2-amd64/curl --yaml
-    ppkg info-installed freebsd-13.2-amd64/curl --json
-    ppkg info-installed freebsd-13.2-amd64/curl version
-    ppkg info-installed freebsd-13.2-amd64/curl license
-    ppkg info-installed freebsd-13.2-amd64/curl summary
-    ppkg info-installed freebsd-13.2-amd64/curl web-url
-    ppkg info-installed freebsd-13.2-amd64/curl git-url
-    ppkg info-installed freebsd-13.2-amd64/curl git-sha
-    ppkg info-installed freebsd-13.2-amd64/curl git-ref
-    ppkg info-installed freebsd-13.2-amd64/curl src-url
-    ppkg info-installed freebsd-13.2-amd64/curl src-sha
-    ppkg info-installed freebsd-13.2-amd64/curl builtat
-    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601
-    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339
-    ppkg info-installed freebsd-13.2-amd64/curl builtat-iso-8601-utc
-    ppkg info-installed freebsd-13.2-amd64/curl builtat-rfc-3339-utc
+    ppkg show freebsd-13.2-amd64/curl
+    ppkg show freebsd-13.2-amd64/curl --prefix
+    ppkg show freebsd-13.2-amd64/curl --files
+    ppkg show freebsd-13.2-amd64/curl --yaml
+    ppkg show freebsd-13.2-amd64/curl --json
+    ppkg show freebsd-13.2-amd64/curl version
+    ppkg show freebsd-13.2-amd64/curl license
+    ppkg show freebsd-13.2-amd64/curl summary
+    ppkg show freebsd-13.2-amd64/curl web-url
+    ppkg show freebsd-13.2-amd64/curl git-url
+    ppkg show freebsd-13.2-amd64/curl git-sha
+    ppkg show freebsd-13.2-amd64/curl git-ref
+    ppkg show freebsd-13.2-amd64/curl src-url
+    ppkg show freebsd-13.2-amd64/curl src-sha
+    ppkg show freebsd-13.2-amd64/curl builtat
+    ppkg show freebsd-13.2-amd64/curl builtat-iso-8601
+    ppkg show freebsd-13.2-amd64/curl builtat-rfc-3339
+    ppkg show freebsd-13.2-amd64/curl builtat-iso-8601-utc
+    ppkg show freebsd-13.2-amd64/curl builtat-rfc-3339-utc
     ```
 
 - **show packages depended by the given package**
