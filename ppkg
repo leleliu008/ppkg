@@ -10347,7 +10347,7 @@ __setup_syspm() {
         o="${f##*/}"
         o="${o%.c}"
 
-        run cc -flto -Os -std=c99 -o "$o" "$f"
+        run cc -flto -Os -std=gnu99 -o "$o" "$f"
         run strip "$o"
     done
 
