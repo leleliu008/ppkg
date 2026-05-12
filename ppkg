@@ -10331,18 +10331,23 @@ __setup_syspm() {
 
     export PATH="$PWD/bin:$PATH"
 
+    command -v gsed > /dev/null || {
+        SED="$(command -v sed)"
+        ln -s "$SED" bin/gsed
+    }
+
     #################################################################################
 
     step "install ppkg core"
     git_clone_depth_1 https://github.com/leleliu008/ppkg
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-        ELFTOOL_SRCS=
+        SRCS=
     else
-        ELFTOOL_SRCS="$(ls ppkg/core/elftools/*.c)"
+        SRCS="$(ls ppkg/core/elftools/*.c)"
     fi
 
-    for f in ppkg/core/*.c ppkg/core/wrappers/*.c $ELFTOOL_SRCS
+    for f in ppkg/core/*.c ppkg/core/wrappers/*.c $SRCS
     do
         o="${f##*/}"
         o="${o%.c}"
@@ -10363,14 +10368,14 @@ __setup_syspm() {
     #################################################################################
 
     if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
-        SRC=sysinfo/src/lib/determine-linux-system-libc.c
+        SRCS=sysinfo/src/lib/determine-linux-system-libc.c
     else
-        SRC=
+        SRCS=
     fi
 
     step "install sysinfo"
     git_clone_depth_1 https://github.com/leleliu008/sysinfo
-    run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRC -Isysinfo/src/lib
+    run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRCS -Isysinfo/src/lib
     run strip bin/sysinfo
     run bin/sysinfo
 
