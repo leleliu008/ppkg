@@ -94,6 +94,14 @@ isCrossBuild() {
     [ "$CROSS_COMPILING" = 1 ]
 }
 
+sha256sum_of_file() {
+    sha256sum "$1" | cut -d ' ' -f1
+}
+
+sha256sum_of_str() {
+    printf '%s\n' "$1" | sha256sum | cut -d ' ' -f1
+}
+
 bppend_to_PATH() {
     case ":${PATH}:" in
         *:"$1":*) ;;
@@ -426,7 +434,7 @@ wfetch() {
     if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
             if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-                if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
+                if [ "$(sha256sum_of_file "$FETCH_OUTPUT_FILEPATH")" = "$FETCH_SHA256_EXPECTED" ] ; then
                     success "$FETCH_OUTPUT_FILEPATH already have been fetched."
                     return 0
                 fi
@@ -438,7 +446,7 @@ wfetch() {
         else
             FETCH_UTS="$(date +%s)"
 
-            FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
+            FETCH_SHA="$(sha256sum_of_str "$FETCH_URL:$$:$FETCH_UTS")"
 
             FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
         fi
@@ -536,7 +544,7 @@ wfetch() {
 
     if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-            FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
+            FETCH_SHA256_ACTUAL="$(sha256sum_of_file "$FETCH_BUFFER_FILEPATH")"
 
             if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
                 abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
@@ -553,6 +561,37 @@ __create_session_dir_and_change_to_it() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 }
+
+# }}}
+##############################################################################
+# {{{ ppkg formula-mapping-set <PACKAGE-NAME> <KEY> <VALUE>
+
+__formula_mapping_set() {
+    [ -z "$1" ] && abort 1 "please specify the package name."
+    [ -z "$2" ] && abort 1 "please specify the key."
+    [ -z "$3" ] && abort 1 "please specify the value."
+
+    FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
+
+    if [ -z "$FORMULA_FILEPATH" ] ; then
+        abort 1 "package '$1' is not available."
+    fi
+
+    if grep -q "^$2: " "$FORMULA_FILEPATH" ; then
+        gsed -i "/^$2: /c $2: $3" "$FORMULA_FILEPATH"
+    else
+        case $2 in
+            git-sha)
+                if grep -q '^git-url: ' "$FORMULA_FILEPATH" ; then
+                    gsed -i "/^git-url: /a $2: $3" "$FORMULA_FILEPATH"
+                    return 0
+                fi
+        esac
+        printf '%s: %s\n' "$2" "$3" >> "$FORMULA_FILEPATH"
+        success "'$2: $3' was added to $FORMULA_FILEPATH"
+    fi
+}
+
 
 # __load_formula_repository_config <REPO-NAME> [REPO-PATH]
   __load_formula_repository_config() {
@@ -5645,18 +5684,20 @@ __initialize_environment_variables() {
     ########################################################
 
     if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
-          CFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
-       OBJCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
-        CXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
-        CPPFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -Qunused-arguments"
-         LDFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH"
+        XXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
+          CFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
+       OBJCFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
+        CXXFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
+        CPPFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
+         LDFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD -Wl,-dead_strip_dylibs -Wl,-search_paths_first"
+         # https://keith.github.io/xcode-man-pages/ld.1.html
     else
-          CFLAGS_FOR_BUILD="-fPIC -fno-common"
-       OBJCFLAGS_FOR_BUILD="-fPIC -fno-common"
-        CXXFLAGS_FOR_BUILD="-fPIC -fno-common"
+          CFLAGS_FOR_BUILD='-fPIC -fno-common'
+       OBJCFLAGS_FOR_BUILD='-fPIC -fno-common'
+        CXXFLAGS_FOR_BUILD='-fPIC -fno-common'
         CPPFLAGS_FOR_BUILD=
-        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-         LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+         LDFLAGS_FOR_BUILD='-Wl,--as-needed'
+         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
     fi
 
     if [ "$DEBUG_CC" = 1 ] ; then
@@ -6072,12 +6113,7 @@ install_the_given_native_package() {
     PACKAGE_INSTALL_UTS="$(date +%s)"
 
     PACKAGE_INSTALL_SHA=
-    PACKAGE_INSTALL_SHA="$(
-{
-    sha256sum <<EOF
-$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
-EOF
-} | cut -d ' ' -f1)"
+    PACKAGE_INSTALL_SHA="$(sha256sum_of_str "$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS")"
 
     #########################################################################################
 
@@ -6573,12 +6609,7 @@ EOF
     PACKAGE_INSTALL_UTS="$(date +%s)"
 
     PACKAGE_INSTALL_SHA=
-    PACKAGE_INSTALL_SHA="$(
-{
-    sha256sum <<EOF
-$PACKAGE_NAME:$$:$PACKAGE_INSTALL_UTS
-EOF
-} | cut -d ' ' -f1)"
+    PACKAGE_INSTALL_SHA="$(sha256sum_of_str "$PACKAGE_NAME:$$:$PACKAGE_INSTALL_UTS")"
 
     #########################################################################################
 
@@ -11313,7 +11344,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.1
+PPKG_VERSION=0.27.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11523,6 +11554,11 @@ case $1 in
     formula-repo-del)
         shift
         __delete_a_formula_repository "$@"
+        ;;
+
+    formula-mapping-set)
+        shift
+        __formula_mapping_set "$@"
         ;;
 
     info) shift; __info_the_given_available_package "$@" ;;
