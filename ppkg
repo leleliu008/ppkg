@@ -4731,9 +4731,9 @@ xmakew() {
 # https://mesonbuild.com/Native-environments.html
 # https://mesonbuild.com/Cross-compilation.html
 mesonw() {
-    MESON_NATIVE_FILE="$PACKAGE_WORKING_DIR/native-file.ini"
+    MESON_CONFIG_FILE="$PACKAGE_WORKING_DIR/meson.config.ini"
 
-    cat > "$MESON_NATIVE_FILE" <<EOF
+    cat > "$MESON_CONFIG_FILE" <<EOF
 [binaries]
 c = '$CC'
 cpp = '$CXX'
@@ -4749,7 +4749,45 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --native-file=$MESON_NATIVE_FILE -Dlibdir=lib"
+    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD -Dlibdir=lib"
+
+    if [ "$CROSS_COMPILING" = 1 ] ; then
+        case $TARGET_PLATFORM_ARCH in
+            armv7a)
+                TARGET_PLATFORM_CPU_NAME="$TARGET_PLATFORM_ARCH"
+                TARGET_PLATFORM_CPU_FAMILY='arm'
+                TARGET_PLATFORM_CPU_ENDIAN='little'
+                ;;
+            aarch64)
+                TARGET_PLATFORM_CPU_NAME='armv8a'
+                TARGET_PLATFORM_CPU_FAMILY='aarch64'
+                TARGET_PLATFORM_CPU_ENDIAN='little'
+                ;;
+            i686)
+                TARGET_PLATFORM_CPU_NAME="$TARGET_PLATFORM_ARCH"
+                TARGET_PLATFORM_CPU_FAMILY='x86'
+                TARGET_PLATFORM_CPU_ENDIAN='little'
+                ;;
+            x86_64)
+                TARGET_PLATFORM_CPU_NAME="$TARGET_PLATFORM_ARCH"
+                TARGET_PLATFORM_CPU_FAMILY='x86_64'
+                TARGET_PLATFORM_CPU_ENDIAN='little'
+                ;;
+        esac
+
+        cat > "$MESON_CONFIG_FILE" <<EOF
+
+[host_machine]
+system = '$TARGET_PLATFORM_NAME'
+endian = '$TARGET_PLATFORM_CPU_ENDIAN'
+cpu_family = '$TARGET_PLATFORM_CPU_FAMILY'
+cpu = '$TARGET_PLATFORM_CPU_NAME'
+EOF
+
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS --cross-file=$MESON_CONFIG_FILE"
+    else
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS --native-file=$MESON_CONFIG_FILE"
+    fi
 
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=static --prefer-static"
@@ -5429,6 +5467,12 @@ __initialize_environment_variables() {
     unset SYSROOT_FOR_BUILD
 
     #####################################################################
+
+    # https://www.gnu.org/software/automake/manual/html_node/Libtool-Flags.html
+    unset LIBTOOLFLAGS
+
+    #https://www.gnu.org/software/libtool/manual/html_node/LT_005fINIT.html
+    unset LT_SYS_LIBRARY_PATH
 
     # https://www.gnu.org/software/make/manual/html_node/Environment.html
     # https://www.gnu.org/software/make/manual/html_node/Implicit-Variables.html
@@ -6205,7 +6249,7 @@ native_package_info_libz() {
     PACKAGE_SRC_SHA='bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16'
     PACKAGE_DEP_AUX='gsed cmake ninja'
     PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_EXAMPLES=OFF -G Ninja'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON -G Ninja'
 }
 
 native_package_info_libopenssl() {
@@ -6232,11 +6276,10 @@ run ln -s libtoolize bin/glibtoolize
 }
 
 native_package_info_texinfo() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.2.tar.xz'
-    PACKAGE_SRC_SHA='0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
+    PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
     PACKAGE_DEP_AUX='perl gmake'
     PACKAGE_DEP_RUN='perl'
-    PACKAGE_DOPATCH='gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
@@ -7456,18 +7499,56 @@ $PACKAGE_DO12345
 
     #########################################################################################
 
-    if [ "$CROSS_COMPILING" = 1 ] && [ "$TARGET_PLATFORM_NAME" != macos ] ; then
-        export PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
-        export PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
-        export PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
+    unset LIBTOOLFLAGS
 
-        step "prepare C/C++ sysroot for target build"
+    if [ "$CROSS_COMPILING" = 1 ] ; then
+        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+            run "$UPPM" about
+            run "$UPPM" update
+            run "$UPPM" install zig@0.16 binutils
 
-        export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
-        printf "%11s = %s\n" SYSROOT "$SYSROOT"
+            export ZIG="$UPPM_HOME/installed/zig@0.16/bin/zig"
 
-        if [ ! -f "$SYSROOT/ok" ] ; then
-            __setup_sysroot
+            export PROXIED_TARGET_CC="$PPKG_CORE_DIR/zig-cc"
+            export PROXIED_TARGET_CXX="$PPKG_CORE_DIR/zig-c++"
+            export PROXIED_TARGET_OBJC="$PPKG_CORE_DIR/zig-cc"
+
+            export AR="$PPKG_CORE_DIR/zig-ar"
+            export RANLIB="$PPKG_CORE_DIR/zig-ranlib"
+
+            export AS="$CC"
+            export LD="$CC"
+
+            export      NM="$UPPM_HOME/installed/binutils/bin/nm"
+            export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
+            export   STRIP="$UPPM_HOME/installed/binutils/bin/strip"
+            export STRINGS="$UPPM_HOME/installed/binutils/bin/strings"
+            export OBJDUMP="$UPPM_HOME/installed/binutils/bin/objdump"
+            export OBJCOPY="$UPPM_HOME/installed/binutils/bin/objcopy"
+            export READELF="$UPPM_HOME/installed/binutils/bin/readelf"
+
+            export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
+
+            PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+
+            unset SYSROOT
+
+            TARGET_TOOLCHAIN=zig
+        else
+            TARGET_TOOLCHAIN=llvm
+
+            export PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
+            export PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
+            export PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
+
+            step "prepare C/C++ sysroot for target build"
+
+            export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
+            printf "%11s = %s\n" SYSROOT "$SYSROOT"
+
+            if [ ! -f "$SYSROOT/ok" ] ; then
+                __setup_sysroot
+            fi
         fi
     else
         export PROXIED_TARGET_CC="$PROXIED_NATIVE_CC"
@@ -7562,7 +7643,8 @@ $PACKAGE_DO12345
         WRAPPER_TARGET_BASEFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments -fno-common"
     else
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-        LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+        #LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+        LDFLAGS="-Wl,--as-needed"
 
         if [ -n "$SYSROOT" ] ; then
             WRAPPER_TARGET_BASEFLAGS="--sysroot=$SYSROOT"
@@ -7571,24 +7653,40 @@ $PACKAGE_DO12345
         if [ "$CROSS_COMPILING" = 1 ] ; then
             ENABLE_LTO=0
 
-            if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
-                CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
-            else
-                CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
+            if [ "$TARGET_TOOLCHAIN" = zig ] ; then
+                case $TARGET_PLATFORM_VERS in
+                    glibc) ZIG_TARGET="$TARGET_PLATFORM_ARCH-linux-gnu"  ;;
+                    musl)  ZIG_TARGET="$TARGET_PLATFORM_ARCH-linux-musl" ;;
+                    *)     ZIG_TARGET="$TARGET_PLATFORM_ARCH-linux-$TARGET_PLATFORM_VERS"
+                esac
+
+                WRAPPER_TARGET_BASEFLAGS="--target=$ZIG_TARGET $WRAPPER_TARGET_BASEFLAGS"
+
+                LDFLAGS="$LDFLAGS -fuse-ld=lld"
             fi
 
-            WRAPPER_TARGET_BASEFLAGS="--target=$CLANG_TARGET $WRAPPER_TARGET_BASEFLAGS"
-
-            for x in c++/v1 g++
-            do
-                y="$SYSROOT/usr/include/$x"
-
-                if [ -d "$y" ] ; then
-                    PPFLAGS="$PPFLAGS -I$y"
-                    XXFLAGS="$XXFLAGS -I$y"
-                    break
+            if [ "$TARGET_TOOLCHAIN" = llvm ] ; then
+                if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+                    CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS"
+                else
+                    CLANG_TARGET="$TARGET_PLATFORM_ARCH-unknown-$TARGET_PLATFORM_NAME"
                 fi
-            done
+
+                WRAPPER_TARGET_BASEFLAGS="--target=$CLANG_TARGET $WRAPPER_TARGET_BASEFLAGS"
+            fi
+
+            if [ -n "$SYSROOT" ] ; then
+                for x in c++/v1 g++
+                do
+                    y="$SYSROOT/usr/include/$x"
+
+                    if [ -d "$y" ] ; then
+                        PPFLAGS="$PPFLAGS -I$y"
+                        XXFLAGS="$XXFLAGS -I$y"
+                        break
+                    fi
+                done
+            fi
 
             if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
                 # https://github.com/llvm/llvm-project/issues/74917
@@ -10367,15 +10465,9 @@ __setup_syspm() {
 
     #################################################################################
 
-    if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
-        SRCS=sysinfo/src/lib/determine-linux-system-libc.c
-    else
-        SRCS=
-    fi
-
     step "install sysinfo"
     git_clone_depth_1 https://github.com/leleliu008/sysinfo
-    run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c $SRCS -Isysinfo/src/lib
+    run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
     run strip bin/sysinfo
     run bin/sysinfo
 
@@ -11211,7 +11303,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.26.0
+PPKG_VERSION=0.27.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
