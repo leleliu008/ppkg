@@ -6429,16 +6429,20 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$NATIVE_PLATFORM_KIND" = linux ] ; then
-        NATIVE_PLATFORM_SPEC="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
+    if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
+        if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH" ] ; then
+            CROSS_COMPILING=0
+        else
+            CROSS_COMPILING=1
+        fi
     else
         NATIVE_PLATFORM_SPEC="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
-    fi
 
-    if [ "$TARGET_PLATFORM_SPEC" = "$NATIVE_PLATFORM_SPEC" ] ; then
-        CROSS_COMPILING=0
-    else
-        CROSS_COMPILING=1
+        if [ "$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_ARCH" = "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" ] ; then
+            CROSS_COMPILING=0
+        else
+            CROSS_COMPILING=1
+        fi
     fi
 
     #########################################################################################
@@ -7499,57 +7503,63 @@ $PACKAGE_DO12345
 
     #########################################################################################
 
-    unset LIBTOOLFLAGS
-
     if [ "$CROSS_COMPILING" = 1 ] ; then
-        if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
-            run "$UPPM" about
-            run "$UPPM" update
-            run "$UPPM" install zig@0.16 binutils
+        case $TARGET_PLATFORM_NAME in
+            linux)
+                run "$UPPM" about
+                run "$UPPM" update
+                run "$UPPM" install zig@0.16 binutils
 
-            export ZIG="$UPPM_HOME/installed/zig@0.16/bin/zig"
+                export ZIG="$UPPM_HOME/installed/zig@0.16/bin/zig"
 
-            export PROXIED_TARGET_CC="$PPKG_CORE_DIR/zig-cc"
-            export PROXIED_TARGET_CXX="$PPKG_CORE_DIR/zig-c++"
-            export PROXIED_TARGET_OBJC="$PPKG_CORE_DIR/zig-cc"
+                export PROXIED_TARGET_CC="$PPKG_CORE_DIR/zig-cc"
+                export PROXIED_TARGET_CXX="$PPKG_CORE_DIR/zig-c++"
+                export PROXIED_TARGET_OBJC="$PPKG_CORE_DIR/zig-cc"
 
-            export AR="$PPKG_CORE_DIR/zig-ar"
-            export RANLIB="$PPKG_CORE_DIR/zig-ranlib"
+                export AR="$PPKG_CORE_DIR/zig-ar"
+                export RANLIB="$PPKG_CORE_DIR/zig-ranlib"
 
-            export AS="$CC"
-            export LD="$CC"
+                export AS="$CC"
+                export LD="$CC"
 
-            export      NM="$UPPM_HOME/installed/binutils/bin/nm"
-            export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
-            export   STRIP="$UPPM_HOME/installed/binutils/bin/strip"
-            export STRINGS="$UPPM_HOME/installed/binutils/bin/strings"
-            export OBJDUMP="$UPPM_HOME/installed/binutils/bin/objdump"
-            export OBJCOPY="$UPPM_HOME/installed/binutils/bin/objcopy"
-            export READELF="$UPPM_HOME/installed/binutils/bin/readelf"
+                export      NM="$UPPM_HOME/installed/binutils/bin/nm"
+                export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
+                export   STRIP="$UPPM_HOME/installed/binutils/bin/strip"
+                export STRINGS="$UPPM_HOME/installed/binutils/bin/strings"
+                export OBJDUMP="$UPPM_HOME/installed/binutils/bin/objdump"
+                export OBJCOPY="$UPPM_HOME/installed/binutils/bin/objcopy"
+                export READELF="$UPPM_HOME/installed/binutils/bin/readelf"
 
-            export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
+                export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
 
-            PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
 
-            unset SYSROOT
+                unset SYSROOT
 
-            TARGET_TOOLCHAIN=zig
-        else
-            TARGET_TOOLCHAIN=llvm
+                TARGET_TOOLCHAIN=zig
+                ;;
+            macos)
+                TARGET_TOOLCHAIN=xcode
 
-            export PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
-            export PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
-            export PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
+                export PROXIED_TARGET_CC="$PROXIED_NATIVE_CC"
+                export PROXIED_TARGET_CXX="$PROXIED_NATIVE_CXX"
+                export PROXIED_TARGET_OBJC="$PROXIED_NATIVE_OBJC"
+                ;;
+            *)  TARGET_TOOLCHAIN=llvm
 
-            step "prepare C/C++ sysroot for target build"
+                export PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
+                export PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
+                export PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
 
-            export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
-            printf "%11s = %s\n" SYSROOT "$SYSROOT"
+                step "prepare C/C++ sysroot for target build"
 
-            if [ ! -f "$SYSROOT/ok" ] ; then
-                __setup_sysroot
-            fi
-        fi
+                export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
+                printf "%11s = %s\n" SYSROOT "$SYSROOT"
+
+                if [ ! -f "$SYSROOT/ok" ] ; then
+                    __setup_sysroot
+                fi
+        esac
     else
         export PROXIED_TARGET_CC="$PROXIED_NATIVE_CC"
         export PROXIED_TARGET_CXX="$PROXIED_NATIVE_CXX"
@@ -11303,7 +11313,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.0
+PPKG_VERSION=0.27.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
