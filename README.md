@@ -533,6 +533,12 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg formula-repo-conf my_repo --disable
     ```
 
+- **change the give mapping of the formula of the given package**
+
+    ```bash
+    ppkg formula-set uctags git-sha 7994b29a004065e98dc114928a93fc11fb104479
+    ```
+
 - **search all available packages whose name matches the given regular expression partten**
 
     ```bash

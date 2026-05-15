@@ -564,7 +564,7 @@ __create_session_dir_and_change_to_it() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg formula-mapping-set <PACKAGE-NAME> <KEY> <VALUE>
+# {{{ ppkg formula-set <PACKAGE-NAME> <KEY> <VALUE>
 
 __formula_mapping_set() {
     [ -z "$1" ] && abort 1 "please specify the package name."
@@ -11039,6 +11039,10 @@ ${COLOR_GREEN}ppkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
+${COLOR_GREEN}ppkg formula-set <PACKAGE-NAME> <KEY> <VALUE>${COLOR_OFF}
+    change the give mapping of the formula of the given package.
+
+
 ${COLOR_GREEN}ppkg search <REGULAR-EXPRESSION-PARTTEN>${COLOR_OFF}
     search all available packages whose name matches the given regular expression partten.
 
@@ -11556,7 +11560,7 @@ case $1 in
         __delete_a_formula_repository "$@"
         ;;
 
-    formula-mapping-set)
+    formula-set)
         shift
         __formula_mapping_set "$@"
         ;;
