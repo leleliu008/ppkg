@@ -577,6 +577,17 @@ __formula_mapping_set() {
         abort 1 "package '$1' is not available."
     fi
 
+    #####################################
+
+    case $2 in
+        git-sha)
+            if [ "${#3}" -ne 40 ] ; then
+                abort 1 "invalid git-sha value. The length of git-sha value should be 40"
+            fi
+    esac
+
+    #####################################
+
     if grep -q "^$2: " "$FORMULA_FILEPATH" ; then
         gsed -i "/^$2: /c $2: $3" "$FORMULA_FILEPATH"
     else
@@ -10304,7 +10315,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     #run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree go-yq jq git curl libnghttp2 gcc
 
     run ln -s /usr/local/go122/bin/go   bin/go
 
