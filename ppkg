@@ -4825,7 +4825,7 @@ EOF
                 ;;
         esac
 
-        cat > "$MESON_CONFIG_FILE" <<EOF
+        cat >> "$MESON_CONFIG_FILE" <<EOF
 
 [host_machine]
 system = '$TARGET_PLATFORM_NAME'
@@ -6399,10 +6399,10 @@ native_package_info_libiconv() {
 }
 
 native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.1.tar.xz'
-    PACKAGE_SRC_SHA='c008bac08fd5c7b4a87f7b8a71f283fa581d80d80ff8d2efd3b26224c39bc54c'
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
+    PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
     PACKAGE_DEP_PKG='libz libiconv'
-    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_DEP_AUX='gmake doxygen'
     PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
 
@@ -7550,19 +7550,10 @@ $PACKAGE_DO12345
             linux)
                 run "$UPPM" about
                 run "$UPPM" update
-                run "$UPPM" install zig@0.16 binutils
+                run "$UPPM" install binutils
 
-                export ZIG="$UPPM_HOME/installed/zig@0.16/bin/zig"
-
-                export PROXIED_TARGET_CC="$PPKG_CORE_DIR/zig-cc"
-                export PROXIED_TARGET_CXX="$PPKG_CORE_DIR/zig-c++"
-                export PROXIED_TARGET_OBJC="$PPKG_CORE_DIR/zig-cc"
-
-                export AR="$PPKG_CORE_DIR/zig-ar"
-                export RANLIB="$PPKG_CORE_DIR/zig-ranlib"
-
-                export AS="$CC"
-                export LD="$CC"
+                #export AS="$CC"
+                #export LD="$CC"
 
                 export      NM="$UPPM_HOME/installed/binutils/bin/nm"
                 export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
@@ -7574,11 +7565,35 @@ $PACKAGE_DO12345
 
                 export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
 
-                PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-
                 unset SYSROOT
 
-                TARGET_TOOLCHAIN=zig
+                if false ; then
+                    run "$UPPM" install zig@0.16
+
+                    export ZIG="$UPPM_HOME/installed/zig@0.16/bin/zig"
+
+                    export PROXIED_TARGET_CC="$PPKG_CORE_DIR/zig-cc"
+                    export PROXIED_TARGET_CXX="$PPKG_CORE_DIR/zig-c++"
+                    export PROXIED_TARGET_OBJC="$PPKG_CORE_DIR/zig-cc"
+
+                    export AR="$PPKG_CORE_DIR/zig-ar"
+                    export RANLIB="$PPKG_CORE_DIR/zig-ranlib"
+
+                    TARGET_TOOLCHAIN=zig
+                    PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                else
+                    export GCC="$(command -v gcc)" || abort 1 "command not found: gcc"
+
+                    export     AR="$UPPM_HOME/installed/binutils/bin/ar"
+                    export RANLIB="$UPPM_HOME/installed/binutils/bin/ranlib"
+
+                    export PROXIED_TARGET_CC="/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/musl-libc/bin/musl-gcc"
+                    export PROXIED_TARGET_CXX="$(command -v g++)" || abort 1 "command not found: g++"
+
+                    unset REALGCC
+
+                    TARGET_TOOLCHAIN=gcc
+                fi
                 ;;
             macos)
                 TARGET_TOOLCHAIN=xcode
@@ -11359,7 +11374,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.2
+PPKG_VERSION=0.27.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
