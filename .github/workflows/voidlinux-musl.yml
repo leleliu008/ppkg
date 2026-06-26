@@ -36,6 +36,8 @@ jobs:
 
       - run: ./ppkg about
 
+      - run: ./ppkg sysinfo
+
       - run: ./ppkg integrate zsh
 
       - run: ./ppkg update
