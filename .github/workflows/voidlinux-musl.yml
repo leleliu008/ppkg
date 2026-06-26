@@ -29,6 +29,9 @@ jobs:
       - run: git checkout --progress --force -B master refs/remotes/origin/master
       - run: ls
 
+      - run: readelf -d /sbin/init
+      - run: readelf -d /bin/sh
+
       - run: ./ppkg --help
       - run: ./ppkg --version
 

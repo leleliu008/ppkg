@@ -23,12 +23,12 @@ jobs:
   macos:
     needs: base
 
-    runs-on: macos-14
+    runs-on: macos-26
 
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0']
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0', '26.0']
         target-arch: [x86_64, arm64]
 
     steps:
@@ -103,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
+        target-version: ['15.1', '15.0', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
         # https://github.com/cross-platform-actions/action?tab=readme-ov-file#freebsd-freebsd
 
     steps:
@@ -130,7 +130,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        openbsd-version: ['7.7', '7.6', '7.5', '7.4', '7.3', '7.2']
+        openbsd-version: ['7.9', '7.8', '7.7', '7.6', '7.5', '7.4', '7.3', '7.2']
         # https://cdn.openbsd.org/pub/OpenBSD/
 
     steps:
@@ -165,7 +165,7 @@ jobs:
 
       - run: curl -LO https://curl.se/ca/cacert.pem
 
-      - uses: cross-platform-actions/action@v0.27.0
+      - uses: cross-platform-actions/action@master
         with:
           operating_system: netbsd
           version: ${{ matrix.target-version }}
