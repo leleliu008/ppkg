@@ -6073,7 +6073,6 @@ install_the_given_native_package() {
 
     unset PACKAGE_DEP_PKG
     unset PACKAGE_DEP_AUX
-    unset PACKAGE_DEP_RUN
 
     unset PACKAGE_DOPATCH
     unset PACKAGE_INSTALL
@@ -6085,14 +6084,14 @@ install_the_given_native_package() {
         native_package_info_$1
     fi
 
-    #########################################################################################
+    ###########################################
 
     for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
     do
         (install_the_given_native_package "$PACKAGE_DEPENDENCY")
     done
 
-    #########################################################################################
+    ###########################################
 
     printf '\n%b\n' "${COLOR_PURPLE}=>> install native package : $1${COLOR_OFF}"
 
@@ -6101,7 +6100,15 @@ install_the_given_native_package() {
         return 0
     fi
 
-    #########################################################################################
+    ###########################################
+
+    if [ -z "$PACKAGE_DEP_AUX" ] ; then
+        PACKAGE_DEP_AUX='gmake'
+    else
+        PACKAGE_DEP_AUX="gmake $PACKAGE_DEP_AUX"
+    fi
+
+    ###########################################
 
     for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
     do
@@ -6118,7 +6125,7 @@ install_the_given_native_package() {
         fi
     done
 
-    #########################################################################################
+    ###########################################
 
     PACKAGE_INSTALL_UTS=
     PACKAGE_INSTALL_UTS="$(date +%s)"
@@ -6126,7 +6133,7 @@ install_the_given_native_package() {
     PACKAGE_INSTALL_SHA=
     PACKAGE_INSTALL_SHA="$(sha256sum_of_str "$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS")"
 
-    #########################################################################################
+    ###########################################
 
     PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
@@ -6136,7 +6143,7 @@ install_the_given_native_package() {
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
 
-    #########################################################################################
+    ###########################################
 
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
@@ -6181,26 +6188,22 @@ install_the_given_native_package() {
         done
     done
 
-    #########################################################################################
+    ###########################################
 
     wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-
-    #########################################################################################
 
     run install -d "$PACKAGE_WORKING_DIR/src"
     run cd         "$PACKAGE_WORKING_DIR/src"
 
-    #########################################################################################
-
     run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
 
-    #########################################################################################
+    ###########################################
 
     if [ -n  "$PACKAGE_DOPATCH" ] ; then
         eval "$PACKAGE_DOPATCH"
     fi
 
-    #########################################################################################
+    ###########################################
 
     if [ -z "$PACKAGE_INSTALL" ] ; then
         abort 1 "PACKAGE_INSTALL variable is not set for native package '$1'"
@@ -6218,7 +6221,8 @@ install_the_given_native_package() {
             PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
             ;;
         cmake)
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -G Ninja -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
+            export CMAKE_GENERATOR='Unix Makefiles'
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
             ;;
         gmake)
             PACKAGE_INSTALL="run $PACKAGE_INSTALL"
@@ -6227,21 +6231,17 @@ install_the_given_native_package() {
 
     eval "$PACKAGE_INSTALL"
 
-    #########################################################################################
+    ###########################################
 
     run cd "$PACKAGE_INSTALL_DIR"
 
-    #########################################################################################
+    ###########################################
 
     if [ -n  "$PACKAGE_DOTWEAK" ] ; then
         eval "$PACKAGE_DOTWEAK"
     fi
 
-    #########################################################################################
-
-    run cd "$PACKAGE_INSTALL_DIR"
-
-    #########################################################################################
+    ###########################################
 
     cat > buildon.yml <<EOF
 os-arch: $NATIVE_PLATFORM_ARCH
@@ -6256,7 +6256,7 @@ os-euid: $NATIVE_PLATFORM_EUID
 os-egid: $NATIVE_PLATFORM_EGID
 EOF
 
-    #########################################################################################
+    ###########################################
 
     cat > toolchain.txt <<EOF
      CC='$CC'
@@ -6268,7 +6268,7 @@ EOF
 SYSROOT='$SYSROOT'
 EOF
 
-    #########################################################################################
+    ###########################################
 
     cat > receipt.txt <<EOF
 PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
@@ -6277,7 +6277,6 @@ PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
 
 PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
 PACKAGE_DEP_AUX='$PACKAGE_DEP_AUX'
-PACKAGE_DEP_RUN='$PACKAGE_DEP_RUN'
 
 PACKAGE_DOPATCH='$PACKAGE_DOPATCH'
 PACKAGE_DOTWEAK='$PACKAGE_DOTWEAK'
@@ -6285,7 +6284,7 @@ PACKAGE_INSTALL='$PACKAGE_INSTALL'
 PACKAGE_INSTALL_UTS='$PACKAGE_INSTALL_UTS'
 EOF
 
-    #########################################################################################
+    ###########################################
 
     run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
     run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
@@ -6294,15 +6293,13 @@ EOF
 native_package_info_libz() {
     PACKAGE_SRC_URL='https://zlib.net/zlib-1.3.2.tar.gz'
     PACKAGE_SRC_SHA='bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16'
-    PACKAGE_DEP_AUX='gsed cmake ninja'
-    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON -G Ninja'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
 }
 
 native_package_info_libopenssl() {
     PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.1/openssl-3.6.1.tar.gz'
     PACKAGE_SRC_SHA='b1bfedcd5b289ff22aee87c9d600f515767ebf45f77168cb6d64f231f518a82e'
-    PACKAGE_DEP_AUX='perl gmake'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DOPATCH='
     case $NATIVE_PLATFORM_ARCH in
         armv7l) gsed -i "s|armv7-a|armv7-a+fp|g" util/perl/OpenSSL/config.pm
@@ -6314,8 +6311,8 @@ native_package_info_libopenssl() {
 native_package_info_libtool() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz'
     PACKAGE_SRC_SHA='f81f5860666b0bc7d84baddefa60d1cb9fa6fceb2398cc3baca6afaa60266675'
-    PACKAGE_INSTALL='configure --enable-ltdl-install'
-    PACKAGE_DEP_AUX='gm4 gmake'
+    PACKAGE_INSTALL='configure --disable-ltdl-install'
+    PACKAGE_DEP_AUX='gm4'
     PACKAGE_DOTWEAK='
 run ln -s libtool    bin/glibtool
 run ln -s libtoolize bin/glibtoolize
@@ -6325,24 +6322,21 @@ run ln -s libtoolize bin/glibtoolize
 native_package_info_texinfo() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
     PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
 native_package_info_autoconf() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz'
     PACKAGE_SRC_SHA='afb181a76e1ee72832f6581c0eddf8df032b83e2e0239ef79ebedc4467d92d6e'
-    PACKAGE_DEP_AUX='perl gm4 gmake'
-    PACKAGE_DEP_RUN='perl gm4'
+    PACKAGE_DEP_AUX='perl gm4'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_automake() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.18.1.tar.xz'
     PACKAGE_SRC_SHA='168aa363278351b89af56684448f525a5bce5079d0b6842bd910fdd3f1646887'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DEP_PKG='autoconf'
     PACKAGE_INSTALL='configure'
 }
@@ -6350,34 +6344,30 @@ native_package_info_automake() {
 native_package_info_help2man() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
     PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
-    PACKAGE_DOTWEAK='gsed -i "1c #!$UPPM_HOME/installed/perl/bin/perl -w" bin/help2man'
+    #PACKAGE_DOTWEAK='gsed -i "1c #!$(command -v perl) -w" bin/help2man'
 }
 
 native_package_info_libexpat() {
     PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.lz'
     PACKAGE_SRC_SHA='882bb3c124cdfd6d594818276f3ea851b780473a722385150a5793277635fcae'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
 }
 
 native_package_info_intltool() {
     PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-    PACKAGE_SRC_URI='https://fossies.org/linux/privat/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/intltool/intltool-0.51.0.tar.gz'
     PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
-    PACKAGE_DEP_PKG='libexpat perl-XML-Parser'
+    PACKAGE_DEP_PKG='perl-XML-Parser libexpat'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_perl_XML_Parser() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
     PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DEP_PKG='libexpat'
     PACKAGE_DOPATCH='
 run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
@@ -6392,9 +6382,8 @@ run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 }
 
 native_package_info_libiconv() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz'
-    PACKAGE_SRC_SHA='3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8'
-    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz'
+    PACKAGE_SRC_SHA='88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
 }
 
@@ -6402,44 +6391,41 @@ native_package_info_libxml2() {
     PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
     PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
     PACKAGE_DEP_PKG='libz libiconv'
-    PACKAGE_DEP_AUX='gmake doxygen'
+    PACKAGE_DEP_AUX='doxygen'
     PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
 
 native_package_info_itstool() {
-    PACKAGE_SRC_URL='https://github.com/itstool/itstool/archive/2.0.7.tar.gz'
-    PACKAGE_SRC_SHA='fba78a37dc3535e4686c7f57407b97d03c676e3a57beac5fb2315162b0cc3176'
-    PACKAGE_DEP_AUX='perl python3 gmake'
-    PACKAGE_DEP_RUN='perl python3'
-    PACKAGE_DEP_PKG='libxml2 autoconf automake'
+    PACKAGE_SRC_URL='https://distfiles.macports.org/itstool/itstool-2.0.7.tar.bz2'
+    PACKAGE_SRC_SHA='6b9a7cd29a12bb95598f5750e8763cee78836a1a207f85b74d8b3275b27e87ca'
+    PACKAGE_DEP_PKG='libxml2'
+    PACKAGE_DEP_AUX='python3'
     PACKAGE_INSTALL='configure'
     PACKAGE_DOPATCH='
-    run autoreconf -ivf
     export PYTHON="$(command -v python3)"
-    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python3.11/site-packages"
+    PYTHON_VERSION_XY="$("$PYTHON" -c "import sys; print(\"%d.%d\" % sys.version_info[:2])")"
+    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python$PYTHON_VERSION_XY/site-packages"
     '
     PACKAGE_DOTWEAK='
-run mv bin/itstool bin/itstool.py
+mv bin/itstool bin/itstool.py
 cat > bin/itstool <<EOF
 #!/bin/sh
 export PYTHONPATH="$PYTHONPATH"
 exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
 EOF
-run chmod +x bin/itstool
+chmod +x bin/itstool
     '
 }
 
 native_package_info_autoconf_archive() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
     PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_netsurf_buildsystem() {
     PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
     PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
 }
 
@@ -11374,7 +11360,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.3
+PPKG_VERSION=0.27.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
