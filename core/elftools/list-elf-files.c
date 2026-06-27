@@ -7,7 +7,9 @@
 #include <fcntl.h>
 
 // https://elixir.bootlin.com/musl/v1.2.5/source/include/dirent.h#L40
+#ifndef _BSD_SOURCE
 #define _BSD_SOURCE
+#endif
 #include <dirent.h>
 
 #include <sys/stat.h>
