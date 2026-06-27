@@ -1,4 +1,4 @@
-name: DragonFlyBSD
+name: MidnightBSD
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dragonflybsd-version: ['6.4.2']
+        midnightbsd-version: ['4.0.4']
         pm: ['--syspm', '']
 
     steps:
@@ -21,8 +21,8 @@ jobs:
 
       - uses: cross-platform-actions/action@master
         with:
-          operating_system: dragonflybsd
-          version: ${{ matrix.dragonflybsd-version }}
+          operating_system: midnightbsd
+          version: ${{ matrix.midnightbsd-version }}
           shell: bash
           run: |
             run() {

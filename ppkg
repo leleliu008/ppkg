@@ -10544,6 +10544,7 @@ __setup_syspm() {
             case $NATIVE_PLATFORM_ARCH in
                 x86_64)  X='amd64' ;;
                 aarch64) X='arm64' ;;
+                armhf)   X='arm' ;;
                 loongarch64)
                          X='' ;;
                 *)       X="$NATIVE_PLATFORM_ARCH"
@@ -11360,7 +11361,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.4
+PPKG_VERSION=0.27.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
