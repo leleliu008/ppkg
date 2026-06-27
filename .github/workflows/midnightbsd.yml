@@ -30,7 +30,7 @@ jobs:
               eval "$@"
             }
 
-            run pkg install -y curl libnghttp2 gcc
+            run sudo mport install -y curl gcc
 
             run ./ppkg --help
             run ./ppkg --version
