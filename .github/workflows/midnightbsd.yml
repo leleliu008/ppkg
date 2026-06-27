@@ -30,7 +30,7 @@ jobs:
               eval "$@"
             }
 
-            run sudo mport install -y curl gcc
+            run sudo mport install curl gcc
 
             run ./ppkg --help
             run ./ppkg --version
