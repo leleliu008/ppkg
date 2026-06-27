@@ -10544,7 +10544,7 @@ __setup_syspm() {
             case $NATIVE_PLATFORM_ARCH in
                 x86_64)  X='amd64' ;;
                 aarch64) X='arm64' ;;
-                armhf)   X='arm' ;;
+                armv7l)  X='arm' ;;
                 loongarch64)
                          X='' ;;
                 *)       X="$NATIVE_PLATFORM_ARCH"
