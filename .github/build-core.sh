@@ -35,6 +35,7 @@ fi
 
 case $TARGET_PLATFORM_NAME in
     macos)
+        run ./ppkg about
         run ./ppkg setup
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4
@@ -42,12 +43,13 @@ case $TARGET_PLATFORM_NAME in
         ;;
     dragonflybsd)
         run pkg install -y curl libnghttp2 gcc
+        run ./ppkg about
         run ./ppkg setup
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
         ;;
-    *)
+    *)  run ./ppkg about
         run ./ppkg setup --syspm
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static

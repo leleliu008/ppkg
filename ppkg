@@ -10541,6 +10541,7 @@ __setup_syspm() {
 
     case $NATIVE_PLATFORM_TYPE in
         linux)
+            echo "NATIVE_PLATFORM_ARCH=$NATIVE_PLATFORM_ARCH"
             case $NATIVE_PLATFORM_ARCH in
                 x86_64)  X='amd64' ;;
                 aarch64) X='arm64' ;;
@@ -10557,7 +10558,7 @@ __setup_syspm() {
 
     [ -n "$X" ] && {
         step "install yq"
-        wfetch "https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
+        wfetch "https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
         run chmod +x bin/yq
     }
 
