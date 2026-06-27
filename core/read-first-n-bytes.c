@@ -91,7 +91,7 @@ int main(int argc, const char *argv[]) {
     } else {
         perror(fp);
         close(fd);
-        fprintf(stderr, "not fully read file: %s\nexpect: %dbytes\nactual: %ldbytes", fp, n, readBytes);
+        fprintf(stderr, "not fully read file: %s\nexpect: %dbytes\nactual: %zdbytes", fp, n, readBytes);
         return 8;
     }
 }

@@ -354,7 +354,7 @@ static int determine(const char * fp) {
     if (readBytes != 32) {
         perror(fp);
         close(fd);
-        fprintf(stderr, "not fully read file: %s\nexpect: 32bytes\nactual: %ldbytes", fp, readBytes);
+        fprintf(stderr, "not fully read file: %s\nexpect: 32bytes\nactual: %zdbytes", fp, readBytes);
         return 103;
     }
 

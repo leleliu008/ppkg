@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     if (readBytes != n) {
         perror(fp);
         close(fd);
-        fprintf(stderr, "not fully read file: %s\nexpect: %dbytes\nactual: %ldbytes", fp, n, readBytes);
+        fprintf(stderr, "not fully read file: %s\nexpect: %dbytes\nactual: %zdbytes", fp, n, readBytes);
         return 103;
     }
 
