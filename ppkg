@@ -10328,6 +10328,7 @@ __setup_syspm_midnightbsd() {
     SYSPM=mport
 
     run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go jq git curl gcc || true
+    run $sudo mport install git || true
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10537,7 +10538,9 @@ __setup_syspm() {
     #################################################################################
 
     step "install ppkg core"
-    git_clone_depth_1 https://github.com/leleliu008/ppkg
+    wfetch 'https://github.com/leleliu008/ppkg/archive/refs/heads/master.tar.gz' -o ppkg.tar.gz --no-buffer
+    run install -d ppkg
+    run bsdtar xf ppkg.tar.gz -C ppkg --strip-components=1
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         SRCS=
@@ -10566,7 +10569,9 @@ __setup_syspm() {
     #################################################################################
 
     step "install sysinfo"
-    git_clone_depth_1 https://github.com/leleliu008/sysinfo
+    wfetch 'https://github.com/leleliu008/sysinfo/archive/refs/heads/master.tar.gz' -o sysinfo.tar.gz --no-buffer
+    run install -d sysinfo
+    run bsdtar xf sysinfo.tar.gz -C sysinfo --strip-components=1
     run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
     run strip bin/sysinfo
     run bin/sysinfo
