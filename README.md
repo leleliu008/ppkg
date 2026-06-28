@@ -1020,19 +1020,18 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 |||
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
-|`NATIVE_PLATFORM_KIND`|current running os kind. value shall be any one of `linux` `darwin` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
-|`NATIVE_PLATFORM_TYPE`|current running os type. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
-|`NATIVE_PLATFORM_NAME`|current running os name. value might be any one of `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD`, `DragonFlyBSD`, etc|
+|`NATIVE_PLATFORM_TYPE`|current running os type. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `midnightbsd` `dragonflybsd`|
+|`NATIVE_PLATFORM_NAME`|current running os name. value might be any one of `Debian GNU/Linux` `Ubuntu` `CentOS` `Fedora` `FreeBSD` `NetBSD` `OpenBSD` `MidnightBSD` `DragonFlyBSD`, etc|
 |`NATIVE_PLATFORM_VERS`|current running os version.|
-|`NATIVE_PLATFORM_ARCH`|current running os arch. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
+|`NATIVE_PLATFORM_ARCH`|current running os arch. value might be any one of `loongarch64` `x86_64` `amd64` `arm64` `aarch64` `ppc64le` `riscv64` `s390x`, etc|
 |`NATIVE_PLATFORM_NCPU`|current running os's cpu core count.|
 |`NATIVE_PLATFORM_LIBC`|current running os's libc name. value shall be any one of `glibc` and `musl`.|
 |`NATIVE_PLATFORM_EUID`|current running os's effective user ID.|
 |`NATIVE_PLATFORM_EGID`|current running os's effective group ID.|
 |||
-|`TARGET_PLATFORM_NAME`|target platform name that is built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `dragonflybsd`|
+|`TARGET_PLATFORM_NAME`|target platform name that is built for. value shall be any one of `linux` `macos` `freebsd` `netbsd` `openbsd` `midnightbsd` `dragonflybsd`|
 |`TARGET_PLATFORM_VERS`|target platform version that is built with.|
-|`TARGET_PLATFORM_ARCH`|target platform arch that is built for. value might be any one of `x86_64` `amd64` `arm64` `aarch64`, `ppc64le`, `riscv64`, `s390x`, etc|
+|`TARGET_PLATFORM_ARCH`|target platform arch that is built for. value might be any one of `loongarch64` `x86_64` `amd64` `arm64` `aarch64` `ppc64le` `riscv64` `s390x`, etc|
 |||
 |`CROSS_COMPILING`|value shall be 0 or 1. indicates whether is cross-compiling.|
 |||
