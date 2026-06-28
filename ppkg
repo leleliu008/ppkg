@@ -10519,10 +10519,12 @@ EOF
 }
 
 __setup_syspm_sunos() {
+    SYSPM=pkg
 
 }
 
 __setup_syspm_haiku() {
+    SYSPM=pkgman
 
 }
 
