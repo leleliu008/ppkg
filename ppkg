@@ -10341,15 +10341,6 @@ __setup_syspm_midnightbsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    unset GOOS
-    unset GOARCH
-
-    step "install yq utility"
-    wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.2.tar.gz' -o yq.src.tar.gz --no-buffer
-    run install -d yq.src
-    run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
-    run go build -C yq.src -o ../bin/ -trimpath -ldflags "'-s -w'"
-
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
 
@@ -10523,8 +10514,9 @@ EOF
 }
 
 __setup_syspm_sunos() {
-    SYSPM=pkg
+    SYSPM=pkg_omnios
 
+    run $sudo pkg install  bash gnu-coreutils gnu-findutils gnu-sed gnu-grep gawk tree jq git curl libarchive gcc14 go-126
 }
 
 __setup_syspm_haiku() {
@@ -10628,11 +10620,22 @@ __setup_syspm() {
             ;;
     esac
 
-    [ -n "$X" ] && {
-        step "install yq"
+    if [ -n "$X" ] ; then
+        step "install yq utility"
         wfetch "https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
         run chmod +x bin/yq
-    }
+    else
+        command -v yq > /dev/null || {
+        unset GOOS
+        unset GOARCH
+
+        step "install yq utility"
+        wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.3.tar.gz' -o yq.src.tar.gz --no-buffer
+        run install -d yq.src
+        run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
+        run go build -C yq.src -o ../bin/ -trimpath -ldflags "'-s -w'"
+        }
+    fi
 
     #################################################################################
 
@@ -11420,7 +11423,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.10
+PPKG_VERSION=0.27.11
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
