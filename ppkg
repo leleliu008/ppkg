@@ -10354,9 +10354,7 @@ __setup_syspm_midnightbsd() {
     wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.2.tar.gz' -o yq.src.tar.gz --no-buffer
     run install -d yq.src
     run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
-    run cd yq.src
-    run go build -trimpath -ldflags "'-s -w'" -o ../bin/
-    run cd ..
+    run go build -C yq.src -o ../bin/ -trimpath -ldflags "'-s -w'"
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
