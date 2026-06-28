@@ -9,34 +9,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     container: madhacking/gentoo
 
-    env:
-      CC:     ${{ github.workspace }}/cc
-      CXX:    ${{ github.workspace }}/c++
-      AR:     ${{ github.workspace }}/ar
-      RANLIB: ${{ github.workspace }}/ranlib
-
     steps:
+      # Don't try to installed curl and gcc, they already have been installed.
       #- run: emerge --sync
-      #- run: emerge net-misc/curl
-        #sys-devel/gcc
+      #- run: emerge net-misc/curl sys-devel/gcc
 
       - uses: actions/checkout@v5
-
-      - run: curl -LO https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz
-      - run: tar xf zig-x86_64-linux-0.16.0.tar.xz --strip-components=1
-      - run : |
-          for item in cc c++ ar ranlib
-          do
-            cat > "$item" <<EOF
-            #!/bin/sh
-            set -ex
-            exec "${{ github.workspace }}/zig" $item "\$@"
-          EOF
-            chmod +x "$item"
-          done
 
       - run: ./ppkg --help
       - run: ./ppkg --version

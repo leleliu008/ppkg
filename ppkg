@@ -4595,14 +4595,28 @@ EOF
 
     if [ "$CROSS_COMPILING" = 1 ] ; then
         case $TARGET_PLATFORM_NAME in
-            linux)    CMAKE_SYSTEM_NAME=Linux   ;;
-            macos)    CMAKE_SYSTEM_NAME=Darwin  ;;
-            freebsd)  CMAKE_SYSTEM_NAME=FreeBSD ;;
-            openbsd)  CMAKE_SYSTEM_NAME=OpenBSD ;;
-            netbsd)   CMAKE_SYSTEM_NAME=NetBSD  ;;
+            linux)
+                CMAKE_SYSTEM_NAME=Linux
+                ;;
+            macos)
+                CMAKE_SYSTEM_NAME=Darwin
+                ;;
+            freebsd)
+                CMAKE_SYSTEM_NAME=FreeBSD
+                ;;
+            openbsd)
+                CMAKE_SYSTEM_NAME=OpenBSD
+                ;;
+            netbsd)
+                CMAKE_SYSTEM_NAME=NetBSD
+                ;;
+            midnightbsd)
+                CMAKE_SYSTEM_NAME=MidnightBSD
+                ;;      
             dragonflybsd)
-                      CMAKE_SYSTEM_NAME=DragonFly ;;
-            *)        CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
+                CMAKE_SYSTEM_NAME=DragonFly
+                ;;
+            *)  CMAKE_SYSTEM_NAME="$TARGET_PLATFORM_NAME"
         esac
 
         cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
@@ -5321,7 +5335,7 @@ __setup_sysroot() {
                         x86_64) TARGET_PLATFORM_ARCH='amd64'
                     esac
                     ;;
-                dragonflybsd)
+                dragonflybsd|midnightbsd)
                     case $TARGET_PLATFORM_ARCH in
                         amd64) TARGET_PLATFORM_ARCH='x86_64'
                     esac
@@ -5387,7 +5401,7 @@ __setup_sysroot() {
                                     x86_64) TARGET_PLATFORM_ARCH='amd64'
                                 esac
                                 ;;
-                            dragonflybsd)
+                            dragonflybsd|midnightbsd)
                                 case $TARGET_PLATFORM_ARCH in
                                     amd64) TARGET_PLATFORM_ARCH='x86_64'
                                 esac
@@ -5472,7 +5486,7 @@ __setup_sysroot() {
                                     x86_64) TARGET_PLATFORM_ARCH='amd64'
                                 esac
                                 ;;
-                            dragonflybsd)
+                            dragonflybsd|midnightbsd)
                                 case $TARGET_PLATFORM_ARCH in
                                     amd64) TARGET_PLATFORM_ARCH='x86_64'
                                 esac
@@ -10310,6 +10324,32 @@ export PATH="$BREW_PACKAGE_EXEFIND_PATH:\$PATH"
 EOF
 }
 
+__setup_syspm_midnightbsd() {
+    SYSPM=mport
+
+    run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go-yq jq git curl gcc
+
+    run ln -s /usr/local/go122/bin/go   bin/go
+
+    run ln -s /usr/local/bin/gln        bin/ln
+    run ln -s /usr/local/bin/gm4        bin/m4
+    run ln -s /usr/local/bin/gsed       bin/sed
+    run ln -s /usr/local/bin/gawk       bin/awk
+    run ln -s /usr/local/bin/ggrep      bin/grep
+    run ln -s /usr/local/bin/gfind      bin/find
+    run ln -s /usr/local/bin/gmake      bin/make
+    run ln -s /usr/local/bin/gnustat    bin/stat
+    run ln -s /usr/local/bin/gdate      bin/date
+    run ln -s /usr/local/bin/gnproc     bin/nproc
+    run ln -s /usr/local/bin/gbase64    bin/base64
+    run ln -s /usr/local/bin/gunlink    bin/unlink
+    run ln -s /usr/local/bin/ginstall   bin/install
+    run ln -s /usr/local/bin/grealpath  bin/realpath
+    run ln -s /usr/local/bin/gsha256sum bin/sha256sum
+
+    printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
+}
+
 __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
@@ -10609,8 +10649,9 @@ __setup_uppm() {
                 *)   NATIVE_PLATFORM_VERS='10.0' ;;
             esac
             ;;
-        dragonflybsd)
-            NATIVE_PLATFORM_VERS='6.4'
+        dragonflybsd|midnightbsd)
+            NATIVE_PLATFORM_VERS="$(uname -r)"
+            NATIVE_PLATFORM_VERS="${NATIVE_PLATFORM_VERS%%-*}"
             ;;
     esac
 
@@ -11121,7 +11162,8 @@ ${COLOR_GREEN}ppkg install <PACKAGE-NAME|PACKAGE-SPEC>... [INSTALL-OPTIONS]${COL
         macos-13.0-x86_64
         macos-12.0-arm64
 
-        dragonflybsd-6.4-x86_64
+        dragonflybsd-6.4.2-x86_64
+        midnightbsd-4.0.4-x86_64
 
         freebsd-13.2-amd64
         openbsd-7.4-amd64
@@ -11359,7 +11401,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.7
+PPKG_VERSION=0.27.8
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
