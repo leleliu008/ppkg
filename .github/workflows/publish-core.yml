@@ -36,7 +36,7 @@ jobs:
 
       - run: .github/build-core.sh ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
@@ -62,7 +62,7 @@ jobs:
       - run: /alpine/destroy
       - run: ls -l
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-linux-*.tar.xz
@@ -89,7 +89,7 @@ jobs:
           copyback: true
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} dragonflybsd-${{ matrix.target-version }}-x86_64
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-dragonflybsd-${{ matrix.target-version }}-x86_64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-dragonflybsd-${{ matrix.target-version }}-x86_64.tar.xz
@@ -116,7 +116,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} freebsd-${{ matrix.target-version }}-amd64
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
@@ -143,7 +143,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} openbsd-${{ matrix.openbsd-version }}-amd64
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-openbsd-${{ matrix.openbsd-version }}-amd64.tar.xz
@@ -172,7 +172,7 @@ jobs:
           shell: bash
           run: .github/build-core.sh ${{ needs.base.outputs.release-version }} netbsd-${{ matrix.target-version }}-amd64
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ppkg-core-${{ needs.base.outputs.release-version }}-netbsd-${{ matrix.target-version }}-amd64.tar.xz
           path: ppkg-core-${{ needs.base.outputs.release-version }}-netbsd-${{ matrix.target-version }}-amd64.tar.xz
