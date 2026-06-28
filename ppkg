@@ -6047,15 +6047,13 @@ __fetch_gnu_config() {
 __update_gnu_config() {
     GNU_CONFIG_DIR="$SESSION_DIR/gnu"
 
-    if [ -f "$GNU_CONFIG_DIR/config.sub" ] && [ -f "$GNU_CONFIG_DIR/config.guess" ] ; then
-        return 0
+    if [ ! -f "$GNU_CONFIG_DIR/config.sub" ] || [ ! -f "$GNU_CONFIG_DIR/config.guess" ] ; then
+        run cd "$SESSION_DIR"
+
+        __fetch_gnu_config
+
+        run cd -
     fi
-
-    run cd "$SESSION_DIR"
-
-    __fetch_gnu_config
-
-    run cd -
 
     for item in sub guess
     do
@@ -11361,7 +11359,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.6
+PPKG_VERSION=0.27.7
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
