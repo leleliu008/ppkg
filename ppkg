@@ -10355,7 +10355,7 @@ __setup_syspm_midnightbsd() {
     run install -d yq.src
     run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
     run cd yq.src
-    run go build -trimpath -ldflags "'-s -w'" -o bin/
+    run go build -trimpath -ldflags "'-s -w'" -o ../bin/
     run cd ..
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
@@ -10364,7 +10364,7 @@ __setup_syspm_midnightbsd() {
 __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
-    #run $sudo pkg update || true
+    run $sudo pkg update || true
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree go-yq jq git curl libnghttp2 gcc
 
     run ln -s /usr/local/go122/bin/go   bin/go
