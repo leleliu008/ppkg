@@ -10327,9 +10327,7 @@ EOF
 __setup_syspm_midnightbsd() {
     SYSPM=mport
 
-    run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go-yq jq git curl gcc
-
-    run ln -s /usr/local/go122/bin/go   bin/go
+    run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go jq git curl gcc
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10346,6 +10344,17 @@ __setup_syspm_midnightbsd() {
     run ln -s /usr/local/bin/ginstall   bin/install
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
+
+    unset GOOS
+    unset GOARCH
+
+    step "install yq utility"
+    wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.2.tar.gz' -o yq.src.tar.gz --no-buffer
+    run install -d yq.src
+    run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
+    run cd yq.src
+    run go build -trimpath -ldflags "'-s -w'" -o bin/
+    run cd ..
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' > init.sh
 }
