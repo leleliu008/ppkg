@@ -19,11 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: cross-platform-actions/action@master
+      - run: curl -LO https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/curl-8.3.0-dragonflybsd-6.4-x86_64.tar.xz
+      - run: tar xvf curl-8.3.0-dragonflybsd-6.4-x86_64.tar.xz --strip-components=1
+
+      - uses: vmactions/dragonflybsd-vm@v1
         with:
-          operating_system: dragonflybsd
-          version: ${{ matrix.dragonflybsd-version }}
-          shell: bash
+          release: "${{ matrix.dragonflybsd-version }}"
+          usesh: true
+          sync: rsync
+          copyback: true
           run: |
             run() {
               printf "\033[0;35m==>\033[0m \033[0;32m%b\n\033[0m" "$*"
@@ -32,7 +36,9 @@ jobs:
 
             run id
 
-            run sudo pkg install -y curl libnghttp2 gcc
+            export PATH="$PWD/bin:$PATH"
+
+            #run pkg install -y curl libnghttp2 gcc
 
             run ./ppkg --help
             run ./ppkg --version

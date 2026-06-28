@@ -83,7 +83,7 @@ jobs:
 
       - uses: vmactions/dragonflybsd-vm@v1
         with:
-          release: "${{ matrix.target-version }}.0"
+          release: "${{ matrix.target-version }}.2"
           usesh: true
           sync: rsync
           copyback: true
