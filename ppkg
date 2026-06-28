@@ -10377,6 +10377,8 @@ __setup_syspm_dragonflybsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
+    run command -v git > /dev/null || true
+
     command -v git > /dev/null || {
         step "install git utility"
         wfetch 'https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz' --no-buffer
@@ -10514,6 +10516,14 @@ __setup_syspm_netbsd() {
 export PATH="/usr/pkg/gnu/bin:/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
 EOF
+}
+
+__setup_syspm_sunos() {
+
+}
+
+__setup_syspm_haiku() {
+
 }
 
 __setup_syspm() {
