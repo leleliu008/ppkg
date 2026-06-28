@@ -10368,23 +10368,15 @@ __setup_syspm_dragonflybsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    if command -v git > /dev/null ; then
-        echo "====================================================11111"
-    else
-        echo "====================================================22222"
-    fi
+    step "install git utility"
+    wfetch 'https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz' --no-buffer
+    run bsdtar xf git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz --strip-components=1
 
-    command -v git > /dev/null || {
-        step "install git utility"
-        wfetch 'https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz' --no-buffer
-        run bsdtar xf git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz --strip-components=1
-
-        cat > init.sh <<EOF
+    cat > init.sh <<EOF
 export GIT_EXEC_PATH="\$PPKG_CORE_DIR/libexec/git-core"
 export GIT_TEMPLATE_DIR="\$PPKG_CORE_DIR/share/git-core/templates"
 export GIT_CONFIG_NOSYSTEM=1
 EOF
-    }
 
     printf 'export ACLOCAL_PATH=/usr/local/share/aclocal\n' >> init.sh
 }
@@ -10517,6 +10509,8 @@ __setup_syspm_sunos() {
     SYSPM=pkg_omnios
 
     run $sudo pkg install  bash gnu-coreutils gnu-findutils gnu-sed gnu-grep gawk tree jq git curl libarchive gcc14 go-126
+
+    run ln -s "$(command -v gcc)"  bin/cc
 }
 
 __setup_syspm_haiku() {
