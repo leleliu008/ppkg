@@ -10327,7 +10327,7 @@ EOF
 __setup_syspm_midnightbsd() {
     SYSPM=mport
 
-    run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go jq git curl gcc
+    run $sudo mport install bash coreutils findutils gawk gsed gnugrep tree go jq git curl gcc || true
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
