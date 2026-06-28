@@ -15,8 +15,11 @@ package_name_transform_from_uppm_to_pkg() {
         gm4)      printf '%s\n' 'gnu-m4'    ;;
         gsed)     printf '%s\n' 'gnu-sed'   ;;
         grep)     printf '%s\n' 'gnu-grep'  ;;
+        gmake)    printf '%s\n' 'gnu-make'  ;;
+        patch)    printf '%s\n' 'gnu-patch' ;;
         coreutils)printf '%s\n' 'gnu-coreutils' ;;
         findutils)printf '%s\n' 'gnu-findutils' ;;
+        diffutils)printf '%s\n' 'gnu-diffutils' ;;
         gcc)      printf '%s\n' 'gcc14'     ;;
         golang)   printf '%s\n' 'go-126'    ;;
         bsdtar)   printf '%s\n' 'libarchive';;

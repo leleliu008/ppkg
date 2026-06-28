@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         midnightbsd-version: ['4.0.4']
-        pm: ['--syspm', '']
+        pm: ['--syspm']
 
     steps:
       - uses: actions/checkout@v5
@@ -30,7 +30,7 @@ jobs:
               eval "$@"
             }
 
-            run sudo mport install curl gcc || true
+            #run sudo mport install curl gcc || true
 
             run ./ppkg --help
             run ./ppkg --version
