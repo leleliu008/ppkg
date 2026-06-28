@@ -6259,7 +6259,6 @@ install_the_given_native_package() {
 os-arch: $NATIVE_PLATFORM_ARCH
 os-type: $NATIVE_PLATFORM_TYPE
 os-libc: $NATIVE_PLATFORM_LIBC
-os-code: $NATIVE_PLATFORM_CODE
 os-name: $NATIVE_PLATFORM_NAME
 os-vers: $NATIVE_PLATFORM_VERS
 os-ncpu: $NATIVE_PLATFORM_NCPU
@@ -6495,7 +6494,6 @@ __install_the_given_package() {
       TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
 NATIVE_PLATFORM_TYPE = $NATIVE_PLATFORM_TYPE
-NATIVE_PLATFORM_CODE = $NATIVE_PLATFORM_CODE
 NATIVE_PLATFORM_NAME = $NATIVE_PLATFORM_NAME
 NATIVE_PLATFORM_VERS = $NATIVE_PLATFORM_VERS
 NATIVE_PLATFORM_ARCH = $NATIVE_PLATFORM_ARCH
@@ -7109,7 +7107,7 @@ $DOT_CONTENT
         if command -v cargo > /dev/null && command -v rustc > /dev/null ; then
             :
         else
-            if [ "$GITHUB_ACTIONS" = true ] && [ "$CROSS_COMPILING" != 1 ] && [ "$NATIVE_PLATFORM_CODE" = alpine ] && [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
+            if [ "$GITHUB_ACTIONS" = true ] && [ "$CROSS_COMPILING" != 1 ] && [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
                 run $sudo /sbin/apk update
                 run $sudo /sbin/apk add rust cargo
             elif [ "$NATIVE_PLATFORM_TYPE" = openbsd ] ; then
@@ -8748,7 +8746,6 @@ builton:
     os-arch: $NATIVE_PLATFORM_ARCH
     os-type: $NATIVE_PLATFORM_TYPE
     os-libc: $NATIVE_PLATFORM_LIBC
-    os-code: $NATIVE_PLATFORM_CODE
     os-name: $NATIVE_PLATFORM_NAME
     os-vers: $NATIVE_PLATFORM_VERS
     os-ncpu: $NATIVE_PLATFORM_NCPU
@@ -11570,7 +11567,6 @@ bppend_to_PATH "$PPKG_CORE_DIR/bin"
 
 ###################################################
 
-NATIVE_PLATFORM_CODE="$(sysinfo code)"
 NATIVE_PLATFORM_NAME="$(sysinfo name)"
 NATIVE_PLATFORM_VERS="$(sysinfo vers)"
 NATIVE_PLATFORM_NCPU="$(sysinfo ncpu)"
