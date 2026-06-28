@@ -10377,7 +10377,11 @@ __setup_syspm_dragonflybsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    run command -v git > /dev/null || true
+    if command -v git > /dev/null ; then
+        echo "====================================================11111"
+    else
+        echo "====================================================22222"
+    fi
 
     command -v git > /dev/null || {
         step "install git utility"
