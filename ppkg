@@ -5666,7 +5666,7 @@ __initialize_environment_variables() {
 
     ########################################################
 
-    if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
              CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
            OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
             CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
@@ -5708,7 +5708,7 @@ __initialize_environment_variables() {
 
     ########################################################
 
-    if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         XXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
           CFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
        OBJCFLAGS_FOR_BUILD="$XXXFLAGS_FOR_BUILD"
@@ -5742,7 +5742,7 @@ __initialize_environment_variables() {
          LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
     fi
 
-    case $NATIVE_PLATFORM_KIND in
+    case $NATIVE_PLATFORM_TYPE in
         netbsd)  LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
         openbsd) LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -lpthread" ;;
     esac
@@ -6257,7 +6257,6 @@ install_the_given_native_package() {
 
     cat > buildon.yml <<EOF
 os-arch: $NATIVE_PLATFORM_ARCH
-os-kind: $NATIVE_PLATFORM_KIND
 os-type: $NATIVE_PLATFORM_TYPE
 os-libc: $NATIVE_PLATFORM_LIBC
 os-code: $NATIVE_PLATFORM_CODE
@@ -6386,7 +6385,7 @@ run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
 run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
 run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 '
-    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         PACKAGE_INSTALL='perl Makefile.PL'
     else
         PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
@@ -6495,7 +6494,6 @@ __install_the_given_package() {
     cat <<EOF
       TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
-NATIVE_PLATFORM_KIND = $NATIVE_PLATFORM_KIND
 NATIVE_PLATFORM_TYPE = $NATIVE_PLATFORM_TYPE
 NATIVE_PLATFORM_CODE = $NATIVE_PLATFORM_CODE
 NATIVE_PLATFORM_NAME = $NATIVE_PLATFORM_NAME
@@ -6885,7 +6883,7 @@ $DOT_CONTENT
     if [ -n "$SYSPM" ] ; then
         run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
 
-        if [ "$NATIVE_PLATFORM_KIND" = openbsd ] ; then
+        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
             for item in $PACKAGE_DEP_UPP
             do
                 case $item in
@@ -7114,7 +7112,7 @@ $DOT_CONTENT
             if [ "$GITHUB_ACTIONS" = true ] && [ "$CROSS_COMPILING" != 1 ] && [ "$NATIVE_PLATFORM_CODE" = alpine ] && [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
                 run $sudo /sbin/apk update
                 run $sudo /sbin/apk add rust cargo
-            elif [ "$NATIVE_PLATFORM_KIND" = openbsd ] ; then
+            elif [ "$NATIVE_PLATFORM_TYPE" = openbsd ] ; then
                 # https://github.com/rust-lang/rustup/issues/2377
                 # https://github.com/rust-lang/rustup/issues/2168
                 run $sudo pkg_add rust
@@ -8748,7 +8746,6 @@ builtby: ppkg-$PPKG_VERSION
 builtat: $TIMESTAMP_UNIX
 builton:
     os-arch: $NATIVE_PLATFORM_ARCH
-    os-kind: $NATIVE_PLATFORM_KIND
     os-type: $NATIVE_PLATFORM_TYPE
     os-libc: $NATIVE_PLATFORM_LIBC
     os-code: $NATIVE_PLATFORM_CODE
@@ -10753,7 +10750,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    #run ./uppm about
+    run ./uppm about
     run ./uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
@@ -10949,23 +10946,7 @@ __setup() {
 
     #################################################
 
-    unset NATIVE_PLATFORM_KIND
-    unset NATIVE_PLATFORM_TYPE
-    unset NATIVE_PLATFORM_ARCH
-    unset NATIVE_PLATFORM_VERS
-
-    NATIVE_PLATFORM_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_PLATFORM_ARCH="$(uname -m)"
-
-    case $NATIVE_PLATFORM_KIND in
-        dragonfly)  NATIVE_PLATFORM_TYPE=dragonflybsd ;;
-        darwin)     NATIVE_PLATFORM_TYPE=macos ;;
-        *)          NATIVE_PLATFORM_TYPE="$NATIVE_PLATFORM_KIND" ;;
-    esac
-
-    #################################################
-
-    case $NATIVE_PLATFORM_KIND in
+    case $NATIVE_PLATFORM_TYPE in
         freebsd)
             printf 'INPUT(-lc++)\n' > lib/libstdc++.a
             ;;
@@ -11400,7 +11381,7 @@ set -e
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
-##################################################################################
+###################################################
 
 if [ -n "$PPKG_XTRACE" ] ; then
     set -x
@@ -11414,7 +11395,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.8
+PPKG_VERSION=0.27.9
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11439,14 +11420,14 @@ SESSION_DIR="$PPKG_HOME/run/$$"
 
 NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
 
-##################################################################################
+###################################################
 
 # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
 if [ -f "$PPKG_CORE_DIR/cacert.pem" ] ; then
     export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
 fi
 
-##################################################################################
+###################################################
 
 # dot_static command use this
 # https://www.freedesktop.org/software/fontconfig/fontconfig-user.html
@@ -11454,7 +11435,7 @@ if [ -z  "$FONTCONFIG_FILE" ] ; then
     export FONTCONFIG_FILE="$PPKG_CORE_DIR/fonts.conf"
 fi
 
-##################################################################################
+###################################################
 
 if [ -z "$UPPM_HOME" ] ; then
     if [ -z "$HOME" ] ; then
@@ -11471,21 +11452,35 @@ if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
     export      URL_TRANSFORM="$PPKG_URL_TRANSFORM"
 fi
 
-##################################################################################
+###################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
 
-##################################################################################
+###################################################
 
 export BAT_THEME=Dracula
 
-##################################################################################
+###################################################
 
 unset SYSPM
 
 unset STEP_NUM
 
-##################################################################################
+###################################################
+
+unset NATIVE_PLATFORM_TYPE
+unset NATIVE_PLATFORM_ARCH
+unset NATIVE_PLATFORM_VERS
+
+NATIVE_PLATFORM_TYPE="$(uname -s | tr A-Z a-z)"
+NATIVE_PLATFORM_ARCH="$(uname -m)"
+
+case $NATIVE_PLATFORM_TYPE in
+    darwin)     NATIVE_PLATFORM_TYPE=macos ;;
+    dragonfly)  NATIVE_PLATFORM_TYPE=dragonflybsd ;;
+esac
+
+###################################################
 
 case $1 in
     ''|help|--help|-h)
@@ -11528,7 +11523,7 @@ EOF
         ;;
 esac
 
-#########################################################################################
+###################################################
 
 if [ -z "$CARGO_HOME" ] ; then
     bppend_to_PATH "$HOME/.cargo/bin"
@@ -11542,7 +11537,7 @@ bppend_to_PATH "$HOME/.local/bin"
 # cpan install to default local location
 bppend_to_PATH "$HOME/perl5/bin"
 
-#########################################################################################
+###################################################
 
 unset ACLOCAL_PATH
 
@@ -11554,7 +11549,7 @@ unset XXFLAGS
 unset PPFLAGS
 unset LDFLAGS
 
-#########################################################################################
+###################################################
 
 if [ -f "$PPKG_CORE_DIR/init.sh" ] ; then
     .   "$PPKG_CORE_DIR/init.sh"
@@ -11562,7 +11557,7 @@ else
     abort 1 "please run ${COLOR_GREEN}$PPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
 
-#########################################################################################
+###################################################
 
 # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
 if [ -z  "$ACLOCAL_PATH" ] ; then
@@ -11573,14 +11568,11 @@ fi
 
 bppend_to_PATH "$PPKG_CORE_DIR/bin"
 
-#########################################################################################
+###################################################
 
-NATIVE_PLATFORM_KIND="$(sysinfo kind)"
-NATIVE_PLATFORM_TYPE="$(sysinfo type)"
 NATIVE_PLATFORM_CODE="$(sysinfo code)"
 NATIVE_PLATFORM_NAME="$(sysinfo name)"
 NATIVE_PLATFORM_VERS="$(sysinfo vers)"
-NATIVE_PLATFORM_ARCH="$(sysinfo arch)"
 NATIVE_PLATFORM_NCPU="$(sysinfo ncpu)"
 NATIVE_PLATFORM_LIBC="$(sysinfo libc)"
 NATIVE_PLATFORM_EUID="$(id -u)"
