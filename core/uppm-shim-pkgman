@@ -4,9 +4,9 @@ set -ex
 
 pkgman() {
     if [ "$(id -u)" -eq 0 ] ; then
-        command      pkg "$@"
+        command      pkgman "$@"
     else
-        command sudo pkg "$@"
+        command sudo pkgman "$@"
     fi
 }
 
@@ -23,7 +23,7 @@ package_name_transform_from_uppm_to_pkgman() {
 main() {
     case $1 in
         about)
-            pkgman --help
+            pkgman --help || true
             ;;
         update)
             pkgman refresh
