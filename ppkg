@@ -10516,6 +10516,7 @@ __setup_syspm_sunos() {
 __setup_syspm_haiku() {
     SYSPM=pkgman
 
+    run pkgman install -y bash coreutils findutils gawk sed grep tree jq git curl gcc libarchive_tools
 }
 
 __setup_syspm() {
@@ -11417,7 +11418,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.11
+PPKG_VERSION=0.27.12
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

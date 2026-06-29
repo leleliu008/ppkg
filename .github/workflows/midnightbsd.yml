@@ -30,8 +30,6 @@ jobs:
               eval "$@"
             }
 
-            #run sudo mport install curl gcc || true
-
             run ./ppkg --help
             run ./ppkg --version
 

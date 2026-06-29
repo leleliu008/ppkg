@@ -1,0 +1,56 @@
+#!/bin/sh
+
+set -ex
+
+pkgman() {
+    if [ "$(id -u)" -eq 0 ] ; then
+        command      pkg "$@"
+    else
+        command sudo pkg "$@"
+    fi
+}
+
+package_name_transform_from_uppm_to_pkgman() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        xz)       printf '%s\n' 'xz_utils'  ;;
+        bsdtar)   printf '%s\n' 'libarchive_tools' ;;
+        pkg-config) printf '%s\n' 'pkgconf' ;;
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+main() {
+    case $1 in
+        about)
+            pkgman --help
+            ;;
+        update)
+            pkgman refresh
+            ;;
+        install)
+            shift 1
+            for UPPM_PACKAGE_NAME in "$@"
+            do
+                PKGMAN_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkgman "$UPPM_PACKAGE_NAME")"
+                pkgman install -y "$FPKG_PACKAGE_NAME"
+            done
+            ;;
+        is-installed)
+            shift 1
+            PKGMAN_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkgman "$1")"
+            pkgman info "$FPKG_PACKAGE_NAME" 2>/dev/null
+            ;;
+        info)
+            shift 1
+            case $2 in
+                installed-dir)
+                    #printf '%s\n' '/usr/local'
+                    ;;
+            esac
+            ;;
+        *)  pkg "$@"
+    esac
+}
+
+main "$@"
