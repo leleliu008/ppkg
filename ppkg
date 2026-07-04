@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2021-2024 刘富频
+# Copyright (c) 2021-2026 刘富频
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ abort() {
 }
 
 step() {
-    STEP_NUM=$((${STEP_NUM-0} + 1))
+    STEP_NUM=$((${STEP_NUM:-0} + 1))
     STEP_MESSAGE="$*"
     printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
 }
@@ -4688,7 +4688,7 @@ EOF
 
     if [ "$VERBOSE_CMAKE" = 1 ] ; then
         if command -v bat > /dev/null ; then
-            run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+            run bat --language=cmake --paging=never --style=plain --theme=Dracula "$CMAKE_TOOLCHAIN_FILE"
         else
             run cat "$CMAKE_TOOLCHAIN_FILE"
         fi
@@ -5034,7 +5034,7 @@ cargow() {
 
 gow() {
     if command -v bat > /dev/null ; then
-        run "go env | bat --language=bash --paging=never --style=plain"
+        run "go env | bat --language=bash --paging=never --style=plain --theme=Dracula"
     else
         run "go env"
     fi
@@ -6303,6 +6303,7 @@ EOF
 native_package_info_libz() {
     PACKAGE_SRC_URL='https://distfiles.macports.org/zlib/zlib-1.3.2.tar.xz'
     PACKAGE_SRC_SHA='d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3'
+    PACKAGE_DEP_AUX='cmake'
     PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
 }
 
@@ -6533,7 +6534,7 @@ EOF
 
     if [ "$DUMP_FORMULA" = 1 ] ; then
         if command -v bat > /dev/null ; then
-            bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
+            bat --language=yaml --paging=never --theme=Dracula "$PACKAGE_FORMULA_FILEPATH"
         else
             cat "$PACKAGE_FORMULA_FILEPATH"
         fi
@@ -6880,32 +6881,6 @@ $DOT_CONTENT
 
     if [ -n "$SYSPM" ] ; then
         run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
-
-        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-            for item in $PACKAGE_DEP_UPP
-            do
-                case $item in
-                    golang)
-                        GOLANG_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/golang"
-
-                        [ -f "$GOLANG_INSTALL_DIR/ok.txt" ] || {
-                            step "install golang"
-
-                            SHA256='c51dc5d67cbf214d72555bcffedf9b509b599287d4567a85972782207310134b'
-                            OUTPUT="$PPKG_DOWNLOADS_DIR/$SHA256.tgz"
-                            wfetch 'https://go.dev/dl/go1.24.5.openbsd-amd64.tar.gz' --sha256="$SHA256" -o "$OUTPUT"
-
-                            run install -d "$GOLANG_INSTALL_DIR"
-                            run bsdtar xf "$OUTPUT" -C "$GOLANG_INSTALL_DIR" --strip-components=1
-                            run touch "$GOLANG_INSTALL_DIR/ok.txt"
-                        }
-
-                        export PATH="$GOLANG_INSTALL_DIR/bin:$PATH"
-
-                        break
-                esac
-            done
-        fi
     else
         PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
         PACKAGE_DEP_UPP=
@@ -11418,7 +11393,7 @@ fi
     fi
 }
 
-PPKG_VERSION=0.27.13
+PPKG_VERSION=0.27.14
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11531,7 +11506,7 @@ case $1 in
         ;;
      about)
         if command -v bat > /dev/null ; then
-            VIEWER='bat --language=yaml --paging=never --color=always --theme=Dracula --style=plain'
+            VIEWER='bat --language=yaml --paging=never --style=plain --theme=Dracula'
         else
             VIEWER=cat
         fi
