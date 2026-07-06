@@ -126,10 +126,10 @@ git() {
 
 # git_clone_depth_1 <URL> [options]
 git_clone_depth_1() {
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         URL="$1"
     else
-        URL="$("$PPKG_URL_TRANSFORM" "$1")"
+        URL="$("$PPKG_URLMAP" "$1")"
     fi
 
     shift
@@ -149,10 +149,10 @@ git_checkout() {
     unset GIT_CHECKOUT_BRANCH_NAME
     unset GIT_WORK_DIR
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         GIT_FETCH_FROM_URL="$1"
     else
-        GIT_FETCH_FROM_URL="$("$PPKG_URL_TRANSFORM" "$1")"
+        GIT_FETCH_FROM_URL="$("$PPKG_URLMAP" "$1")"
     fi
 
     shift
@@ -223,7 +223,7 @@ git_submodule_update_recursive() {
     GIT_SUBMODULE_HAVE="$(cd "$GIT_REPO_ROOT_DIR" && find . -type f -name '.gitmodules' -print -quit)"
 
     if [ -n "$GIT_SUBMODULE_HAVE" ] ; then
-        if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        if [ -z "$PPKG_URLMAP" ] ; then
             run git submodule update --init --recursive
         else
             unset GIT_SUBMODULE_BASEDIR_STACK
@@ -254,7 +254,7 @@ git_submodule_update_recursive() {
                 do
                     GIT_SUBMODULE_PATH="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.path")"
                     GIT_SUBMODULE_URL="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.url")"
-                    GIT_SUBMODULE_URI="$("$PPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+                    GIT_SUBMODULE_URI="$("$PPKG_URLMAP" "$GIT_SUBMODULE_URL")"
 
                     run git submodule set-url "$GIT_SUBMODULE_PATH" "$GIT_SUBMODULE_URI"
                 done
@@ -344,7 +344,7 @@ version_match() {
 # If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
 #
 # influential environment variable:
-# PPKG_URL_TRANSFORM
+# PPKG_URLMAP
 wfetch() {
     unset FETCH_UTS
     unset FETCH_SHA
@@ -368,10 +368,10 @@ wfetch() {
 
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         FETCH_URL="$1"
     else
-        FETCH_URL="$("$PPKG_URL_TRANSFORM" "$1")" || return 1
+        FETCH_URL="$("$PPKG_URLMAP" "$1")" || return 1
     fi
 
     if [ "$GITHUB_ACTIONS" = true ] ; then
@@ -518,8 +518,8 @@ wfetch() {
                     URI="${FETCH_URL%%'?'*}"
                     URL="https://distfiles.macports.org/${PACKAGE_NAME%@*}/${URI##*/}"
                 else
-                    if [ -n "$PPKG_URL_TRANSFORM" ] ; then
-                        URL="$("$PPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+                    if [ -n "$PPKG_URLMAP" ] ; then
+                        URL="$("$PPKG_URLMAP" "$FETCH_URI")" || return 1
                     else
                         URL="$FETCH_URI"
                     fi
@@ -667,10 +667,10 @@ __formula_mapping_set() {
     FORMULA_REPO_NAME="$1"
     FORMULA_REPO_URL="$2"
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         GIT_FETCH_URL="$FORMULA_REPO_URL"
     else
-        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
+        GIT_FETCH_URL="$("$PPKG_URLMAP" "$FORMULA_REPO_URL")"
     fi
 
     shift 2
@@ -749,10 +749,10 @@ EOF
 
     FORMULA_REPO_NAME="$1"
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         FORMULA_REPO_URL="$2"
     else
-        FORMULA_REPO_URL="$("$PPKG_URL_TRANSFORM" "$2")"
+        FORMULA_REPO_URL="$("$PPKG_URLMAP" "$2")"
     fi
 
     shift 2
@@ -847,10 +847,10 @@ EOF
 
     [ "$FORMULA_REPO_PINNED" = 1 ] && abort 1 "'$FORMULA_REPO_NAME' named formula repository is pinned."
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$PPKG_URLMAP" ] ; then
         GIT_FETCH_URL="$FORMULA_REPO_URL"
     else
-        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
+        GIT_FETCH_URL="$("$PPKG_URLMAP" "$FORMULA_REPO_URL")"
     fi
 
     printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
@@ -1010,12 +1010,12 @@ __sync_available_formula_repositories() {
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    if [ -n "$PPKG_FORMULA_SEARCH_DIRS" ] ; then
+    if [ -n "$PPKG_FORMULA_DIRS" ] ; then
         export IFS=':'
 
-        for FORMULA_SEARCH_DIR in $PPKG_FORMULA_SEARCH_DIRS
+        for FORMULA_DIR in $PPKG_FORMULA_DIRS
         do
-            FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+            FORMULA_FILEPATH="$FORMULA_DIR/$1.yml"
 
             if [ -f           "$FORMULA_FILEPATH" ] ; then
                 printf '%s\n' "$FORMULA_FILEPATH"
@@ -1791,16 +1791,16 @@ __list_available_package_names() {
 
         for FORMULA_REPOSITORY_NAME in $FORMULA_REPOSITORY_NAMES
         do
-            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$TARGET_PLATFORM_NAME"
+            FORMULA_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$TARGET_PLATFORM_NAME"
 
-            if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
+            if [ -d  "$FORMULA_DIR" ] ; then
+                find "$FORMULA_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
             fi
 
-            FORMULA_SEARCH_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
+            FORMULA_DIR="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
 
-            if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
+            if [ -d  "$FORMULA_DIR" ] ; then
+                find "$FORMULA_DIR" -maxdepth 1 -type f -name '*.yml' -printf '%P\n'
             fi
         done
     } | sed 's|\.yml$||' | sort | uniq
@@ -2713,10 +2713,10 @@ __fetch_resources_of_the_given_package() {
     elif [ -n "$PACKAGE_GIT_URL" ] ; then
         unset GIT_FETCH_URL
 
-        if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+        if [ -z "$PPKG_URLMAP" ] ; then
             GIT_FETCH_URL="$PACKAGE_GIT_URL"
         else
-            GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+            GIT_FETCH_URL="$("$PPKG_URLMAP" "$PACKAGE_GIT_URL")" || return 1
         fi
 
         if [ -z "$PACKAGE_GIT_SHA" ] ; then
@@ -5419,7 +5419,7 @@ __setup_sysroot() {
                     *)  abort 1 "you have specified --target=$2 , but it is an invalid target."
                 esac
 
-                case $PPKG_DEFAULT_TARGET in
+                case $PPKG_TARGET in
                     '')
                         TARGET_PLATFORM_NAME="$NATIVE_PLATFORM_TYPE"
                         TARGET_PLATFORM_ARCH="$NATIVE_PLATFORM_ARCH"
@@ -5435,40 +5435,40 @@ __setup_sysroot() {
                         PACKAGE_SPEC="$TARGET_PLATFORM_SPEC/$1"
                         ;;
                     *-*-*-*)
-                        abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target."
+                        abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target."
                         ;;
                     *-*-*)
                         TARGET_PLATFORM_NAME=
                         TARGET_PLATFORM_VERS=
                         TARGET_PLATFORM_ARCH=
 
-                        TARGET_PLATFORM_NAME="$(printf '%s\n' "$PPKG_DEFAULT_TARGET" | cut -d- -f1)"
-                        TARGET_PLATFORM_VERS="$(printf '%s\n' "$PPKG_DEFAULT_TARGET" | cut -d- -f2)"
-                        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$PPKG_DEFAULT_TARGET" | cut -d- -f3)"
+                        TARGET_PLATFORM_NAME="$(printf '%s\n' "$PPKG_TARGET" | cut -d- -f1)"
+                        TARGET_PLATFORM_VERS="$(printf '%s\n' "$PPKG_TARGET" | cut -d- -f2)"
+                        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$PPKG_TARGET" | cut -d- -f3)"
 
                         if [ -z "$TARGET_PLATFORM_NAME" ] ; then
-                            abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid package spec."
+                            abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid package spec."
                         fi
 
                         if [ -z "$TARGET_PLATFORM_VERS" ] ; then
-                            abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target."
+                            abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target."
                         fi
 
                         if [ -z "$TARGET_PLATFORM_ARCH" ] ; then
-                            abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target."
+                            abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target."
                         fi
 
                         case $TARGET_PLATFORM_NAME in
                             linux)
                                 case $TARGET_PLATFORM_VERS in
                                     glibc|musl) ;;
-                                    *)  abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target, unrecognized libc: $TARGET_PLATFORM_VERS"
+                                    *)  abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target, unrecognized libc: $TARGET_PLATFORM_VERS"
                                 esac
                                 ;;
                             macos)
                                 case $TARGET_PLATFORM_ARCH in
                                     x86_64|arm64) ;;
-                                    *)  abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target, unsupported arch: $TARGET_PLATFORM_ARCH"
+                                    *)  abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target, unsupported arch: $TARGET_PLATFORM_ARCH"
                                 esac
                                 ;;
                             freebsd)
@@ -5491,13 +5491,13 @@ __setup_sysroot() {
                                     amd64) TARGET_PLATFORM_ARCH='x86_64'
                                 esac
                                 ;;
-                            *)  abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target, unsupported platform: $TARGET_PLATFORM_NAME"
+                            *)  abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target, unsupported platform: $TARGET_PLATFORM_NAME"
                         esac
 
                         TARGET_PLATFORM_SPEC="$TARGET_PLATFORM_NAME-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH"
                         PACKAGE_SPEC="$TARGET_PLATFORM_SPEC/$1"
                         ;;
-                    *) abort 1 "you have set PPKG_DEFAULT_TARGET=$PPKG_DEFAULT_TARGET , but it is an invalid target."
+                    *) abort 1 "you have set PPKG_TARGET=$PPKG_TARGET , but it is an invalid target."
                 esac
 
                 note "$1 will be treated as a package-name, and it will be expanded to $PACKAGE_SPEC"
@@ -5803,7 +5803,7 @@ __inspect_install_arguments() {
 
     unset REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
 
-    unset SPECIFIED_FORMULA_SEARCH_DIRS
+    unset SPECIFIED_FORMULA_DIRS
 
     unset SPECIFIED_PACKAGE_LIST
 
@@ -5985,8 +5985,8 @@ __inspect_install_arguments() {
                 [ -z "$1" ] && abort 1 "-I <FORMULA-SEARCH-DIR> , <FORMULA-SEARCH-DIR> is unspecified."
                 [ -e "$1" ] || abort 1 "'$1' was expected to be exist, but it was not."
                 [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
-                FORMULA_SEARCH_DIR="$(realpath "$1")"
-                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS:$FORMULA_SEARCH_DIR"
+                FORMULA_DIR="$(realpath "$1")"
+                SPECIFIED_FORMULA_DIRS="$SPECIFIED_FORMULA_DIRS:$FORMULA_DIR"
                 ;;
             -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
@@ -6001,10 +6001,10 @@ __inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ -z "$PPKG_FORMULA_SEARCH_DIRS" ] ; then
-        PPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}"
+    if [ -z "$PPKG_FORMULA_DIRS" ] ; then
+        PPKG_FORMULA_DIRS="${SPECIFIED_FORMULA_DIRS#:}"
     else
-        PPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}:$PPKG_FORMULA_SEARCH_DIRS"
+        PPKG_FORMULA_DIRS="${SPECIFIED_FORMULA_DIRS#:}:$PPKG_FORMULA_DIRS"
     fi
 
     #########################################################################################
@@ -6513,7 +6513,7 @@ PPKG_ARGV            = $PPKG_ARGV
 PPKG_PATH            = $PPKG_PATH
 PPKG_HOME            = $PPKG_HOME
 PPKG_VERSION         = $PPKG_VERSION
-PPKG_URL_TRANSFORM   = $PPKG_URL_TRANSFORM
+PPKG_URLMAP   = $PPKG_URLMAP
 
      CROSS_COMPILING = $CROSS_COMPILING
 
@@ -7229,10 +7229,10 @@ $PACKAGE_DOFETCH
                 if [ -n "$PACKAGE_GIT_URL" ] ; then
                     unset GIT_FETCH_URL
 
-                    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+                    if [ -z "$PPKG_URLMAP" ] ; then
                         GIT_FETCH_URL="$PACKAGE_GIT_URL"
                     else
-                        GIT_FETCH_URL="$("$PPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+                        GIT_FETCH_URL="$("$PPKG_URLMAP" "$PACKAGE_GIT_URL")" || return 1
                     fi
 
                     if [ -z "$PACKAGE_GIT_SHA" ] ; then
@@ -10164,35 +10164,34 @@ __uninstall_the_given_packages() {
 
 # }}}
 ##############################################################################
-# {{{ ppkg gen-url-transform-sample
+# {{{ ppkg urlmap
 
-__gen_url_transform_sample() {
+__gen_urlmap() {
     __create_session_dir_and_change_to_it
 
-    cat > url-transform.sample <<EOF
+    cat > urlmap <<EOF
 #!/bin/sh
 
 # https://gitmirror.com/
 case \$1 in
     *githubusercontent.com/*)
-        printf '%s\n' "\$1" | sed 's|githubusercontent|gitmirror|'
+        printf 'https://ghfast.top/%s\n' "\$1"
         ;;
     https://github.com/*)
-        printf 'https://hub.gitmirror.com/%s\n' "\$1"
+        printf 'https://ghfast.top/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
 esac
 EOF
 
-    chmod +x url-transform.sample
+    chmod +x urlmap
 
     install -d "$PPKG_HOME"
 
-    mv url-transform.sample "$PPKG_HOME/"
+    mv urlmap "$PPKG_HOME/"
 
-    success "url-transform sample has been written into $PPKG_HOME/url-transform.sample"
-    note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export PPKG_URL_TRANSFORM=$PPKG_HOME/url-transform' in your terminal."
+    success "urlmap has been written into $PPKG_HOME/urlmap. You can edit it to meet your needs. To apply this, you should run 'export PPKG_URLMAP=$PPKG_HOME/urlmap' in your terminal."
 }
 
 # }}}
@@ -11025,8 +11024,8 @@ ${COLOR_GREEN}ppkg about${COLOR_OFF}
 ${COLOR_GREEN}ppkg sysinfo${COLOR_OFF}
     show basic information about your current running operation system.
 
-${COLOR_GREEN}ppkg gen-url-transform-sample${COLOR_OFF}
-    generate url-transform sample.
+${COLOR_GREEN}ppkg urlmap${COLOR_OFF}
+    generate urlmap.
 
 ${COLOR_GREEN}ppkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
@@ -11165,7 +11164,7 @@ ${COLOR_GREEN}ppkg install <PACKAGE-NAME|PACKAGE-SPEC>... [INSTALL-OPTIONS]${COL
         ${COLOR_BLUE}--target=<TARGET>${COLOR_OFF}
             specify the target to be built for.
 
-            If this option is unspecified, the environment variable ${COLOR_RED}PPKG_DEFAULT_TARGET${COLOR_OFF} is honored, if the environment variable PPKG_DEFAULT_TARGET is not set, <TARGET> will be same as your current running operation system.
+            If this option is unspecified, the environment variable ${COLOR_RED}PPKG_TARGET${COLOR_OFF} is honored, if the environment variable PPKG_TARGET is not set, <TARGET> will be same as your current running operation system.
 
         ${COLOR_BLUE}--profile=<debug|release>${COLOR_OFF}
             specify the build profile.
@@ -11381,19 +11380,21 @@ unset IFS
 
 ###################################################
 
-if [ -n "$PPKG_XTRACE" ] ; then
-    set -x
-fi
+[ "$PPKG_XTRACE" = 1 ] && set -x
 
-[ -z "$PPKG_HOME" ] && {
-    if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
-    else
-        PPKG_HOME="$HOME/.ppkg"
-    fi
-}
+[ -z "$HOME" ] && abort 1 "HOME environment variable is not set."
 
-PPKG_VERSION=0.27.14
+PPKG_SHARE_DIR="$HOME/.fpliu"
+
+NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_SHARE_DIR/native"
+
+[ -z "$PPKG_DOWNLOADS_DIR" ] && PPKG_DOWNLOADS_DIR="$PPKG_SHARE_DIR/downloads"
+
+[ -z "$PPKG_HOME" ] && PPKG_HOME="$HOME/.ppkg"
+
+###################################################
+
+PPKG_VERSION=0.28.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11408,7 +11409,6 @@ PPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ppk
 PPKG_FORMULA_REPO_ROOT="$PPKG_HOME/repos.d"
 PPKG_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/installed"
 PPKG_PACKAGE_SYMLINKED_ROOT="$PPKG_HOME/symlinked"
-PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
 
 PPKG_CORE_DIR="$PPKG_HOME/core"
 
@@ -11416,13 +11416,15 @@ PPKG_SYSROOT="$PPKG_HOME/sysroot"
 
 SESSION_DIR="$PPKG_HOME/run/$$"
 
-NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
-
 ###################################################
 
 # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
 if [ -f "$PPKG_CORE_DIR/cacert.pem" ] ; then
     export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
+else
+    if [ -f "$PPKG_SHARE_DIR/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
+    fi
 fi
 
 ###################################################
@@ -11445,9 +11447,17 @@ fi
 
 UPPM="$PPKG_CORE_DIR/uppm"
 
-if [ -n  "$PPKG_URL_TRANSFORM" ] ; then
-    export UPPM_URL_TRANSFORM="$PPKG_URL_TRANSFORM"
-    export      URL_TRANSFORM="$PPKG_URL_TRANSFORM"
+###################################################
+
+if [ -z "$PPKG_URLMAP" ] ; then
+    PPKG_URLMAP="$PPKG_SHARE_DIR/urlmap"
+
+    [ -f "$PPKG_URLMAP" ] || unset PPKG_URLMAP
+fi
+
+if [ -n  "$PPKG_URLMAP" ] ; then
+    export UPPM_URL_TRANSFORM="$PPKG_URLMAP"
+    export      URL_TRANSFORM="$PPKG_URLMAP"
 fi
 
 ###################################################
@@ -11499,9 +11509,9 @@ case $1 in
         __setup "$@"
         exit
         ;;
-    gen-url-transform-sample)
+    urlmap)
         shift
-        __gen_url_transform_sample "$@"
+        __gen_urlmap "$@"
         exit
         ;;
      about)

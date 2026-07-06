@@ -32,6 +32,7 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 ## Using ppkg via [Docker](https://www.docker.com/)
 
 `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+
 |REPOSITORY|OS|ARCH|
 |-|-|-|
 |`ghcr.io/leleliu008/ppkg/alpine`|`alpine`|all except `loong64`|
@@ -391,9 +392,22 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-## ~/.ppkg
+## relevant directories and files
 
-all relevant directories and files are located under `~/.ppkg` directory.
+||default|environment variable|
+|-|-|-|
+|`uppm` home directory|`~/.uppm`|`UPPM_HOME`|
+|`ppkg` home directory|`~/.ppkg`|`PPKG_HOME`|
+|`ppkg` downloads directory|`~/.fpliu/downloads`|`PPKG_DOWNLOADS_DIR`|
+|`ppkg` natives directory|`~/.fpliu/native`||
+|`ppkg` urlmap file|`~/.fpliu/urlmap`|`PPKG_URLMAP`|
+|cacert.pem file path|`~/.fpliu/cacert.pem`|`SSL_CERT_FILE`|
+
+**Notes:**
+
+- you can change these via ‌corresponding‌ environment variable.
+- `~/.fpliu` is a directory shared with my other tools [xcpkg](https://github.com/leleliu008/xcpkg) and [ndk-pkg](https://github.com/leleliu008/ndk-pkg)
+- Don't place your own files under these directories, as `ppkg` will change files under these directories without notice.
 
 ## ppkg command usage
 
@@ -411,10 +425,10 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg --version
     ```
 
-- **generate url-transform sample**
+- **generate urlmap**
 
     ```bash
-    ppkg gen-url-transform-sample
+    ppkg urlmap
     ```
 
 - **install essential tools**
@@ -423,7 +437,7 @@ all relevant directories and files are located under `~/.ppkg` directory.
     ppkg setup
     ```
 
-    This command needs `curl || wget` has already been installed.
+    This command needs `curl` or `wget` has already been installed.
 
     This command is actually to do two things:
 
@@ -759,11 +773,11 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 - **HOME**
 
-    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
+    this environment variable already have been set on most systems, if not set or set an empty string, you will receive an error message.
 
 - **PATH**
 
-    this environment variable already have been set on most systems, if not set or set a empty string, you will receive an error message.
+    this environment variable already have been set on most systems, if not set or set an empty string, you will receive an error message.
 
 - **SSL_CERT_FILE**
 
@@ -782,23 +796,31 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
 - **PPKG_HOME**
 
-    If this environment variable is not set or set a empty string, `$HOME/.ppkg` will be used as the default value.
+    If this environment variable is not set or set an empty string, `$HOME/.ppkg` will be used as the default value.
 
     ```bash
-    export PPKG_HOME=$HOME/ppkg-home
+    export PPKG_HOME=$HOME/ppkg
     ```
 
-- **PPKG_URL_TRANSFORM**
+- **PPKG_DOWNLOADS_DIR**
+
+    This is used to specify the directory where the files should be downloaded into.
+
+    If this environment variable is not set or set an empty string, `$HOME/.fpliu/downloads` will be used as the default value.
 
     ```bash
-    export PPKG_URL_TRANSFORM=/path/of/url-transform
+    export PPKG_HOME=$HOME/Downloads
     ```
 
-    `/path/of/url-transform` command would be invoked as `/path/of/url-transform <URL>`
+- **PPKG_URLMAP**
 
-    `/path/of/url-transform` command must output a `<URL>`
+    ```bash
+    export PPKG_URLMAP=/path/of/urlmap
+    ```
 
-    you can generate a url-transform sample via `ppkg gen-url-transform-sample`
+    `/path/of/urlmap` transforms a URL to new one.
+
+    you can generate a urlmap via `ppkg urlmap`
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
@@ -806,13 +828,15 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     for debugging purposes.
 
-    enables `set -x`:
+    assign to `1` to enable `set -x`:
 
     ```bash
     export PPKG_XTRACE=1
     ```
 
-- **PPKG_DEFAULT_TARGET**
+- **PPKG_TARGET**
+
+    The default target to be used when you don't specify one either via `--target=<PPKG_TARGET>` or `PACKAGE-SPEC`.
 
     Some ACTIONs of ppkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
 
@@ -828,21 +852,21 @@ all relevant directories and files are located under `~/.ppkg` directory.
 
     **TARGET-PLATFORM-VERSION** : indicates which platform version was built with.
 
-    To simplify the usage, you are allowed to omit `<TARGET-PLATFORM>/`. If `<TARGET-PLATFORM>/` is omitted, environment variable `PPKG_DEFAULT_TARGET` would be checked, if this environment variable is not set, then your current running os target will be used as the default.
+    To simplify the usage, you are allowed to omit `<TARGET-PLATFORM>/`. If `<TARGET-PLATFORM>/` is omitted, environment variable `PPKG_TARGET` would be checked, if this environment variable is not set, then your current running os target will be used as the default.
 
     **Example**:
 
     ```bash
-    export PPKG_DEFAULT_TARGET=linux-glibc-x86_64
-    export PPKG_DEFAULT_TARGET=linux-musl-x86_64
-    export PPKG_DEFAULT_TARGET=macos-13.0-arm64
-    export PPKG_DEFAULT_TARGET=macos-13.0-x86_64
-    export PPKG_DEFAULT_TARGET=freebsd-13.2-amd64
-    export PPKG_DEFAULT_TARGET=openbsd-7.4-amd64
-    export PPKG_DEFAULT_TARGET=netbsd-9.3-amd64
+    export PPKG_TARGET=linux-glibc-x86_64
+    export PPKG_TARGET=linux-musl-x86_64
+    export PPKG_TARGET=macos-13.0-arm64
+    export PPKG_TARGET=macos-13.0-x86_64
+    export PPKG_TARGET=freebsd-13.2-amd64
+    export PPKG_TARGET=openbsd-7.4-amd64
+    export PPKG_TARGET=netbsd-9.3-amd64
     ```
 
-- **PPKG_FORMULA_SEARCH_DIRS**
+- **PPKG_FORMULA_DIRS**
 
     colon-seperated list of directories to search formulas.
 
@@ -901,7 +925,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 |`dep-pkg`|`LIST`|A space-separated list of   `ppkg packages` depended by this package when installing and/or runtime, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).|
 |`dep-pkg-musl`|`LIST`|A space-separated list of   `ppkg packages` depended by this package when installing and/or runtime for target `musl`, which will be installed via [ppkg](https://github.com/leleliu008/ppkg).<br> packages that are missing in `musl-libc` e.g. `libfts` `libargp` `libobstack` `libexecinfo`|
 |`dep-res`|`LIST`|A space-separated list of   `well-known resources` needed by this package when installing.<br>The only possible value is `sys/queue.h` at the moment.|
-|`dep-lib`|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
+|`dep-lib`|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l` then passed to the linker.|
 |`dep-upp`|`LIST`|A space-separated list of   `uppm packages` depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
 |`dep-plm`|`LIST`|A space-separated list of    `perl modules` depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
 |`dep-pip`|`LIST`|A space-separated list of `python packages` depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
@@ -930,7 +954,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 ||||
 |`bindenv`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<ENV>=<VALUE>`. `%s` in `<VALUE>` represents the install directory.<br>`ppkg` will bind these environment variables to executables while you are running `ppkg bundle`.|
 ||||
-|`wrapper`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ppkg` will fetch `bear.c` from https://raw.githubusercontent.com/leleliu008/ppkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ppkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ppkg bundle`.|
+|`wrapper`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ppkg` will fetch `bear.c` from <https://raw.githubusercontent.com/leleliu008/ppkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c> then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ppkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ppkg bundle`.|
 ||||
 |`caveats`|`TEXT`|plain text to be displayed after installing.|
 
@@ -1113,7 +1137,7 @@ If a ppkg formula repository is `disabled`, which means ppkg would not search fo
 
 ## ppkg formula repository management
 
-run `ppkg formula-repo-add ` command to create a new formula repository locally from an exsting remote git repository.
+run `ppkg formula-repo-add` command to create a new formula repository locally from an exsting remote git repository.
 
 run `ppkg formula-repo-init` command to create a new formula repository locally without taking any further action.
 
