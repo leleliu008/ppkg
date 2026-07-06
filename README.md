@@ -250,7 +250,45 @@ cmake --install build.d
 ## Build from C source locally via [HomeBrew](https://brew.sh/)
 
 ```bash
-brew install --HEAD leleliu008/fpliu/ppkg
+cat > Ppkg.rb <<EOF
+class Ppkg < Formula
+    desc     "A cross-platform package builder for Unix-like systems"
+    homepage "https://github.com/leleliu008/ppkg"
+    head     "https://github.com/leleliu008/ppkg.git", branch: "master"
+    url      "https://github.com/leleliu008/ppkg.git", revision: "05ae23e4a8095d745e1caa5f85b83ae1f3437852"
+    version  "0.1000.1"
+    license  "Apache-2.0"
+
+    depends_on "cmake" => :build
+    depends_on "ninja" => :build
+    depends_on "pkg-config" => :build
+
+    depends_on "zlib"
+    depends_on "curl"
+    depends_on "openssl@3"
+    depends_on "jansson"
+    depends_on "libyaml"
+    depends_on "libgit2"
+    depends_on "libarchive"
+
+    def install
+      system "cmake", "-S", ".", "-B", "build.d", *std_cmake_args
+      system "cmake", "--build",   "build.d"
+      system "cmake", "--install", "build.d"
+    end
+
+    test do
+      system "#{bin}/ppkg", "--help"
+    end
+end
+EOF
+
+MY_FORMULA_DIR="$(brew --repository)/Library/Taps/leleliu008/homebrew-ppkg/Formula"
+install -d "$MY_FORMULA_DIR/"
+mv ppkg.rb "$MY_FORMULA_DIR/"
+
+brew trust leleliu008/ppkg
+brew install ppkg
 ```
 
 ## Build from C source locally using your system's default package manager
@@ -401,7 +439,7 @@ cmake --install build.d
 |`ppkg` downloads directory|`~/.fpliu/downloads`|`PPKG_DOWNLOADS_DIR`|
 |`ppkg` natives directory|`~/.fpliu/native`||
 |`ppkg` urlmap file|`~/.fpliu/urlmap`|`PPKG_URLMAP`|
-|cacert.pem file path|`~/.fpliu/cacert.pem`|`SSL_CERT_FILE`|
+|`cacert` file path|`~/.fpliu/cacert.pem`|`SSL_CERT_FILE`|
 
 **Notes:**
 
@@ -640,7 +678,7 @@ cmake --install build.d
     ppkg install curl bzip2 -v
     ```
 
-    **Note:** C and C++ compiler should be installed by yourself using your system's default package manager before running this command.
+    **Note:** C and C++ compiler should be installed by yourself before running this command. Typcally, you can do it by using your system's default package manager.
 
 - **reinstall the given packages**
 
