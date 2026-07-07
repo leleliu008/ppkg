@@ -1,0 +1,6 @@
+{
+    "MD013": false,
+    "MD033": {
+        "table_allowed_elements": ["br", "img"]
+    }
+}

@@ -368,18 +368,7 @@ wfetch() {
 
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
 
-    if [ -z "$PPKG_URLMAP" ] ; then
-        FETCH_URL="$1"
-    else
-        FETCH_URL="$("$PPKG_URLMAP" "$1")" || return 1
-    fi
-
-    if [ "$GITHUB_ACTIONS" = true ] ; then
-        case $FETCH_URL in
-            https://ftp.gnu.org/gnu/*)
-                FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
-        esac
-    fi
+    FETCH_URL="$1"
 
     shift
 
@@ -505,39 +494,63 @@ wfetch() {
             ;;
     esac
 
-    for i in 1 2 3 4
+    ORIGIN_FETCH_URL="$FETCH_URL"
+
+    for i in 1 2 3 4 5 6
     do
         case $i in
-            1)  URL="$FETCH_URL"
-                ;;
-            2)  if [ -z "$FETCH_URI" ] ; then
-                    if [ -z "$PACKAGE_NAME" ] ; then
-                        continue
-                    fi
+            1)
+                if [ -n "$PPKG_URLMAP" ] ; then
+                    FETCH_URL="$("$PPKG_URLMAP" "$FETCH_URL")" || return 1
+                fi
 
-                    URI="${FETCH_URL%%'?'*}"
-                    URL="https://distfiles.macports.org/${PACKAGE_NAME%@*}/${URI##*/}"
-                else
-                    if [ -n "$PPKG_URLMAP" ] ; then
-                        URL="$("$PPKG_URLMAP" "$FETCH_URI")" || return 1
-                    else
-                        URL="$FETCH_URI"
-                    fi
+                if [ "$GITHUB_ACTIONS" = true ] ; then
+                    case $FETCH_URL in
+                        https://ftp.gnu.org/gnu/*)
+                            FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+                    esac
                 fi
                 ;;
-            3)  case $FETCH_URL in
+            2)  if [ -z "$FETCH_URI" ] ; then
+                     continue
+                fi
+
+                if [ -n "$PPKG_URLMAP" ] ; then
+                    FETCH_URL="$("$PPKG_URLMAP" "$FETCH_URI")" || return 1
+                else
+                    FETCH_URL="$FETCH_URI"
+                fi
+                ;;
+            3)  case $ORIGIN_FETCH_URL in
                     https://ftp.gnu.org/gnu/*)
-                        URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+                        FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
                         ;;
                     *)  continue
                 esac
                 ;;
-            4)  URI="${FETCH_URL%%'?'*}"
-                URL="https://fossies.org/linux/misc/${URI##*/}"
+            4)  FETCH_URX="${ORIGIN_FETCH_URL%%'?'*}"
+
+                FILENAME="${FETCH_URX##*/}"
+
+                case $FILENAME in
+                    *-*)
+                        MACPORTS_PACKAGE_NAME="${FILENAME%%-*}"
+                        FETCH_URL="https://distfiles.macports.org/$MACPORTS_PACKAGE_NAME/$FILENAME"
+                        ;;
+                    *)  MACPORTS_PACKAGE_NAME=
+                        continue
+                esac
                 ;;
+            5)  case $MACPORTS_PACKAGE_NAME in
+                    '') continue ;;
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PACKAGE_NAME#lib}/$FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PACKAGE_NAME/$FILENAME"
+                esac
+                ;;
+            6)  FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
         esac
 
-        run "$FETCH_TOOL $FETCH_ARGS '$URL'" && break
+        run "$FETCH_TOOL $FETCH_ARGS '$FETCH_URL'" && break
     done
 
     [ $? -eq 0 ] || return 1

@@ -59,7 +59,7 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 |`ghcr.io/leleliu008/ppkg/openeuler/arm64`|`openeuler`|`arm64`|
 |`ghcr.io/leleliu008/ppkg/openeuler/loong64`|`openeuler`|`loong64`|
 
-**step1. create a directory to be mounted to the docker container**
+**step1. create a directory to be mounted to the docker container:**
 
 ```bash
 install -d ~/ppkg-home
@@ -83,25 +83,25 @@ sudo apt-get -y install qemu-user-static binfmt-support
 update-binfmts --enable
 ```
 
-**step3. create the ppkg docker container**
+**step3. create the ppkg docker container:**
 
 ```bash
 docker create -it --name ppkg -v ~/ppkg-home:/root/.ppkg ghcr.io/leleliu008/ppkg/alpine
 ```
 
-**step4. start the ppkg docker container**
+**step4. start the ppkg docker container:**
 
 ```bash
 docker start ppkg
 ```
 
-**step5. install essential tools**
+**step5. install essential tools:**
 
 ```bash
 docker exec -it ppkg ppkg setup
 ```
 
-**step6. update formula repositories**
+**step6. update formula repositories:**
 
 ```bash
 docker exec -it ppkg ppkg update
@@ -200,17 +200,17 @@ chmod a+x ppkg
 
 |dependency|required?|purpose|
 |----|---------|-------|
-|[GCC](https://gcc.gnu.org/) or [LLVM+clang](https://llvm.org/)|required |for compiling C source code|
-|[cmake](https://cmake.org/)|required |for generating `build.ninja`|
-|[ninja](https://ninja-build.org/)|required |for doing jobs that read from `build.ninja`|
+|[GCC](https://gcc.gnu.org/) or [Clang](https://clang.llvm.org/)|required|for compiling C source code|
+|[cmake](https://cmake.org/)|required|for generating `build.ninja`|
+|[ninja](https://ninja-build.org/)|required|for doing jobs that read from `build.ninja`|
 |[pkg-config>=0.18](https://www.freedesktop.org/wiki/Software/pkg-config/)|required|for finding libraries|
 ||||
 |[jansson](https://github.com/akheron/jansson)|required|for parsing and creating JSON.|
 |[libyaml](https://github.com/yaml/libyaml/)|required|for parsing formula files whose format is YAML.|
 |[libgit2](https://libgit2.org/)|required|for updating formula repositories.|
 |[libcurl](https://curl.se/)|required|for http requesting support.|
-|[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
 |[libarchive](https://www.libarchive.org/)|required|for uncompressing .zip and .tar.* files.|
+|[openssl](https://www.openssl.org/)|required|for https requesting support and SHA-256 sum checking support.|
 |[zlib](https://www.zlib.net/)|required|for compress and uncompress data.|
 |[pcre2](https://www.pcre.org/)||for Regular Expressions support. only required on OpenBSD.|
 
@@ -1003,7 +1003,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 
 **phases of a package's installation:**
 
-```
+```text
  process-0      process-1      process-2      process-3     process-0
 ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
 │ dosetup │ -> │ dofetch │ -> │ do12345 │ -> │ dopatch │
@@ -1141,7 +1141,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 
 a typical hierarchical structure of a ppkg formula repository looks like below:
 
-```
+```tree
 PPKGFormulaRepoName
 ├── formula
 │   ├── packageA.yml
