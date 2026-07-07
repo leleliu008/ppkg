@@ -430,7 +430,7 @@ cmake --build   build.d
 cmake --install build.d
 ```
 
-## relevant directories and files
+## Directories and Files
 
 ||default|environment variable|
 |-|-|-|

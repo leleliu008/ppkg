@@ -333,7 +333,7 @@ version_match() {
 ##############################################################################
 # {{{ wfetch
 
-# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-p <PACKAGE-NAME>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
 #
 # If -o <OUTPUT-PATH> option is unspecified, the result will be written to ./$(basename <URL>)
 #
@@ -366,6 +366,8 @@ wfetch() {
 
     unset NOT_BUFFER
 
+    unset PKGNAME
+
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
 
     FETCH_URL="$1"
@@ -388,8 +390,14 @@ wfetch() {
                     FETCH_PATH="$1"
                 fi
                 ;;
-            -q)
-                FETCH_SILENT=1
+            -p) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty."
+                else
+                    PKGNAME="$1"
+                fi
+                ;;
+            -q) FETCH_SILENT=1
                 ;;
             --no-buffer)
                 NOT_BUFFER=1
@@ -496,7 +504,7 @@ wfetch() {
 
     ORIGIN_FETCH_URL="$FETCH_URL"
 
-    for i in 1 2 3 4 5 6
+    for i in 1 2 3 4 5 6 7
     do
         case $i in
             1)
@@ -528,10 +536,19 @@ wfetch() {
                     *)  continue
                 esac
                 ;;
-            4)  FETCH_URX="${ORIGIN_FETCH_URL%%'?'*}"
-
+            4)
+                FETCH_URX="${ORIGIN_FETCH_URL%%'?'*}"
                 FILENAME="${FETCH_URX##*/}"
+                FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
+                ;;
+            5)
+                if [ -z "$PKGNAME" ] ; then
+                    continue
+                fi
 
+                FETCH_URL="https://distfiles.macports.org/${PKGNAME%@*}/$FILENAME"
+                ;;
+            6)
                 case $FILENAME in
                     *-*)
                         MACPORTS_PACKAGE_NAME="${FILENAME%%-*}"
@@ -541,13 +558,12 @@ wfetch() {
                         continue
                 esac
                 ;;
-            5)  case $MACPORTS_PACKAGE_NAME in
-                    '') continue ;;
+            7)  case $MACPORTS_PACKAGE_NAME in
+                    '') FETCH_URL= ; continue ;;
                     lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PACKAGE_NAME#lib}/$FILENAME" ;;
                     *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PACKAGE_NAME/$FILENAME"
                 esac
                 ;;
-            6)  FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
         esac
 
         run "$FETCH_TOOL $FETCH_ARGS '$FETCH_URL'" && break
@@ -2721,7 +2737,7 @@ __fetch_resources_of_the_given_package() {
                 note "$PACKAGE_SRC_URL is local path, no need to fetch."
                 return 0
                 ;;
-            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH" -p "$PACKAGE_NAME"
         esac
     elif [ -n "$PACKAGE_GIT_URL" ] ; then
         unset GIT_FETCH_URL
@@ -2776,11 +2792,11 @@ __fetch_resources_of_the_given_package() {
     fi
 
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH" -p "$PACKAGE_NAME"
     fi
 
     if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH" -p "$PACKAGE_NAME"
     fi
 }
 
@@ -7291,15 +7307,15 @@ $PACKAGE_DOFETCH
             file://*)
                 note "$PACKAGE_SRC_URL is local path, no need to fetch."
                 ;;
-            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH" -p "$PACKAGE_NAME"
         esac
 
         if [ -n    "$PACKAGE_FIX_URL" ] ; then
-            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH" -p "$PACKAGE_NAME"
         fi
 
         if [ -n    "$PACKAGE_RES_URL" ] ; then
-            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH" -p "$PACKAGE_NAME"
         fi
     fi
 
@@ -11407,7 +11423,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_SHARE_DIR/native"
 
 ###################################################
 
-PPKG_VERSION=0.28.0
+PPKG_VERSION=0.28.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
