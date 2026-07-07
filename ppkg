@@ -504,7 +504,7 @@ wfetch() {
 
     ORIGIN_FETCH_URL="$FETCH_URL"
 
-    for i in 1 2 3 4 5 6 7
+    for i in 1 2 3 4 5 6 7 8
     do
         case $i in
             1)
@@ -541,27 +541,35 @@ wfetch() {
                 FILENAME="${FETCH_URX##*/}"
                 FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
                 ;;
-            5)
+            5)  MACPORTS_PKGNAME=
+
                 if [ -z "$PKGNAME" ] ; then
                     continue
                 fi
 
-                FETCH_URL="https://distfiles.macports.org/${PKGNAME%@*}/$FILENAME"
+                MACPORTS_PKGNAME="${PKGNAME%@*}"
+
+                FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
                 ;;
-            6)
-                case $FILENAME in
+            6)  case $MACPORTS_PKGNAME in
+                    '') continue ;;
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
+                esac
+                ;;
+            7)  case $FILENAME in
                     *-*)
-                        MACPORTS_PACKAGE_NAME="${FILENAME%%-*}"
-                        FETCH_URL="https://distfiles.macports.org/$MACPORTS_PACKAGE_NAME/$FILENAME"
+                        MACPORTS_PKGNAME="${FILENAME%%-*}"
+                        FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
                         ;;
-                    *)  MACPORTS_PACKAGE_NAME=
+                    *)  MACPORTS_PKGNAME=
                         continue
                 esac
                 ;;
-            7)  case $MACPORTS_PACKAGE_NAME in
+            8)  case $MACPORTS_PKGNAME in
                     '') FETCH_URL= ; continue ;;
-                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PACKAGE_NAME#lib}/$FILENAME" ;;
-                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PACKAGE_NAME/$FILENAME"
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
                 esac
                 ;;
         esac
