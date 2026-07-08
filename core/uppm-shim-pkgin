@@ -4,9 +4,9 @@ set -ex
 
 pkgin() {
     if [ "$(id -u)" -eq 0 ] ; then
-        command      pkgin "$@"
+             command pkgin "$@"
     else
-        command sudo pkgin "$@"
+        sudo command pkgin "$@"
     fi
 }
 

@@ -4,9 +4,9 @@ set -ex
 
 pkgman() {
     if [ "$(id -u)" -eq 0 ] ; then
-        command      pkgman "$@"
+             command pkgman "$@"
     else
-        command sudo pkgman "$@"
+        sudo command pkgman "$@"
     fi
 }
 

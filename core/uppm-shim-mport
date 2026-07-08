@@ -4,9 +4,9 @@ set -ex
 
 mport() {
     if [ "$(id -u)" -eq 0 ] ; then
-        command      mport "$@"
+             command mport "$@"
     else
-        command sudo mport "$@"
+        sudo command mport "$@"
     fi
 }
 

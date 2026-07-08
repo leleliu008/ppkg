@@ -4,9 +4,9 @@ set -ex
 
 pkg() {
     if [ "$(id -u)" -eq 0 ] ; then
-        command      pkg "$@"
+             command pkg "$@"
     else
-        command sudo pkg "$@"
+        sudo command pkg "$@"
     fi
 }
 
