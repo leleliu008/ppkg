@@ -3307,9 +3307,9 @@ EOF
                             break
                         fi
 
-                        NEEDEDs="$("$PPKG_CORE_DIR/print-needed" "$FILEPATH")"
+                        NEEDED="$("$PPKG_CORE_DIR/print-needed" "$FILEPATH")"
 
-                        if [ -n "$NEEDEDs" ] ; then
+                        if [ -n "$NEEDED" ] ; then
                             OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                             break
                         fi
@@ -9120,20 +9120,20 @@ EOF
         touch "$Y"
     fi
 
-    NEEDEDs=$(otool -l "$1" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
+    NEEDED_DYLIBS=$(otool -l "$1" | grep LC_LOAD_DYLIB -A2 | grep name | sed 's|^[[:space:]]*||' | cut -d ' ' -f2)
 
-    if [ -z "$NEEDEDs" ] ; then
+    if [ -z "$NEEDED_DYLIBS" ] ; then
         abort 1 "no needed shared libraries set for $1"
     fi
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         cat <<EOF
 FILEPATH = $1
-NEEDEDs  = $NEEDEDs
+NEEDED_DYLIBS  = $NEEDED_DYLIBS
 EOF
     fi
 
-    for NEEDED in $NEEDEDs
+    for NEEDED in $NEEDED_DYLIBS
     do
         case $NEEDED in
             /usr/lib/lib*.dylib)
