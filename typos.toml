@@ -1,0 +1,3 @@
+[default.extend-words]
+gir = "gir"
+mport = "mport"
