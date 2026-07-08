@@ -450,15 +450,14 @@ cmake --install build.d
 |-|-|-|
 |`uppm` home directory|`~/.uppm`|`UPPM_HOME`|
 |`ppkg` home directory|`~/.ppkg`|`PPKG_HOME`|
-|`ppkg` downloads directory|`~/.fpliu/downloads`|`PPKG_DOWNLOADS_DIR`|
-|`ppkg` natives directory|`~/.fpliu/native`||
-|`ppkg` urlmap file|`~/.fpliu/urlmap`|`PPKG_URLMAP`|
-|`cacert` file path|`~/.fpliu/cacert.pem`|`SSL_CERT_FILE`|
+|`ppkg` downloads directory|`$PPKG_HOME/downloads`|`PPKG_DOWNLOADS_DIR`|
+|`ppkg` natives directory|`$PPKG_HOME/native`||
+|`ppkg` urlmap file|`$PPKG_HOME/urlmap`|`PPKG_URLMAP`|
+|`cacert` file path|`$PPKG_HOME/cacert.pem`|`SSL_CERT_FILE`|
 
 **Notes:**
 
-- you can change these via ‌corresponding‌ environment variable.
-- `~/.fpliu` is a directory shared with my other tools [xcpkg](https://github.com/leleliu008/xcpkg) and [ndk-pkg](https://github.com/leleliu008/ndk-pkg)
+- you can change these via corresponding environment variable.
 - Don't place your own files under these directories, as `ppkg` will change files under these directories without notice.
 
 ## ppkg command usage
@@ -858,7 +857,7 @@ cmake --install build.d
 
     This is used to specify the directory where the files should be downloaded into.
 
-    If this environment variable is not set or set an empty string, `$HOME/.fpliu/downloads` will be used as the default value.
+    If this environment variable is not set or set an empty string, `$PPKG_HOME/downloads` will be used as the default value.
 
     ```bash
     export PPKG_HOME=$HOME/Downloads

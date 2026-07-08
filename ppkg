@@ -11421,17 +11421,15 @@ unset IFS
 
 [ -z "$HOME" ] && abort 1 "HOME environment variable is not set."
 
-PPKG_SHARE_DIR="$HOME/.fpliu"
-
-NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_SHARE_DIR/native"
-
-[ -z "$PPKG_DOWNLOADS_DIR" ] && PPKG_DOWNLOADS_DIR="$PPKG_SHARE_DIR/downloads"
-
 [ -z "$PPKG_HOME" ] && PPKG_HOME="$HOME/.ppkg"
+
+[ -z "$PPKG_DOWNLOADS_DIR" ] && PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
+
+NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
 
 ###################################################
 
-PPKG_VERSION=0.28.1
+PPKG_VERSION=0.29.0
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11459,8 +11457,8 @@ SESSION_DIR="$PPKG_HOME/run/$$"
 if [ -f "$PPKG_CORE_DIR/cacert.pem" ] ; then
     export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
 else
-    if [ -f "$PPKG_SHARE_DIR/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$PPKG_CORE_DIR/cacert.pem"
+    if [ -f "$PPKG_HOME/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$PPKG_HOME/cacert.pem"
     fi
 fi
 
@@ -11487,7 +11485,7 @@ UPPM="$PPKG_CORE_DIR/uppm"
 ###################################################
 
 if [ -z "$PPKG_URLMAP" ] ; then
-    PPKG_URLMAP="$PPKG_SHARE_DIR/urlmap"
+    PPKG_URLMAP="$PPKG_HOME/urlmap"
 
     [ -f "$PPKG_URLMAP" ] || unset PPKG_URLMAP
 fi
