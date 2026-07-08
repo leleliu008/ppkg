@@ -3652,7 +3652,7 @@ EOF
             run ln -s "$APPICON_FILEPATH" "$APPICON_FILENAME"
 
             # https://docs.appimage.org/reference/appdir.html
-            # .DirIcon is required for some softwares e.g. https://github.com/TheAssassin/AppImageLauncher to display thumbnail
+            # .DirIcon is required for some software e.g. https://github.com/TheAssassin/AppImageLauncher to display thumbnail
             ln -s "$APPICON_FILEPATH" .DirIcon
         }
 
@@ -4528,10 +4528,10 @@ cmakew() {
     unset CMAKE_EXTRA_ARGS
     unset CMAKE_BUILD_TARGETS
     unset CMAKE_INSTALL_COMPONENTS
-    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY
+    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY
 
     if [ "$1" = 2 ] ; then
-        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY=1
+        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY=1
         shift
     fi
 
@@ -4569,7 +4569,7 @@ cmakew() {
         shift
     done
 
-    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY" = 1 ] ; then
+    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY" = 1 ] ; then
         cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=OFF
         cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=ON
     else
@@ -8865,7 +8865,7 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 
         #####################################################
 
-        NEEDED_UNKOWN=
+        NEEDED_UNKNOWN=
 
         case "${NEEDED_SHARED_LIBRARY_FILENAME%.so*}" in
             libc)
@@ -8906,10 +8906,10 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                 ;;
             libtinfo)
                 ;;
-            *)  NEEDED_UNKOWN=1
+            *)  NEEDED_UNKNOWN=1
         esac
 
-        if [ -z "$NEEDED_UNKOWN" ] ; then
+        if [ -z "$NEEDED_UNKNOWN" ] ; then
             F=".ppkg/dependencies/sys/$NEEDED_SHARED_LIBRARY_FILENAME"
 
             if [ ! -f "$F" ] ; then
@@ -11149,7 +11149,7 @@ ${COLOR_GREEN}ppkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] 
 
     If -t <OUTPUT-TYPE> option is unspecified, and if <OUTPUT-PATH> ends with one of .d2 .dot .box .svg .png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
 
-    You are allowd to choose the diagram engine for generating svg/png format diagram. ppkg only support d2 and dot diagram engine at the moment.
+    You are allowed to choose the diagram engine for generating svg/png format diagram. ppkg only support d2 and dot diagram engine at the moment.
 
 ${COLOR_GREEN}ppkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.

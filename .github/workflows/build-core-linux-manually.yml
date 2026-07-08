@@ -1,4 +1,4 @@
-name: build ppkg-core for linux manully
+name: build ppkg-core for linux manually
 
 on:
   workflow_dispatch:

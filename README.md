@@ -19,7 +19,7 @@ This software provides two implementations:
 |implemented in `POSIX Shell`|[master](https://github.com/leleliu008/ppkg/tree/master)|
 |implemented in `C`|[c](https://github.com/leleliu008/ppkg/tree/c)|
 
-In theroy, these two implementations should have the same behaver except for have bugs.
+In theory, these two implementations should have the same behaver except for have bugs.
 
 ## Using ppkg via GitHub Actions
 
@@ -31,7 +31,7 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 
 ## Using ppkg via [Docker](https://www.docker.com/)
 
-`docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+`docker` container is an isolated clean environment where the running process can not be affected by your host system's environment variables.
 
 |REPOSITORY|OS|ARCH|
 |-|-|-|
@@ -393,6 +393,20 @@ cmake --install build.d
 
 ```bash
 pkg install -y git cmake ninja pkgconf gcc curl openssl libgit2 libarchive libyaml jansson zlib
+
+git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
+cd ppkg
+
+cmake -S . -B   build.d -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build   build.d
+cmake --install build.d
+```
+
+**[MidnightBSD](https://www.midnightbsd.org/)**
+
+```bash
+sudo mport index
+sudo mport install git cmake ninja pkg-config gcc curl openssl libgit2 libarchive libyaml jansson zlib
 
 git clone --depth=1 --branch=c https://github.com/leleliu008/ppkg
 cd ppkg
@@ -906,7 +920,7 @@ cmake --install build.d
 
 - **PPKG_FORMULA_DIRS**
 
-    colon-seperated list of directories to search formulas.
+    colon-separated list of directories to search formulas.
 
 - **GITHUB_ACTIONS**
 
@@ -1175,7 +1189,7 @@ If a ppkg formula repository is `disabled`, which means ppkg would not search fo
 
 ## ppkg formula repository management
 
-run `ppkg formula-repo-add` command to create a new formula repository locally from an exsting remote git repository.
+run `ppkg formula-repo-add` command to create a new formula repository locally from an existing remote git repository.
 
 run `ppkg formula-repo-init` command to create a new formula repository locally without taking any further action.
 
