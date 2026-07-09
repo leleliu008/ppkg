@@ -790,7 +790,7 @@ cmake --install build.d
     ppkg bundle curl a/xx.zip
     ```
 
-- **export the given installed package as another package format (e.g. .deb, .rpm, .apk, .pkg.tar.xz, etc)**
+- **export the given installed package as another package format (.deb, .rpm, .apk, .pkg.tar.xz, etc)**
 
     ```bash
     ppkg export curl .deb
@@ -925,7 +925,7 @@ cmake --install build.d
 
     The value is `true` to indicates that `ppkg` is running on GitHub Actions.
 
-    In this mode, `ppkg` will use system's package manager to install some packages e.g. `curl`, `g++`, `libc-dev`, `linux-headers`, `rust`, `cargo`, etc.
+    In this mode, `ppkg` will use system package manager (`apt`, `dnf`, `apk`, etc) to install some packages (`curl`, `g++`, `libc-dev`, `linux-headers`, `rust`, `cargo`, etc)
 
 **Note:** some commonly used environment variables are overridden by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
@@ -989,7 +989,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 |`ppflags`|`LIST`|A space-separated list of arguments to be passed to the PreProcessor.|
 |`ldflags`|`LIST`|A space-separated list of arguments to be passed to the linker.<br>`ppkg` supports a custom option `-p<PKG-CONFIG-PACKAGE-NAME>`. It will be substituted by the result of `pkg-config --libs-only-l <PKG-CONFIG-PACKAGE-NAME>`|
 ||||
-|`bsystem`|`LIST`|A space-separated list of build system names (e.g. `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake`)|
+|`bsystem`|`LIST`|A space-separated list of build system names (`autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake`, etc)|
 |`bscript`|`PATH`|the directory where the build script is located, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|`BOOL`|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`ltoable`|`BOOL`|whether support [LTO](https://gcc.gnu.org/wiki/LinkTimeOptimization).<br>value shall be `0` or `1`. default value is `1`.|
@@ -1125,7 +1125,7 @@ A ppkg formula's file content only has one level mapping and shall/might have th
 |`STRIP`|a command line tool to discard symbols and other data from object files.|
 |||
 |`PACKAGE_WORKING_DIR`|the working directory while installing.|
-|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (`Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located.|
 |`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored while building.|
 |`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed.|
 |||

@@ -184,7 +184,7 @@ git_checkout() {
 
     if [ -z "$GIT_FETCH_DEPTH" ] ; then
         GIT_FETCH_DEPTH=1
-        GIT_FETCH_OPTION="--depth=1"
+        GIT_FETCH_OPTION='--depth=1'
     else
         if [ "$GIT_FETCH_DEPTH" = '0' ] ; then
             GIT_FETCH_OPTION=
@@ -193,10 +193,7 @@ git_checkout() {
         fi
     fi
 
-    [ -z "$GIT_FETCH_FROM_REF" ] && GIT_FETCH_FROM_REF='HEAD'
-    [ -z "$GIT_FETCH_TO___REF" ] && GIT_FETCH_TO___REF='refs/remotes/origin/master'
-
-    [ -z "$GIT_CHECKOUT_BRANCH_NAME" ] && GIT_CHECKOUT_BRANCH_NAME="${GIT_FETCH_TO___REF##*/}"
+    : "${GIT_FETCH_TO___REF:=refs/remotes/origin/master}"
 
     if [    -n "$GIT_WORK_DIR" ] ; then
         [   -d "$GIT_WORK_DIR" ] || run install -d "$GIT_WORK_DIR"
@@ -205,8 +202,8 @@ git_checkout() {
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_FROM_URL"
-    run git -c protocol.version=2 fetch --progress $GIT_FETCH_OPTION origin "$GIT_FETCH_FROM_REF:$GIT_FETCH_TO___REF"
-    run git checkout --progress --force -B "$GIT_CHECKOUT_BRANCH_NAME" "$GIT_FETCH_TO___REF"
+    run git -c protocol.version=2 fetch --progress $GIT_FETCH_OPTION origin "${GIT_FETCH_FROM_REF:-HEAD}:$GIT_FETCH_TO___REF"
+    run git checkout --progress --force -B "${GIT_CHECKOUT_BRANCH_NAME:-${GIT_FETCH_TO___REF##*/}}" "$GIT_FETCH_TO___REF"
 
     git_submodule_update_recursive
 
@@ -712,9 +709,9 @@ __formula_mapping_set() {
 
     shift 2
 
-    FORMULA_REPO_BRANCH=
-    FORMULA_REPO_PINNED=
-    FORMULA_REPO_ENABLED=
+    FORMULA_REPO_BRANCH=master
+    FORMULA_REPO_PINNED=0
+    FORMULA_REPO_ENABLED=1
 
     while [ -n "$1" ]
     do
@@ -738,10 +735,6 @@ __formula_mapping_set() {
         esac
         shift
     done
-
-    FORMULA_REPO_BRANCH="${FORMULA_REPO_BRANCH:-master}"
-    FORMULA_REPO_PINNED="${FORMULA_REPO_PINNED:-0}"
-    FORMULA_REPO_ENABLED="${FORMULA_REPO_ENABLED:-1}"
 
     FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPO_NAME"
 
@@ -794,9 +787,9 @@ EOF
 
     shift 2
 
-    FORMULA_REPO_BRANCH=
-    FORMULA_REPO_PINNED=
-    FORMULA_REPO_ENABLED=
+    FORMULA_REPO_BRANCH=master
+    FORMULA_REPO_PINNED=1
+    FORMULA_REPO_ENABLED=1
 
     while [ -n "$1" ]
     do
@@ -820,10 +813,6 @@ EOF
         esac
         shift
     done
-
-    FORMULA_REPO_BRANCH="${FORMULA_REPO_BRANCH:-master}"
-    FORMULA_REPO_PINNED="${FORMULA_REPO_PINNED:-1}"
-    FORMULA_REPO_ENABLED="${FORMULA_REPO_ENABLED:-1}"
 
     FORMULA_REPO_PATH="$PPKG_FORMULA_REPO_ROOT/$FORMULA_REPO_NAME"
 
@@ -1660,9 +1649,9 @@ filetype_from_url() {
 
     #########################################################################################
 
-    [ -z "$PACKAGE_LTOABLE" ] && PACKAGE_LTOABLE=1
-    [ -z "$PACKAGE_MOVABLE" ] && PACKAGE_MOVABLE=1
-    [ -z "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" ] && PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
+    : "${PACKAGE_LTOABLE:=1}"
+    : "${PACKAGE_MOVABLE:=1}"
+    : "${PACKAGE_SUPPORT_BUILD_IN_PARALLEL:=1}"
 
     #########################################################################################
 
@@ -2464,28 +2453,21 @@ __show_packages_depended_by_the_given_package() {
 
     case $OUTPUT_PATH in
         '')
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='box'
-            fi
+            : "${OUTPUT_TYPE:=box}"
+
             ;;
         ..|../)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='box'
-            fi
+            : "${OUTPUT_TYPE:=box}"
 
             OUTPUT_FILEPATH="$PWD/../$PACKAGE_NAME-dependencies.$OUTPUT_TYPE"
             ;;
         .|./)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='box'
-            fi
+            : "${OUTPUT_TYPE:=box}"
 
             OUTPUT_FILEPATH="$PWD/$PACKAGE_NAME-dependencies.$OUTPUT_TYPE"
             ;;
         */)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='box'
-            fi
+            : "${OUTPUT_TYPE:=box}"
 
             case $OUTPUT_PATH in
                 /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
@@ -2769,9 +2751,7 @@ __fetch_resources_of_the_given_package() {
             GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
         fi
 
-        if [ -z "$PACKAGE_GIT_NTH" ] ; then
-            PACKAGE_GIT_NTH=1
-        fi
+        : "${PACKAGE_GIT_NTH:=1}"
 
         if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
             if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
@@ -3074,7 +3054,9 @@ EOF
             ;;
         */*)
             OUTPUT_DIR="${2%/*}"
-            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
+
+            : "${OUTPUT_DIR:=/}"
+
             OUTPUT_NAME="${2##*/}"
             ;;
         *)  OUTPUT_NAME="$2"
@@ -3798,7 +3780,9 @@ EOF
             ;;
         */*)
             OUTPUT_DIR="${2%/*}"
-            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
+
+            : "${OUTPUT_DIR:=/}"
+
             OUTPUT_NAME="${2##*/}"
             ;;
         *)  OUTPUT_NAME="$2"
@@ -6059,20 +6043,8 @@ __inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ "$LOG_LEVEL" = 0 ] ; then
-        exec 1>/dev/null
-        exec 2>&1
-    else
-        if [ -z "$LOG_LEVEL" ] ; then
-            LOG_LEVEL=1
-        fi
-    fi
-
-    #########################################################################################
-
-    if [ -z "$PROFILE" ] ; then
-        PROFILE=release
-    fi
+    : "${PROFILE:=release}"
+    : "${LOG_LEVEL:=1}"
 
     #########################################################################################
 
@@ -6081,6 +6053,13 @@ __inspect_install_arguments() {
             debug)   ENABLE_STRIP=no  ;;
             release) ENABLE_STRIP=all ;;
         esac
+    fi
+
+    #########################################################################################
+
+    if [ "$LOG_LEVEL" = 0 ] ; then
+        exec 1>/dev/null
+        exec 2>&1
     fi
 }
 
@@ -7404,8 +7383,6 @@ $PACKAGE_DOFETCH
         DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
         LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
 
-        [ -z "$LEV" ] && LEV=1
-
         FILETYPE="$(filetype_from_url "$URL")"
         FILENAME="$SHA$FILETYPE"
         FILEPATH="$PPKG_DOWNLOADS_DIR/$FILENAME"
@@ -7419,9 +7396,9 @@ $PACKAGE_DOFETCH
             run install -d "$DEST"
         fi
 
-        case $FILETYPE in
+        case "$FILETYPE" in
             .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
+                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "${LEV:-1}" --no-same-owner
                 ;;
             *)  run cp "$FILEPATH" "$DEST/"
         esac
@@ -8401,8 +8378,7 @@ EOF
         do
             FILE="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
             OPTS="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-            [ -z "$OPTS" ] && OPTS='-p1'
-            run "patch $OPTS < $PACKAGE_INSTALLING_FIX_DIR/$FILE"
+            run "patch ${OPTS:-'-p1'} < $PACKAGE_INSTALLING_FIX_DIR/$FILE"
         done
     }
 
