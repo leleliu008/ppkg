@@ -2,11 +2,11 @@
 
 set -ex
 
-pkg_add() {
+_pkg_add() {
     if [ "$(id -u)" -eq 0 ] ; then
-             command pkg_add "$@"
+             pkg_add "$@"
     else
-        sudo command pkg_add "$@"
+        sudo pkg_add "$@"
     fi
 }
 
@@ -48,7 +48,7 @@ main() {
             for UPPM_PACKAGE_NAME in "$@"
             do
                 PKG_ADD_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg_add "$UPPM_PACKAGE_NAME")"
-                pkg_add "$PKG_ADD_PACKAGE_NAME"
+                _pkg_add "$PKG_ADD_PACKAGE_NAME"
             done
             ;;
         is-installed)
@@ -70,7 +70,7 @@ main() {
                     ;;
             esac
             ;;
-        *)  pkg_add "$@"
+        *)  _pkg_add "$@"
     esac
 }
 

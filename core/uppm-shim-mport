@@ -2,11 +2,11 @@
 
 set -ex
 
-mport() {
+_mport() {
     if [ "$(id -u)" -eq 0 ] ; then
-             command mport "$@"
+             mport "$@"
     else
-        sudo command mport "$@"
+        sudo mport "$@"
     fi
 }
 
@@ -27,23 +27,23 @@ package_name_transform_from_uppm_to_mport() {
 main() {
     case $1 in
         about)
-            mport -v
+            _mport -v
             ;;
         update)
-            mport index
+            _mport index
             ;;
         install)
             shift 1
             for UPPM_PACKAGE_NAME in "$@"
             do
                 MPORT_PACKAGE_NAME="$(package_name_transform_from_uppm_to_mport "$UPPM_PACKAGE_NAME")"
-                mport install "$MPORT_PACKAGE_NAME" || true
+                _mport install "$MPORT_PACKAGE_NAME" || true
             done
             ;;
         is-installed)
             shift 1
             MPORT_PACKAGE_NAME="$(package_name_transform_from_uppm_to_mport "$1")"
-            mport verify "$MPORT_PACKAGE_NAME" 2>/dev/null
+            _mport verify "$MPORT_PACKAGE_NAME" 2>/dev/null
             ;;
         info)
             shift 1
@@ -53,7 +53,7 @@ main() {
                     ;;
             esac
             ;;
-        *)  mport "$@"
+        *)  _mport "$@"
     esac
 }
 

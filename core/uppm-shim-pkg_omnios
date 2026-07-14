@@ -2,11 +2,11 @@
 
 set -ex
 
-pkg() {
+_pkg() {
     if [ "$(id -u)" -eq 0 ] ; then
-             command pkg "$@"
+             pkg "$@"
     else
-        sudo command pkg "$@"
+        sudo pkg "$@"
     fi
 }
 
@@ -31,23 +31,23 @@ package_name_transform_from_uppm_to_pkg() {
 main() {
     case $1 in
         about)
-            pkg version
+            _pkg version
             ;;
         update)
-            pkg refresh
+            _pkg refresh
             ;;
         install)
             shift 1
             for UPPM_PACKAGE_NAME in "$@"
             do
                 FPKG_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg "$UPPM_PACKAGE_NAME")"
-                pkg install "$FPKG_PACKAGE_NAME"
+                _pkg install "$FPKG_PACKAGE_NAME"
             done
             ;;
         is-installed)
             shift 1
             FPKG_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg "$1")"
-            pkg info "$FPKG_PACKAGE_NAME" 2>/dev/null
+            _pkg info "$FPKG_PACKAGE_NAME" 2>/dev/null
             ;;
         info)
             shift 1
@@ -57,7 +57,7 @@ main() {
                     ;;
             esac
             ;;
-        *)  pkg "$@"
+        *)  _pkg "$@"
     esac
 }
 
