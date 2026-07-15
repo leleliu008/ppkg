@@ -10398,6 +10398,12 @@ __setup_syspm_freebsd() {
 __setup_syspm_openbsd() {
     SYSPM=pkg_add
 
+    if [ -z "$sudo" ] ; then
+        printf 'http://ftp.eu.openbsd.org/pub/OpenBSD\n' > /etc/installurl
+    else
+        sudo sh -c 'printf "http://ftp.eu.openbsd.org/pub/OpenBSD\n" > /etc/installurl'
+    fi
+
     # pkg.m4 is in metaauto package, not in pkgconf package. metaauto package is usually depended by automake-1.16.3 package
 
     # https://man.openbsd.org/pkg_add
@@ -11401,11 +11407,11 @@ unset IFS
 
 [ -z "$PPKG_DOWNLOADS_DIR" ] && PPKG_DOWNLOADS_DIR="$PPKG_HOME/downloads"
 
-NATIVE_PACKAGE_INSTALLED_ROOT="$PPKG_HOME/native"
+NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.0
+PPKG_VERSION=0.29.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"

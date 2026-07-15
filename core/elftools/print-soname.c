@@ -13,7 +13,7 @@
 int handle_elf32(const int fd, const char * const fp) {
     Elf32_Ehdr ehdr;
 
-    int ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
+    ssize_t ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
 
     if (ret == -1) {
         perror(fp);
@@ -164,7 +164,7 @@ int handle_elf32(const int fd, const char * const fp) {
 int handle_elf64(const int fd, const char * const fp) {
     Elf64_Ehdr ehdr;
 
-    int ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
+    ssize_t ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
 
     if (ret == -1) {
         perror(fp);
