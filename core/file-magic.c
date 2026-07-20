@@ -6,8 +6,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include <elf.h>
-
 int main(int argc, char* argv[]) {
     if (argc == 1) {
         fprintf(stderr, "Usage: %s <FILE>\n", argv[0]);
@@ -76,7 +74,7 @@ int main(int argc, char* argv[]) {
 
     // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
     if (n == 18 && a[0] == 0x7F && a[1] == 0x45 && a[2] == 0x4C && a[3] == 0x46) {
-        if (a[5] == ELFDATA2MSB) {
+        if (a[5] == 2) {
             a[4] = a[17];
             a[5] = a[16];
         } else {

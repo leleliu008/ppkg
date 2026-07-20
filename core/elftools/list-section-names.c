@@ -43,9 +43,9 @@ int handle_elf32(const int fd, const char * const fp) {
         return 14;
     }
 
-    char strings[shdr.sh_size];
+    char shstrtab[shdr.sh_size];
 
-    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
+    ret = pread(fd, shstrtab, shdr.sh_size, shdr.sh_offset);
 
     if (ret == -1) {
         perror(fp);
@@ -58,13 +58,13 @@ int handle_elf32(const int fd, const char * const fp) {
         return 16;
     }
 
-    char * p = &strings[1];
+    char * p = &shstrtab[1];
 
     // https://www.sco.com/developers/gabi/latest/ch4.strtab.html
     for (unsigned int i = 1; i < shdr.sh_size; i++) {
-        if (strings[i] == '\0') {
+        if (shstrtab[i] == '\0') {
             puts(p);
-            p = &strings[i + 1];
+            p = &shstrtab[i + 1];
         }
     }
 
@@ -106,9 +106,9 @@ int handle_elf64(const int fd, const char * const fp) {
         return 14;
     }
 
-    char strings[shdr.sh_size];
+    char shstrtab[shdr.sh_size];
 
-    ret = pread(fd, strings, shdr.sh_size, shdr.sh_offset);
+    ret = pread(fd, shstrtab, shdr.sh_size, shdr.sh_offset);
 
     if (ret == -1) {
         perror(fp);
@@ -121,13 +121,13 @@ int handle_elf64(const int fd, const char * const fp) {
         return 16;
     }
 
-    char * p = &strings[1];
+    char * p = &shstrtab[1];
 
     // https://www.sco.com/developers/gabi/latest/ch4.strtab.html
     for (unsigned int i = 1; i < shdr.sh_size; i++) {
-        if (strings[i] == '\0') {
+        if (shstrtab[i] == '\0') {
             puts(p);
-            p = &strings[i + 1];
+            p = &shstrtab[i + 1];
         }
     }
 

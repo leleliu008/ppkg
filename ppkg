@@ -1392,6 +1392,9 @@ filetype_from_url() {
                         https://gitlab.com/*/*/-/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/-/archive/*}"
                             ;;
+                        https://codeberg.org/*/*/archive/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
+                            ;;
                     esac
                 fi
 
@@ -11411,7 +11414,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.1
+PPKG_VERSION=0.29.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
