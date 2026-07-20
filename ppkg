@@ -1912,7 +1912,7 @@ __list_symlinked_packages() {
 
 __list__outdated_packages() {
     [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] || return 0
-
+    set -x
     for pkg in $(find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 2 -mindepth 2 -type l -printf '%P\n')
     do
         if is_package__outdated "$pkg" ; then
