@@ -1140,8 +1140,10 @@ filetype_from_url() {
     unset PACKAGE_VERSION_TWEAK
 
     unset PACKAGE_WEB_URL
+    unset PACKAGE_WEB_URI
 
     unset PACKAGE_GIT_URL
+    unset PACKAGE_GIT_URI
     unset PACKAGE_GIT_SHA
     unset PACKAGE_GIT_REF
     unset PACKAGE_GIT_NTH
@@ -1252,8 +1254,10 @@ filetype_from_url() {
     PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_WEB_URL="$(yq '.web-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_WEB_URI="$(yq '.web-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_GIT_URI="$(yq '.git-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1428,7 +1432,11 @@ filetype_from_url() {
                                 fi
 
                                 if [ -z "$PACKAGE_GIT_URL" ] ; then
-                                    PACKAGE_GIT_URL="https://github.com/GNOME/$YY"
+                                    PACKAGE_GIT_URL="https://gitlab.gnome.org/GNOME/$YY"
+                                fi
+
+                                if [ -z "$PACKAGE_GIT_URI" ] ; then
+                                    PACKAGE_GIT_URI="https://github.com/GNOME/$YY"
                                 fi
                                 ;;
                             https://www.x.org/archive/individual/*)
@@ -2012,7 +2020,9 @@ __search_packages() {
     "license":$license,
     "summary":$summary,
     "web-url":$web_url,
+    "web-uri":$web_uri,
     "git-url":$git_url,
+    "git-uri":$git_uri,
     "git-sha":$git_sha,
     "git-ref":$git_ref,
     "git-nth":$git_nth,
@@ -2076,7 +2086,9 @@ version: $PACKAGE_VERSION
 license: $PACKAGE_LICENSE
 summary: $PACKAGE_SUMMARY
 web-url: $PACKAGE_WEB_URL
+web-uri: $PACKAGE_WEB_URI
 git-url: $PACKAGE_GIT_URL
+git-uri: $PACKAGE_GIT_URI
 git-sha: $PACKAGE_GIT_SHA
 git-ref: $PACKAGE_GIT_REF
 git-nth: $PACKAGE_GIT_NTH
@@ -2404,7 +2416,9 @@ EOF
     "license":$license,
     "summary":$summary,
     "web-url":$web_url,
+    "web-uri":$web_uri,
     "git-url":$git_url,
+    "git-uri":$git_uri,
     "git-sha":$git_sha,
     "git-ref":$git_ref,
     "git-nth":$git_nth,
@@ -8753,11 +8767,28 @@ $PACKAGE_DOTWEAK
 
     grep -q '^pkgtype: ' RECEIPT.yml || gsed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" RECEIPT.yml
     grep -q '^version: ' RECEIPT.yml || gsed -i "/^pkgtype:/a version: $PACKAGE_VERSION" RECEIPT.yml
-    grep -q '^web-url: ' RECEIPT.yml || gsed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" RECEIPT.yml
-    grep -q '^git-url: ' RECEIPT.yml || gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    grep -q '^web-url: ' RECEIPT.yml || gsed -i "/^summary:/a web-url: $PACKAGE_WEB_URL" RECEIPT.yml
     grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
     grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
     grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" >> RECEIPT.yml
+
+    [ -n "$PACKAGE_GIT_URI" ] && {
+        grep -q '^git-uri: ' RECEIPT.yml || {
+            gsed -i "/^web-url:/a git-uri: $PACKAGE_GIT_URI" RECEIPT.yml
+        }
+    }
+
+    [ -n "$PACKAGE_GIT_URL" ] && {
+        grep -q '^git-url: ' RECEIPT.yml || {
+            gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
+        }
+    }
+
+    [ -n "$PACKAGE_WEB_URI" ] && {
+        grep -q '^web-uri: ' RECEIPT.yml || {
+            gsed -i "/^web-url:/a web-uri: $PACKAGE_WEB_URI" RECEIPT.yml
+        }
+    }
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' RECEIPT.yml || {
