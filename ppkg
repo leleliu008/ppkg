@@ -1381,21 +1381,70 @@ filetype_from_url() {
                     abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
                 fi
 
+                unset PACKAGE_SRC_URL_CHECKED
+
                 if [ -z "$PACKAGE_GIT_URL" ] ; then
                     case $PACKAGE_SRC_URL in
                         https://github.com/*/*/releases/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/releases/*}"
+                            PACKAGE_SRC_URL_CHECKED=1
                             ;;
                         https://github.com/*/*/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
+                            PACKAGE_SRC_URL_CHECKED=1
                             ;;
                         https://gitlab.com/*/*/-/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/-/archive/*}"
+                            PACKAGE_SRC_URL_CHECKED=1
                             ;;
                         https://codeberg.org/*/*/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
+                            PACKAGE_SRC_URL_CHECKED=1
                             ;;
                     esac
+                fi
+
+                if [ -z "$PACKAGE_WEB_URL" ] || [ -z "$PACKAGE_GIT_URL" ]; then
+                    if [ "$PACKAGE_SRC_URL_CHECKED" != 1 ] ; then
+                        case $PACKAGE_SRC_URL in
+                            https://ftp.gnu.org/gnu/*)
+                                XX="${PACKAGE_SRC_URL#'https://ftp.gnu.org/gnu/'}"
+                                YY="${XX%%/*}"
+
+                                if [ -z "$PACKAGE_WEB_URL" ] ; then
+                                    PACKAGE_WEB_URL="https://www.gnu.org/software/$YY"
+                                fi
+
+                                if [ -z "$PACKAGE_GIT_URL" ] ; then
+                                    PACKAGE_GIT_URL="https://git.savannah.gnu.org/git/$YY.git"
+                                fi
+                                ;;
+                            https://download.gnome.org/sources/*)
+                                XX="${PACKAGE_SRC_URL#'https://download.gnome.org/sources/'}"
+                                YY="${XX%%/*}"
+
+                                if [ -z "$PACKAGE_WEB_URL" ] ; then
+                                    PACKAGE_WEB_URL="https://gitlab.gnome.org/GNOME/$YY"
+                                fi
+
+                                if [ -z "$PACKAGE_GIT_URL" ] ; then
+                                    PACKAGE_GIT_URL="https://github.com/GNOME/$YY"
+                                fi
+                                ;;
+                            https://www.x.org/archive/individual/*)
+                                XX="${PACKAGE_SRC_URL#'https://www.x.org/archive/individual/'}"
+                                YY="${XX%-*}"
+
+                                if [ -z "$PACKAGE_WEB_URL" ] ; then
+                                    PACKAGE_WEB_URL='https://www.x.org/'
+                                fi
+
+                                if [ -z "$PACKAGE_GIT_URL" ] ; then
+                                    PACKAGE_GIT_URL="https://gitlab.freedesktop.org/xorg/$YY"
+                                fi
+                                ;;
+                        esac
+                    fi
                 fi
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
@@ -11414,7 +11463,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.2
+PPKG_VERSION=0.29.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
