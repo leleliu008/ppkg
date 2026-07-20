@@ -1494,8 +1494,12 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+    if [ -z "$PACKAGE_WEB_URL" ] ; then
+        if [ -z "$PACKAGE_GIT_URL" ] ; then
+            abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+        else
+            PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
+        fi
     fi
 
     #########################################################################################
@@ -1912,7 +1916,7 @@ __list_symlinked_packages() {
 
 __list__outdated_packages() {
     [ -d "$PPKG_PACKAGE_INSTALLED_ROOT" ] || return 0
-    set -x
+
     for pkg in $(find "$PPKG_PACKAGE_INSTALLED_ROOT" -maxdepth 2 -mindepth 2 -type l -printf '%P\n')
     do
         if is_package__outdated "$pkg" ; then
@@ -1962,10 +1966,6 @@ __search_packages() {
 # __info_the_given_available_package_as_json <PACKAGE-NAME>
   __info_the_given_available_package_as_json() {
     __load_formula_of_the_given_package "$1"
-
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
-        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
-    fi
 
     jq  --null-input \
         --arg pkgname "$PACKAGE_NAME" \
@@ -2067,10 +2067,6 @@ __search_packages() {
 # __info_the_given_available_package_as_yaml <PACKAGE-NAME>
   __info_the_given_available_package_as_yaml() {
     __load_formula_of_the_given_package "$1"
-
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
-        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
-    fi
 
     if is_package_installed "$1" ; then
         PACKAGE_INSTALLED=yes
