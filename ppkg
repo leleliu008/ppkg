@@ -10572,10 +10572,11 @@ __setup_syspm_netbsd() {
 
     # NetBSD-10.0 grep report:
     # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
+    # gsed: Undefined PLT symbol "mbrtoc32" (symnum = 24)
     # expr: Undefined PLT symbol "mbrtoc32" (symnum = 22)
     #  awk: Undefined PLT symbol "mbrtoc32" (symnum = 222)
     if [ "$(uname -r)" = '10.0' ] ; then
-        for x in 'grep-3.11' 'gawk-5.3.1' 'coreutils-expr-9.4'
+        for x in 'grep-3.12' 'gsed-4.9' 'gawk-5.3.1' 'coreutils-expr-9.4'
         do
             f="$x-netbsd-10.0-amd64.release.tar.xz"
             wfetch "https://github.com/leleliu008/test/releases/download/2023.10.08/$f" --no-buffer
@@ -11502,7 +11503,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.4
+PPKG_VERSION=0.29.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
