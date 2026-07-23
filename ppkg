@@ -1496,7 +1496,11 @@ filetype_from_url() {
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
         if [ -z "$PACKAGE_GIT_URL" ] ; then
-            abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+            if [ -z "$PACKAGE_SRC_URL" ] ; then
+                abort 1 "none of web-url, git-url, src-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+            else
+                PACKAGE_WEB_URL="${PACKAGE_SRC_URL%/*}"
+            fi
         else
             PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
         fi
@@ -1974,7 +1978,9 @@ __search_packages() {
         --arg summary "$PACKAGE_SUMMARY" \
         --arg license "$PACKAGE_LICENSE" \
         --arg web_url "$PACKAGE_WEB_URL" \
+        --arg web_uri "$PACKAGE_WEB_URI" \
         --arg git_url "$PACKAGE_GIT_URL" \
+        --arg git_uri "$PACKAGE_GIT_URI" \
         --arg git_sha "$PACKAGE_GIT_SHA" \
         --arg git_ref "$PACKAGE_GIT_REF" \
         --arg git_nth "$PACKAGE_GIT_NTH" \
@@ -2363,7 +2369,9 @@ EOF
         --arg summary "$RECEIPT_PACKAGE_SUMMARY" \
         --arg license "$RECEIPT_PACKAGE_LICENSE" \
         --arg web_url "$RECEIPT_PACKAGE_WEB_URL" \
+        --arg web_uri "$RECEIPT_PACKAGE_WEB_URI" \
         --arg git_url "$RECEIPT_PACKAGE_GIT_URL" \
+        --arg git_uri "$RECEIPT_PACKAGE_GIT_URI" \
         --arg git_sha "$RECEIPT_PACKAGE_GIT_SHA" \
         --arg git_ref "$RECEIPT_PACKAGE_GIT_REF" \
         --arg git_nth "$RECEIPT_PACKAGE_GIT_NTH" \
@@ -9521,8 +9529,10 @@ install_mans() {
     unset RECEIPT_PACKAGE_LICENSE
 
     unset RECEIPT_PACKAGE_WEB_URL
+    unset RECEIPT_PACKAGE_WEB_URI
 
     unset RECEIPT_PACKAGE_GIT_URL
+    unset RECEIPT_PACKAGE_GIT_URI
     unset RECEIPT_PACKAGE_GIT_SHA
     unset RECEIPT_PACKAGE_GIT_REF
     unset RECEIPT_PACKAGE_GIT_NTH
@@ -9590,8 +9600,10 @@ install_mans() {
     RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_WEB_URL="$(yq '.web-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_WEB_URI="$(yq '.web-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_URI="$(yq '.git-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -11490,7 +11502,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.3
+PPKG_VERSION=0.29.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
