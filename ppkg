@@ -10584,6 +10584,20 @@ __setup_syspm_netbsd() {
         done
     fi
 
+    unset CC
+    unset INSTALL
+    unset CFLAGS
+    unset LDLFAGS
+    unset CPPFLAGS
+
+    # tree is not available in the repository
+    step "install tree utility"
+    wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
+    run install -d tree.src
+    run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
+    run gmake   -C tree.src clean
+    run gmake   -C tree.src install PREFIX="$PWD"
+
     cat > init.sh <<EOF
 export PATH="/usr/pkg/gnu/bin:/usr/pkg/bin:\$PATH"
 export ACLOCAL_PATH=/usr/pkg/share/aclocal
