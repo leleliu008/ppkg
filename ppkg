@@ -6994,14 +6994,6 @@ $DOT_CONTENT
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
                     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl python3"
                     ;;
-                cmake)
-                    if [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
-                        run $sudo pkgin -y update
-                        run $sudo pkgin -y install cmake
-                    else
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
-                    fi
-                    ;;
                 autoconf-archive)
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf_archive"
                     ;;
