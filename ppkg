@@ -7126,6 +7126,16 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    # https://github.com/Perl/perl5/issues/23483
+
+    PERL="$(command -v perl || true)"
+
+    if [ -n "$PERL" ] ; then
+        export PERL
+    fi
+
+    #########################################################################################
+
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
 
@@ -7197,7 +7207,6 @@ $DOT_CONTENT
     unset AUTOCONF
     unset AUTOMAKE
     unset ACLOCAL
-    unset PERL
     unset M4
 
     unset MESON
