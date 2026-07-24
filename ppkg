@@ -10570,16 +10570,18 @@ __setup_syspm_netbsd() {
 
     run ln -s /usr/pkg/bin/python3.12 bin/python3
 
-    # NetBSD-10.0 grep report:
+    # NetBSD-10.0 reports:
     # grep: Undefined PLT symbol "mbrtoc32" (symnum = 30)
     # gsed: Undefined PLT symbol "mbrtoc32" (symnum = 24)
     # expr: Undefined PLT symbol "mbrtoc32" (symnum = 22)
     #  awk: Undefined PLT symbol "mbrtoc32" (symnum = 222)
+    #  mbrtoc32 was introduced in NetBSD-10.1
+    #  http://mail-index.netbsd.org/source-changes/2024/10/14/msg153930.html
     if [ "$(uname -r)" = '10.0' ] ; then
-        for x in 'grep-3.12' 'gsed-4.9' 'gawk-5.3.1' 'coreutils-expr-9.4'
+        for x in 'grep-3.12' 'gsed-4.9' 'gawk-5.3.1' 'coreutils-9.4'
         do
             f="$x-netbsd-10.0-amd64.release.tar.xz"
-            wfetch "https://github.com/leleliu008/test/releases/download/2023.10.08/$f" --no-buffer
+            wfetch "https://github.com/leleliu008/uppm-package-repository-netbsd-10.0-amd64/releases/download/2025.07.25/$f" --no-buffer
             run bsdtar xf "$f" --strip-components=1
         done
     fi
