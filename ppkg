@@ -10588,6 +10588,10 @@ __setup_syspm_netbsd() {
             wfetch "https://github.com/leleliu008/uppm-package-repository-netbsd-10.0-amd64/releases/download/2025.07.25/$f" --no-buffer
             run bsdtar xf "$f" --strip-components=1
         done
+
+        run ln -s  grep bin/ggrep
+        run ln -s egrep bin/gegrep
+        run ln -s fgrep bin/gfgrep
     fi
 
     unset CC
