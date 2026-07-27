@@ -10542,6 +10542,12 @@ EOF
 __setup_syspm_netbsd() {
     SYSPM=pkgin
 
+    NATIVE_PLATFORM_VERS="$(uname -r)"
+
+    case "$NATIVE_PLATFORM_VERS" in
+      9.*)  sudo sh -c 'sed -i.bak "$s|9\.[0-9]|9.0_2026Q1|" /usr/pkg/etc/pkgin/repositories.conf'
+    esac
+
     run $sudo pkgin -y update
     run $sudo pkgin -y install bash coreutils findutils gmake gawk gsed grep git curl bsdtar jq gcc13 binutils ca-certificates || {
         cat /var/db/pkgin/pkg_install-err.log
@@ -10572,7 +10578,7 @@ __setup_syspm_netbsd() {
     #  awk: Undefined PLT symbol "mbrtoc32" (symnum = 222)
     #  mbrtoc32 was introduced in NetBSD-10.1
     #  http://mail-index.netbsd.org/source-changes/2024/10/14/msg153930.html
-    if [ "$(uname -r)" = '10.0' ] ; then
+    if [ "$NATIVE_PLATFORM_VERS" = '10.0' ] ; then
         for x in 'grep-3.12' 'gsed-4.9' 'gawk-5.3.1' 'coreutils-9.4'
         do
             f="$x-netbsd-10.0-amd64.release.tar.xz"
@@ -11519,7 +11525,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.5
+PPKG_VERSION=0.29.6
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
