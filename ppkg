@@ -6443,7 +6443,6 @@ native_package_info_help2man() {
     PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
     PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
-    #PACKAGE_DOTWEAK='gsed -i "1c #!$(command -v perl) -w" bin/help2man'
 }
 
 native_package_info_libexpat() {
