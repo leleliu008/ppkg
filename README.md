@@ -31,7 +31,7 @@ For more details please refer to <https://github.com/leleliu008/ppkg-package-man
 
 ## Using ppkg via [Docker](https://www.docker.com/)
 
-`docker` container is an isolated clean environment where the running process can not be affected by your host system's environment variables.
+`docker` container is an isolated and clean environment where the running process can not be affected by your host system's environment variables. Therefore, running `ppkg` in container is much safer than running it in your host OS.
 
 |REPOSITORY|OS|ARCH|
 |-|-|-|
@@ -117,12 +117,12 @@ docker exec -it ppkg ppkg install curl --static
 
 ## Using ppkg via chroot+ubuntu
 
-`chroot`, an isolated clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables.
+`chroot`, an isolated and clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables. Therefore, running `ppkg` in chroot is much safer than running it in your host OS.
 
 ```bash
-curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz
+curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-amd64.tar.gz
 install -d ubuntu-rootfs
-tar xf ubuntu-base-24.04.3-base-amd64.tar.gz -C ubuntu-rootfs
+tar xf ubuntu-base-24.04.4-base-amd64.tar.gz -C ubuntu-rootfs
 
 cp -p /etc/resolv.conf ubuntu-rootfs/etc/
 
@@ -130,10 +130,12 @@ curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
 mv ppkg ubuntu-rootfs/bin/
 
-sudo mount -o bind  /dev ubuntu-rootfs/dev
 sudo mount -t proc  none ubuntu-rootfs/proc
 sudo mount -t sysfs none ubuntu-rootfs/sys
 sudo mount -t tmpfs none ubuntu-rootfs/tmp
+
+sudo mount --rbind    /dev ubuntu-rootfs/dev
+sudo mount --make-rprivate ubuntu-rootfs/dev
 
 sudo chroot ubuntu-rootfs ppkg setup -y
 sudo chroot ubuntu-rootfs ppkg update
@@ -142,12 +144,12 @@ sudo chroot ubuntu-rootfs ppkg install curl
 
 ## Using ppkg via chroot+alpine
 
-`chroot`, an isolated clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables.
+`chroot`, an isolated and clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables. Therefore, running `ppkg` in chroot is much safer than running it in your host OS.
 
 ```bash
-curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.0-x86_64.tar.gz
+curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/x86_64/alpine-minirootfs-3.23.5-x86_64.tar.gz
 install -d alpine-rootfs
-tar xf alpine-minirootfs-3.22.0-x86_64.tar.gz -C alpine-rootfs
+tar xf alpine-minirootfs-3.23.5-x86_64.tar.gz -C alpine-rootfs
 
 cp -p /etc/resolv.conf alpine-rootfs/etc/
 
@@ -155,9 +157,12 @@ curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
 chmod a+x ppkg
 mv ppkg alpine-rootfs/bin/
 
-sudo mount -o bind  /dev alpine-rootfs/dev
 sudo mount -t proc  none alpine-rootfs/proc
 sudo mount -t sysfs none alpine-rootfs/sys
+sudo mount -t tmpfs none alpine-rootfs/tmp
+
+sudo mount --rbind    /dev alpine-rootfs/dev
+sudo mount --make-rprivate alpine-rootfs/dev
 
 sudo chroot alpine-rootfs ppkg setup -y
 sudo chroot alpine-rootfs ppkg update
