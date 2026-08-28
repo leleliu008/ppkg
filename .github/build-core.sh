@@ -107,7 +107,7 @@ fi
 run bsdtar vxf uppm-*.tar.xz -C bundle.d --strip-components=1
 run bsdtar vxf elftool-*.tar.xz -C bundle.d --strip-components=1
 
-mv bundle.d/bin/uppm bundle.d/bin/tool *.otf core/fonts.conf bundle.d/
+mv bundle.d/bin/uppm bundle.d/bin/elftool *.otf core/fonts.conf bundle.d/
 
 rm -rf bundle.d/bin/ bundle.d/share/ bundle.d/.ppkg/
 
