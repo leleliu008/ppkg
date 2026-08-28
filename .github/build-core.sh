@@ -40,6 +40,8 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     dragonflybsd)
         run pkg install -y curl libnghttp2 gcc
@@ -48,12 +50,16 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     *)  run ./ppkg about
         run ./ppkg setup --syspm
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
+        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
 esac
 
 ######################################################
@@ -76,7 +82,7 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
         run strip "$o"
     done
 else
-    for f in core/*.c core/wrappers/*.c core/elftools/*.c
+    for f in core/*.c core/wrappers/*.c
     do
         x="${f##*/}"
         o="bundle.d/${x%.c}"
@@ -98,9 +104,10 @@ fi
 
 ######################################################
 
-run bsdtar vxf uppm*.tar.xz -C bundle.d --strip-components=1
+run bsdtar vxf uppm-*.tar.xz -C bundle.d --strip-components=1
+run bsdtar vxf elftool-*.tar.xz -C bundle.d --strip-components=1
 
-mv bundle.d/bin/uppm *.otf core/fonts.conf bundle.d/
+mv bundle.d/bin/uppm bundle.d/bin/tool *.otf core/fonts.conf bundle.d/
 
 rm -rf bundle.d/bin/ bundle.d/share/ bundle.d/.ppkg/
 
