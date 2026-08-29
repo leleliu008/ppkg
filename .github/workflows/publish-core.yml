@@ -109,8 +109,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['4.0']
-        profile: [debug, release]
+        target-version: ['4.0']
 
     steps:
       - uses: actions/checkout@v5
@@ -124,8 +123,8 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: ppkg-core---midnightbsd-${{ matrix.version }}-amd64-${{ matrix.profile }}.tar.xz
-          path: ppkg-core-*-midnightbsd-${{ matrix.version }}-amd64.${{ matrix.profile }}.tar.xz
+          name: ppkg-core-${{ needs.base.outputs.release-version }}-midnightbsd-${{ matrix.target-version }}-amd64.tar.xz
+          path: ppkg-core-${{ needs.base.outputs.release-version }}-midnightbsd-${{ matrix.target-version }}-amd64.tar.xz
 
 
   freebsd:
