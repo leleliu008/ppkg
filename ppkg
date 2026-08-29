@@ -3254,7 +3254,7 @@ EOF
                         continue
                         ;;
                     7F454C460200)
-                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
 
                         # fully statically linked executable
                         if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
@@ -3286,7 +3286,7 @@ EOF
                         fi
                         ;;
                     7F454C460300)
-                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
 
                         # shared library
                         if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
@@ -3352,14 +3352,14 @@ EOF
                     7F454C460[23]00)
                         # dynamically linked library or executable
 
-                        DYNAMIC_LOADER_FILEPATH="$("$PPKG_CORE_DIR/print-interpreter" "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
 
                         if [ -n "$DYNAMIC_LOADER_FILEPATH" ] ; then
                             OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
                             break
                         fi
 
-                        NEEDED="$("$PPKG_CORE_DIR/print-needed" "$FILEPATH")"
+                        NEEDED="$("$ELFTOOL" print-needed "$FILEPATH")"
 
                         if [ -n "$NEEDED" ] ; then
                             OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
@@ -8864,19 +8864,21 @@ EOF
 }
 
 __check_elf_files() {
-    CHECKER="$PPKG_CORE_DIR/check-if-has-dynamic-section"
-
     find -type f -printf '%P\n' > files.txt
 
     while read -r FILEPATH
     do
-        "$CHECKER" "$FILEPATH" || continue
+        NEEDED="$ELFTOOL" print-needed "$FILEPATH"
 
-        [ -w "$FILEPATH" ] || run chmod +w "$FILEPATH"
+        if [ -n "$NEEDED" ] ; then
+            if [ ! -w "$FILEPATH" ] ; then
+                run chmod +w "$FILEPATH"
+            fi
 
-        run "$PATCHELF" --remove-rpath "$FILEPATH"
+            run "$PATCHELF" --remove-rpath "$FILEPATH"
 
-        __check_DT_NEEDED "$FILEPATH"
+            __check_DT_NEEDED "$FILEPATH"
+        fi
     done < files.txt
 
     rm files.txt
@@ -8893,7 +8895,7 @@ __check_elf_files() {
         touch "$Y"
     fi
 
-    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$PPKG_CORE_DIR/print-needed" "$1")"
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$ELFTOOL" print-needed "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
@@ -10655,13 +10657,7 @@ __setup_syspm() {
     run install -d ppkg
     run bsdtar xf ppkg.tar.gz -C ppkg --strip-components=1
 
-    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-        SRCS=
-    else
-        SRCS="$(ls ppkg/core/elftools/*.c)"
-    fi
-
-    for f in ppkg/core/*.c ppkg/core/wrappers/*.c $SRCS
+    for f in ppkg/core/*.c ppkg/core/wrappers/*.c
     do
         o="${f##*/}"
         o="${o%.c}"
@@ -10688,6 +10684,20 @@ __setup_syspm() {
     run cc -Os -flto -o bin/sysinfo sysinfo/src/main/sysinfo.c sysinfo/src/lib/sysinfo.c -Isysinfo/src/lib
     run strip bin/sysinfo
     run bin/sysinfo
+
+    #################################################################################
+
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+        :
+    else
+        step "install elftool"
+        wfetch 'https://github.com/leleliu008/elftool/archive/refs/heads/master.tar.gz' -o elftool.tar.gz --no-buffer
+        run install -d elftool
+        run bsdtar xf elftool.tar.gz -C elftool --strip-components=1
+        run cc -Os -flto -o bin/elftool elftool/src/*.c elftool/src/_elf/*.c
+        run strip bin/elftool
+        run bin/elftool
+    fi
 
     #################################################################################
 
@@ -11524,7 +11534,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.29.6
+PPKG_VERSION=0.29.7
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
@@ -11564,6 +11574,10 @@ fi
 if [ -z  "$FONTCONFIG_FILE" ] ; then
     export FONTCONFIG_FILE="$PPKG_CORE_DIR/fonts.conf"
 fi
+
+###################################################
+
+ELFTOOL="$PPKG_CORE_DIR/elftool"
 
 ###################################################
 
