@@ -113,6 +113,8 @@ jobs:
         profile: [debug, release]
 
     steps:
+      - uses: actions/checkout@v5
+
       - uses: cross-platform-actions/action@master
         with:
           operating_system: midnightbsd
