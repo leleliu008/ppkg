@@ -10543,9 +10543,9 @@ __setup_syspm_netbsd() {
 
     NATIVE_PLATFORM_VERS="$(uname -r)"
 
-    case "$NATIVE_PLATFORM_VERS" in
-      9.*)  sudo sh -c 'sed -i.bak "\$s|9\.[0-9]|9.0_2026Q1|" /usr/pkg/etc/pkgin/repositories.conf'
-    esac
+    #case "$NATIVE_PLATFORM_VERS" in
+    #  9.*)  sudo sh -c 'sed -i.bak "\$s|9\.[0-9]|9.0_2026Q1|" /usr/pkg/etc/pkgin/repositories.conf'
+    #esac
 
     run $sudo pkgin -y update
     run $sudo pkgin -y install bash coreutils findutils gmake gawk gsed grep git curl bsdtar jq gcc13 binutils ca-certificates || {
