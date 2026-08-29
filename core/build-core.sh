@@ -2,7 +2,7 @@
 
 set -ex
 
-for f in wrappers/*.c elftools/*.c
+for f in wrappers/*.c
 do
     o="${f%.c}"
     cc -std=gnu99 -Os -s -flto -o "$o" "$f"
