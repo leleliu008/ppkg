@@ -38,26 +38,33 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg about
         run ./ppkg setup
         run ./ppkg update
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     dragonflybsd)
         run pkg install -y curl libnghttp2 gcc
+
         run ./ppkg about
         run ./ppkg setup
         run ./ppkg update
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     *)  run ./ppkg about
         run ./ppkg setup --syspm
         run ./ppkg update
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
+
         run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
 esac
@@ -73,6 +80,8 @@ if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
     CC="$(xcrun --sdk macosx --find clang)"
     SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
     CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments"
+
+    run curl -L -o core/elf.h https://raw.githubusercontent.com/leleliu008/patches/refs/heads/master/elf.h
 
     for f in core/*.c core/wrappers/*.c
     do
