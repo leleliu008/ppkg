@@ -50,7 +50,7 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
-        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
+        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     *)  run ./ppkg about
@@ -58,7 +58,7 @@ case $TARGET_PLATFORM_NAME in
         run ./ppkg update
         run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
-        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
+        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
         run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
 esac
 
