@@ -8868,9 +8868,7 @@ __check_elf_files() {
 
     while read -r FILEPATH
     do
-        NEEDED="$ELFTOOL" print-needed "$FILEPATH"
-
-        if [ -n "$NEEDED" ] ; then
+        if "$PPKG_CORE_DIR/check-if-has-dynamic-section" "$FILEPATH" ; then
             if [ ! -w "$FILEPATH" ] ; then
                 run chmod +w "$FILEPATH"
             fi
@@ -10687,17 +10685,18 @@ __setup_syspm() {
 
     #################################################################################
 
+    step "install elftool"
+    wfetch 'https://github.com/leleliu008/elftool/archive/refs/heads/master.tar.gz' -o elftool.tar.gz --no-buffer
+    run install -d elftool
+    run bsdtar xf elftool.tar.gz -C elftool --strip-components=1
+
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-        :
-    else
-        step "install elftool"
-        wfetch 'https://github.com/leleliu008/elftool/archive/refs/heads/master.tar.gz' -o elftool.tar.gz --no-buffer
-        run install -d elftool
-        run bsdtar xf elftool.tar.gz -C elftool --strip-components=1
-        run cc -Os -flto -o bin/elftool elftool/src/*.c elftool/src/_elf/*.c
-        run strip bin/elftool
-        run bin/elftool
+        wfetch 'https://raw.githubusercontent.com/leleliu008/patches/refs/heads/master/elf.h' -o elftool/src/elf.h --no-buffer
     fi
+
+    run cc -Os -flto -o bin/elftool -Ielftool/src elftool/src/*.c
+    run strip bin/elftool
+    run bin/elftool
 
     #################################################################################
 
@@ -10858,7 +10857,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    PPKG_CORE_RELEASE_VERSION='2025.07.18'
+    PPKG_CORE_RELEASE_VERSION='2026.09.02'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
     PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     PPKG_CORE_RELEASE_TARBALL_URL="https://github.com/leleliu008/ppkg/releases/download/$PPKG_CORE_RELEASE_TAG/$PPKG_CORE_RELEASE_TARBALL_FILENAME"
