@@ -3254,7 +3254,7 @@ EOF
                         continue
                         ;;
                     7F454C460200)
-                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
                         # fully statically linked executable
                         if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
@@ -3286,7 +3286,7 @@ EOF
                         fi
                         ;;
                     7F454C460300)
-                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
                         # shared library
                         if [ -z "$DYNAMIC_LOADER_FILEPATH" ] ; then
@@ -3352,7 +3352,7 @@ EOF
                     7F454C460[23]00)
                         # dynamically linked library or executable
 
-                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interpreter "$FILEPATH")"
+                        DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
                         if [ -n "$DYNAMIC_LOADER_FILEPATH" ] ; then
                             OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
