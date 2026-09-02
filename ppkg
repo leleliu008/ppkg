@@ -10697,6 +10697,8 @@ __setup_syspm() {
     run cc -Os -flto -o bin/elftool -Ielftool/src elftool/src/*.c
     run strip bin/elftool
     run bin/elftool
+    run rm -rf elftool
+    run ln -s bin/elftool elftool
 
     #################################################################################
 
