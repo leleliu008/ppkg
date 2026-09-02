@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     if (st.st_size < 52) {
         fprintf(stderr, "NOT an ELF file: %s\n", fp);
         close(fd);
-        return 0;
+        return 6;
     }
 
     ///////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     if ((a[0] != 0x7F) || (a[1] != 0x45) || (a[2] != 0x4C) || (a[3] != 0x46)) {
         fprintf(stderr, "NOT an ELF file: %s\n", fp);
         close(fd);
-        return 0;
+        return 6;
     }
 
     ///////////////////////////////////////////////////////////
