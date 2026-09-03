@@ -13,23 +13,23 @@ int main(int argc, char* argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char* argv2[argc + 2];
+    char* args[argc + 2];
 
-    argv2[0] = sed;
-    argv2[1] = (char*)"-i";
+    args[0] = sed;
+    args[1] = (char*)"-i";
 
     for (int i = 1; i < argc; i++) {
-        argv2[i + 1] = argv[i];
+        args[i + 1] = argv[i];
     }
 
-    argv2[argc + 1] = NULL;
+    args[argc + 1] = NULL;
 
-    for (int i = 0; argv2[i] != NULL; i++) {
-        fprintf(stderr, "%s ", argv2[i]);
+    for (int i = 0; args[i] != NULL; i++) {
+        fprintf(stderr, "%s ", args[i]);
     }
     fprintf(stderr, "\n");
 
-    execv (sed, argv2);
+    execv (sed, args);
     perror(sed);
     return 255;
 }

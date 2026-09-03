@@ -70,22 +70,22 @@ int main(int argc, char* argv[]) {
 
     ////////////////////////////////////////////////////
 
-    char* argv2[argc + 6];
+    char* args[argc + 6];
 
-    argv2[0] = dynamicLoaderPath;
-    argv2[1] = (char*)"--library-path";
-    argv2[2] = libraryPath;
-    argv2[3] = (char*)"--argv0";
-    argv2[4] = selfExePath;
-    argv2[5] = realExePath;
+    args[0] = dynamicLoaderPath;
+    args[1] = (char*)"--library-path";
+    args[2] = libraryPath;
+    args[3] = (char*)"--argv0";
+    args[4] = selfExePath;
+    args[5] = realExePath;
 
     for (int i = 1; i < argc; i++) {
-        argv2[i + 5] = argv[i];
+        args[i + 5] = argv[i];
     }
 
-    argv2[argc + 5] = NULL;
+    args[argc + 5] = NULL;
 
-    execv (dynamicLoaderPath, argv2);
+    execv (dynamicLoaderPath, args);
     perror(dynamicLoaderPath);
     return 255;
 }
