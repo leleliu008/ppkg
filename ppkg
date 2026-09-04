@@ -10859,7 +10859,7 @@ __setup_uppm() {
 
     ##################################################################################
 
-    PPKG_CORE_RELEASE_VERSION='2026.09.02'
+    PPKG_CORE_RELEASE_VERSION='2026.09.04'
     PPKG_CORE_RELEASE_TAG="ppkg-core-$PPKG_CORE_RELEASE_VERSION"
     PPKG_CORE_RELEASE_TARBALL_FILENAME="$PPKG_CORE_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     PPKG_CORE_RELEASE_TARBALL_URL="https://github.com/leleliu008/ppkg/releases/download/$PPKG_CORE_RELEASE_TAG/$PPKG_CORE_RELEASE_TARBALL_FILENAME"
@@ -11535,7 +11535,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.0
+PPKG_VERSION=0.30.1
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
