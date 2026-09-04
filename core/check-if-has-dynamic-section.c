@@ -17,7 +17,7 @@ static int handle_elf32(const unsigned char * elf) {
     for (Elf32_Half i = 0; i < ehdr->e_phnum; i++) {
         Elf32_Phdr * phdr = (Elf32_Phdr*)(elf + ehdr->e_phoff + i * ehdr->e_phentsize);
 
-        if (phdr->p_type == PT_INTERP) {
+        if (phdr->p_type == PT_DYNAMIC) {
             return 0;
         }
     }
@@ -35,7 +35,7 @@ static int handle_elf32_swap(const unsigned char * elf) {
     for (uint16_t i = 0; i < phnum; i++) {
         Elf32_Phdr * phdr = (Elf32_Phdr*)(elf + phoff + i * phentsize);
 
-        if (__builtin_bswap32(phdr->p_type) == PT_INTERP) {
+        if (__builtin_bswap32(phdr->p_type) == PT_DYNAMIC) {
             return 0;
         }
     }
@@ -49,7 +49,7 @@ static int handle_elf64(const unsigned char * elf) {
     for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
         Elf64_Phdr * phdr = (Elf64_Phdr*)(elf + ehdr->e_phoff + i * ehdr->e_phentsize);
 
-        if (phdr->p_type == PT_INTERP) {
+        if (phdr->p_type == PT_DYNAMIC) {
             return 0;
         }
     }
@@ -67,7 +67,7 @@ static int handle_elf64_swap(const unsigned char * elf) {
     for (uint16_t i = 0; i < phnum; i++) {
         Elf64_Phdr * phdr = (Elf64_Phdr*)(elf + phoff + i * phentsize);
 
-        if (__builtin_bswap32(phdr->p_type) == PT_INTERP) {
+        if (__builtin_bswap32(phdr->p_type) == PT_DYNAMIC) {
             return 0;
         }
     }
