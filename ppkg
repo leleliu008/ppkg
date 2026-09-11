@@ -8884,14 +8884,19 @@ __check_elf_files() {
 
 # __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
-    X="$(printf '%s\n' "$1" | tr / _)"
-    Y="$PACKAGE_WORKING_DIR/map/$X"
+    case $1 in
+        /*) ;;
+        *)
+            X="$(printf '%s\n' "$1" | tr / _)"
+            Y="$PACKAGE_WORKING_DIR/map/$X"
 
-    if [ -f "$Y" ] ; then
-        return 0
-    else
-        touch "$Y"
-    fi
+            if [ -f "$Y" ] ; then
+                echo "__check_DT_NEEDED $1 has handled, skiped"
+                return 0
+            else
+                touch "$Y"
+            fi
+    esac
 
     NEEDED_SHARED_LIBRARY_FILENAMEs="$("$ELFTOOL" print-needed "$1")"
 
@@ -8906,107 +8911,125 @@ __check_elf_files() {
                     NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
 
                     [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-                        unset NEEDED_SHARED_LIBRARY_FILEPATH
                         NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L lib -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
+
+                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+
+                        __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
+
+                        continue
                     }
                 fi
         esac
 
         #####################################################
 
-        NEEDED_UNKNOWN=
+        NEEDED_KNOWN=
 
-        case "${NEEDED_SHARED_LIBRARY_FILENAME%.so*}" in
-            libc)
-                ;;
-            libm)
-                ;;
-            librt)
-                ;;
-            libdl)
-                ;;
-            libomp)
-                ;;
-            libc++)
-                ;;
-            libstdc++)
-                ;;
-            libasan)
-                ;;
-            libmvec)
-                ;;
-            libutil)
-                ;;
-            libresolv)
-                ;;
-            libpthread)
-                ;;
-            libgomp)
-                ;;
-            libgfortran)
-                ;;
-            libgcc_s)
-                ;;
-            libclang_rt.*)
-                ;;
-            libc.musl-*)
-                ;;
-            ld-linux-*)
-                ;;
-            libtinfo)
-                ;;
-            *)  NEEDED_UNKNOWN=1
-        esac
+        LIBW="${NEEDED_SHARED_LIBRARY_FILENAME#lib}"
+        LIBX="${LIBW%.so*}"
 
-        if [ -z "$NEEDED_UNKNOWN" ] ; then
+        for LIBY in c m rt dl c++ stdc++ pthread asan mvec util resolv tinfo gcc_s gfortran gomp omp
+        do
+            if [ "$LIBX" = "$LIBY" ] ; then
+                NEEDED_KNOWN=1
+                break
+            fi
+        done
+
+        if [ "$NEEDED_KNOWN" != 1 ] ; then
+            case $TARGET_PLATFORM_NAME in
+                linux)
+                    case "$LIBX" in
+                        c.musl-*)
+                            NEEDED_KNOWN=1
+                            ;;
+                        ld-linux-*)
+                            NEEDED_KNOWN=1
+                            ;;
+                    esac
+                    ;;
+                haiku)
+                    case $LIBX in
+                        root)
+                            NEEDED_KNOWN=1
+                            ;;
+                    esac
+                    ;;
+            esac
+        fi
+
+        if [ "$NEEDED_KNOWN" != 1 ] ; then
+            case $LIBX in
+                clang_rt.*)
+                    NEEDED_KNOWN=1
+                    ;;
+            esac
+        fi
+
+        if [ "$NEEDED_KNOWN" = 1 ] ; then
             F=".ppkg/dependencies/sys/$NEEDED_SHARED_LIBRARY_FILENAME"
 
             if [ ! -f "$F" ] ; then
                 touch "$F"
             fi
 
+            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+
             continue
+        else
+            if [ -f ".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
+                case $1 in
+                    /*) ;;
+                    *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
+$1|1"
+                esac
+
+                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
+
+                continue
+            fi
         fi
 
         #####################################################
 
         if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-            if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-                for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
-                do
-                    NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
+            for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+            do
+                NEEDED_SHARED_LIBRARY_ROOT_DIR="$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
 
-                    [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
+                [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
 
-                    NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
+                NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
 
-                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
-                        unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L "$NEEDED_SHARED_LIBRARY_ROOT_DIR" -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
-                    }
+                [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                    unset NEEDED_SHARED_LIBRARY_FILEPATH
+                    NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L "$NEEDED_SHARED_LIBRARY_ROOT_DIR" -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                }
 
-                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                        case $1 in
-                            /*) ;;
-                            *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
+                [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                    case $1 in
+                        /*) ;;
+                        *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
-                        esac
+                    esac
 
-                        F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+                    echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
 
-                        if [ ! -f "$F" ] ; then
-                            run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" "$F"
-                        fi
+                    F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
 
-                        break
-                    }
-                done
-            fi
+                    if [ ! -f "$F" ] ; then
+                        run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" "$F"
+                    fi
+
+                    break
+                }
+            done
         fi
 
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
@@ -11535,7 +11558,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.1
+PPKG_VERSION=0.30.2
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
