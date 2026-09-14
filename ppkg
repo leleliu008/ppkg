@@ -8891,7 +8891,7 @@ __check_elf_files() {
             Y="$PACKAGE_WORKING_DIR/map/$X"
 
             if [ -f "$Y" ] ; then
-                echo "__check_DT_NEEDED $1 has handled, skiped"
+                echo "__check_DT_NEEDED $1 has handled, skipped."
                 return 0
             else
                 touch "$Y"
