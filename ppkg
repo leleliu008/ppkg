@@ -2910,6 +2910,7 @@ __generate_wrapper_c_source_file() {
     cat > "$FILEPATH.c" <<EOF
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <limits.h>
@@ -2917,56 +2918,60 @@ __generate_wrapper_c_source_file() {
 int main(int argc, char* argv[]) {
     char selfExePath[PATH_MAX];
 
-    int n = readlink("/proc/self/exe", selfExePath, PATH_MAX);
+    int ret = readlink("/proc/self/exe", selfExePath, PATH_MAX);
 
-    if (n == -1) {
+    if (ret == -1) {
         perror("/proc/self/exe");
         return 1;
     }
 
-    selfExePath[n] = '\\0';
+    selfExePath[ret] = '\\0';
 
     ////////////////////////////////////////////////////
 
-    const char * s = ".exe";
+    char realExePath[PATH_MAX];
 
-    int j;
+    ret = snprintf(realExePath, PATH_MAX, "%s.exe", selfExePath);
 
-    for (j = 0; s[j] != '\0'; j++);
-
-    char realExePath[n + j + 1];
-
-    int slashIndex = -1;
-
-    int i;
-
-    for (i = 0; i < n; i++) {
-        realExePath[i] = selfExePath[i];
-
-        if (selfExePath[i] == '/') {
-            slashIndex = i;
-        }
-    }
-
-    char * p = realExePath + n;
-
-    for (i = 0; i <= j; i++) {
-        p[i] = s[i];
+    if (ret < 0) {
+        perror(NULL);
+        return 2;
     }
 EOF
 
     ####################################
 
-    [ -n "$RECEIPT_PACKAGE_BINDENV" ] && {
-        I=0
+    unset FLAG
 
+    [ -n "$RECEIPT_PACKAGE_BINDENV" ] && {
         for LINE in $RECEIPT_PACKAGE_BINDENV
         do
             VALUE="${LINE#*=}"
 
             case $VALUE in
                 %s/*)
-                    I="$(($I + 1))"
+                    if [ -z "$FLAG" ] ; then
+                        cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    char * s = strrchr(selfExePath, '/');
+
+    if (s == NULL) {
+        fprintf(stderr, "no / char in %s\n", selfExePath);
+        return 3;
+    }
+
+    s[0] = '\\0';
+
+    ////////////////////////////////////////////////////
+
+    char * p;
+EOF
+                    fi
+
+                    FLAG=1
+
                     KEY="${LINE%%=*}"
                     VALUE="$(printf "$VALUE\n" 'bundle.d')"
                     VALUE_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" "$VALUE")"
@@ -2978,25 +2983,18 @@ EOF
     p = getenv("$KEY");
 
     if (p == NULL || p[0] == '\0') {
-        s = "$VALUE_RELATIVE_TO_SELF_EXE_PATH";
+        char pathBuf[PATH_MAX];
 
-        for (j = 0; s[j] != '\0'; j++);
+        ret = snprintf(pathBuf, PATH_MAX, "%s/$VALUE_RELATIVE_TO_SELF_EXE_PATH", selfExePath);
 
-        char pathBuf[slashIndex + j + 1];
-
-        for (i = 0; i <= slashIndex; i++) {
-            pathBuf[i] = selfExePath[i];
-        }
-
-        p = pathBuf + slashIndex + 1;
-
-        for (i = 0U; i <= j; i++) {
-            p[i] = s[i];
+        if (ret < 0) {
+            perror(NULL);
+            return 4;
         }
 
         if (setenv("$KEY", pathBuf, 1) != 0) {
             perror("$KEY");
-            return 10;
+            return 5;
         }
     }
 EOF
@@ -3007,7 +3005,7 @@ EOF
 
     if (putenv("$LINE") != 0) {
         perror(NULL);
-        return 10;
+        return 6;
     }
 EOF
             esac
@@ -3030,56 +3028,49 @@ EOF
 }
 EOF
     else
+        if [ -z "$FLAG" ] ; then
         cat >> "$FILEPATH.c" <<EOF
 
     ////////////////////////////////////////////////////
 
-    const char * const dynamicLoaderName = "$DYNAMIC_LOADER_FILENAME";
-    const char * const libraryPathRelativeToSelfExePath = "$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH";
+    char * s = strrchr(selfExePath, '/');
+
+    if (s == NULL) {
+        fprintf(stderr, "no / char in %s\n", selfExePath);
+        return 3;
+    }
+
+    s[0] = '\\0';
+EOF
+        fi
+
+        cat >> "$FILEPATH.c" <<EOF
 
     ////////////////////////////////////////////////////
 
-    for (j = 0; libraryPathRelativeToSelfExePath[j] != '\0'; j++);
+    char libraryPath[PATH_MAX];
 
-    char libraryPath[slashIndex + j + 1];
+    ret = snprintf(libraryPath, PATH_MAX, "%s/$LIBRARY_PATH_RELATIVE_TO_SELF_EXE_PATH", selfExePath);
 
-    for (i = 0; i <= slashIndex; i++) {
-        libraryPath[i] = selfExePath[i];
-    }
-
-    p = libraryPath + slashIndex + 1;
-
-    for (i = 0; i <= j; i++) {
-        p[i] = libraryPathRelativeToSelfExePath[i];
+    if (ret < 0) {
+        perror(NULL);
+        return 5;
     }
 
     ////////////////////////////////////////////////////
 
-    int k;
+    char dynamicLoaderPath[PATH_MAX];
 
-    for (k = 0; dynamicLoaderName[k] != '\0'; k++);
+    ret = snprintf(dynamicLoaderPath, PATH_MAX, "%s/$DYNAMIC_LOADER_FILENAME", libraryPath);
 
-    char dynamicLoaderPath[slashIndex + j + k + 2];
-
-    for (i = 0; i <= slashIndex; i++) {
-        dynamicLoaderPath[i] = selfExePath[i];
+    if (ret < 0) {
+        perror(NULL);
+        return 6;
     }
 
-    p = dynamicLoaderPath + slashIndex + 1;
+    ////////////////////////////////////////////////////
 
-    for (i = 0; i < j; i++) {
-        p[i] = libraryPathRelativeToSelfExePath[i];
-    }
-
-    p += j;
-
-    p[0] = '/';
-
-    p++;
-
-    for (i = 0; i <= k; i++) {
-        p[i] = dynamicLoaderName[i];
-    }
+    s[0] = '/';
 
     ////////////////////////////////////////////////////
 
@@ -3092,13 +3083,14 @@ EOF
     args[4] = selfExePath;
     args[5] = realExePath;
 
-    n = 6;
+    int i = 1;
+    int j = 6;
 
-    for (i = 1; i < argc; i++) {
-        args[n++] = argv[i];
+    for (; i < argc; j++, i++) {
+        args[j] = argv[i];
     }
 
-    args[n] = NULL;
+    args[j] = NULL;
 
     execv (dynamicLoaderPath, args);
     perror(dynamicLoaderPath);
@@ -11558,7 +11550,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.2
+PPKG_VERSION=0.30.3
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
