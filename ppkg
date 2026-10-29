@@ -5300,8 +5300,8 @@ __setup_sysroot_openbsd() {
 
 __setup_sysroot_netbsd() {
     case $TARGET_PLATFORM_VERS in
-        [1-8].*)  NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
-        9.[0-2])  NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
+        [1-9].*)  NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
+        10.[0-1]) NETBSD_DOWNLOAD_SERVER='https://archive.netbsd.org/pub/NetBSD-archive' ;;
         *)        NETBSD_DOWNLOAD_SERVER='https://ftp.netbsd.org/pub/NetBSD' ;;
     esac
 
