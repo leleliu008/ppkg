@@ -135,7 +135,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['15.1', '15.0', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
+        target-version: ['15.1', '15.0', '14.5', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
         # https://github.com/cross-platform-actions/action?tab=readme-ov-file#freebsd-freebsd
 
     steps:
@@ -162,7 +162,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        openbsd-version: ['7.9', '7.8', '7.7', '7.6', '7.5', '7.4', '7.3', '7.2']
+        openbsd-version: ['8.0', '7.9', '7.8', '7.7', '7.6', '7.5', '7.4', '7.3', '7.2']
         # https://cdn.openbsd.org/pub/OpenBSD/
 
     steps:
@@ -189,7 +189,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['11.0', '10.1', '10.0', '9.4', '9.3', '9.2']
+        target-version: ['11.0', '10.2', '10.1', '10.0', '9.5', '9.4', '9.3', '9.2']
         # https://ftp.netbsd.org/pub/NetBSD/
 
     steps:
