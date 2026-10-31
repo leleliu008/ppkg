@@ -10779,40 +10779,22 @@ __setup_uppm() {
             NATIVE_PLATFORM_VERS="$(sw_vers -productVersion)"
             NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
-            case $NATIVE_PLATFORM_VERS_MAJOR in
-                10) NATIVE_PLATFORM_VERS='10.15' ;;
-                11) NATIVE_PLATFORM_VERS='11.0'  ;;
-                12) NATIVE_PLATFORM_VERS='12.0'  ;;
-                13) NATIVE_PLATFORM_VERS='13.0'  ;;
-                14) NATIVE_PLATFORM_VERS='14.0'  ;;
-                *)  NATIVE_PLATFORM_VERS='15.0'  ;;
-            esac
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" = 10 ] ; then
+                NATIVE_PLATFORM_VERS='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                NATIVE_PLATFORM_VERS='15.0'
+            else
+                NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
+            fi
             ;;
         freebsd)
-            case $(freebsd-version) in
-                13.2) NATIVE_PLATFORM_VERS='13.2' ;;
-                13.3) NATIVE_PLATFORM_VERS='13.3' ;;
-                13.4) NATIVE_PLATFORM_VERS='13.4' ;;
-                14.0) NATIVE_PLATFORM_VERS='14.0' ;;
-                *)    NATIVE_PLATFORM_VERS='14.1' ;;
-            esac
+            NATIVE_PLATFORM_VERS="$(freebsd-version)"
             ;;
         openbsd)
-            case $(uname -r) in
-                7.2) NATIVE_PLATFORM_VERS='7.2' ;;
-                7.3) NATIVE_PLATFORM_VERS='7.3' ;;
-                7.4) NATIVE_PLATFORM_VERS='7.4' ;;
-                7.5) NATIVE_PLATFORM_VERS='7.5' ;;
-                *)   NATIVE_PLATFORM_VERS='7.6' ;;
-            esac
+            NATIVE_PLATFORM_VERS="$(uname -r)"
             ;;
         netbsd)
-            case $(uname -r) in
-                9.2) NATIVE_PLATFORM_VERS='9.2' ;;
-                9.3) NATIVE_PLATFORM_VERS='9.3' ;;
-                9.4) NATIVE_PLATFORM_VERS='9.4' ;;
-                *)   NATIVE_PLATFORM_VERS='10.0' ;;
-            esac
+            NATIVE_PLATFORM_VERS="$(uname -r)"
             ;;
         dragonflybsd|midnightbsd)
             NATIVE_PLATFORM_VERS="$(uname -r)"
@@ -11550,7 +11532,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.3
+PPKG_VERSION=0.30.4
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
