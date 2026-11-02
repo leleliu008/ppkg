@@ -7488,6 +7488,16 @@ $PACKAGE_DOFETCH
 
     #########################################################################################
 
+    if [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] ; then
+        rm -vf rust-toolchain.toml
+
+        if [ -n "$PACKAGE_BSCRIPT" ] ; then
+            rm -vf "$PACKAGE_INSTALLING_SRC_DIR/rust-toolchain.toml"
+        fi
+    fi
+
+    #########################################################################################
+
     if [ -n "$PACKAGE_DO12345" ] ; then
         step "build for native"
 
