@@ -33,75 +33,85 @@ fi
 
 ######################################################
 
+unset SYSPM
+unset STATIC
+
 case $TARGET_PLATFORM_NAME in
     macos)
-        run ./ppkg about
-        run ./ppkg setup
-        run ./ppkg update
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
         ;;
     dragonflybsd)
         run pkg install -y curl libnghttp2 gcc
-
-        run ./ppkg about
-        run ./ppkg setup
-        run ./ppkg update
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
+        STATIC=--static
         ;;
-    *)  run ./ppkg about
-        run ./ppkg setup --syspm
-        run ./ppkg update
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 --static
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
-
-        run ./ppkg install $TARGET_PLATFORM_SPEC/elftool --static
-        run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
+    *)  STATIC=--static
+        SYSPM=--syspm
 esac
 
-######################################################
+run ./ppkg about
+run ./ppkg setup $SYSPM
+run ./ppkg update
 
-install -d bundle.d/
+run ./ppkg install $TARGET_PLATFORM_SPEC/uppm@0.15.4 $STATIC
+run ./ppkg bundle  $TARGET_PLATFORM_SPEC/uppm@0.15.4 .tar.xz
 
-if [ "$TARGET_PLATFORM_NAME" = macos ] ; then
-    TARGET_PLATFORM_XXXX="${2%-*}"
-    TARGET_PLATFORM_VERS="${TARGET_PLATFORM_XXXX##*-}"
+run ./ppkg install $TARGET_PLATFORM_SPEC/elftool $STATIC
+run ./ppkg bundle  $TARGET_PLATFORM_SPEC/elftool .tar.xz
 
-    CC="$(xcrun --sdk macosx --find clang)"
-    SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
-    CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=$TARGET_PLATFORM_VERS -arch $TARGET_PLATFORM_ARCH -Qunused-arguments"
-
-    run curl -L -o core/elf.h https://raw.githubusercontent.com/leleliu008/patches/refs/heads/master/elf.h
-
-    for f in core/*.c core/wrappers/*.c
-    do
-        x="${f##*/}"
-        o="bundle.d/${x%.c}"
-        run $CC $CFLAGS -std=c99 -Os -flto -o "$o" "$f"
-        run strip "$o"
-    done
-else
-    for f in core/*.c core/wrappers/*.c
-    do
-        x="${f##*/}"
-        o="bundle.d/${x%.c}"
-        run cc -std=gnu99 -Os -s -flto -static -o "$o" "$f"
-    done
-fi
+run ./ppkg install $TARGET_PLATFORM_SPEC/ppkg-core $STATIC
+run ./ppkg bundle  $TARGET_PLATFORM_SPEC/ppkg-core .tar.xz
 
 ######################################################
 
 run curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+
+######################################################
+
+cat > fonts.conf <<EOF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+	<description>custom configuration file</description>
+
+	<dir>PPKG_CORE_DIR</dir>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>mono</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>monospace</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>sans serif</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>sans-serif</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>sans</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>sans-serif</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>system ui</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>system-ui</string>
+		</edit>
+	</match>
+
+</fontconfig>
+EOF
 
 ######################################################
 
@@ -113,10 +123,14 @@ fi
 
 ######################################################
 
-run bsdtar vxf uppm-*.tar.xz -C bundle.d --strip-components=1
-run bsdtar vxf elftool-*.tar.xz -C bundle.d --strip-components=1
+install -d bundle.d/
 
-mv bundle.d/bin/uppm bundle.d/bin/elftool *.otf core/fonts.conf bundle.d/
+for f in *.tar.xz
+do
+    run bsdtar vxf "$f" -C bundle.d --strip-components=1
+done
+
+mv bundle.d/bin/* *.otf fonts.conf bundle.d/
 
 rm -rf bundle.d/bin/ bundle.d/share/ bundle.d/.ppkg/
 
