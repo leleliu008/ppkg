@@ -1,0 +1,88 @@
+name: cross build
+
+on:
+  push:
+    branches: [ master, dev, tmp ]
+  pull_request:
+    branches: [ master, dev, tmp ]
+
+
+jobs:
+
+  freebsd:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['15.1', '15.0', '14.5', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
+        pkg: ['uctags']
+
+    steps:
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install freebsd-${{ matrix.version }}-amd64/${{ matrix.pkg }} --static
+      - run: ./ppkg bundle  freebsd-${{ matrix.version }}-amd64/${{ matrix.pkg }} .tar.xz
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.pkg }}---freebsd-${{ matrix.version }}-amd64-release.tar.xz
+          path: ${{ matrix.pkg }}-*-freebsd-${{ matrix.version }}-amd64.release.tar.xz
+
+
+
+  openbsd:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['8.0', '7.9', '7.8', '7.7', '7.6', '7.5', '7.4', '7.3', '7.2']
+        pkg: ['uctags']
+
+    steps:
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+
+      - run: ./ppkg setup
+      - run: ./ppkg update
+
+      - run: ./ppkg install openbsd-${{ matrix.version }}-amd64/${{ matrix.pkg }}
+      - run: ./ppkg bundle  openbsd-${{ matrix.version }}-amd64/${{ matrix.pkg }} .tar.xz
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.pkg }}---openbsd-${{ matrix.version }}-amd64-release.tar.xz
+          path: ${{ matrix.pkg }}-*-openbsd-${{ matrix.version }}-amd64.release.tar.xz
+
+
+
+  netbsd:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['10.2', '10.1', '10.0', '9.4', '9.3', '9.2']
+        pkg: ['uctags']
+
+    steps:
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+
+      - run: ./ppkg setup
+      - run: ./ppkg update
+
+      - run: ./ppkg install netbsd-${{ matrix.version }}-amd64/${{ matrix.pkg }} --static
+      - run: ./ppkg bundle  netbsd-${{ matrix.version }}-amd64/${{ matrix.pkg }} .tar.xz
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.pkg }}---netbsd-${{ matrix.version }}-amd64-release.tar.xz
+          path: ${{ matrix.pkg }}-*-netbsd-${{ matrix.version }}-amd64.release.tar.xz
