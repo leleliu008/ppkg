@@ -7786,6 +7786,8 @@ $PACKAGE_DO12345
                 fi
 
                 WRAPPER_TARGET_BASEFLAGS="--target=$CLANG_TARGET $WRAPPER_TARGET_BASEFLAGS"
+
+                LDFLAGS="$LDFLAGS -fuse-ld=lld"
             fi
 
             if [ -n "$SYSROOT" ] ; then
@@ -7799,11 +7801,6 @@ $PACKAGE_DO12345
                         break
                     fi
                 done
-            fi
-
-            if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
-                # https://github.com/llvm/llvm-project/issues/74917
-                LDFLAGS="$LDFLAGS -fuse-ld=lld"
             fi
         fi
     fi
@@ -11542,7 +11539,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.4
+PPKG_VERSION=0.30.5
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
