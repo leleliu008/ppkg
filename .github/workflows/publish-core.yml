@@ -129,6 +129,27 @@ jobs:
           path: ppkg-core-${{ needs.base.outputs.release-version }}-midnightbsd-${{ matrix.target-version }}-amd64.tar.xz
 
 
+  cross:
+    needs: base
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target-version: ['15.0', '13.5', '13.4', '13.3', '13.2']
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: .github/build-core.sh ${{ needs.base.outputs.release-version }} freebsd-${{ matrix.target-version }}-amd64
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
+          path: ppkg-core-${{ needs.base.outputs.release-version }}-freebsd-${{ matrix.target-version }}-amd64.tar.xz
+
+
   freebsd:
     needs: base
 
@@ -137,7 +158,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['15.1', '15.0', '14.5', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
+        target-version: ['15.1', '14.5', '14.4', '14.3', '14.2', '14.1', '14.0']
+        # target-version: ['15.1', '15.0', '14.5', '14.4', '14.3', '14.2', '14.1', '14.0', '13.5', '13.4', '13.3', '13.2']
         # https://github.com/cross-platform-actions/action?tab=readme-ov-file#freebsd-freebsd
 
     steps:
@@ -214,7 +236,7 @@ jobs:
 
   publish:
 
-    needs: [base, linux, macos, dragonflybsd, midnightbsd, freebsd, openbsd, netbsd]
+    needs: [base, linux, macos, cross, dragonflybsd, midnightbsd, freebsd, openbsd, netbsd]
 
     runs-on: ubuntu-latest
 
