@@ -2,6 +2,14 @@
 
 set -ex
 
+_apt() {
+    if [ "$(id -u)" -eq 0 ] ; then
+             apt "$@"
+    else
+        sudo apt "$@"
+    fi
+}
+
 package_name_transform_from_uppm_to_apt() {
     case $1 in
         gm4)      printf '%s\n' 'm4'        ;;
@@ -26,14 +34,14 @@ main() {
             apt --version
             ;;
         update)
-            apt update
+            _apt update
             ;;
         install)
             shift 1
             for UPPM_PACKAGE_NAME in "$@"
             do
                 APK_PACKAGE_NAME="$(package_name_transform_from_uppm_to_apt "$UPPM_PACKAGE_NAME")"
-                apt install -y $APK_PACKAGE_NAME
+                _apt install -y $APK_PACKAGE_NAME
             done
             ;;
         is-installed)
@@ -49,7 +57,7 @@ main() {
                     ;;
             esac
             ;;
-        *)  apt "$@"
+        *)  _apt "$@"
     esac
 }
 
