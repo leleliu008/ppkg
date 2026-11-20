@@ -4797,6 +4797,12 @@ EOF
 
     CMAKE_CONFIG_OPTIONS="-Wno-dev -DBUILD_TESTING=OFF -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR' -DCMAKE_TOOLCHAIN_FILE='$CMAKE_TOOLCHAIN_FILE' -DCMAKE_VERBOSE_MAKEFILE='$CMAKE_VERBOSE_MAKEFILE' -DCMAKE_COLOR_MAKEFILE='$CMAKE_COLOR_MAKEFILE'"
 
+    CMAKE_VERSION_MAJOR="$("$CMAKE" -P "$PPKG_CORE_DIR/cmake-version-major.cmake" | sed 's|^-- ||')"
+
+    if [ "$CMAKE_VERSION_MAJOR" = 4 ] ; then
+        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+    fi
+
     if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_SKIP_INSTALL_RPATH=TRUE"
     fi
@@ -11132,6 +11138,12 @@ __setup() {
 
     #################################################
 
+    cat > cmake-version-major.cmake <<EOF
+message(STATUS "\${CMAKE_MAJOR_VERSION}")
+EOF
+
+    #################################################
+
     case $NATIVE_PLATFORM_TYPE in
         freebsd)
             printf 'INPUT(-lc++)\n' > lib/libstdc++.a
@@ -11581,7 +11593,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.6
+PPKG_VERSION=0.30.7
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
