@@ -10491,7 +10491,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree go-yq jq git curl libnghttp2 gcc
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
 
     run ln -s /usr/local/go122/bin/go   bin/go
 
@@ -10804,6 +10804,9 @@ __setup_syspm() {
         freebsd|openbsd|netbsd)
             X="$NATIVE_PLATFORM_ARCH"
             ;;
+        dragonfly)
+            X="$NATIVE_PLATFORM_ARCH"
+            NATIVE_PLATFORM_TYPE=freebsd
     esac
 
     if [ -n "$X" ] ; then
@@ -11597,7 +11600,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.7
+PPKG_VERSION=0.30.8
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
