@@ -10498,7 +10498,7 @@ __setup_syspm_dragonflybsd() {
     run $sudo pkg update || true
     run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
 
-    run ln -s /usr/local/go122/bin/go   bin/go
+    run ln -s /usr/local/go126/bin/go   bin/go
 
     run ln -s /usr/local/bin/gln        bin/ln
     run ln -s /usr/local/bin/gm4        bin/m4
@@ -10809,7 +10809,7 @@ __setup_syspm() {
         freebsd|openbsd|netbsd)
             X="$NATIVE_PLATFORM_ARCH"
             ;;
-        dragonfly)
+        dragonflybsd)
             X="$NATIVE_PLATFORM_ARCH"
             NATIVE_PLATFORM_TYPE=freebsd
     esac
