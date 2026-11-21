@@ -10851,6 +10851,7 @@ __setup_uppm() {
             ;;
         freebsd)
             NATIVE_PLATFORM_VERS="$(freebsd-version)"
+            NATIVE_PLATFORM_VERS="${NATIVE_PLATFORM_VERS%%-*}"
             ;;
         openbsd)
             NATIVE_PLATFORM_VERS="$(uname -r)"
