@@ -7639,9 +7639,13 @@ $PACKAGE_DO12345
                 ;;
             *)  TARGET_TOOLCHAIN=llvm
 
-                export PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
-                export PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
-                export PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
+                PROXIED_TARGET_CC="$(command -v clang)"    || abort 1 "command not found: clang"
+                PROXIED_TARGET_CXX="$(command -v clang++)" || abort 1 "command not found: clang++"
+                PROXIED_TARGET_OBJC="$PROXIED_TARGET_CC"
+
+                export PROXIED_TARGET_CC
+                export PROXIED_TARGET_CXX
+                export PROXIED_TARGET_OBJC
 
                 step "prepare C/C++ sysroot for target build"
 
