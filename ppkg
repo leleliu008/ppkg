@@ -6401,6 +6401,7 @@ native_package_info_texinfo() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
     PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
     PACKAGE_DEP_AUX='perl'
+    PACKAGE_DOPATCH='CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -Doff64_t=off_t"'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
