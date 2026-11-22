@@ -24,7 +24,7 @@ package_name_transform_from_uppm_to_pkg_add() {
                 7.[0-2])
                     printf '%s\n' 'python%3.10'
                     ;;
-                7.*)
+                [78].*)
                     printf '%s\n' 'python%3.11'
                     ;;
             esac
@@ -33,7 +33,6 @@ package_name_transform_from_uppm_to_pkg_add() {
                   printf '%s\n' 'pkgconf'   ;;
         autoconf) printf '%s\n' 'autoconf%2.69' ;;
         automake) printf '%s\n' 'automake%1.16' ;;
-        *)        printf '%s\n' "$1"
     esac
 }
 
@@ -45,25 +44,39 @@ main() {
             ;;
         install)
             shift 1
-            for UPPM_PACKAGE_NAME in "$@"
+
+            for X in "$@"
             do
-                PKG_ADD_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg_add "$UPPM_PACKAGE_NAME")"
-                _pkg_add "$PKG_ADD_PACKAGE_NAME"
+                Y="$(package_name_transform_from_uppm_to_pkg_add "$X")"
+
+                if [ -z "$Y" ] ; then
+                    Y="$X"
+                fi
+
+                _pkg_add "$Y"
             done
             ;;
         is-installed)
             shift 1
-            PKG_ADD_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg_add "$1")"
+
+            Y="$(package_name_transform_from_uppm_to_pkg_add "$1")"
+
+            if [ -z "$Y" ] ; then
+                Y="$X"
+            fi
+
             for item in $(pkg_info | cut -d ' ' -f1)
             do
                 case $item in
-                    "$PKG_ADD_PACKAGE_NAME-"*) return 0
+                    $Y-*) return 0
                 esac
             done
+
             return 1
             ;;
         info)
             shift 1
+
             case $2 in
                 installed-dir)
                     printf '%s\n' '/usr/local'
