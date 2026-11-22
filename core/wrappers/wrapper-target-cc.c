@@ -198,8 +198,6 @@ int main(int argc, char * argv[]) {
                 args[i] = (char*)"-static";
             } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 args[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                args[i] = (char*)"-static";
             } else if (argv[i][0] == '/') {
                 int nulIndex = 0;
                 int slashIndex = 0;
