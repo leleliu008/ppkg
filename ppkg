@@ -10496,7 +10496,7 @@ __setup_syspm_dragonflybsd() {
     SYSPM=pkg
 
     run $sudo pkg update || true
-    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc
+    run $sudo pkg install -y bash coreutils findutils gawk gsed gnugrep tree jq git curl libnghttp2 gcc go126
 
     run ln -s /usr/local/go126/bin/go   bin/go
 
@@ -10809,9 +10809,6 @@ __setup_syspm() {
         freebsd|openbsd|netbsd)
             X="$NATIVE_PLATFORM_ARCH"
             ;;
-        dragonflybsd)
-            X="$NATIVE_PLATFORM_ARCH"
-            NATIVE_PLATFORM_TYPE=freebsd
     esac
 
     if [ -n "$X" ] ; then
@@ -10820,14 +10817,19 @@ __setup_syspm() {
         run chmod +x bin/yq
     else
         command -v yq > /dev/null || {
-        unset GOOS
-        unset GOARCH
+            if [ "$NATIVE_PLATFORM_TYPE" = dragonflybsd ] ; then
+                export GOOS=dragonfly
+                export GOARCH=amd64
+            else
+                unset GOOS
+                unset GOARCH
+            fi
 
-        step "install yq utility"
-        wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.3.tar.gz' -o yq.src.tar.gz --no-buffer
-        run install -d yq.src
-        run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
-        run go build -C yq.src -o ../bin/ -trimpath -ldflags "'-s -w'"
+            step "install yq utility"
+            wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.3.tar.gz' -o yq.src.tar.gz --no-buffer
+            run install -d yq.src
+            run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
+            run go build -C yq.src -o ../bin/ -trimpath -ldflags "'-s -w'"
         }
     fi
 
