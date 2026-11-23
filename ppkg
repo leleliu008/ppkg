@@ -14,10 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#######################################
 
 # last line mode :set foldmethod=marker
 # command mode zM  fold close all
 # command mode zR  fold open all
+
+#######################################
 
 # {{{ coding convention
 
@@ -26,7 +29,7 @@
 # 3. 1 represents the boolean value true
 
 # }}}
-##############################################################################
+#######################################
 # {{{ utils
 
 COLOR_RED='\033[0;31m'          # Red
@@ -36,45 +39,50 @@ COLOR_BLUE='\033[0;94m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
-print() {
-    printf '%b' "$*"
-}
-
 echo() {
     printf '%b\n' "$*"
 }
 
 note() {
-    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "🔔  ${COLOR_YELLOW}$*${COLOR_OFF}" >&2
 }
 
 warn() {
-    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+    printf '%b\n' "🔥  ${COLOR_YELLOW}$*${COLOR_OFF}" >&2
 }
 
 success() {
-    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
+    printf '%b\n' "✅  ${COLOR_GREEN}$*${COLOR_OFF}" >&2
 }
 
 error() {
-    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "💔  ${COLOR_RED}$*${COLOR_OFF}" >&2
 }
 
 abort() {
     EXIT_STATUS_CODE="$1"
     shift
-    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "💔  ${COLOR_RED}$*${COLOR_OFF}" >&2
     exit "$EXIT_STATUS_CODE"
+}
+
+turn() {
+    if [ "$1" = on ] ; then
+        shift
+        printf '%b\n' "✅  ${COLOR_GREEN}$*${COLOR_OFF}" >&2
+    else
+        shift
+        printf '%b\n' "❌️  ${COLOR_RED}$*${COLOR_OFF}" >&2
+    fi
 }
 
 step() {
     STEP_NUM=$((${STEP_NUM:-0} + 1))
-    STEP_MESSAGE="$*"
-    printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+    printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : $*${COLOR_OFF}" >&2
 }
 
 run() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}" >&2
     eval "$@"
 }
 
@@ -2630,7 +2638,7 @@ __show_packages_depended_by_the_given_package() {
             HANDLED_PACKAGE_NAME_LIST="$HANDLED_PACKAGE_NAME_LIST $PACKAGE_NAME"
         fi
 
-        #echo "HANDLED_PACKAGE_NAME_LIST=$HANDLED_PACKAGE_NAME_LIST"
+        #note "HANDLED_PACKAGE_NAME_LIST=$HANDLED_PACKAGE_NAME_LIST"
 
         ################################################################
 
@@ -3333,7 +3341,7 @@ EOF
             do
                 FILEMAGIC="$("$PPKG_CORE_DIR/file-magic" "$FILEPATH")"
 
-                echo "$FILEMAGIC $FILEPATH"
+                printf '%s %s\n' "$FILEMAGIC" "$FILEPATH"
 
                 case $FILEMAGIC in
                     7F454C460100)
@@ -3815,8 +3823,7 @@ EOF
     #######################################################
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
-        echo
-        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
+        note "The session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
         run rm -rf "$SESSION_DIR"
     fi
@@ -3940,7 +3947,7 @@ EOF
     #######################################################
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
-        echo
+        printf '\n'
         note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
         run rm -rf "$SESSION_DIR"
@@ -4349,7 +4356,7 @@ configure() {
 
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         if run "$PACKAGE_BSCRIPT_DIR"/configure $CONFIGURE_ARGS "$@" ; then
-            echo
+            printf '\n'
         else
             if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
                 run cat "$PACKAGE_BCACHED_DIR/config.log"
@@ -4478,7 +4485,7 @@ configure() {
         fi
 
         if run $CONFIGURE $CONFIGURE_ARGS "$@" $CONFIGURE_ENVS ; then
-            echo
+            printf '\n'
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
             if [ "$GITHUB_ACTIONS" = true ] ; then
@@ -4669,7 +4676,7 @@ cmakew_for_native() {
 }
 
 cmakew_for_target() {
-    echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+    printf 'CMAKE_TOOLCHAIN_FILE=%s\n' "$CMAKE_TOOLCHAIN_FILE"
 
     cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
 message(STATUS "CMake command: \${CMAKE_COMMAND}")
@@ -6090,7 +6097,7 @@ __inspect_install_arguments() {
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
-    #echo "SPECIFIED_PACKAGE_SPEC_LIST=$SPECIFIED_PACKAGE_SPEC_LIST"
+    #note "SPECIFIED_PACKAGE_SPEC_LIST=$SPECIFIED_PACKAGE_SPEC_LIST"
 
     #########################################################################################
 
@@ -6597,7 +6604,7 @@ EOF
 
     PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
 
-    step "load formula"
+    step 'load formula'
 
     if [ "$DUMP_FORMULA" = 1 ] ; then
         if command -v bat > /dev/null ; then
@@ -6698,7 +6705,7 @@ EOF
 
     #########################################################################################
 
-    step "calculate working/install directory"
+    step 'calculate working/install directory'
 
     cat <<EOF
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
@@ -6709,7 +6716,7 @@ EOF
 
     #########################################################################################
 
-    step "create the working directory and change to it"
+    step 'create the working directory and change to it'
 
     run install -d "$PACKAGE_WORKING_DIR"
     run         cd "$PACKAGE_WORKING_DIR"
@@ -6941,7 +6948,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "install needed packages via uppm"
+    step 'install needed packages via uppm'
 
     run "$UPPM" about
     run "$UPPM" update
@@ -7082,7 +7089,7 @@ $DOT_CONTENT
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PYM" ] && {
-        step "install needed python packages via pip"
+        step 'install needed python packages via pip'
 
         PYTHON3="$(command -v python3 || command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3.10)" || abort 1 "command not found: python3"
 
@@ -7100,7 +7107,7 @@ $DOT_CONTENT
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PLM" ] && {
-        step "install needed perl modules via cpan"
+        step 'install needed perl modules via cpan'
 
         unset PACKAGE_DEP_PLM_T1
         unset PACKAGE_DEP_PLM_T2
@@ -7164,7 +7171,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "locate needed tools"
+    step 'locate needed tools'
 
     unset AUTORECONF
     unset AUTOCONF
@@ -7274,7 +7281,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "dofetch"
+    step dofetch
 
     if [ -n "$PACKAGE_DOFETCH" ] ; then
         eval "
@@ -7351,7 +7358,7 @@ $PACKAGE_DOFETCH
 
     #########################################################################################
 
-    step "unpack/copy resources to proper location"
+    step 'unpack/copy resources to proper location'
 
     if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
         case $PACKAGE_SRC_FILETYPE in
@@ -7464,14 +7471,14 @@ $PACKAGE_DOFETCH
     #########################################################################################
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        step "tree files of the installing top directory"
+        step 'tree files of the installing top directory'
         run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
 
-        step "list files of the installing src directory"
+        step 'list files of the installing src directory'
         run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
 
         if [ -n "$PACKAGE_BSCRIPT" ] ; then
-            step "list files of the installing build script directory"
+            step 'list files of the installing build script directory'
             run ls -l "$PACKAGE_BSCRIPT_DIR"
         fi
     fi
@@ -7489,7 +7496,7 @@ $PACKAGE_DOFETCH
     #########################################################################################
 
     if [ -n "$PACKAGE_DO12345" ] ; then
-        step "build for native"
+        step 'build for native'
 
         NATIVE_BUILD_NEEDED=1
 
@@ -7567,7 +7574,7 @@ $PACKAGE_DO12345
     #                               below is for target                                     #
     #########################################################################################
 
-    step "prepare C/C++ toolchain for target build"
+    step 'prepare C/C++ toolchain for target build'
 
     export CC="$WRAPPER_TARGET_CC"
     export CXX="$WRAPPER_TARGET_CXX"
@@ -7648,7 +7655,7 @@ $PACKAGE_DO12345
                 export PROXIED_TARGET_CXX
                 export PROXIED_TARGET_OBJC
 
-                step "prepare C/C++ sysroot for target build"
+                step 'prepare C/C++ sysroot for target build'
 
                 export SYSROOT="$PPKG_SYSROOT/$TARGET_PLATFORM_SPEC"
                 printf "%11s = %s\n" SYSROOT "$SYSROOT"
@@ -7711,7 +7718,7 @@ $PACKAGE_DO12345
 
     [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-            step "copy dependent libraries to linker first search dir"
+            step 'copy dependent libraries to linker first search dir'
 
             for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
             do
@@ -7727,7 +7734,7 @@ $PACKAGE_DO12345
     #########################################################################################
 
     [ "$ENABLE_CCACHE" = 1 ] && {
-        step "setup ccache"
+        step 'setup ccache'
 
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
@@ -7859,7 +7866,7 @@ $PACKAGE_DO12345
 
     cd "$PACKAGE_WORKING_DIR"
 
-    step "check if C compiler supports -Wno-error=unused-command-line-argument option"
+    step 'check if C compiler supports -Wno-error=unused-command-line-argument option'
 
     cat > test.c <<EOF
 int main() {
@@ -7869,14 +7876,14 @@ EOF
 
     if "$CC" -Wno-error=unused-command-line-argument test.c 2>/dev/null ; then
         CCFLAGS="$CCFLAGS -Wno-error=unused-command-line-argument"
-        success "YES"
+        turn on  YES
     else
-        error "NO"
+        turn off NO
     fi
 
     #########################################################################################
 
-    step "check if C++ compiler supports -Wno-error=unused-command-line-argument option"
+    step 'check if C++ compiler supports -Wno-error=unused-command-line-argument option'
 
     cat > test.cc <<EOF
 int main() {
@@ -7886,9 +7893,9 @@ EOF
 
     if "$CXX" -Wno-error=unused-command-line-argument test.cc 2>/dev/null ; then
         XXFLAGS="$XXFLAGS -Wno-error=unused-command-line-argument"
-        success "YES"
+        turn on  YES
     else
-        error "NO"
+        turn off NO
     fi
 
     #########################################################################################
@@ -8428,7 +8435,7 @@ EOF
 
     #########################################################################################
 
-    step "dopatch for target"
+    step 'dopatch for target'
 
     run cd "$PACKAGE_BSCRIPT_DIR"
 
@@ -8492,7 +8499,7 @@ $PACKAGE_DOPATCH
         [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_CONFIGURE" = 1 ]
     } && {
-        step "update config.{sub,guess}"
+        step 'update config.{sub,guess}'
         __update_gnu_config
     }
 
@@ -8503,7 +8510,7 @@ $PACKAGE_DOPATCH
     #########################################################################################
 
     [ -n "$PACKAGE_PREPARE" ] && {
-        step "prepare for target"
+        step 'prepare for target'
 
         eval "
     prepare() {
@@ -8514,7 +8521,7 @@ $PACKAGE_PREPARE
 
     #########################################################################################
 
-    step "install for target"
+    step 'install for target'
 
     if [ "$PACKAGE_BINBSTD" = 1 ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
@@ -8528,7 +8535,7 @@ $PACKAGE_PREPARE
 
     [ "$DUMP_ENV" = 1 ] && {
         run export -p
-        echo
+        printf '\n'
     }
 
     eval "
@@ -8586,7 +8593,7 @@ EOF
 
     [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
 
-    step "change to the installed directory"
+    step 'change to the installed directory'
     run cd "$PACKAGE_INSTALL_DIR"
 
     [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
@@ -8612,7 +8619,7 @@ EOF
     #########################################################################################
 
     [ -n "$PACKAGE_DOTWEAK" ] && {
-        step "dotweak"
+        step dotweak
 
         cd "$PACKAGE_INSTALL_DIR"
 
@@ -8644,7 +8651,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "docheck"
+    step docheck
 
     unset FILES_NEED_TO_BE_SET_RPATH
 
@@ -8652,7 +8659,7 @@ $PACKAGE_DOTWEAK
         __check_mach_o_files
 
         [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
-            step "set rpath for executables"
+            step 'set rpath for executables'
 
             KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
@@ -8676,7 +8683,7 @@ $PACKAGE_DOTWEAK
         find .ppkg/dependencies/lib -type f -exec "$PATCHELF" --set-rpath '$ORIGIN' {} \;
 
         [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
-            step "set rpath for ELF files"
+            step 'set rpath for ELF files'
 
             KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
@@ -8704,7 +8711,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "generate MANIFEST.txt"
+    step 'generate MANIFEST.txt'
     find -not -path . -a -not -path ./.ppkg -a -not -path './.ppkg/*' -printf '%y|%P\n' > .ppkg/MANIFEST.txt
 
     #########################################################################################
@@ -8726,11 +8733,11 @@ $PACKAGE_DOTWEAK
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "install dependency graph files"
+        step 'install dependency graph files'
 
         run mv "$PACKAGE_WORKING_DIR/dependencies.*" .
 
-        step "install dependency formulas"
+        step 'install dependency formulas'
 
         install -d dependencies/
 
@@ -8754,7 +8761,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "generate RECEIPT.yml"
+    step 'generate RECEIPT.yml'
 
     cp "$PACKAGE_FORMULA_FILEPATH" RECEIPT.yml
 
@@ -8832,19 +8839,19 @@ EOF
 
     #########################################################################################
 
-    step "generate index"
+    step 'generate index'
     run cd "$PPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC"
     run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$PACKAGE_NAME"
 
     #########################################################################################
 
-    step "show installed files in tree-like format"
+    step 'show installed files in tree-like format'
     run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
     [ "$ENABLE_CCACHE" = 1 ] && {
-        step "show ccache statistics summary"
+        step 'show ccache statistics summary'
         note "Before Build:"
         run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
         note "After  Build:"
@@ -8852,7 +8859,7 @@ EOF
     }
 
     [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] && {
-        step "delete the working directory"
+        step 'delete the working directory'
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
 
@@ -8893,7 +8900,7 @@ __check_elf_files() {
             Y="$PACKAGE_WORKING_DIR/map/$X"
 
             if [ -f "$Y" ] ; then
-                echo "__check_DT_NEEDED $1 has handled, skipped."
+                note "__check_DT_NEEDED $1 has handled, skipped."
                 return 0
             else
                 touch "$Y"
@@ -8920,7 +8927,7 @@ __check_elf_files() {
                         FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 
-                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+                        note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
 
                         __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
 
@@ -8981,7 +8988,7 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                 touch "$F"
             fi
 
-            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+            note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
 
             continue
         else
@@ -8992,7 +8999,7 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 $1|1"
                 esac
 
-                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
+                note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
 
                 continue
             fi
@@ -9021,7 +9028,7 @@ $1|1"
 $1|1"
                     esac
 
-                    echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+                    note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
 
                     F=".ppkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME"
 
@@ -9083,7 +9090,7 @@ __check_mach_o_files() {
                 # x86_64 bundle library
                 LIBRARY=1
                 ;;
-            *)  #echo "$FILE_HEADER_ACTUAL:$FILEPATH"
+            *)  #note "$FILE_HEADER_ACTUAL:$FILEPATH"
                 continue
         esac
 
@@ -9343,7 +9350,7 @@ __tweak_pc_files() {
 
     [ -z "$pcfiles" ] && return 0
 
-    step "tweak .pc files"
+    step 'tweak .pc files'
 
     for pcfile in $pcfiles
     do
@@ -9440,7 +9447,7 @@ install_mans() {
     for item in "$@"
     do
         unset NUMBER
-        NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
+        NUMBER=$(printf '%s\n' "$item" | cut -c ${#item}-${#item})
         case $NUMBER in
             [1-8]);;
             *)    abort 1 "$item: not a manpage."
@@ -9745,13 +9752,11 @@ install_mans() {
     [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length should be 10."
 
     if [ "${PACKAGE_SPEC#*/}" != "$RECEIPT_PACKAGE_PKGNAME" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
-        return 1
+        abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
     fi
 
     if [ "${PACKAGE_SPEC%/*}" != "$RECEIPT_PACKAGE_BUILTFOR" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_BUILTFOR does not identical with your request: ${PACKAGE_SPEC%/*}"
-        return 1
+        abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_BUILTFOR does not identical with your request: ${PACKAGE_SPEC%/*}"
     fi
 
     #########################################################################################
@@ -10517,7 +10522,7 @@ __setup_syspm_dragonflybsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    step "install git utility"
+    step 'install git utility'
     wfetch 'https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz' --no-buffer
     run bsdtar xf git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz --strip-components=1
 
@@ -10600,7 +10605,7 @@ __setup_syspm_openbsd() {
     unset LDLFAGS
     unset CPPFLAGS
 
-    step "install tree utility"
+    step 'install tree utility'
     wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
     run install -d tree.src
     run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
@@ -10677,7 +10682,7 @@ __setup_syspm_netbsd() {
     unset CPPFLAGS
 
     # tree is not available in the repository
-    step "install tree utility"
+    step 'install tree utility'
     wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
     run install -d tree.src
     run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
@@ -10705,7 +10710,7 @@ __setup_syspm_haiku() {
 }
 
 __setup_syspm() {
-    step "install needed packages via your system's package manager"
+    step 'install needed packages via your system package manager'
 
     if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
         unset ID
@@ -10730,7 +10735,7 @@ __setup_syspm() {
 
     #################################################################################
 
-    step "install ppkg core"
+    step 'install ppkg core'
     wfetch 'https://github.com/leleliu008/ppkg/archive/refs/heads/master.tar.gz' -o ppkg.tar.gz --no-buffer
     run install -d ppkg
     run bsdtar xf ppkg.tar.gz -C ppkg --strip-components=1
@@ -10755,7 +10760,7 @@ __setup_syspm() {
 
     #################################################################################
 
-    step "install sysinfo"
+    step 'install sysinfo'
     wfetch 'https://github.com/leleliu008/sysinfo/archive/refs/heads/master.tar.gz' -o sysinfo.tar.gz --no-buffer
     run install -d sysinfo
     run bsdtar xf sysinfo.tar.gz -C sysinfo --strip-components=1
@@ -10765,7 +10770,7 @@ __setup_syspm() {
 
     #################################################################################
 
-    step "install elftool"
+    step 'install elftool'
     wfetch 'https://github.com/leleliu008/elftool/archive/refs/heads/master.tar.gz' -o elftool.tar.gz --no-buffer
     run install -d elftool
     run bsdtar xf elftool.tar.gz -C elftool --strip-components=1
@@ -10784,7 +10789,7 @@ __setup_syspm() {
 
     # https://github.com/NetBSD/pkgsrc/issues/182
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] || [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
-        step "install patchelf"
+        step 'install patchelf'
         wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' -o patchelf.src.tar.gz --no-buffer
         run install -d patchelf.src
         run bsdtar xf patchelf.src.tar.gz -C patchelf.src --strip-components=1
@@ -10813,7 +10818,7 @@ __setup_syspm() {
     esac
 
     if [ -n "$X" ] ; then
-        step "install yq utility"
+        step 'install yq utility'
         wfetch "https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
         run chmod +x bin/yq
     else
@@ -10826,7 +10831,7 @@ __setup_syspm() {
                 unset GOARCH
             fi
 
-            step "install yq utility"
+            step 'install yq utility'
             wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.3.tar.gz' -o yq.src.tar.gz --no-buffer
             run install -d yq.src
             run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
@@ -11609,7 +11614,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.9
+PPKG_VERSION=0.30.10
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
