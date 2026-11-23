@@ -32,12 +32,12 @@
 #######################################
 # {{{ utils
 
-COLOR_RED='\033[0;31m'          # Red
-COLOR_GREEN='\033[0;32m'        # Green
-COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;94m'         # Blue
-COLOR_PURPLE='\033[0;35m'       # Purple
-COLOR_OFF='\033[0m'             # Reset
+COLOR_RED='\033[0;31m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_BLUE='\033[0;94m'
+COLOR_PURPLE='\033[0;35m'
+COLOR_OFF='\033[0m'
 
 echo() {
     printf '%b\n' "$*"
@@ -3391,23 +3391,31 @@ EOF
     #######################################################
 
     if [ "$OUTPUT_TYPE" = .AppImage ] ; then
-        run "$UPPM" about
-        run "$UPPM" update
+        NEEDED_AUX_TOOLS='curl zsync gnupg bsdtar sysinfo xmlutils coreutils findutils squashfs appstream desktop-file-utils'
 
-        for UPPM_PACKAGE_NAME in curl zsync gnupg bsdtar sysinfo xmlutils coreutils findutils squashfs appstream desktop-file-utils
-        do
-            run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
+        if [ -n "$SYSPM" ] ; then
+            run "$SYSPM" about
+            run "$SYSPM" update
+            run "$SYSPM" install $NEEDED_AUX_TOOLS
+        else
+            run "$UPPM" about
+            run "$UPPM" update
 
-            UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
+            for UPPM_PACKAGE_NAME in $NEEDED_AUX_TOOLS
+            do
+                run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
 
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
+                UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
-        done
+                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+                fi
+
+                if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                    PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+                fi
+            done
+        fi
 
         #############################################################
 
@@ -6196,20 +6204,29 @@ install_the_given_native_package() {
 
     ###########################################
 
-    for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
-    do
-        run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
+    if [ -n "$SYSPM" ] ; then
+        run "$SYSPM" about
+        run "$SYSPM" update
+        run "$SYSPM" install $PACKAGE_DEP_AUX
+    else
+        run "$UPPM" about
+        run "$UPPM" update
 
-        UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
+        do
+            run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
+            UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-    done
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+        done
+    fi
 
     ###########################################
 
@@ -6948,13 +6965,14 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step 'install needed packages via uppm'
-
-    run "$UPPM" about
-    run "$UPPM" update
+    NEEDED_EXTRA_AUX_TOOLS='pkg-config patchelf tree'
 
     if [ -n "$SYSPM" ] ; then
-        run "$UPPM" install $PACKAGE_DEP_UPP pkg-config patchelf tree
+        step 'install needed packages via syspm'
+
+        run "$SYSPM" about
+        run "$SYSPM" update
+        run "$SYSPM" install $PACKAGE_DEP_UPP $NEEDED_EXTRA_AUX_TOOLS
     else
         PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
         PACKAGE_DEP_UPP=
@@ -7002,7 +7020,12 @@ $DOT_CONTENT
 
         ####################################################################
 
-        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
+        step 'install needed packages via uppm'
+
+        run "$UPPM" about
+        run "$UPPM" update
+
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP $NEEDED_EXTRA_AUX_TOOLS
         do
             run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
@@ -7591,22 +7614,28 @@ $PACKAGE_DO12345
     if [ "$CROSS_COMPILING" = 1 ] ; then
         case $TARGET_PLATFORM_NAME in
             linux)
-                run "$UPPM" about
-                run "$UPPM" update
-                run "$UPPM" install binutils
+                if [ -n "$SYSPM" ] ; then
+                    run "$SYSPM" about
+                    run "$SYSPM" update
+                    run "$SYSPM" install binutils
+                else
+                    run "$UPPM" about
+                    run "$UPPM" update
+                    run "$UPPM" install binutils
+
+                    export      NM="$UPPM_HOME/installed/binutils/bin/nm"
+                    export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
+                    export   STRIP="$UPPM_HOME/installed/binutils/bin/strip"
+                    export STRINGS="$UPPM_HOME/installed/binutils/bin/strings"
+                    export OBJDUMP="$UPPM_HOME/installed/binutils/bin/objdump"
+                    export OBJCOPY="$UPPM_HOME/installed/binutils/bin/objcopy"
+                    export READELF="$UPPM_HOME/installed/binutils/bin/readelf"
+
+                    export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
+                fi
 
                 #export AS="$CC"
                 #export LD="$CC"
-
-                export      NM="$UPPM_HOME/installed/binutils/bin/nm"
-                export    SIZE="$UPPM_HOME/installed/binutils/bin/size"
-                export   STRIP="$UPPM_HOME/installed/binutils/bin/strip"
-                export STRINGS="$UPPM_HOME/installed/binutils/bin/strings"
-                export OBJDUMP="$UPPM_HOME/installed/binutils/bin/objdump"
-                export OBJCOPY="$UPPM_HOME/installed/binutils/bin/objcopy"
-                export READELF="$UPPM_HOME/installed/binutils/bin/readelf"
-
-                export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
 
                 unset SYSROOT
 
@@ -10522,7 +10551,7 @@ __setup_syspm_dragonflybsd() {
     run ln -s /usr/local/bin/grealpath  bin/realpath
     run ln -s /usr/local/bin/gsha256sum bin/sha256sum
 
-    step 'install git utility'
+    step 'install utility : git'
     wfetch 'https://github.com/leleliu008/uppm-package-repository-dragonflybsd-6.4-x86_64/releases/download/2023.12.04/git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz' --no-buffer
     run bsdtar xf git-2.42.1-dragonflybsd-6.4-x86_64.tar.xz --strip-components=1
 
@@ -10605,7 +10634,7 @@ __setup_syspm_openbsd() {
     unset LDLFAGS
     unset CPPFLAGS
 
-    step 'install tree utility'
+    step 'install utility : tree'
     wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
     run install -d tree.src
     run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
@@ -10682,7 +10711,7 @@ __setup_syspm_netbsd() {
     unset CPPFLAGS
 
     # tree is not available in the repository
-    step 'install tree utility'
+    step 'install utility : tree'
     wfetch 'https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.2.1.tar.gz' -o tree.src.tar.gz --no-buffer
     run install -d tree.src
     run bsdtar  xf tree.src.tar.gz -C tree.src --strip-components=1
@@ -10749,7 +10778,10 @@ __setup_syspm() {
         run strip "$o"
     done
 
-    run mv ppkg/core/uppm-shim-$SYSPM uppm
+    run mv ppkg/core/uppm-shim-$SYSPM "$SYSPM"
+
+    run ln -s "$SYSPM" syspm
+
     run mv ppkg/core/fonts.conf .
 
     run gsed -i "'s|PPKG_CORE_DIR|$PPKG_CORE_DIR|'" fonts.conf
@@ -10760,7 +10792,7 @@ __setup_syspm() {
 
     #################################################################################
 
-    step 'install sysinfo'
+    step 'install utility : sysinfo'
     wfetch 'https://github.com/leleliu008/sysinfo/archive/refs/heads/master.tar.gz' -o sysinfo.tar.gz --no-buffer
     run install -d sysinfo
     run bsdtar xf sysinfo.tar.gz -C sysinfo --strip-components=1
@@ -10770,7 +10802,7 @@ __setup_syspm() {
 
     #################################################################################
 
-    step 'install elftool'
+    step 'install utility : elftool'
     wfetch 'https://github.com/leleliu008/elftool/archive/refs/heads/master.tar.gz' -o elftool.tar.gz --no-buffer
     run install -d elftool
     run bsdtar xf elftool.tar.gz -C elftool --strip-components=1
@@ -10789,7 +10821,7 @@ __setup_syspm() {
 
     # https://github.com/NetBSD/pkgsrc/issues/182
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] || [ "$NATIVE_PLATFORM_TYPE" = netbsd ] ; then
-        step 'install patchelf'
+        step 'install utility : patchelf'
         wfetch 'https://github.com/NixOS/patchelf/archive/refs/tags/0.17.2.tar.gz' -o patchelf.src.tar.gz --no-buffer
         run install -d patchelf.src
         run bsdtar xf patchelf.src.tar.gz -C patchelf.src --strip-components=1
@@ -10818,7 +10850,7 @@ __setup_syspm() {
     esac
 
     if [ -n "$X" ] ; then
-        step 'install yq utility'
+        step 'install utility : yq'
         wfetch "https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_${NATIVE_PLATFORM_TYPE}_$X" -o bin/yq --no-buffer
         run chmod +x bin/yq
     else
@@ -10831,7 +10863,7 @@ __setup_syspm() {
                 unset GOARCH
             fi
 
-            step 'install yq utility'
+            step 'install utility : yq'
             wfetch 'https://github.com/mikefarah/yq/archive/refs/tags/v4.53.3.tar.gz' -o yq.src.tar.gz --no-buffer
             run install -d yq.src
             run bsdtar  xf yq.src.tar.gz -C yq.src --strip-components=1
@@ -11792,6 +11824,12 @@ if [ -f "$PPKG_CORE_DIR/init.sh" ] ; then
     .   "$PPKG_CORE_DIR/init.sh"
 else
     abort 1 "please run ${COLOR_GREEN}$PPKG_ARG0 setup${COLOR_OFF} command first, then try again."
+fi
+
+###################################################
+
+if [ -n "$SYSPM" ] ; then
+    SYSPM="$PPKG_CORE_DIR/syspm"
 fi
 
 ###################################################
