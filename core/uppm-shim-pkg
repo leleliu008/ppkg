@@ -21,7 +21,17 @@ package_name_transform_from_uppm_to_pkg() {
         ed)       printf '%s\n' 'gsed'      ;;
         pkg-config) printf '%s\n' 'pkgconf' ;;
         perl)     printf '%s\n' 'perl5.40'  ;;
-        *)        printf '%s\n' "$1"
+        cmake)
+            FREEBSD_VERSION="$(freebsd-version)"
+            FREEBSD_VERSION_MAJOR="${FREEBSD_VERSION%%.*}"
+
+            if [ "$FREEBSD_VERSION_MAJOR" -ge 15 ] ; then
+                printf '%s\n' cmake-core
+            else
+                printf '%s\n' cmake
+            fi
+            ;;
+        *)  printf '%s\n' "$1"
     esac
 }
 
