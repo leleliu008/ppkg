@@ -4374,6 +4374,10 @@ configure() {
             return 1
         fi
     else
+        if [ "$TARGET_PLATFORM_NAME" = freebsd ] ; then
+            export ac_cv_func_random_r=no
+        fi
+
         if [ "$CROSS_COMPILING" = 1 ] ; then
             if [ "$TARGET_PLATFORM_NAME" = linux ] ; then
                 case $TARGET_PLATFORM_VERS in
@@ -5357,7 +5361,7 @@ __setup_sysroot() {
 
     __setup_sysroot_$TARGET_PLATFORM_NAME
 
-    touch "$TARGET_PLATFORM_SPEC/ok"
+    touch "$PPKG_SYSROOT_TMPDIR/ok"
 
     run mv "$PPKG_SYSROOT_TMPDIR" "$TARGET_PLATFORM_SPEC"
 }
