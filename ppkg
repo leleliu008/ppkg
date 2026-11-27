@@ -4513,7 +4513,17 @@ configure() {
 
     if [ "$CONFIGURE_ONLY" != 1 ] ; then
         gmakew clean
-        gmakew
+        gmakew || {
+            # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+            if [ "$GITHUB_ACTIONS" = true ] ; then
+                if [ -f "$PACKAGE_BCACHED_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_BCACHED_DIR/config.log"
+                elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+                fi
+            fi
+            return 1
+        }
         gmakew install
     fi
 }
@@ -5249,7 +5259,7 @@ __setup_sysroot_dragonflybsd() {
 
     wfetch "https://github.com/leleliu008/test/releases/download/2023.10.08/dragonflybsd-6.4-x86_64-sysroot.tar.xz" -o "$FILENAME"
 
-    run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC" --strip-components=1
+    run bsdtar xvf "$FILENAME" -C "$PPKG_SYSROOT_TMPDIR" --strip-components=1
 }
 
 __setup_sysroot_freebsd() {
@@ -5258,18 +5268,17 @@ __setup_sysroot_freebsd() {
     # https://archive.freebsd.org/old-releases/
     wfetch "https://archive.freebsd.org/old-releases/$TARGET_PLATFORM_ARCH/$TARGET_PLATFORM_VERS-RELEASE/base.txz" -o "$FILENAME"
 
-    run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
+    run bsdtar xvf "$FILENAME" -C "$PPKG_SYSROOT_TMPDIR"
 
-    #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+    cd "$PPKG_SYSROOT_TMPDIR/usr/lib"
 
-    rm "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
+    rm libgcc.a
 
-    printf '%s\n' 'INPUT(-lc++)'                  > "$TARGET_PLATFORM_SPEC/usr/lib/libstdc++.a"
-    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc.a"
-    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > "$TARGET_PLATFORM_SPEC/usr/lib/libgcc_s.a"
+    printf '%s\n' 'INPUT(-lc++)'                  > libstdc++.a
+    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > libgcc.a
+    printf '%s\n' 'INPUT(-lcompiler_rt -lgcc_eh)' > libgcc_s.a
+
+    cd -
 }
 
 __setup_sysroot_openbsd() {
@@ -5281,10 +5290,10 @@ __setup_sysroot_openbsd() {
         FILENAME="$TARGET_PLATFORM_SPEC-$item.tgz"
         URL="https://ftp.eu.openbsd.org/pub/OpenBSD/$TARGET_PLATFORM_VERS/$TARGET_PLATFORM_ARCH/$item$TARGET_PLATFORM_VERS_MAJOR$TARGET_PLATFORM_VERS_MINOR.tgz"
         wfetch "$URL" -o "$FILENAME"
-        run bsdtar xvf   "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
+        run bsdtar xvf   "$FILENAME" -C "$PPKG_SYSROOT_TMPDIR"
     done
 
-    cd "$TARGET_PLATFORM_SPEC/usr/lib"
+    cd "$PPKG_SYSROOT_TMPDIR/usr/lib"
 
     # https://github.com/mesonbuild/meson/issues/5390
     printf '%s\n' 'INPUT(-lc)'                    > libdl.a
@@ -5314,15 +5323,10 @@ __setup_sysroot_netbsd() {
         FILENAME="$TARGET_PLATFORM_SPEC-$item.txz"
         URL="$NETBSD_DOWNLOAD_SERVER/NetBSD-$TARGET_PLATFORM_VERS/amd64/binary/sets/$item.tar.xz"
         wfetch "$URL" -o "$FILENAME"
-        run bsdtar xvf "$FILENAME" -C "$TARGET_PLATFORM_SPEC"
+        run bsdtar xvf "$FILENAME" -C "$PPKG_SYSROOT_TMPDIR"
     done
 
-    cd "$TARGET_PLATFORM_SPEC/usr/lib"
-
-    #run rm -rf "$TARGET_PLATFORM_SPEC/bin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/bin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/sbin"
-    #run rm -rf "$TARGET_PLATFORM_SPEC/usr/sbin"
+    cd "$PPKG_SYSROOT_TMPDIR/usr/lib"
 
     printf '%s\n' 'INPUT(-lstdc++)' > libc++.a
     printf '%s\n' 'INPUT(-lc)'      > libdl.a
@@ -5342,14 +5346,20 @@ __setup_sysroot_linux() {
 }
 
 __setup_sysroot() {
-    run install -d "$PPKG_SYSROOT"
-    run cd         "$PPKG_SYSROOT"
+    install -d "$PPKG_SYSROOT"
+    cd         "$PPKG_SYSROOT"
 
-    run install -d "$TARGET_PLATFORM_SPEC"
+    PPKG_SYSROOT_UUID="$(date +%s)"
+
+    PPKG_SYSROOT_TMPDIR="$TARGET_PLATFORM_SPEC.$PPKG_SYSROOT_UUID"
+
+    install -d "$PPKG_SYSROOT_TMPDIR"
 
     __setup_sysroot_$TARGET_PLATFORM_NAME
 
-    run touch "$TARGET_PLATFORM_SPEC/ok"
+    touch "$TARGET_PLATFORM_SPEC/ok"
+
+    run mv "$PPKG_SYSROOT_TMPDIR" "$TARGET_PLATFORM_SPEC"
 }
 
 # }}}
