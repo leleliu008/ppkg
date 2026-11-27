@@ -8634,18 +8634,29 @@ EOF
 
     #########################################################################################
 
-    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
+    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 'nothing was installed.'
 
     step 'change to the installed directory'
     run cd "$PACKAGE_INSTALL_DIR"
 
-    [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
+    [ -z "$(ls)" ]                  && abort 1 'nothing was installed.'
 
     #########################################################################################
 
-    [ "$PACKAGE_USE_CARGO" = 1 ] && {
-        run rm -f .crates.toml
-        run rm -f .crates2.json
+    [ "$PACKAGE_USE_CARGO" = 1 ] && run rm -f .crates.toml .crates2.json
+
+    #########################################################################################
+
+    [ "$PACKAGE_USE_MESON" = 1 ] && [ "$TARGET_PLATFORM_NAME" = freebsd ] && [ -d libdata/pkgconfig ] && {
+        if [ -d lib ] ; then
+            if [ -d lib/pkgconfig ] ; then
+                run mv libdata/pkgconfig/* lib/pkgconfig/
+            else
+                run mv libdata/pkgconfig lib/
+            fi
+        else
+            run mv libdata lib
+        fi
     }
 
     #########################################################################################
@@ -11660,7 +11671,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-PPKG_VERSION=0.30.10
+PPKG_VERSION=0.30.11
 
 PPKG_ARG0="$0"
 PPKG_ARG1="$1"
