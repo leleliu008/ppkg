@@ -7278,6 +7278,7 @@ $DOT_CONTENT
         GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
         run "$GMAKE"      --version
         printf '\n'
+        export MAKE="$GMAKE"
     }
 
     [ "$PACKAGE_USE_NINJA" = 1 ] && {
